@@ -1,2 +1,3 @@
 # language-server
-Repository for the VS Code Language Server
+
+Repository for the InterSystems ObjectScript Language Server
