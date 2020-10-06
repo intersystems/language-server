@@ -1,0 +1,17 @@
+INTERSYSTEMS LANGUAGE SERVER
+END USER LICENSE AGREEMENT
+ 
+2020
+ 
+LANGUAGE SERVER END USER LICENSE AGREEMENT
+1. This Language Server End User License and Services Agreement ("Agreement") is between InterSystems Corporation ("ISC") and the user (hereinafter "you") installing InterSystems Language Server software and its Application Programming Interfaces (the "Licensed Software"). The terms and provisions provided herein shall become binding upon installation of the Licensed Software.
+2. Upon installation of the Licensed Software, ISC grants you a non-exclusive, non-transferable license to use the Licensed Software internally for development purposes.
+3. Your rights under this Agreement shall terminate if you fail to comply with any of the materials terms and conditions provided herein.
+4. THE LICENSED SOFTWARE IS PROVIDED ON AN "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, EITHER EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTIES AND CONDITIONS OF TITLE, NON-INFRINGEMENT, MERCHANTABILITY OR FITNESS FOR A PARTICULAR PURPOSE.
+5. ISC HAS NO LIABILITY WHATSOEVER TO YOU FOR ANY DAMAGES RELATED TO THE PERFORMANCE OF THE LICENSED SOFTWARE, INCLUDING DIRECT, INDIRECT, SPECIAL, INCIDENTAL, AND CONSEQUENTIAL DAMAGES (SUCH AS LOSS OF PROFITS), HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHERE IN CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THE LICENSED SOFTWARE OR THE EXERCISE OF ANY RIGHTS GRANTED HEREUNDER, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.
+6. You agree to comply with all applicable laws, including, but not limited to, U.S. export control or similar laws with respect to use of the Licensed Software and technical data.
+7. Upon termination or expiration of this Agreement, sections 4, 5, 7 and 9 hereof shall survive.
+8. ISC shall have the right to transfer or assign this Agreement without your consent.
+9. This Agreement shall be governed by and construed in accordance with the laws of the State of New York and the intellectual property laws of the United States of America.
+10. If any provision of this Agreement is invalid on unenforceable under applicable law, it shall not affect the validity or enforceability of the remainder of the terms of this Agreement, and without further action by the parties hereto, such provision shall be reformed to the minimum extent necessary to make such provision valid and enforceable.
+ 
