@@ -1,0 +1,219 @@
+[
+	{
+		"label": "#;",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#;` preprocessor directive creates a single line comment that does not appear in .int code.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbSemi"
+	},
+	{
+		"label": "#Def1Arg",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#Def1Arg` preprocessor directive defines a macro with only one argument, where that argument can have commas in it.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbDef1Arg"
+	},
+	{
+		"label": "#Define",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#Define` preprocessor directive defines a macro.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbDefine"
+	},
+	{
+		"label": "#Dim",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#Dim` preprocessor directive specifies the intended data type of a local variable and can optionally specify its initial value.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbDim"
+	},
+	{
+		"label": "#Else",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#Else` preprocessor directive specifies the beginning of the fall-through case in a set of preprocessor conditions.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbElse"
+	},
+	{
+		"label": "#ElseIf",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#ElseIf` preprocessor directive specifies the beginning of a secondary case in a set of preprocessor conditions that begin with `#If`.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbElseIf"
+	},
+	{
+		"label": "#ElIf",
+		"start": true,
+		"middle": false,
+		"documentation": "Alternate name of `#ElseIf`.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbElseIf"
+	},
+	{
+		"label": "#EndIf",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#EndIf` preprocessor directive concludes a set of preprocessor conditions.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbEndIf"
+	},
+	{
+		"label": "#Execute",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#Execute` preprocessor directive executes a line of ObjectScript at compile time.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbExecute"
+	},
+	{
+		"label": "#If",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#If` preprocessor directive begins a block of conditional text.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbIf"
+	},
+	{
+		"label": "#IfDef",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#IfDef` preprocessor directive marks the beginning of a block of conditional code where execution depends on a macro having been defined.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbIfDef"
+	},
+	{
+		"label": "#IfNDef",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#IfNDef` preprocessor directive marks the beginning of a block of conditional code where execution depends on a macro having not been defined.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbIfNDef"
+	},
+	{
+		"label": "#IfUnDef",
+		"start": true,
+		"middle": false,
+		"documentation": "Alternate name of `#IfNDef`.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbIfNDef"
+	},
+	{
+		"label": "#Import",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#Import` preprocessor directive specifies the schema search path for any subsequent Embedded SQL DML statements.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbImport"
+	},
+	{
+		"label": "#Include",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#Include` preprocessor directive loads a specified file name that contains preprocessor directives.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbInclude"
+	},
+	{
+		"label": "#NoShow",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#NoShow` preprocessor directive ends a comment section that is part of an include file.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbNoShow"
+	},
+	{
+		"label": "#Show",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#Show` preprocessor directive begins a comment section that is part of an include file.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbShow"
+	},
+	{
+		"label": "#SQLCompile Audit",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#SQLCompile Audit` preprocessor directive is a boolean that specifies whether any subsequent Embedded SQL statements should be audited.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbSQLCompile_Audit"
+	},
+	{
+		"label": "#SQLCompile Path",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#SQLCompile Path` preprocessor directive specifies the schema search path for any subsequent Embedded SQL DML statements.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbSQLCompile_Path"
+	},
+	{
+		"label": "#SQLCompile Select",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#SQLCompile Select` preprocessor directive specifies the data format mode for any subsequent Embedded SQL statements.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbSQLCompile_Select"
+	},
+	{
+		"label": "#UnDef",
+		"start": true,
+		"middle": false,
+		"documentation": "The `#UnDef` preprocessor directive removes the definition for an already-defined macro.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lbUnDef"
+	},
+	{
+		"label": "##;",
+		"start": true,
+		"middle": true,
+		"documentation": "The `##;` preprocessor directive makes the remaining part of the current line a comment that does not appear in .int code.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbSemi"
+	},
+	{
+		"label": "##Continue",
+		"start": false,
+		"middle": true,
+		"documentation": "The `##Continue` preprocessor directive continues a macro definition on the next line, to support multiline macro definitions.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbContinue"
+	},
+	{
+		"label": "##Expression",
+		"start": false,
+		"middle": true,
+		"documentation": "The `##Expression` preprocessor function evaluates an ObjectScript expression at compile time.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbExpression"
+	},
+	{
+		"label": "##Function",
+		"start": false,
+		"middle": true,
+		"documentation": "The `##Function` preprocessor function evaluates an ObjectScript function at compile time.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbFunction"
+	},
+	{
+		"label": "##Lit",
+		"start": true,
+		"middle": true,
+		"documentation": "The `##Lit` preprocessor function preserves the content of its argument in literal form.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbLit"
+	},
+	{
+		"label": "##Quote",
+		"start": false,
+		"middle": true,
+		"documentation": "The `##Quote` preprocessor function takes a single argument and returns that argument quoted.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbQuote"
+	},
+	{
+		"label": "##QuoteExp",
+		"start": false,
+		"middle": true,
+		"documentation": "The `##QuoteExp` preprocessor function takes as an argument an expression that gets evaluated during compilation.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbQuoteExp"
+	},
+	{
+		"label": "##SQL",
+		"start": true,
+		"middle": false,
+		"documentation": "The `##SQL` preprocessor directive invokes a specified Embedded SQL statement at runtime.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbSQL"
+	},
+	{
+		"label": "##StripQ",
+		"start": false,
+		"middle": true,
+		"documentation": "The `##StripQ` preprocessor function takes a single argument and returns that argument with quotes removed.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbStripQ"
+	},
+	{
+		"label": "##Unique",
+		"start": false,
+		"middle": true,
+		"documentation": "The `##Unique` preprocessor function creates a new, unique local variable within a macro definition for use at compile time or runtime.",
+		"link": "/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_mpp_lblbUnique"
+	}
+]

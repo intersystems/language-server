@@ -1,0 +1,1 @@
+[{"name":"Deprecated","type":"KW_TYPE_BOOLEAN","description":"True if this projection is deprecated."},{"name":"Internal","type":"KW_TYPE_BOOLEAN","description":"If true, then do not display this item in automatic documentation."},{"name":"NotInheritable","type":"KW_TYPE_BOOLEAN","description":"Specifies that this projection is not inherited in subclasses."}]

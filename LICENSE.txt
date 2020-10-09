@@ -14,4 +14,3 @@ LANGUAGE SERVER END USER LICENSE AGREEMENT
 8. ISC shall have the right to transfer or assign this Agreement without your consent.
 9. This Agreement shall be governed by and construed in accordance with the laws of the State of New York and the intellectual property laws of the United States of America.
 10. If any provision of this Agreement is invalid on unenforceable under applicable law, it shall not affect the validity or enforceability of the remainder of the terms of this Agreement, and without further action by the parties hereto, such provision shall be reformed to the minimum extent necessary to make such provision valid and enforceable.
- 

@@ -1,0 +1,46 @@
+[
+	{
+		"name": "BOOLEAN",
+		"documentation": "A true (1) or false (0) value."
+	},
+	{
+		"name": "CLASSNAME",
+		"documentation": "A valid class name."
+	},
+	{
+		"name": "COSCODE",
+		"documentation": "ObjectScript code."
+	},
+	{
+		"name": "COSEXPRESSION",
+		"documentation": "A valid ObjectScript expression that is evaluated at runtime."
+	},
+	{
+		"name": "COSIDENTIFIER",
+		"documentation": "A valid ObjectScript identifier."
+	},
+	{
+		"name": "INTEGER",
+		"documentation": "An integer value."
+	},
+	{
+		"name": "SQL",
+		"documentation": "A SQL statement."
+	},
+	{
+		"name": "SQLIDENTIFIER",
+		"documentation": " A valid SQL identifier."
+	},
+	{
+		"name": "STRING",
+		"documentation": "A string value."
+	},
+	{
+		"name": "TEXT",
+		"documentation": "A multi-line text value."
+	},
+	{
+		"name": "CONFIGVALUE",
+		"documentation": "A parameter that can be modified outside of the class definition via $SYSTEM.OBJ.UpdateConfigParam().\nNote that $SYSTEM.OBJ.UpdateConfigParam() affects the generated class descriptor as used by any new processes, but does not affect the class definition. If you recompile the class, InterSystems IRIS regenerates the class descriptor, which will now use the value of this parameter as contained in the class definition (thus overwriting the change made via $SYSTEM.OBJ.UpdateConfigParam())."
+	}
+]
