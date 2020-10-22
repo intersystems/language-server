@@ -8,11 +8,16 @@
 	},
 	"dependencies": {
 		"axios": "^0.20.0",
-		"vscode-languageserver": "^6.1.1",
-		"vscode-languageserver-textdocument": "^1.0.1",
+		"axios-cookiejar-support": "^1.0.0",
 		"ffi-napi": "^3.0.1",
 		"ref-array-napi": "^1.2.1",
 		"ref-napi": "^3.0.1",
-		"ref-struct-napi": "^1.1.1"
+		"ref-struct-napi": "^1.1.1",
+		"tough-cookie": "^4.0.0",
+		"vscode-languageserver": "^6.1.1",
+		"vscode-languageserver-textdocument": "^1.0.1"
+	},
+	"devDependencies": {
+		"@types/tough-cookie": "^4.0.0"
 	}
 }

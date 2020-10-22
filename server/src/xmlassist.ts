@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { ServerSpec } from './server';
+import { ServerSpec, cookiesCache } from './server';
 
 /**
  * Mapping between an XML prefix and namespace.
@@ -499,7 +499,9 @@ export class SchemaCache {
 					auth: {
 						username: this.server.username,
 						password: this.server.password
-					}
+					},
+					withCredentials: true,
+					jar: cookiesCache.get(this.server)
 				}
 			);
 			if (respdata.status === 202) {
@@ -511,7 +513,9 @@ export class SchemaCache {
 						auth: {
 							username: this.server.username,
 							password: this.server.password
-						}
+						},
+						withCredentials: true,
+						jar: cookiesCache.get(this.server)
 					}
 				);
 				return respdata;
