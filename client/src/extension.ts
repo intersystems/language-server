@@ -58,7 +58,7 @@ export function activate(context: ExtensionContext) {
 			return objectScriptApi.serverForUri(Uri.parse(uri));
 		});
 		client.onRequest("intersystems/uri/localToVirtual", (uri: string): string => {
-			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(uri);
+			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
 			return newuri.toString();
 		});
 		objectScriptApi.onDidChangeConnection()(() => {
