@@ -35,6 +35,7 @@ export const error_attrindex = 0x00;
 export const normal_attrindex = 0x01;
 
 export const cos_label_attrindex = 0x03;
+export const cos_ppf_attrindex = 0x0A;
 export const cos_ppc_attrindex = 0x0B;
 export const cos_macro_attrindex = 0x0C;
 export const cos_delim_attrindex = 0x0D;

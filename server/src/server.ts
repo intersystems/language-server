@@ -1814,6 +1814,51 @@ function emphasizeArgument(arglist: string, arg: number): string {
 	}
 };
 
+/**
+ * Determine if the selected macro is defined in the current file.
+ * Returns the line number of the macro definition if it was found or -1 if it wasn't.
+ * 
+ * @param doc The TextDocument that the macro is in.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line that the macro is in.
+ * @param macro The selected macro.
+ */
+function isMacroDefinedAbove(doc: TextDocument, parsed: compressedline[], line: number, macro: string): number {
+	var result: number = -1;
+
+	// Loop through the file, looking for macro definitions
+	for (let ln = line-1; ln >= 0; ln--) {
+		if (parsed[ln].length < 4) {
+			continue;
+		}
+		if (parsed[ln][0].l == ld.cos_langindex && parsed[ln][0].s == ld.cos_ppc_attrindex) {
+			// This line begins with a preprocessor command
+			const ppctext = doc.getText(Range.create(
+				Position.create(ln,parsed[ln][1].p),
+				Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
+			)).toLowerCase();
+			if (ppctext === "define" || ppctext === "def1arg") {
+				// This is a macro definition
+				const macrotext = doc.getText(Range.create(
+					Position.create(ln,parsed[ln][2].p),
+					Position.create(ln,parsed[ln][2].p+parsed[ln][2].c)
+				));
+				if (macrotext === macro) {
+					// We found the definition for the selected macro
+					result = ln;
+					break;
+				}
+			}
+		}
+		if (doc.languageId === "objectscript-class" && parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
+			// We've reached the top of the containing method 
+			break;
+		}
+	}
+
+	return result;
+}
+
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries
 	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL");
@@ -3149,75 +3194,137 @@ connection.onHover(
 
 					// Get the full range of the macro
 					const macrorange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
-
-					// Get the rest of the line following the macro
-					const restofline = doc.getText(Range.create(
-						Position.create(params.position.line,macrorange.end.character),
-						Position.create(params.position.line,parsed[params.position.line][parsed[params.position.line].length-1].p+parsed[params.position.line][parsed[params.position.line].length-1].c)
-					));
+					var macrotext = doc.getText(macrorange);
+					if (macrotext.slice(0,3) === "$$$") {
+						macrotext = macrotext.slice(3);
+					}
 					
-					// If this macro takes arguments, send them in the request body
-					var macroargs = "";
-					if (restofline.charAt(0) === "(") {
-						if (restofline.indexOf(")") !== -1) {
-							// Get all of the arguments
-							macroargs = restofline.slice(0,restofline.indexOf(")")+1).replace(" ","");
-						}
-						else {
-							// The argument list is incomplete
-							macroargs = "incomplete";
-						}
-					}
+					// Check if the macro definition appears in the current file
+					const macrodefline = isMacroDefinedAbove(doc,parsed,params.position.line,macrotext);
+					
+					if (macrodefline !== -1) {
+						// The macro definition is in the current file
 
-					// If the arguments list is either not needed or complete, get the macro expansion
-					if (macroargs !== "incomplete") {
-						// Get the macro expansion from the server
-						const querydata = {
-							docname: maccon.docname,
-							macroname: doc.getText(macrorange).substring(3),
-							arguments: macroargs,
-							superclasses: maccon.superclasses,
-							includes: maccon.includes,
-							includegenerators: maccon.includegenerators,
-							imports: maccon.imports,
-							mode: maccon.mode
-						};
-						const respdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,querydata);
-						if (respdata !== undefined && respdata.data.result.content.expansion.length > 0) {
-							// The macro expansion was found
-							return {
-								contents: respdata.data.result.content.expansion.join("\n"),
-								range: macrorange
-							};
-						}
-					}
-					// If the argument list is incomplete, get the non-expanded definition
-					else {
-						// Get the macro definition from the server
-						const inputdata = {
-							docname: maccon.docname,
-							macroname: doc.getText(macrorange).substring(3),
-							superclasses: maccon.superclasses,
-							includes: maccon.includes,
-							includegenerators: maccon.includegenerators,
-							imports: maccon.imports,
-							mode: maccon.mode
-						};
-						const respdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,inputdata);
-						if (respdata !== undefined && respdata.data.result.content.definition.length > 0) {
-							// The macro definition was found
-							const parts = respdata.data.result.content.definition[0].trim().split(/[ ]+/);
-							var defstr = "";
-							if (parts[0].charAt(0) === "#") {
-								defstr = defstr.concat(parts[1]," ",parts.slice(2).join());
+						var defstr = "";
+						for (let ln = macrodefline; ln < parsed.length; ln++) {
+							const deflinetext = doc.getText(Range.create(
+								Position.create(ln,0),
+								Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+							));
+							const parts = deflinetext.trim().split(/[ ]+/);
+							
+							if (
+								parsed[ln][parsed[ln].length-1].l == ld.cos_langindex &&
+								parsed[ln][parsed[ln].length-1].s == ld.cos_ppf_attrindex &&
+								doc.getText(Range.create(
+									Position.create(ln,parsed[ln][parsed[ln].length-1].p),
+									Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+								)).toLowerCase() === "continue"
+							) {
+								// This is one line of a multi-line macro definition
+
+								if (ln == macrodefline) {
+									// This is the first line of a multi-line macro definition
+
+									defstr = parts.slice(2).join(" ").slice(0,-10) + "  \n";
+								}
+								else {
+									defstr = defstr + deflinetext.trim().slice(0,-10) + "  \n";
+								}
 							}
 							else {
-								defstr = defstr.concat(parts[0]," ",parts.slice(1).join());
+								if (ln == macrodefline) {
+									// This is a one line macro definition
+
+									defstr = parts.slice(2).join(" ");
+								}
+								else {
+									// This is the last line of a multi-line macro definition
+
+									defstr = defstr + deflinetext.trim();
+								}
+								// We've captured all the lines of this macro definition
+								break;
 							}
-							return {
-								contents: defstr,
-								range: macrorange
+						}
+						
+						return {
+							contents: defstr,
+							range: macrorange
+						};
+					}
+					else {
+						// The macro is defined in another file
+
+						// Get the rest of the line following the macro
+						const restofline = doc.getText(Range.create(
+							Position.create(params.position.line,macrorange.end.character),
+							Position.create(params.position.line,parsed[params.position.line][parsed[params.position.line].length-1].p+parsed[params.position.line][parsed[params.position.line].length-1].c)
+						));
+						
+						// If this macro takes arguments, send them in the request body
+						var macroargs = "";
+						if (restofline.charAt(0) === "(") {
+							if (restofline.indexOf(")") !== -1) {
+								// Get all of the arguments
+								macroargs = restofline.slice(0,restofline.indexOf(")")+1).replace(" ","");
+							}
+							else {
+								// The argument list is incomplete
+								macroargs = "incomplete";
+							}
+						}
+
+						// If the arguments list is either not needed or complete, get the macro expansion
+						if (macroargs !== "incomplete") {
+							// Get the macro expansion from the server
+							const querydata = {
+								docname: maccon.docname,
+								macroname: macrotext,
+								arguments: macroargs,
+								superclasses: maccon.superclasses,
+								includes: maccon.includes,
+								includegenerators: maccon.includegenerators,
+								imports: maccon.imports,
+								mode: maccon.mode
 							};
+							const respdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,querydata);
+							if (respdata !== undefined && respdata.data.result.content.expansion.length > 0) {
+								// The macro expansion was found
+								return {
+									contents: respdata.data.result.content.expansion.join("  \n"),
+									range: macrorange
+								};
+							}
+						}
+						// If the argument list is incomplete, get the non-expanded definition
+						else {
+							// Get the macro definition from the server
+							const inputdata = {
+								docname: maccon.docname,
+								macroname: macrotext,
+								superclasses: maccon.superclasses,
+								includes: maccon.includes,
+								includegenerators: maccon.includegenerators,
+								imports: maccon.imports,
+								mode: maccon.mode
+							};
+							const respdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,inputdata);
+							if (respdata !== undefined && respdata.data.result.content.definition.length > 0) {
+								// The macro definition was found
+								const parts = respdata.data.result.content.definition[0].trim().split(/[ ]+/);
+								var defstr = "";
+								if (parts[0].charAt(0) === "#") {
+									defstr = parts.slice(2).join(" ");
+								}
+								else {
+									defstr = parts.slice(1).join(" ");
+								}
+								return {
+									contents: defstr,
+									range: macrorange
+								};
+							}
 						}
 					}
 				}
@@ -3779,29 +3886,48 @@ connection.onDefinition(
 
 					// Get the full range of the macro
 					const macrorange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+					var macrotext = doc.getText(macrorange);
+					if (macrotext.slice(0,3) === "$$$") {
+						macrotext = macrotext.slice(3);
+					}
 
-					// Get the macro location from the server
-					const inputdata = {
-						docname: maccon.docname,
-						macroname: doc.getText(macrorange).substring(3),
-						superclasses: maccon.superclasses,
-						includes: maccon.includes,
-						includegenerators: maccon.includegenerators,
-						imports: maccon.imports,
-						mode: maccon.mode
-					};
-					const respdata = await makeRESTRequest("POST",2,"/action/getmacrolocation",server,inputdata);
-					if (respdata !== undefined && respdata.data.result.content.document !== "") {
-						// The macro was found in a document
-						const lastdot = respdata.data.result.content.document.lastIndexOf(".");
-						const filename = respdata.data.result.content.document.substring(0,lastdot);
-						const ext = respdata.data.result.content.document.substring(lastdot);
-						const newuri = await createDefinitionUri(params.textDocument.uri,filename,ext);
-						if (newuri !== "") {
-							return {
-								uri: newuri,
-								range: Range.create(Position.create(respdata.data.result.content.line,0),Position.create(respdata.data.result.content.line,0))
-							};
+					// Check if the macro definition appears in the current file
+					const macrodefline = isMacroDefinedAbove(doc,parsed,params.position.line,macrotext);
+
+					if (macrodefline !== -1) {
+						// The macro definition is in the current file
+
+						return {
+							uri: params.textDocument.uri,
+							range: Range.create(Position.create(macrodefline,0),Position.create(macrodefline,0))
+						};
+					}
+					else {
+						// The macro is defined in another file
+
+						// Get the macro location from the server
+						const inputdata = {
+							docname: maccon.docname,
+							macroname: macrotext,
+							superclasses: maccon.superclasses,
+							includes: maccon.includes,
+							includegenerators: maccon.includegenerators,
+							imports: maccon.imports,
+							mode: maccon.mode
+						};
+						const respdata = await makeRESTRequest("POST",2,"/action/getmacrolocation",server,inputdata);
+						if (respdata !== undefined && respdata.data.result.content.document !== "") {
+							// The macro was found in a document
+							const lastdot = respdata.data.result.content.document.lastIndexOf(".");
+							const filename = respdata.data.result.content.document.substring(0,lastdot);
+							const ext = respdata.data.result.content.document.substring(lastdot);
+							const newuri = await createDefinitionUri(params.textDocument.uri,filename,ext);
+							if (newuri !== "") {
+								return {
+									uri: newuri,
+									range: Range.create(Position.create(respdata.data.result.content.line,0),Position.create(respdata.data.result.content.line,0))
+								};
+							}
 						}
 					}
 				}
