@@ -30,6 +30,9 @@ import {
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 import axios, { AxiosResponse } from 'axios';
+import axiosCookieJarSupport from 'axios-cookiejar-support';
+import tough = require('tough-cookie');
+axiosCookieJarSupport(axios);
 
 import { compressedline, monikeropttype, monikerinfo } from './types';
 import { startcombridge, parsedocument } from './parse';
@@ -243,6 +246,11 @@ var signatureHelpMacroCache: SignatureHelpMacroContext;
  * Cache of the documentation content sent for the last triggered SignatureHelp.
  */
 var signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefined;
+
+/**
+ * ServerSpec's mapped to their cookie jar.
+ */
+export let cookiesCache: Map<ServerSpec, tough.CookieJar> = new Map();
 
 /**
  * Compute diagnositcs for this document and sent them to the client.
@@ -1639,7 +1647,7 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
  * 
  * @param method The REST method.
  * @param path The path portion of the URL.
- * @param server The name of the server to send the request to.
+ * @param server The server to send the request to.
  * @param data Optional request data. Usually passed for POST requests.
  */
 async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: string, server: ServerSpec, data?: any): Promise<AxiosResponse | undefined> {
@@ -1670,7 +1678,9 @@ async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: string, s
 					},
 					headers: {
 						'Content-Type': 'application/json'
-					}
+					},
+					withCredentials: true,
+					jar: cookiesCache.get(server)
 				}
 			);
 		}
@@ -1682,7 +1692,9 @@ async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: string, s
 					auth: {
 						username: server.username,
 						password: server.password
-					}
+					},
+					withCredentials: true,
+					jar: cookiesCache.get(server)
 				}
 			);
 		}
@@ -1720,6 +1732,7 @@ async function getServerSpec(uri: string): Promise<ServerSpec> {
 	}
 	const newspec: ServerSpec = await connection.sendRequest("intersystems/server/resolveFromUri",uri);
 	serverSpecs.set(uri, newspec);
+	cookiesCache.set(newspec, new tough.CookieJar());
 	return newspec;
 };
 
@@ -1841,6 +1854,7 @@ connection.onDidChangeConfiguration(change => {
 	languageServerSettings = undefined;
 	serverSpecs.clear();
 	schemaCaches.clear();
+	cookiesCache.clear();
 
 	// Update diagnostics for all open documents
 	documents.all().forEach(computeDiagnostics);
@@ -4400,6 +4414,7 @@ connection.onNotification("intersystems/server/passwordChange",
 		}
 		if (toRemove !== undefined) {
 			schemaCaches.delete(toRemove);
+			cookiesCache.delete(toRemove);
 		}
 	}
 );
@@ -4408,6 +4423,7 @@ connection.onNotification("intersystems/server/connectionChange",() => {
 	// Clear all cached server connection info
 	serverSpecs.clear();
 	schemaCaches.clear();
+	cookiesCache.clear();
 });
 
 connection.onDocumentSymbol(
