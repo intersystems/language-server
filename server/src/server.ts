@@ -274,7 +274,7 @@ async function computeDiagnostics(doc: TextDocument) {
 			};
 		}
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-		if (respdata !== undefined && respdata.data.result.content !== undefined) {
+		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content !== undefined) {
 			files = respdata.data.result.content;
 		}
 		
@@ -1334,7 +1334,7 @@ async function normalizeClassname(
 				parameters: [clsname]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-			if (respdata !== undefined) {
+			if (respdata !== undefined && "content" in respdata.data.result) {
 				if (respdata.data.result.content.length === 1) {
 					// We got back exactly one class
 
@@ -1378,7 +1378,7 @@ async function normalizeClassname(
 		}
 		else {
 			// This was called from computeDiagnosics(), which already has an array of all the classes in the database
-			const filtered = allfiles.filter(file => file.Name.indexOf(clsname+".cls") !== -1);
+			const filtered = allfiles.filter(file => file.Name.indexOf("."+clsname+".cls") !== -1);
 			if (filtered.length === 1) {
 				const clsobj = filtered[0];
 				if (clsobj.Name.slice(0,-4) === clsname) {
@@ -2092,7 +2092,7 @@ connection.onSignatureHelp(
 						parameters: [membercontext.baseclass,member]
 					};
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-					if (respdata !== undefined && respdata.data.result.content.length > 0) {
+					if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 						// We got data back
 						const memobj = respdata.data.result.content[0];
 						var sig: SignatureInformation = {
@@ -2149,6 +2149,7 @@ connection.onCompletion(
 		if (parsed === undefined) {return null;}
 		const doc = documents.get(params.textDocument.uri);
 		if (doc === undefined) {return null;}
+		if (params.position.line === parsed.length) {return null;}
 		const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 		const prevline = doc.getText(Range.create(Position.create(params.position.line,0),params.position));
 		const classregex = /^class[ ]+\%?[a-z0-9]+(\.{1}[a-z0-9]+)* +extends[ ]+(\(([\%]?[a-z0-9]+(\.{1}[a-z0-9]+)*\,[ ]*)*)?$/i;
@@ -2367,7 +2368,7 @@ connection.onCompletion(
 						parameters: [membercontext.baseclass]
 					}
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-					if (respdata !== undefined && respdata.data.result.content.length > 0) {
+					if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 						// We got data back
 
 						for (let memobj of respdata.data.result.content) {
@@ -2718,7 +2719,7 @@ connection.onCompletion(
 							parameters:[thisclass]
 						};
 						const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-						if (respdata !== undefined && respdata.data.result.content.length > 0) {
+						if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 							// We got data back
 							
 							for (let method of respdata.data.result.content) {
@@ -2954,7 +2955,7 @@ connection.onCompletion(
 							kind: CompletionItemKind.Keyword,
 							documentation: {
 								kind: "markdown",
-								value: dir.documentation
+								value: dir.documentation + "\n\n" + `[Online documentation](${"https://docs.intersystems.com/irislatest"}${dir.link})`
 							},
 							insertText: dir.label.slice(2),
 							data: "Preprocessor"
@@ -2972,7 +2973,7 @@ connection.onCompletion(
 							kind: CompletionItemKind.Keyword,
 							documentation: {
 								kind: "markdown",
-								value: dir.documentation
+								value: dir.documentation + "\n\n" + `[Online documentation](${"https://docs.intersystems.com/irislatest"}${dir.link})`
 							},
 							insertText: dir.label.slice(2),
 							data: "Preprocessor"
@@ -2994,7 +2995,7 @@ connection.onCompletion(
 							kind: CompletionItemKind.Keyword,
 							documentation: {
 								kind: "markdown",
-								value: dir.documentation
+								value: dir.documentation + "\n\n" + `[Online documentation](${"https://docs.intersystems.com/irislatest"}${dir.link})`
 							},
 							insertText: dir.label.slice(1),
 							data: "Preprocessor"
@@ -3012,7 +3013,7 @@ connection.onCompletion(
 							kind: CompletionItemKind.Keyword,
 							documentation: {
 								kind: "markdown",
-								value: dir.documentation
+								value: dir.documentation + "\n\n" + `[Online documentation](${"https://docs.intersystems.com/irislatest"}${dir.link})`
 							},
 							insertText: dir.label.slice(1),
 							data: "Preprocessor"
@@ -3390,7 +3391,7 @@ connection.onHover(
 					}
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 					if (respdata !== undefined) {
-						if (respdata.data.result.content.length > 0) {
+						if ("content" in respdata.data.result && respdata.data.result.content.length > 0) {
 							// We got data back
 							var header = membercontext.baseclass.concat("::",member);
 							const nextchar = doc.getText(Range.create(Position.create(params.position.line,memberrange.end.character),Position.create(params.position.line,memberrange.end.character+1)));
@@ -3584,7 +3585,7 @@ connection.onHover(
 									parameters: [normalizedname,propname]
 								};
 								const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-								if (respdata !== undefined && respdata.data.result.content.length > 0) {
+								if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 									// We got data back
 									return {
 										contents: [normalizedname.concat("::",propname),respdata.data.result.content[0].Description],
@@ -3628,7 +3629,7 @@ connection.onHover(
 								parameters: [normalizedname,procname,normalizedname,procname]
 							};
 							const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-							if (respdata !== undefined && respdata.data.result.content.length > 0) {
+							if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 								// We got data back
 								return {
 									contents: [normalizedname.concat("::",procname),respdata.data.result.content[0].Description],
@@ -3657,7 +3658,7 @@ connection.onHover(
 										parameters: [normalizedname,propname]
 									};
 									const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-									if (respdata !== undefined && respdata.data.result.content.length > 0) {
+									if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 										// We got data back
 										return {
 											contents: [normalizedname.concat("::",propname),respdata.data.result.content[0].Description],
@@ -3856,7 +3857,7 @@ connection.onDefinition(
 					}
 					const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 					if (queryrespdata !== undefined) {
-						if (queryrespdata.data.result.content.length > 0) {
+						if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 							// We got data back
 
 							// Get the full text of the origin class
@@ -4109,7 +4110,7 @@ connection.onDefinition(
 								};
 								const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 								if (queryrespdata !== undefined) {
-									if (queryrespdata.data.result.content.length > 0) {
+									if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 										// We got data back
 
 										// Get the full text of the origin class
@@ -4196,7 +4197,7 @@ connection.onDefinition(
 								parameters: [normalizedname,procname,normalizedname,procname]
 							};
 							const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-							if (queryrespdata !== undefined && queryrespdata.data.result.content.length > 0) {
+							if (queryrespdata !== undefined && "content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 								// We got data back
 
 								// Get the full text of the origin class
@@ -4253,7 +4254,7 @@ connection.onDefinition(
 									};
 									const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 									if (queryrespdata !== undefined) {
-										if (queryrespdata.data.result.content.length > 0) {
+										if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 											// We got data back
 
 											// Get the full text of the origin class
@@ -4456,63 +4457,62 @@ connection.onDocumentSymbol(
 					else if (keywordtext.toLowerCase() !== "import" && keywordtext.toLowerCase().indexOf("include") === -1) {
 						// This is a class member definition
 
-						if (keywordtext.toLowerCase().indexOf("method") !== -1 || keywordtext.toLowerCase() === "query") {
-							// This is a method or query
+						// Loop through the file from this line to find the next class member
+						var lastnonempty = line;
+						for (let nl = line+1; nl < parsed.length; nl++) {
+							if (parsed[nl].length === 0) {
+								continue;
+							}
+							if (parsed[nl][0].l === ld.cls_langindex && (parsed[nl][0].s === ld.cls_keyword_attrindex || parsed[nl][0].s === ld.cls_desc_attrindex)) {
+								break;
+							}
+							lastnonempty = nl;
+						}
 
-							// Loop through the file from this line to find the next class member
-							var lastnonempty = line;
-							for (let nl = line+1; nl < parsed.length; nl++) {
+						if (lastnonempty === cls.range.end.line) {
+							// This is the last member, so fix its ending line
+							for (let nl = lastnonempty-1; nl > line; nl--) {
 								if (parsed[nl].length === 0) {
 									continue;
 								}
-								if (parsed[nl][0].l === ld.cls_langindex && parsed[nl][0].s === ld.cls_keyword_attrindex) {
-									break;
-								}
 								lastnonempty = nl;
-							}
-
-							if (lastnonempty === cls.range.end.line) {
-								// This is the last member, so fix its ending line
-								for (let nl = lastnonempty-1; nl > line; nl--) {
-									if (parsed[nl].length === 0) {
-										continue;
-									}
-									lastnonempty = nl;
-									break;
-								}
-							}
-
-							if (keywordtext.toLowerCase().indexOf("method") !== -1) {
-								// This is a method
-								members.push({
-									name: doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c))),
-									kind: SymbolKind.Method,
-									range: Range.create(Position.create(line,0),Position.create(lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c)),
-									selectionRange: Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c)),
-									detail: keywordtext
-								});
-							}
-							else {
-								// This is a query
-								members.push({
-									name: doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c))),
-									kind: SymbolKind.Property,
-									range: Range.create(Position.create(line,0),Position.create(lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c)),
-									selectionRange: Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c)),
-									detail: keywordtext
-								});
+								break;
 							}
 						}
-						else {
-							// This is a one line class member
-							members.push({
-								name: doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c))),
-								kind: SymbolKind.Property,
-								range: Range.create(Position.create(line,0),Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c)),
-								selectionRange: Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c)),
-								detail: keywordtext
-							});
+
+						// Loop upwards in the file to capture the documentation for this member
+						var firstnondoc = line-1;
+						for (let nl = line-1; nl >= 0; nl--) {
+							firstnondoc = nl;
+							if (parsed[nl].length === 0) {
+								break;
+							}
+							if (parsed[nl][0].l === ld.cls_langindex && parsed[nl][0].s !== ld.cls_desc_attrindex) {
+								break;
+							}
 						}
+
+						var kind: SymbolKind = SymbolKind.Property;
+						if (keywordtext.toLowerCase().indexOf("method") !== -1 || keywordtext.toLowerCase() === "query") {
+							kind = SymbolKind.Method;
+						}
+						else if (keywordtext.toLowerCase() === "parameter") {
+							kind = SymbolKind.Constant;
+						}
+						else if (keywordtext.toLowerCase() === "index") {
+							kind = SymbolKind.Key;
+						}
+						else if (keywordtext.toLowerCase() === "xdata" || keywordtext.toLowerCase() === "storage") {
+							kind = SymbolKind.Struct;
+						}
+
+						members.push({
+							name: doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c))),
+							kind: kind,
+							range: Range.create(Position.create(firstnondoc+1,0),Position.create(lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c)),
+							selectionRange: Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c)),
+							detail: keywordtext
+						});
 					}
 				}
 			}

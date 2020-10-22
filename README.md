@@ -1,6 +1,6 @@
 # InterSystems Language Server
 
-This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant language server for [InterSystems](http://www.intersystems.com/our-products/) ObjectScript powered by Node.js and written primarily in TypeScript. It is maintianed by InterSystems.
+This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant language server for [InterSystems](http://www.intersystems.com/our-products/) ObjectScript powered by Node.js and written primarily in TypeScript. It is maintained by InterSystems.
 
 ## Features
 
@@ -20,6 +20,14 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Classes and routines that don't exist in the database.
   - Invalid UDL Parameter types.
   - Mismatches between declared UDL Parameter types and the assigned value.
+
+## Setup Notes
+
+If the configured user "xxx" for connection to a server does NOT have the `%All` Role, execute the following query on the server to enable all of this extension's features.
+
+```SQL
+GRANT SELECT ON SCHEMA %Dictionary TO xxx
+```
 
 ## Language Feature Configuration
 
@@ -254,10 +262,10 @@ To create your own custom color theme that provides coloring for InterSystems se
 
 Any tokens that are not assigned a color by the custom theme will be assigned the default color (white for dark themes, black for light themes).
 
-## Dependecies
+## Dependencies
 
 This extension requires that the [vscode-objectscript](https://marketplace.visualstudio.com/items?itemName=intersystems-community.vscode-objectscript) extension be downloaded and enabled.
 
 ## Compatibility
 
-All InterSystems products that include the Atelier API's (Caché/Ensemble from 2016.2 onward, all versions of IRIS) are supported.
+All InterSystems products that include the Atelier APIs (Caché/Ensemble from 2016.2 onward, all versions of IRIS) are supported.

@@ -19,7 +19,7 @@ tokenModifiers.set(WARNING,0);
 
 export function parseText(text: string, moninfo: monikerinfo, builder: ProposedFeatures.SemanticTokensBuilder) {
 
-	console.log('parseText: ' + moninfo.moniker + ':' + moninfo.monikeropt);
+	//console.log('parseText: ' + moninfo.moniker + ':' + moninfo.monikeropt);
 
 	const jsonform = parsedocument(moninfo.moniker,moninfo.monikeropt,text).compressedlinearray;
 	if (parserlogcompressedresult) {
