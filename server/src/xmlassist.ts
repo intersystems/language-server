@@ -1,5 +1,5 @@
 import axios, { AxiosResponse } from 'axios';
-import { ServerSpec, cookiesCache } from './server';
+import { ServerSpec, makeRESTRequest } from './server';
 
 /**
  * Mapping between an XML prefix and namespace.
@@ -468,73 +468,6 @@ export class SchemaCache {
 	}
 
 	/**
-	 * Get a Studio Assist Schema definition from an InterSystems server.
-	 * 
-	 * @param schemaurl The URL of the SASchema to fetch.
-	 * @param checksum The checksum of schema, if we have it cached.
-	 */
-	private async getSchemaFromServer(schemaurl: string, checksum: string = ""): Promise<AxiosResponse | undefined> {
-		if (this.server.apiVersion === 1) {
-			// The server doesn't support the Atelier API version required to make this request
-			return undefined;
-		}
-
-		// Build the URL
-		var url = this.server.scheme + "://" + this.server.host + ":" + String(this.server.port);
-		if (this.server.pathPrefix !== "") {
-			url = url.concat("/",this.server.pathPrefix)
-		}
-		url = encodeURI(url + "/api/atelier/v2/" + this.server.namespace + "/saschema/" + schemaurl);
-
-		// Make the initial request
-		try {
-			var respdata: AxiosResponse;
-			respdata = await axios.request(
-				{
-					method: "GET",
-					url: url,
-					headers: {
-						"if-none-match": checksum
-					},
-					auth: {
-						username: this.server.username,
-						password: this.server.password
-					},
-					withCredentials: true,
-					jar: cookiesCache.get(this.server)
-				}
-			);
-			if (respdata.status === 202) {
-				// The schema is being recalculated so we need to make another call to get it
-				respdata = await axios.request(
-					{
-						method: "GET",
-						url: url,
-						auth: {
-							username: this.server.username,
-							password: this.server.password
-						},
-						withCredentials: true,
-						jar: cookiesCache.get(this.server)
-					}
-				);
-				return respdata;
-			}
-			else if (respdata.status === 304) {
-				// The schema hasn't changed
-				return undefined;
-			}
-			else {
-				// We got the schema
-				return respdata;
-			}
-		} catch (error) {
-			console.log(error);
-			return undefined;
-		}
-	};
-
-	/**
 	 * Get a SASchema object from the cache.
 	 * 
 	 * @param schemaurl The URL of the SASchema to get.
@@ -542,14 +475,14 @@ export class SchemaCache {
 	async getSchema(schemaurl: string): Promise<Schema | undefined> {
 		var schema = this.schemas.get(schemaurl);
 		if (schema === undefined) {
-			const respdata = await this.getSchemaFromServer(schemaurl);
+			const respdata = await makeRESTRequest("GET",2,"/saschema/"+schemaurl,this.server,undefined,"");
 			if (respdata !== undefined) {
 				schema = new Schema(respdata.data.result);
 				this.schemas.set(schemaurl,schema);
 			}
 		}
 		else {
-			const respdata = await this.getSchemaFromServer(schemaurl,schema.getChecksum());
+			const respdata = await makeRESTRequest("GET",2,"/saschema/"+schemaurl,this.server,undefined,schema.getChecksum());
 			if (respdata !== undefined) {
 				schema = new Schema(respdata.data.result);
 				this.schemas.set(schemaurl,schema);
