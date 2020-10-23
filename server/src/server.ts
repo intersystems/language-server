@@ -250,7 +250,7 @@ var signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefin
 /**
  * ServerSpec's mapped to their cookie jar.
  */
-export let cookiesCache: Map<ServerSpec, tough.CookieJar> = new Map();
+let cookiesCache: Map<ServerSpec, tough.CookieJar> = new Map();
 
 /**
  * Compute diagnositcs for this document and sent them to the client.
@@ -1649,8 +1649,9 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
  * @param path The path portion of the URL.
  * @param server The server to send the request to.
  * @param data Optional request data. Usually passed for POST requests.
+ * @param checksum Optional checksum. Only passed for SASchema requests.
  */
-async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: string, server: ServerSpec, data?: any): Promise<AxiosResponse | undefined> {
+export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: string, server: ServerSpec, data?: any, checksum?: string): Promise<AxiosResponse | undefined> {
 	if (api > server.apiVersion) {
 		// The server doesn't support the Atelier API version required to make this request
 		return undefined;
@@ -1663,42 +1664,165 @@ async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: string, s
 	}
 	url = encodeURI(url + "/api/atelier/v" + String(api) + "/" + server.namespace + path);
 
+	// Get the cookie jar
+	let cookiejar = cookiesCache.get(server);
+	if (cookiejar === undefined) {
+		cookiejar = new tough.CookieJar();
+	}
+
 	// Make the request
 	try {
-		var respdata: AxiosResponse;
-		if (data !== undefined) {
+		if (checksum !== undefined) {
+			// This is a SASchema request
+			
+			// Make the initial request
+			var respdata: AxiosResponse;
 			respdata = await axios.request(
 				{
-					method: method,
+					method: "GET",
 					url: url,
-					data: data,
-					auth: {
-						username: server.username,
-						password: server.password
-					},
 					headers: {
-						'Content-Type': 'application/json'
+						"if-none-match": checksum
 					},
 					withCredentials: true,
-					jar: cookiesCache.get(server)
+					jar: cookiejar,
+					validateStatus: function (status) {
+						return status < 500;
+					}
 				}
 			);
+			if (respdata.status === 202) {
+				// The schema is being recalculated so we need to make another call to get it
+				respdata = await axios.request(
+					{
+						method: "GET",
+						url: url,
+						withCredentials: true,
+						jar: cookiejar
+					}
+				);
+				return respdata;
+			}
+			else if (respdata.status === 304) {
+				// The schema hasn't changed
+				return undefined;
+			}
+			else if (respdata.status === 401) {
+				// Either we had no cookies or they expired, so resend the request with basic auth
+
+				cookiejar.removeAllCookies();
+				respdata = await axios.request(
+					{
+						method: "GET",
+						url: url,
+						headers: {
+							"if-none-match": checksum
+						},
+						auth: {
+							username: server.username,
+							password: server.password
+						},
+						withCredentials: true,
+						jar: cookiejar
+					}
+				);
+				if (respdata.status === 202) {
+					// The schema is being recalculated so we need to make another call to get it
+					respdata = await axios.request(
+						{
+							method: "GET",
+							url: url,
+							withCredentials: true,
+							jar: cookiejar
+						}
+					);
+					return respdata;
+				}
+				else if (respdata.status === 304) {
+					// The schema hasn't changed
+					return undefined;
+				}
+				else {
+					// We got the schema
+					return respdata;
+				}
+			}
+			else {
+				// We got the schema
+				return respdata;
+			}
 		}
 		else {
-			respdata = await axios.request(
-				{
-					method: method,
-					url: url,
-					auth: {
-						username: server.username,
-						password: server.password
-					},
-					withCredentials: true,
-					jar: cookiesCache.get(server)
+			// This is a different request
+	
+			var respdata: AxiosResponse;
+			if (data !== undefined) {
+				respdata = await axios.request(
+					{
+						method: method,
+						url: url,
+						data: data,
+						headers: {
+							'Content-Type': 'application/json'
+						},
+						withCredentials: true,
+						jar: cookiejar,
+						validateStatus: function (status) {
+							return status < 500;
+						}
+					}
+				);
+				if (respdata.status === 401) {
+					// Either we had no cookies or they expired, so resend the request with basic auth
+
+					cookiejar.removeAllCookies();
+					respdata = await axios.request(
+						{
+							method: method,
+							url: url,
+							data: data,
+							headers: {
+								'Content-Type': 'application/json'
+							},
+							auth: {
+								username: server.username,
+								password: server.password
+							},
+							withCredentials: true,
+							jar: cookiejar
+						}
+					);
 				}
-			);
+			}
+			else {
+				respdata = await axios.request(
+					{
+						method: method,
+						url: url,
+						withCredentials: true,
+						jar: cookiesCache.get(server)
+					}
+				);
+				if (respdata.status === 401) {
+					// Either we had no cookies or they expired, so resend the request with basic auth
+
+					cookiejar.removeAllCookies();
+					respdata = await axios.request(
+						{
+							method: method,
+							url: url,
+							auth: {
+								username: server.username,
+								password: server.password
+							},
+							withCredentials: true,
+							jar: cookiejar
+						}
+					);
+				}
+			}
+			return respdata;
 		}
-		return respdata;
 	} catch (error) {
 		console.log(error);
 		return undefined;
