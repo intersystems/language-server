@@ -80,7 +80,8 @@ type LanguageServerConfiguration = {
 	},
 	diagnostics: {
 		routines: boolean,
-		parameters: boolean
+		parameters: boolean,
+		classes: boolean
 	},
 	signaturehelp: {
 		documentation: boolean
@@ -267,23 +268,32 @@ async function computeDiagnostics(doc: TextDocument) {
 
 		var files: StudioOpenDialogFile[] = [];
 		var querydata: QueryData;
-		if (settings.diagnostics.routines) {
-			// Get all classes, mac routines and include files
-			querydata = {
-				query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition UNION ALL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
-				parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0]
-			};
-		}
-		else {
-			// Get all classes
-			querydata = {
-				query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition",
-				parameters: []
-			};
-		}
-		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content !== undefined) {
-			files = respdata.data.result.content;
+		if (settings.diagnostics.routines || settings.diagnostics.classes) {
+			if (settings.diagnostics.routines && settings.diagnostics.classes) {
+				// Get all classes and routines
+				querydata = {
+					query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition UNION ALL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
+					parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0]
+				};
+			}
+			else if (!settings.diagnostics.routines && settings.diagnostics.classes) {
+				// Get all classes
+				querydata = {
+					query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition",
+					parameters: []
+				};
+			}
+			else {
+				// Get all routines
+				querydata = {
+					query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
+					parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0]
+				};
+			}
+			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+			if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content !== undefined) {
+				files = respdata.data.result.content;
+			}
 		}
 		
 		const firstlineisroutine: boolean =
@@ -376,7 +386,7 @@ async function computeDiagnostics(doc: TextDocument) {
 									};
 									diagnostics.push(diagnostic);
 								}
-								else if (thistypedoc.name === "CLASSNAME" && files.length > 0) {
+								else if (thistypedoc.name === "CLASSNAME" && settings.diagnostics.classes) {
 									// Validate the class name in the string
 									var classname: string = valtext.slice(1,-1);
 									if (classname.indexOf("%") === 0 && classname.indexOf(".") === -1) {
@@ -404,8 +414,12 @@ async function computeDiagnostics(doc: TextDocument) {
 					break;
 				}
 				else if (files.length > 0) {
-					// Check that all classes, mac routines and include files in this document exist in the database
-					if ((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) || (parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) {
+					// Check that all classes, routines and include files in this document exist in the database
+					if (
+						((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
+						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
+						settings.diagnostics.classes
+					) {
 						// This is a class name
 
 						// Don't validate a class name that follows the "Class" keyword

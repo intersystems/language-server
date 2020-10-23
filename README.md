@@ -109,13 +109,19 @@ This extension provides the following configuration parameters:
   "scope": "application",
   "type": "boolean",
   "default": false,
-  "description": "Controls whether error diagnostics are provided when a .mac or .inc routine that is being referred to doesn't exist in the database."
+  "description": "Controls whether error diagnostics are provided when a routine or include file that is being referred to doesn't exist in the database."
 },
 "intersystems.language-server.diagnostics.parameters": {
   "scope": "application",
   "type": "boolean",
   "default": true,
   "description": "Controls whether warning diagnostics are provided when a class Parameter has an invalid type or the assigned value of the Parameter doesn't match the declared type."
+},
+"intersystems.language-server.diagnostics.classes": {
+  "scope": "application",
+  "type": "boolean",
+  "default": true,
+  "description": "Controls whether error diagnostics are provided when a class that is being referred to doesn't exist in the database."
 },
 "intersystems.language-server.signaturehelp.documentation": {
   "scope": "application",
