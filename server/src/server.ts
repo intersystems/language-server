@@ -249,9 +249,9 @@ var signatureHelpMacroCache: SignatureHelpMacroContext;
 var signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefined;
 
 /**
- * ServerSpec's mapped to their cookie jar.
+ * Cookie jar for REST requests to InterSystems servers.
  */
-let cookiesCache: Map<ServerSpec, tough.CookieJar> = new Map();
+let cookieJar: tough.CookieJar = new tough.CookieJar();
 
 /**
  * Compute diagnositcs for this document and sent them to the client.
@@ -1678,12 +1678,6 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 	}
 	url = encodeURI(url + "/api/atelier/v" + String(api) + "/" + server.namespace + path);
 
-	// Get the cookie jar
-	let cookiejar = cookiesCache.get(server);
-	if (cookiejar === undefined) {
-		cookiejar = new tough.CookieJar();
-	}
-
 	// Make the request
 	try {
 		if (checksum !== undefined) {
@@ -1699,7 +1693,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 						"if-none-match": checksum
 					},
 					withCredentials: true,
-					jar: cookiejar,
+					jar: cookieJar,
 					validateStatus: function (status) {
 						return status < 500;
 					}
@@ -1712,7 +1706,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 						method: "GET",
 						url: url,
 						withCredentials: true,
-						jar: cookiejar
+						jar: cookieJar
 					}
 				);
 				return respdata;
@@ -1724,7 +1718,6 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 			else if (respdata.status === 401) {
 				// Either we had no cookies or they expired, so resend the request with basic auth
 
-				cookiejar.removeAllCookies();
 				respdata = await axios.request(
 					{
 						method: "GET",
@@ -1737,7 +1730,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 							password: server.password
 						},
 						withCredentials: true,
-						jar: cookiejar
+						jar: cookieJar
 					}
 				);
 				if (respdata.status === 202) {
@@ -1747,7 +1740,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 							method: "GET",
 							url: url,
 							withCredentials: true,
-							jar: cookiejar
+							jar: cookieJar
 						}
 					);
 					return respdata;
@@ -1780,7 +1773,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 							'Content-Type': 'application/json'
 						},
 						withCredentials: true,
-						jar: cookiejar,
+						jar: cookieJar,
 						validateStatus: function (status) {
 							return status < 500;
 						}
@@ -1789,7 +1782,6 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 				if (respdata.status === 401) {
 					// Either we had no cookies or they expired, so resend the request with basic auth
 
-					cookiejar.removeAllCookies();
 					respdata = await axios.request(
 						{
 							method: method,
@@ -1803,7 +1795,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 								password: server.password
 							},
 							withCredentials: true,
-							jar: cookiejar
+							jar: cookieJar
 						}
 					);
 				}
@@ -1814,13 +1806,12 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 						method: method,
 						url: url,
 						withCredentials: true,
-						jar: cookiesCache.get(server)
+						jar: cookieJar
 					}
 				);
 				if (respdata.status === 401) {
 					// Either we had no cookies or they expired, so resend the request with basic auth
 
-					cookiejar.removeAllCookies();
 					respdata = await axios.request(
 						{
 							method: method,
@@ -1830,7 +1821,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 								password: server.password
 							},
 							withCredentials: true,
-							jar: cookiejar
+							jar: cookieJar
 						}
 					);
 				}
@@ -1870,7 +1861,6 @@ async function getServerSpec(uri: string): Promise<ServerSpec> {
 	}
 	const newspec: ServerSpec = await connection.sendRequest("intersystems/server/resolveFromUri",uri);
 	serverSpecs.set(uri, newspec);
-	cookiesCache.set(newspec, new tough.CookieJar());
 	return newspec;
 };
 
@@ -2037,7 +2027,6 @@ connection.onDidChangeConfiguration(change => {
 	languageServerSettings = undefined;
 	serverSpecs.clear();
 	schemaCaches.clear();
-	cookiesCache.clear();
 
 	// Update diagnostics for all open documents
 	documents.all().forEach(computeDiagnostics);
@@ -4678,7 +4667,6 @@ connection.onNotification("intersystems/server/passwordChange",
 		}
 		if (toRemove !== undefined) {
 			schemaCaches.delete(toRemove);
-			cookiesCache.delete(toRemove);
 		}
 	}
 );
@@ -4687,7 +4675,6 @@ connection.onNotification("intersystems/server/connectionChange",() => {
 	// Clear all cached server connection info
 	serverSpecs.clear();
 	schemaCaches.clear();
-	cookiesCache.clear();
 });
 
 connection.onDocumentSymbol(
