@@ -128,6 +128,12 @@ This extension provides the following configuration parameters:
   "type": "boolean",
   "default": true,
   "description": "Controls whether documentation for a method is shown when a SignatureHelp is active. NOTE: This setting does not affect documentation for macro SignatureHelp views, which is always shown."
+},
+"intersystems.language-server.suggestTheme": {
+  "scope": "application",
+  "type": "boolean",
+  "default": true,
+  "description": "Controls whether the extension will suggest that one of the InterSystems default themes be used if neither one is active upon extension activation."
 }
 ```
 

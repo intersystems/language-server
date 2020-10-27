@@ -1,5 +1,12 @@
 import * as path from 'path';
-import { ExtensionContext, extensions, Uri } from 'vscode';
+import {
+	ExtensionContext,
+	extensions,
+	Uri,
+	window,
+	ColorThemeKind,
+	workspace
+} from 'vscode';
 
 import {
 	LanguageClient,
@@ -14,7 +21,7 @@ let serverManagerExt = extensions.getExtension("intersystems-community.serverman
 let objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript");
 const objectScriptApi = objectScriptExt.exports;
 
-export function activate(context: ExtensionContext) {
+export async function activate(context: ExtensionContext) {
 	// The server is implemented in node
 	let serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
@@ -72,7 +79,52 @@ export function activate(context: ExtensionContext) {
 			});
 		}
 	});
+
+	// Register for proposed features becuase semantic token support is still in a proposed state
 	client.registerProposedFeatures();
+
+	if (
+		workspace.getConfiguration("intersystems.language-server").get("suggestTheme") === true &&
+		workspace.getConfiguration("workbench").get("colorTheme") !== "InterSystems Default Light" &&
+		workspace.getConfiguration("workbench").get("colorTheme") !== "InterSystems Default Dark"
+	) {
+		// Suggest an InterSystems default theme depending on the current active theme type
+		if (window.activeColorTheme.kind === ColorThemeKind.Light) {
+			const answer = await window.showInformationMessage(
+				`You currently have a light theme active. InterSystems recommends that you use the default light theme included with the [Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server).`,
+				"Activate",
+				"Ask Me Later",
+				"Don't Ask Me Again"
+			);
+			if (answer === "Activate") {
+				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Light",true);
+			}
+			else if (answer === "Don't Ask Me Again") {
+				workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+			}
+			else {
+				// Do nothing
+			}
+		}
+		else if (window.activeColorTheme.kind === ColorThemeKind.Dark) {
+			const answer = await window.showInformationMessage(
+				`You currently have a dark theme active. InterSystems recommends that you use the default dark theme included with the [Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server).`,
+				"Activate",
+				"Ask Me Later",
+				"Don't Ask Me Again"
+			);
+			if (answer === "Activate") {
+				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Dark",true);
+			}
+			else if (answer === "Don't Ask Me Again") {
+				workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+			}
+			else {
+				// Do nothing
+			}
+		}
+	}
+
 	// Start the client. This will also launch the server
 	client.start();
 }

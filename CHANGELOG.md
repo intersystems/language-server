@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.4] - 2020-XX-XX
+- Fix issue [#44](https://github.com/intersystems/language-server/issues/44): prompt for "use dark theme" if i'm using a dark vscode background
+
 ## [1.0.3] - 2020-10-26
 - Fix issue [#41](https://github.com/intersystems/language-server/issues/41): Still scope for reducing number of web sessions 1.0.2 creates
 
