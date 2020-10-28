@@ -4087,6 +4087,58 @@ connection.onDefinition(
 						return null;
 					}
 
+					// If this is a class file, determine what class we're in
+					var thisclass = "";
+					if (doc.languageId === "objectscript-class") {
+						for (let ln = 0; ln < parsed.length; ln++) {
+							if (parsed[ln].length === 0) {
+								continue;
+							}
+							else if (parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
+								// This line starts with a UDL keyword
+					
+								var keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
+								if (keyword === "class") {
+									thisclass = doc.getText(findFullRange(ln,parsed,1,parsed[ln][1].p,parsed[ln][1].p+parsed[ln][1].c));
+									break;
+								}
+							}
+						}
+					}
+
+					var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+					if (thisclass === membercontext.baseclass) {
+						// The member may be defined in this class
+
+						// Loop through the file contents to find this member
+						for (let dln = 0; dln < parsed.length; dln++) {
+							if (parsed[dln].length === 0) {
+								continue;
+							}
+							else if (parsed[dln][0].l == ld.cls_langindex && parsed[dln][0].s == ld.cls_keyword_attrindex) {
+								// This line starts with a UDL keyword
+					
+								var keyword = doc.getText(Range.create(Position.create(dln,parsed[dln][0].p),Position.create(dln,parsed[dln][0].p+parsed[dln][0].c))).toLowerCase();
+								if (keyword.indexOf("method") !== -1 || keyword.indexOf("property") !== -1 || keyword.indexOf("parameter") !== -1) {
+									const thismemberrange = findFullRange(dln,parsed,1,parsed[dln][1].p,parsed[dln][1].p+parsed[dln][1].c);
+									const thismember = doc.getText(thismemberrange);
+									if (thismember === member) {
+										// We found the member
+										targetrange = thismemberrange;
+										break;
+									}
+								}
+							}
+						}
+						if (targetrange.start.line !== 0) {
+							return {
+								uri: params.textDocument.uri,
+								range: targetrange
+							};
+						}
+					}
+					// The member is defined in another class
+
 					// Query the server to get the origin class of this member using its base class, text and token type
 					var data: QueryData = {
 						query: "",
@@ -4134,7 +4186,6 @@ connection.onDefinition(
 								// The class was found
 	
 								// Loop through the file contents to find this member
-								var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
 								for (let j = 0; j < docrespdata.data.result.content.length; j++) {
 									if (
 										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("method") !== -1) ||
