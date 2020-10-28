@@ -1,6 +1,7 @@
 # Changelog
 
 ## [1.0.4] - 2020-XX-XX
+- Fix issue [#27](https://github.com/intersystems/language-server/issues/27): DeprecationWarning in LS Output channel at startup
 - Fix issue [#44](https://github.com/intersystems/language-server/issues/44): prompt for "use dark theme" if i'm using a dark vscode background
 - Fix issue [#48](https://github.com/intersystems/language-server/issues/48): Add .gitignore for OS files
 

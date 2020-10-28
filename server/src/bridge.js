@@ -6,6 +6,13 @@ if (typeof exports === 'undefined') {
 // set this to trace this file
 const tracebridge = false;
 
+// set this to allow warnings (like the deprecation of Buffer) to be shown
+const showwarnings = false;
+
+if (!showwarnings) {
+	process.removeAllListeners('warning');
+}
+
 var os = require('os');
 
 var ref = require("ref-napi");
