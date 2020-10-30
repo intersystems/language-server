@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.0.5] - 2020-XX-XX
+- Fix issue [#52](https://github.com/intersystems/language-server/issues/52): Request textDocument/documentSymbol failed with message: Cannot read property 'p' of undefined
+
 ## [1.0.4] - 2020-10-28
 - Fix issue [#27](https://github.com/intersystems/language-server/issues/27): DeprecationWarning in LS Output channel at startup
 - Fix issue [#31](https://github.com/intersystems/language-server/issues/31): Issue with syntax coloring when Japanese(UTF8) letters are included

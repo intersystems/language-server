@@ -4750,7 +4750,7 @@ connection.onDocumentSymbol(
 				if (parsed[line].length === 0) {
 					continue;
 				}
-				if (parsed[line][0].l === ld.cls_langindex && parsed[line][0].s === ld.cls_keyword_attrindex) {
+				if (parsed[line][0].l === ld.cls_langindex && parsed[line][0].s === ld.cls_keyword_attrindex && parsed[line].length > 1) {
 					// This line starts with a UDL keyword
 					
 					const keywordtext = doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c)));
