@@ -3783,7 +3783,7 @@ connection.onHover(
 					// Find the preceding keyword (other than 'AS')
 					var keytext: string = "";
 					for (let ln = params.position.line; ln >= 0; ln--) {
-						for (let tk = i; tk >= 0; tk--) {
+						for (let tk = parsed[ln].length-1; tk >= 0; tk--) {
 							if (ln === params.position.line && parsed[ln][tk].p >= idenrange.start.character) {
 								// Start looking when we pass the full range of the selected identifier
 								continue;
