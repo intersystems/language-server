@@ -2484,7 +2484,7 @@ connection.onCompletion(
 		}
 		else if (
 			(prevline.slice(-1) === "." && prevline.slice(-2,-1) !== "," && prevline.slice(-2,-1) !== " " &&
-			(triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
+			thistoken !== 0 && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
 			(prevline.slice(-2) === ".#" && triggerlang === ld.cos_langindex)
 		) {
 			var prevtokentype = "";
