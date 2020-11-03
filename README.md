@@ -20,6 +20,18 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Classes and routines that don't exist in the database.
   - Invalid UDL Parameter types.
   - Mismatches between declared UDL Parameter types and the assigned value.
+- [Folding Ranges](https://code.visualstudio.com/docs/editor/codebasics#_folding) for the following:
+  - UDL descriptions
+  - ObjectScript documentation comments (/// in first column)
+  - XML tags in XData blocks
+  - Storage XML tags
+  - JSON in XData blocks
+  - %DynamicObject and %DynamicArray
+  - ObjectScript preprocessor code blocks
+  - Multi-line macro definitions
+  - Dotted Do blocks
+  - Embedded code blocks (SQL, HTML, JavaScript)
+  - Region markers (`#;#region` or `//#region` to start and `#;#endregion` or `//#endregion` to end)
 
 ## Setup Notes
 

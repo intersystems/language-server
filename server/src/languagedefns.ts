@@ -35,6 +35,8 @@ export const error_attrindex = 0x00;
 export const normal_attrindex = 0x01;
 
 export const cos_label_attrindex = 0x03;
+export const cos_dots_attrindex = 0x04;
+export const cos_comment_attrindex = 0x07;
 export const cos_ppf_attrindex = 0x0A;
 export const cos_ppc_attrindex = 0x0B;
 export const cos_macro_attrindex = 0x0C;
@@ -58,6 +60,9 @@ export const cos_zcom_attrindex = 0x34;
 export const cos_zf_attrindex = 0x35;
 export const cos_zv_attrindex = 0x36;
 export const cos_mem_attrindex = 0x37;
+export const cos_jsonb_attrindex = 0x38;
+export const cos_embo_attrindex = 0x3b;
+export const cos_embc_attrindex = 0x3c;
 
 export const sql_iden_attrindex = 0x08;
 export const sql_skey_attrindex = 0x11;
@@ -68,12 +73,16 @@ export const cls_keyword_attrindex = 0x04;
 export const cls_clsname_attrindex = 0x05;
 export const cls_desc_attrindex = 0x07;
 export const cls_delim_attrindex = 0x08;
+export const cls_num_attrindex = 0x09;
+export const cls_str_attrindex = 0x10;
 export const cls_iden_attrindex = 0x0B;
 export const cls_rtnname_attrindex = 0x0D;
 export const cls_param_attrindex = 0x18;
 
 export const xml_tagdelim_attrindex = 0x03;
 export const xml_attr_attrindex = 0x06;
+
+export const javascript_delim_attrindex = 0x04;
 
 export enum DEBUG_CATEGORY
 {

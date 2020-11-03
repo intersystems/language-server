@@ -1511,6 +1511,16 @@
 				"id": "JAVASCRIPT_JSONpropertyname",
 				"superType": "ISC_StringLiteral",
 				"description": "Javascript JSON property name token."
+			},
+			{
+				"id": "COS_Embeddingopen",
+				"superType": "ISC_Delimiter",
+				"description": "ObjectScript embedded code open token."
+			},
+			{
+				"id": "COS_Embeddingclose",
+				"superType": "ISC_Delimiter",
+				"description": "ObjectScript embedded code close token."
 			}
 		],
 		"semanticTokenScopes": [
