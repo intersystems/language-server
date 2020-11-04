@@ -164,7 +164,7 @@ export type ServerSpec = {
 	host: string,
 	port: number,
 	pathPrefix: string,
-	apiVersion: 1 | 2 | 3,
+	apiVersion: number,
 	namespace: string,
 	username: string,
 	serverName: string,
@@ -1126,16 +1126,53 @@ function getMacroContext(doc: TextDocument, parsed: compressedline[], line: numb
 			}
 			if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
 				// This is the definition for the method that the macro is in
-				for (let l = 1; l < parsed[k].length; l++) {
-					if (parsed[k][l].l == ld.cls_langindex && parsed[k][l].s == ld.cls_keyword_attrindex) {
-						const kw = doc.getText(Range.create(Position.create(k,parsed[k][l].p),Position.create(k,parsed[k][l].p+parsed[k][l].c)));
-						if (kw.toLowerCase() === "codemode") {
-							// The CodeMode keyword is set
-							const kwval = doc.getText(Range.create(Position.create(k,parsed[k][l+2].p),Position.create(k,parsed[k][l+2].p+parsed[k][l+2].c)));
-							if (kwval.toLowerCase() === "generator" || kwval.toLowerCase() === "objectgenerator") {
-								result.mode = "generator";
+				if (
+					parsed[k][parsed[k].length-1].l == ld.cls_langindex && parsed[k][parsed[k].length-1].s == ld.cls_delim_attrindex &&
+					doc.getText(Range.create(
+						Position.create(k,parsed[k][parsed[k].length-1].p),
+						Position.create(k,parsed[k][parsed[k].length-1].p+parsed[k][parsed[k].length-1].c)
+					)) === "("
+				) {
+					// This is a multi-line method definition
+					for (let mline = k+1; mline < parsed.length; mline++) {
+						if (
+							parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
+							doc.getText(Range.create(
+								Position.create(mline,parsed[mline][parsed[mline].length-1].p),
+								Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
+							)) !== ","
+						) {
+							// We've passed the argument lines so look for the CodeMode keyword on this line
+							for (let l = 1; l < parsed[mline].length; l++) {
+								if (parsed[mline][l].l == ld.cls_langindex && parsed[mline][l].s == ld.cls_keyword_attrindex) {
+									const kw = doc.getText(Range.create(Position.create(mline,parsed[mline][l].p),Position.create(mline,parsed[mline][l].p+parsed[mline][l].c)));
+									if (kw.toLowerCase() === "codemode") {
+										// The CodeMode keyword is set
+										const kwval = doc.getText(Range.create(Position.create(mline,parsed[mline][l+2].p),Position.create(mline,parsed[mline][l+2].p+parsed[mline][l+2].c)));
+										if (kwval.toLowerCase() === "generator" || kwval.toLowerCase() === "objectgenerator") {
+											result.mode = "generator";
+										}
+										break;
+									}
+								}
 							}
 							break;
+						}
+					}
+				}
+				else {
+					// This is a single-line method definition so look for the CodeMode keyword on this line
+					for (let l = 1; l < parsed[k].length; l++) {
+						if (parsed[k][l].l == ld.cls_langindex && parsed[k][l].s == ld.cls_keyword_attrindex) {
+							const kw = doc.getText(Range.create(Position.create(k,parsed[k][l].p),Position.create(k,parsed[k][l].p+parsed[k][l].c)));
+							if (kw.toLowerCase() === "codemode") {
+								// The CodeMode keyword is set
+								const kwval = doc.getText(Range.create(Position.create(k,parsed[k][l+2].p),Position.create(k,parsed[k][l+2].p+parsed[k][l+2].c)));
+								if (kwval.toLowerCase() === "generator" || kwval.toLowerCase() === "objectgenerator") {
+									result.mode = "generator";
+								}
+								break;
+							}
 						}
 					}
 				}
@@ -1174,6 +1211,7 @@ function getMacroContext(doc: TextDocument, parsed: compressedline[], line: numb
 			}
 		}
 	}
+
 	return result;
 };
 
@@ -1547,42 +1585,40 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
 			}
 			else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
 				// This is the method definition
-				for (let tkn = 1; tkn < parsed[j].length; tkn++) {
-					if (parsed[j][tkn].l == ld.cls_langindex && parsed[j][tkn].s == ld.cls_param_attrindex) {
-						// This is a parameter
-						const paramtext = doc.getText(Range.create(
-							Position.create(j,parsed[j][tkn].p),
-							Position.create(j,parsed[j][tkn].p+parsed[j][tkn].c)
-						));
-						if (thisparam === paramtext) {
-							// This is the correct parameter
-							if (parsed[j][tkn+1].l == ld.cls_langindex && parsed[j][tkn+1].s == ld.cls_keyword_attrindex) {
-								// The token following the parameter name is "as", so this parameter has a type
-								const clsname = doc.getText(findFullRange(j,parsed,tkn+2,parsed[j][tkn+2].p,parsed[j][tkn+2].p+parsed[j][tkn+2].c));
-								result = {
-									baseclass: await normalizeClassname(doc,parsed,clsname,server,j),
-									context: "instance"
-								};
-							}
-							else if (
-								parsed[j][tkn+1].l == ld.cls_langindex && parsed[j][tkn+1].s == ld.cls_delim_attrindex &&
-								doc.getText(Range.create(
-									Position.create(j,parsed[j][tkn+1].p),
-									Position.create(j,parsed[j][tkn+1].p+parsed[j][tkn+1].c)
-								)) === "..."
-							) {
-								// The token following the parameter name is "...", so this is a variable argument parameter
-								if (parsed[j][tkn+2].l == ld.cls_langindex && parsed[j][tkn+2].s == ld.cls_keyword_attrindex) {
-									// The token following the "..." is "as", so this parameter has a type
-									const clsname = doc.getText(findFullRange(j,parsed,tkn+3,parsed[j][tkn+3].p,parsed[j][tkn+3].p+parsed[j][tkn+3].c));
-									result = {
-										baseclass: await normalizeClassname(doc,parsed,clsname,server,j),
-										context: "instance"
-									};
-								}
-							}
+				if (
+					parsed[j][parsed[j].length-1].l == ld.cls_langindex && parsed[j][parsed[j].length-1].s == ld.cls_delim_attrindex &&
+					doc.getText(Range.create(
+						Position.create(j,parsed[j][parsed[j].length-1].p),
+						Position.create(j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c)
+					)) === "("
+				) {
+					// This is a multi-line method definition
+					for (let mline = j+1; mline < parsed.length; mline++) {
+						// Loop through the line and look for this parameter
+
+						const paramcon = await findMethodParameterClass(doc,parsed,mline,server,thisparam);
+						if (paramcon !== undefined) {
+							// We found the parameter
+							result = paramcon;
 							break;
 						}
+						else if (
+							parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
+							doc.getText(Range.create(
+								Position.create(mline,parsed[mline][parsed[mline].length-1].p),
+								Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
+							)) !== ","
+						) {
+							// We've reached the end of the method definition
+							break;
+						}
+					}
+				}
+				else {
+					// This is a single-line method definition
+					const paramcon = await findMethodParameterClass(doc,parsed,j,server,thisparam);
+					if (paramcon !== undefined) {
+						result = paramcon;
 					}
 				}
 				break;
@@ -1663,12 +1699,13 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
  * Make a REST request to an InterSystems server.
  * 
  * @param method The REST method.
+ * @param api The version of the Atelier API to use.
  * @param path The path portion of the URL.
  * @param server The server to send the request to.
  * @param data Optional request data. Usually passed for POST requests.
  * @param checksum Optional checksum. Only passed for SASchema requests.
  */
-export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: string, server: ServerSpec, data?: any, checksum?: string): Promise<AxiosResponse | undefined> {
+export async function makeRESTRequest(method: "GET"|"POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string): Promise<AxiosResponse | undefined> {
 	if (api > server.apiVersion) {
 		// The server doesn't support the Atelier API version required to make this request
 		return undefined;
@@ -1679,7 +1716,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: 1 | 2, path: st
 	if (server.pathPrefix !== "") {
 		url = url.concat("/",server.pathPrefix)
 	}
-	url = encodeURI(url + "/api/atelier/v" + String(api) + "/" + server.namespace + path);
+	url = encodeURI(url + "/api/atelier/v" + String(server.apiVersion) + "/" + server.namespace + path);
 
 	// Make the request
 	try {
@@ -1987,6 +2024,59 @@ function isMacroDefinedAbove(doc: TextDocument, parsed: compressedline[], line: 
 		}
 	}
 
+	return result;
+}
+
+/**
+ * Look through this line of a method definition for parameter "thisparam".
+ * If it's found, return its class. Helper method for getClassMemberContext().
+ * 
+ * @param doc The TextDocument that the method definition is in.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line that the method definition is in.
+ * @param server The server that doc is associated with.
+ * @param thisparam The parameter that we're looking for.
+ */
+async function findMethodParameterClass(doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec, thisparam: string): Promise<ClassMemberContext | undefined> {
+	var result: ClassMemberContext | undefined = undefined;
+	for (let tkn = 0; tkn < parsed[line].length; tkn++) {
+		if (parsed[line][tkn].l == ld.cls_langindex && parsed[line][tkn].s == ld.cls_param_attrindex) {
+			// This is a parameter
+			const paramtext = doc.getText(Range.create(
+				Position.create(line,parsed[line][tkn].p),
+				Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)
+			));
+			if (thisparam === paramtext) {
+				// This is the correct parameter
+				if (parsed[line][tkn+1].l == ld.cls_langindex && parsed[line][tkn+1].s == ld.cls_keyword_attrindex) {
+					// The token following the parameter name is "as", so this parameter has a type
+					const clsname = doc.getText(findFullRange(line,parsed,tkn+2,parsed[line][tkn+2].p,parsed[line][tkn+2].p+parsed[line][tkn+2].c));
+					result = {
+						baseclass: await normalizeClassname(doc,parsed,clsname,server,line),
+						context: "instance"
+					};
+				}
+				else if (
+					parsed[line][tkn+1].l == ld.cls_langindex && parsed[line][tkn+1].s == ld.cls_delim_attrindex &&
+					doc.getText(Range.create(
+						Position.create(line,parsed[line][tkn+1].p),
+						Position.create(line,parsed[line][tkn+1].p+parsed[line][tkn+1].c)
+					)) === "..."
+				) {
+					// The token following the parameter name is "...", so this is a variable argument parameter
+					if (parsed[line][tkn+2].l == ld.cls_langindex && parsed[line][tkn+2].s == ld.cls_keyword_attrindex) {
+						// The token following the "..." is "as", so this parameter has a type
+						const clsname = doc.getText(findFullRange(line,parsed,tkn+3,parsed[line][tkn+3].p,parsed[line][tkn+3].p+parsed[line][tkn+3].c));
+						result = {
+							baseclass: await normalizeClassname(doc,parsed,clsname,server,line),
+							context: "instance"
+						};
+					}
+				}
+				break;
+			}
+		}
+	}
 	return result;
 }
 
