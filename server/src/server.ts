@@ -4937,6 +4937,7 @@ connection.onDocumentSymbol(
 			// Loop through the file and look for macro definitions
 
 			var prevdoccomments = 0;
+			var multilinestart = -1;
 			for (let line = 0; line < parsed.length; line++) {
 				if (parsed[line].length < 3) {
 					if (parsed[line].length === 1) {
@@ -4953,14 +4954,47 @@ connection.onDocumentSymbol(
 				const secondtokentext = doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c))).toLowerCase();
 				if (parsed[line][1].l === ld.cos_langindex && parsed[line][1].s === ld.cos_ppc_attrindex && (secondtokentext === "define" || secondtokentext === "def1arg")) {
 					// This line contains a macro definition
-					var fullrange: Range = Range.create(Position.create(line-prevdoccomments,0),Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c));
+
+					if (
+						parsed[line][parsed[line].length-1].l === ld.cos_langindex && parsed[line][parsed[line].length-1].s === ld.cos_ppf_attrindex &&
+						doc.getText(Range.create(
+							Position.create(line,parsed[line][parsed[line].length-1].p),
+							Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c)
+						)).toLowerCase() === "continue"
+					 ) {
+						// This is the start of a multi-line macro definition
+						multilinestart = line;
+					}
+					else {
+						// This is a single line macro definition
+						var fullrange: Range = Range.create(Position.create(line-prevdoccomments,0),Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c));
+						prevdoccomments = 0;
+						result.push({
+							name: doc.getText(Range.create(Position.create(line,parsed[line][2].p),Position.create(line,parsed[line][2].p+parsed[line][2].c))),
+							kind: SymbolKind.Constant,
+							range: fullrange,
+							selectionRange: Range.create(Position.create(line,parsed[line][2].p),Position.create(line,parsed[line][2].p+parsed[line][2].c))
+						});
+					}
+				}
+				else if (
+					multilinestart !== -1 && 
+					(parsed[line][parsed[line].length-1].l !== ld.cos_langindex || parsed[line][parsed[line].length-1].s !== ld.cos_ppf_attrindex ||
+					doc.getText(Range.create(
+						Position.create(line,parsed[line][parsed[line].length-1].p),
+						Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c)
+					)).toLowerCase() !== "continue")
+				) {
+					// This is the end of a multi-line macro definition
+					var fullrange: Range = Range.create(Position.create(multilinestart-prevdoccomments,0),Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c));
 					prevdoccomments = 0;
 					result.push({
-						name: doc.getText(Range.create(Position.create(line,parsed[line][2].p),Position.create(line,parsed[line][2].p+parsed[line][2].c))),
+						name: doc.getText(Range.create(Position.create(multilinestart,parsed[multilinestart][2].p),Position.create(multilinestart,parsed[multilinestart][2].p+parsed[multilinestart][2].c))),
 						kind: SymbolKind.Constant,
 						range: fullrange,
-						selectionRange: Range.create(Position.create(line,parsed[line][2].p),Position.create(line,parsed[line][2].p+parsed[line][2].c))
+						selectionRange: Range.create(Position.create(multilinestart,parsed[multilinestart][2].p),Position.create(multilinestart,parsed[multilinestart][2].p+parsed[multilinestart][2].c))
 					});
+					multilinestart = -1;
 				}
 			}
 		}
