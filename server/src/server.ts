@@ -924,14 +924,18 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (let clsobj of respdata.data.result.content) {
+			var displayname: string = clsobj.Name.slice(0,-4);
 			if (imports.length > 0) {
 				// Resolve import
-				var displayname = clsobj.Name.slice(0,-4);
 				for (let imp of imports) {
 					if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length+1).indexOf(".") === -1) {
 						displayname = displayname.slice(imp.length+1);
 						break;
 					}
+				}
+				if (displayname.slice(0,9) === "%Library.") {
+					// Use short form for %Library classes
+					displayname = "%" + displayname.slice(9);
 				}
 				result.push({
 					label: displayname,
@@ -940,8 +944,12 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 				});
 			}
 			else {
+				if (displayname.slice(0,9) === "%Library.") {
+					// Use short form for %Library classes
+					displayname = "%" + displayname.slice(9);
+				}
 				result.push({
-					label: clsobj.name.slice(0,-4),
+					label: displayname,
 					kind: CompletionItemKind.Class,
 					data: ["class",clsobj.Name,doc.uri]
 				});
