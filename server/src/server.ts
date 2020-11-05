@@ -5053,6 +5053,7 @@ connection.onFoldingRanges(
 		var inmultilinemacro: boolean = false;
 		var dotteddolevel: number = 0;
 		var injsonxdata: boolean = false;
+		var routinename = "";
 		for (let line = 0; line < parsed.length; line++) {
 			if (parsed[line].length === 0) {
 				if (openranges.length > 0 && openranges[openranges.length-1].kind === FoldingRangeKind.Comment) {
@@ -5126,6 +5127,103 @@ connection.onFoldingRanges(
 						openranges.splice(prevrange,1);
 						inmultilinemacro = false;
 					}
+				}
+				if (
+					parsed[line][parsed[line].length-1].l == ld.cls_langindex && parsed[line][parsed[line].length-1].s == ld.cls_delim_attrindex &&
+					doc.getText(Range.create(
+						Position.create(line,parsed[line][parsed[line].length-1].p),
+						Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c)
+					)) === "{"
+				) {
+					// This line ends with a UDL open curly
+
+					if (
+						(parsed[line].length === 1 && parsed[line-1][0].l == ld.cls_langindex && parsed[line-1][0].s == ld.cls_keyword_attrindex &&
+						doc.getText(Range.create(Position.create(line-1,parsed[line-1][0].p),Position.create(line-1,parsed[line-1][0].p+parsed[line-1][0].c))).toLowerCase() === "class")
+						||
+						(parsed[line].length > 1 && parsed[line][0].l == ld.cls_langindex && parsed[line][0].s == ld.cls_keyword_attrindex &&
+						doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c))).toLowerCase() === "class")
+					) {
+						// This is the open curly for a class, so don't create a folding range for it
+						continue;
+					}
+
+					// Open a new member range
+					openranges.push({
+						startLine: line,
+						endLine: line,
+						kind: "isc-member"
+					});
+
+					// Scan forward in the file and look for the next line that starts with UDL
+					for (let nl = line+1; nl < parsed.length; nl++) {
+						if (parsed[nl].length === 0) {
+							continue;
+						}
+						if (parsed[nl][0].l === ld.cls_langindex) {
+							// Close the member range
+							if (
+								parsed[nl][0].s === ld.cls_delim_attrindex && 
+								doc.getText(Range.create(
+									Position.create(nl,parsed[nl][0].p),
+									Position.create(nl,parsed[nl][0].p+parsed[nl][0].c)
+								)) === "}"
+							) {
+								openranges[openranges.length-1].endLine = nl-1;
+							}
+							else {
+								openranges[openranges.length-1].endLine = nl;
+							}
+							if (openranges[openranges.length-1].startLine < openranges[openranges.length-1].endLine) {
+								result.push(openranges[openranges.length-1]);
+							}
+							openranges.pop();
+							break;
+						}
+					}
+				}
+				if (
+					parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_label_attrindex &&
+					doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c))) !== routinename
+				) {
+					// This line starts with a routine label
+
+					// Open a new member range
+					openranges.push({
+						startLine: line,
+						endLine: line,
+						kind: "isc-member"
+					});
+
+					// Loop through the file from this line to find the next label
+					for (let nl = line+1; nl < parsed.length; nl++) {
+						if (parsed[nl].length === 0) {
+							continue;
+						}
+						if (parsed[nl][0].l === ld.cos_langindex && parsed[nl][0].s === ld.cos_label_attrindex) {
+							// This is the next label
+							openranges[openranges.length-1].endLine = nl-1;
+							if (openranges[openranges.length-1].startLine < openranges[openranges.length-1].endLine) {
+								result.push(openranges[openranges.length-1]);
+							}
+							openranges.pop();
+							break;
+						}
+					}
+
+					if (openranges.length > 0 && openranges[openranges.length-1].kind === "isc-member") {
+						// This is the last label in the file so its endLine is the end of the file
+						openranges[openranges.length-1].endLine = parsed.length-1;
+						result.push(openranges[openranges.length-1]);
+						openranges.pop();
+					}
+				}
+				if (
+					parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_command_attrindex &&
+					doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c))).toLowerCase() === "routine"
+				) {
+					// This is the ROUTINE header line
+					routinename = doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c)));
 				}
 				if (
 					parsed[line].length >= 2 &&
