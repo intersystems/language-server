@@ -2452,6 +2452,18 @@ connection.onCompletion(
 		}
 		if (thistoken === -1) {return null;}
 		const triggerlang: number = parsed[params.position.line][thistoken].l;
+		if (
+			(triggerlang == ld.cos_langindex &&
+			(parsed[params.position.line][thistoken].s == ld.cos_comment_attrindex ||
+			parsed[params.position.line][thistoken].s == ld.cos_dcom_attrindex))
+			||
+			(triggerlang == ld.cls_langindex &&
+			(parsed[params.position.line][thistoken].s == ld.cls_desc_attrindex ||
+			parsed[params.position.line][thistoken].s == ld.cls_comment_attrindex))
+		) {
+			// Don't provide completion inside of a comment
+			return null;
+		}
 		var openparencount = 0;
 		var closeparencount = 0;
 		for (let char = 0; char < prevline.length; char++) {

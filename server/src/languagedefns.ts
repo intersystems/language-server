@@ -71,6 +71,7 @@ export const sql_ekey_attrindex = 0x13;
 
 export const cls_keyword_attrindex = 0x04;
 export const cls_clsname_attrindex = 0x05;
+export const cls_comment_attrindex = 0x06;
 export const cls_desc_attrindex = 0x07;
 export const cls_delim_attrindex = 0x08;
 export const cls_num_attrindex = 0x09;
