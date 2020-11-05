@@ -2440,7 +2440,7 @@ connection.onCompletion(
 		if (params.position.line === parsed.length) {return null;}
 		const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 		const prevline = doc.getText(Range.create(Position.create(params.position.line,0),params.position));
-		const classregex = /^class[ ]+\%?[a-z0-9]+(\.{1}[a-z0-9]+)* +extends[ ]+(\(([\%]?[a-z0-9]+(\.{1}[a-z0-9]+)*\,[ ]*)*)?$/i;
+		const classregex = /^class[ ]+%?[\p{L}\d]+(\.{1}[\p{L}\d]+)* +extends[ ]+(\(([%]?[\p{L}\d]+(\.{1}[\p{L}\d]+)*,[ ]*)*)?$/iu;
 		var firsttwotokens = "";
 		if (parsed[params.position.line].length >= 2) {
 			firsttwotokens = doc.getText(Range.create(
