@@ -2088,6 +2088,139 @@ async function findMethodParameterClass(doc: TextDocument, parsed: compressedlin
 	return result;
 }
 
+/**
+ * Normalize a system function, variable or structured system variable
+ * name according to the language server configuration settings.
+ * 
+ * @param name The name of this system object. Must be in the "default" state, which is long form and all uppercase.
+ * @param type The type of this system object.
+ * @param settings The language server configuration settings.
+ */
+function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", settings: LanguageServerConfiguration): string {
+	var result: string = "";
+	if (type === "sf") {
+		// This is a system function
+
+		const sysfdoc = systemFunctions.find((el) => el.label === name.toUpperCase());
+		if (sysfdoc !== undefined) {
+			var idealsysftext = "";
+			if (settings.formatting.system.length === "short" && sysfdoc.alias.length === 2) {
+				idealsysftext = sysfdoc.alias[1];
+			}
+			else {
+				idealsysftext = sysfdoc.label;
+			}
+			if (settings.formatting.system.case === "lower") {
+				idealsysftext = idealsysftext.toLowerCase();
+			}
+			else if (settings.formatting.system.case === "word") {
+				if (idealsysftext === "$BITCOUNT") {idealsysftext = "$BitCount";}
+				else if (idealsysftext === "$BITFIND") {idealsysftext = "$BitFind";}
+				else if (idealsysftext === "$BITLOGIC") {idealsysftext = "$BitLogic";}
+				else if (idealsysftext === "$CLASSMETHOD") {idealsysftext = "$ClassMethod";}
+				else if (idealsysftext === "$CLASSNAME") {idealsysftext = "$ClassName";}
+				else if (idealsysftext === "$FNUMBER") {idealsysftext = "$FNumber";}
+				else if (idealsysftext === "$INUMBER") {idealsysftext = "$INumber";}
+				else if (idealsysftext === "$ISOBJECT") {idealsysftext = "$IsObject";}
+				else if (idealsysftext === "$ISVALIDNUM") {idealsysftext = "$IsValidNum";}
+				else if (idealsysftext === "$ISVALIDDOUBLE") {idealsysftext = "$IsValidDouble";}
+				else if (idealsysftext === "$LISTBUILD") {idealsysftext = "$ListBuild";}
+				else if (idealsysftext === "$LISTDATA") {idealsysftext = "$ListData";}
+				else if (idealsysftext === "$LISTFIND") {idealsysftext = "$ListFind";}
+				else if (idealsysftext === "$LISTFROMSTRING") {idealsysftext = "$ListFromString";}
+				else if (idealsysftext === "$LISTGET") {idealsysftext = "$ListGet";}
+				else if (idealsysftext === "$LISTLENGTH") {idealsysftext = "$ListLength";}
+				else if (idealsysftext === "$LISTNEXT") {idealsysftext = "$ListNext";}
+				else if (idealsysftext === "$LISTSAME") {idealsysftext = "$ListSame";}
+				else if (idealsysftext === "$LISTTOSTRING") {idealsysftext = "$ListToString";}
+				else if (idealsysftext === "$LISTUPDATE") {idealsysftext = "$ListUpdate";}
+				else if (idealsysftext === "$LISTVALID") {idealsysftext = "$ListValid";}
+				else if (idealsysftext === "$NCONVERT") {idealsysftext = "$NConvert";}
+				else if (idealsysftext === "$PREFETCHOFF") {idealsysftext = "$PrefetchOff";}
+				else if (idealsysftext === "$PREFETCHON") {idealsysftext = "$PrefetchOn";}
+				else if (idealsysftext === "$QLENGTH") {idealsysftext = "$QLength";}
+				else if (idealsysftext === "$QSUBSCRIPT") {idealsysftext = "$QSubscript";}
+				else if (idealsysftext === "$SCONVERT") {idealsysftext = "$SConvert";}
+				else if (idealsysftext === "$SORTBEGIN") {idealsysftext = "$SortBegin";}
+				else if (idealsysftext === "$SORTEND") {idealsysftext = "$SortEnd";}
+				else if (idealsysftext.charAt(1) === "W") {
+					idealsysftext = idealsysftext.slice(0,3) + idealsysftext.slice(3).toLowerCase();
+				}
+				else if (idealsysftext.charAt(1) === "Z" && idealsysftext.charAt(2) !== "O" && idealsysftext.charAt(2) !== "F") {
+					idealsysftext = idealsysftext.slice(0,3) + idealsysftext.slice(3).toLowerCase();
+				}
+				else {
+					idealsysftext = idealsysftext.slice(0,2) + idealsysftext.slice(2).toLowerCase();
+				}
+			}
+			result = idealsysftext;
+		}
+	}
+	else if (type === "ssv") {
+		// This is a structured system variable
+
+		const ssysvdoc = structuredSystemVariables.find((el) => el.label === name.toUpperCase());
+		if (ssysvdoc !== undefined) {
+			var idealssysvtext = "";
+			if (settings.formatting.system.length === "short" && ssysvdoc.alias.length === 2) {
+				idealssysvtext = ssysvdoc.alias[1];
+			}
+			else {
+				idealssysvtext = ssysvdoc.label;
+			}
+			if (settings.formatting.system.case === "lower") {
+				idealssysvtext = idealssysvtext.toLowerCase();
+			}
+			else if (settings.formatting.system.case === "word") {
+				idealssysvtext = idealssysvtext.slice(0,3) + idealssysvtext.slice(3).toLowerCase();
+			}
+			result = idealssysvtext;
+		}
+	}
+	else if (type === "sv") {
+		// This is a system variable
+
+		const sysvdoc = systemVariables.find((el) => el.label === name.toUpperCase());
+		if (sysvdoc !== undefined) {
+			var idealsysvtext = "";
+			if (settings.formatting.system.length === "short" && sysvdoc.alias.length === 2) {
+				idealsysvtext = sysvdoc.alias[1];
+			}
+			else {
+				idealsysvtext = sysvdoc.label;
+			}
+			if (settings.formatting.system.case === "lower") {
+				idealsysvtext = idealsysvtext.toLowerCase();
+			}
+			else if (settings.formatting.system.case === "word") {
+				if (idealsysvtext.charAt(1) === "Z") {
+					idealsysvtext = idealsysvtext.slice(0,3) + idealsysvtext.slice(3).toLowerCase();
+				}
+				else {
+					idealsysvtext = idealsysvtext.slice(0,2) + idealsysvtext.slice(2).toLowerCase();
+				}
+			}
+			result = idealsysvtext;
+		}
+	}
+	else {
+		// This is an unknown Z function or variable
+
+		var idealunknstext = name;
+		if (settings.formatting.system.case === "upper") {
+			idealunknstext = idealunknstext.toUpperCase();
+		}
+		else if (settings.formatting.system.case === "lower") {
+			idealunknstext = idealunknstext.toLowerCase();
+		}
+		else {
+			idealunknstext = idealunknstext.slice(0,3).toUpperCase() + idealunknstext.slice(3).toLowerCase();
+		}
+		result = idealunknstext;
+	}
+	return result;
+}
+
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries
 	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL");
@@ -2482,6 +2615,7 @@ connection.onCompletion(
 				closeparencount++;
 			}
 		}
+		const settings = await getLanguageServerSettings();
 
 		if (prevline.slice(-3) === "$$$" && triggerlang === ld.cos_langindex) {
 			// This is a macro
@@ -2530,10 +2664,11 @@ connection.onCompletion(
 			if (prevline.charAt(prevline.length-2) === "^") {
 				// This is a structured system variable
 				for (let ssv of structuredSystemVariables) {
+					const label = normalizeSystemName(ssv.label,"ssv",settings);
 					result.push({
-						label: ssv.label,
+						label: label,
 						kind: CompletionItemKind.Variable,
-						insertText: ssv.label.slice(1) + "(",
+						insertText: label.slice(2) + "(",
 						data: "ssv",
 						documentation: {
 							kind: "markdown",
@@ -2545,10 +2680,11 @@ connection.onCompletion(
 			else {
 				// This is a system variable or function
 				for (let sv of systemVariables) {
+					const label = normalizeSystemName(sv.label,"sv",settings);
 					result.push({
-						label: sv.label,
+						label: label,
 						kind: CompletionItemKind.Variable,
-						insertText: sv.label.slice(1),
+						insertText: label.slice(1),
 						data: "sv",
 						documentation: {
 							kind: "markdown",
@@ -2558,10 +2694,11 @@ connection.onCompletion(
 				}
 				for (let sf of systemFunctions) {
 					if (sf.deprecated === undefined) {
+						const label = normalizeSystemName(sf.label,"sf",settings);
 						result.push({
-							label: sf.label,
+							label: label,
 							kind: CompletionItemKind.Function,
-							insertText: sf.label.slice(1) + "(",
+							insertText: label.slice(1) + "(",
 							data: "sf",
 							documentation: {
 								kind: "markdown",
