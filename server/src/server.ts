@@ -5354,18 +5354,27 @@ connection.onFoldingRanges(
 					});
 
 					// Loop through the file from this line to find the next label
+					var precedingcomments = 0;
 					for (let nl = line+1; nl < parsed.length; nl++) {
 						if (parsed[nl].length === 0) {
+							precedingcomments = 0;
 							continue;
 						}
-						if (parsed[nl][0].l === ld.cos_langindex && parsed[nl][0].s === ld.cos_label_attrindex) {
+						if (parsed[nl][0].l === ld.cos_langindex && (parsed[nl][0].s === ld.cos_comment_attrindex || parsed[nl][0].s === ld.cos_dcom_attrindex)) {
+							// Don't fold comments that immediately precede the next label
+							precedingcomments++;
+						}
+						else if (parsed[nl][0].l === ld.cos_langindex && parsed[nl][0].s === ld.cos_label_attrindex) {
 							// This is the next label
-							openranges[openranges.length-1].endLine = nl-1;
+							openranges[openranges.length-1].endLine = nl-precedingcomments-1;
 							if (openranges[openranges.length-1].startLine < openranges[openranges.length-1].endLine) {
 								result.push(openranges[openranges.length-1]);
 							}
 							openranges.pop();
 							break;
+						}
+						else {
+							precedingcomments = 0;
 						}
 					}
 
