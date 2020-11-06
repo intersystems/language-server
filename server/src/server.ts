@@ -5231,6 +5231,7 @@ connection.onFoldingRanges(
 				}
 				continue;
 			}
+			const firsttokentext = doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c)));
 			if (
 				(parsed[line][0].l === ld.cls_langindex && parsed[line][0].s === ld.cls_desc_attrindex) ||
 				(parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_dcom_attrindex)
@@ -5341,7 +5342,7 @@ connection.onFoldingRanges(
 				}
 				if (
 					parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_label_attrindex &&
-					doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c))) !== routinename
+					firsttokentext !== routinename
 				) {
 					// This line starts with a routine label
 
@@ -5377,7 +5378,7 @@ connection.onFoldingRanges(
 				}
 				if (
 					parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_command_attrindex &&
-					doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c))).toLowerCase() === "routine"
+					firsttokentext.toLowerCase() === "routine"
 				) {
 					// This is the ROUTINE header line
 					routinename = doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c)));
@@ -5532,35 +5533,35 @@ connection.onFoldingRanges(
 						}
 					}
 				}
-				else if (parsed[line].length === 1 && parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_comment_attrindex) {
-					// This line contains a COS comment, so check if it's a region marker
+				else if (
+					parsed[line].length === 1 && parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_comment_attrindex &&
+					(firsttokentext.slice(0,2) === "//" || firsttokentext.slice(0,2) === "#;") &&
+					(firsttokentext.toLowerCase().slice(2).trim() === "#region" || firsttokentext.toLowerCase().slice(2).trim() === "#endregion")
+				) {
+					// This line contains a region marker
 
-					var comment = doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c))).toLowerCase();
-					if (comment.slice(0,2) === "//" || comment.slice(0,2) === "#;") {
-						comment = comment.slice(2).trim();
-						if (comment === "#region") {
-							// Create a new Region range
-							openranges.push({
-								startLine: line,
-								endLine: line,
-								kind: FoldingRangeKind.Region
-							});
-						}
-						else if (comment === "#endregion") {
-							// Close the most recent Region range
-							var prevrange = openranges.length-1;
-							for (let rge = openranges.length-1; rge >= 0; rge--) {
-								if (openranges[rge].kind === FoldingRangeKind.Region) {
-									prevrange = rge;
-									break;
-								}
+					if (firsttokentext.toLowerCase().slice(2).trim() === "#region") {
+						// Create a new Region range
+						openranges.push({
+							startLine: line,
+							endLine: line,
+							kind: FoldingRangeKind.Region
+						});
+					}
+					else {
+						// Close the most recent Region range
+						var prevrange = openranges.length-1;
+						for (let rge = openranges.length-1; rge >= 0; rge--) {
+							if (openranges[rge].kind === FoldingRangeKind.Region) {
+								prevrange = rge;
+								break;
 							}
-							if (prevrange >= 0) {
-								openranges[prevrange].endLine = line;
-								result.push(openranges[prevrange]);
-								openranges.splice(prevrange,1);
-							}		
 						}
+						if (prevrange >= 0) {
+							openranges[prevrange].endLine = line;
+							result.push(openranges[prevrange]);
+							openranges.splice(prevrange,1);
+						}		
 					}
 				}
 				else if (parsed[line][0].l == ld.cls_langindex && parsed[line][0].s == ld.cls_keyword_attrindex) {
