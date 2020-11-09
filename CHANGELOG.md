@@ -12,6 +12,7 @@
 - Fix issue [#69](https://github.com/intersystems/language-server/issues/69): Update class definition regex to support unicode characters
 - Fix issue [#72](https://github.com/intersystems/language-server/issues/72): Dotted-DO folding is too greedy
 - Fix issue [#73](https://github.com/intersystems/language-server/issues/73): Subroutine folding is too greedy
+- Fix issue [#76](https://github.com/intersystems/language-server/issues/76): Properly handle quoted class member identifiers
 
 ## [1.0.4] - 2020-10-28
 - Fix issue [#27](https://github.com/intersystems/language-server/issues/27): DeprecationWarning in LS Output channel at startup

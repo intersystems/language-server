@@ -2221,6 +2221,48 @@ function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", setting
 	return result;
 }
 
+/**
+ * Escape a UDL identifier using quotes, if necessary.
+ * 
+ * @param identifier The identifier to modify.
+ * @param direction Pass 1 to add quotes if necessary, 0 to remove existing quotes.
+ */
+function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string {
+	var result: string = identifier;
+	if (direction === 0 && identifier.indexOf('"') === 0) {
+		// Remove first and last characters
+		result = result.slice(1,-1);
+		// Turn any "" into "
+		result = result.replace(/""/g,'"');
+	}
+	else if (direction === 1 && identifier.indexOf('"') !== 0) {
+		var needsquoting: boolean = false;
+		for (let i = 0; i < result.length; i++) {
+			const char: string = result.charAt(i);
+			const code: number = result.charCodeAt(i);
+			if (i === 0) {
+				if (!(char === "%" || (char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z') || code > 0x80)) {
+					needsquoting = true;
+					break;
+				}
+			}
+			else {
+				if (!((char >= 'A' && char <= 'Z') || (char >= 'a' && char <= 'z') || code > 0x80 || (char >= '0' && char <= '9'))) {
+					needsquoting = true;
+					break;
+				}
+			}
+		}
+		if (needsquoting) {
+			// Turn any " into ""
+			result = result.replace(/"/g,'""');
+			// Add " to start and end of identifier
+			result = '"' + result + '"';
+		}
+	}
+	return result;
+}
+
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries
 	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL");
@@ -2809,25 +2851,27 @@ connection.onCompletion(
 						// We got data back
 
 						for (let memobj of respdata.data.result.content) {
+							const quotedname = quoteUDLIdentifier(memobj.Name,1);
 							var item: CompletionItem = {
 								label: ""
 							};
 							item = {
-								label: "#" + memobj.Name,
+								label: "#" + quotedname,
 								kind: CompletionItemKind.Property,
 								data: "member",
 								documentation: {
 									kind: "markdown",
 									value: memobj.Description
 								},
-								sortText: memobj.Name
+								sortText: quotedname,
+								insertText: quotedname
 							};
 							if (memobj.Type !== "") {
 								item.detail = memobj.Type;
 							}
 							if (memobj.Origin === membercontext.baseclass) {
 								// Members from the base class should appear first
-								item.sortText = "##" + memobj.Name;
+								item.sortText = "##" + quotedname;
 							}
 							else {
 								item.sortText = item.label;
@@ -2868,12 +2912,13 @@ connection.onCompletion(
 						// We got data back
 						
 						for (let memobj of respdata.data.result.content) {
+							const quotedname = quoteUDLIdentifier(memobj.Name,1);
 							var item: CompletionItem = {
 								label: ""
 							};
 							if (memobj.MemberType === "method") {
 								item = {
-									label: memobj.Name,
+									label: quotedname,
 									kind: CompletionItemKind.Method,
 									data: "member",
 									documentation: {
@@ -2886,19 +2931,19 @@ connection.onCompletion(
 								}
 								if (memobj.FormalSpec === "") {
 									// Insert trailing parentheses because method takes no arguments
-									item.insertText = memobj.Name + "()";
+									item.insertText = quotedname + "()";
 								}
 							}
 							else if (memobj.MemberType === "parameter") {
 								item = {
-									label: "#" + memobj.Name,
+									label: "#" + quotedname,
 									kind: CompletionItemKind.Property,
 									data: "member",
 									documentation: {
 										kind: "markdown",
 										value: memobj.Description
 									},
-									sortText: memobj.Name
+									sortText: quotedname
 								};
 								if (memobj.Type !== "") {
 									item.detail = memobj.Type;
@@ -2906,7 +2951,7 @@ connection.onCompletion(
 							}
 							else {
 								item = {
-									label: memobj.Name,
+									label: quotedname,
 									kind: CompletionItemKind.Property,
 									data: "member",
 									documentation: {
@@ -2920,7 +2965,7 @@ connection.onCompletion(
 							}
 							if (memobj.Origin === membercontext.baseclass) {
 								// Members from the base class should appear first
-								item.sortText = "##" + memobj.Name;
+								item.sortText = "##" + quotedname;
 							}
 							else {
 								item.sortText = item.label;
@@ -3836,6 +3881,10 @@ connection.onHover(
 					// Get the full text of the selection
 					const memberrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
 					var member = doc.getText(memberrange);
+					if (member.charAt(0) === "#") {
+						member = member.slice(1);
+					}
+					const unquotedname = quoteUDLIdentifier(member,0);
 
 					// Find the dot token
 					var dottkn = 0;
@@ -3860,32 +3909,31 @@ connection.onHover(
 					};
 					if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 						// This is a parameter
-						member = member.substr(1);
 						data.query = "SELECT Description FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
-						data.parameters = [membercontext.baseclass,member];
+						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
 						// This is a method
 						data.query = "SELECT Description FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
-						data.parameters = [membercontext.baseclass,member];
+						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
 						// This is a property
 						data.query = "SELECT Description FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
-						data.parameters = [membercontext.baseclass,member];
+						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else {
-						// This is a member
+						// This is a generic member
 						if (membercontext.baseclass.substr(0,7) === "%SYSTEM") {
 							// This is always a method
 							data.query = "SELECT Description FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
-							data.parameters = [membercontext.baseclass,member];
+							data.parameters = [membercontext.baseclass,unquotedname];
 						}
 						else {
 							// This can be a method or property
 							data.query = "SELECT Description FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
 							data.query = data.query.concat("SELECT Description FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
-							data.parameters = [membercontext.baseclass,member,membercontext.baseclass,member];
+							data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
 						}
 					}
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -4321,6 +4369,10 @@ connection.onDefinition(
 					// Get the full text of the selection
 					const memberrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
 					var member = doc.getText(memberrange);
+					if (member.charAt(0) === "#") {
+						member = member.slice(1);
+					}
+					const unquotedname = quoteUDLIdentifier(member,0);
 
 					// Find the dot token
 					var dottkn = 0;
@@ -4397,32 +4449,31 @@ connection.onDefinition(
 					};
 					if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 						// This is a parameter
-						member = member.substr(1);
 						data.query = "SELECT Origin FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
-						data.parameters = [membercontext.baseclass,member];
+						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
 						// This is a method
 						data.query = "SELECT Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
-						data.parameters = [membercontext.baseclass,member];
+						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
 						// This is a property
 						data.query = "SELECT Origin FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
-						data.parameters = [membercontext.baseclass,member];
+						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else {
-						// This is a member
+						// This is a generic member
 						if (membercontext.baseclass.substr(0,7) === "%SYSTEM") {
 							// This is always a method
 							data.query = "SELECT Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
-							data.parameters = [membercontext.baseclass,member];
+							data.parameters = [membercontext.baseclass,unquotedname];
 						}
 						else {
 							// This can be a method or property
 							data.query = "SELECT Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
 							data.query = data.query.concat("SELECT Origin FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
-							data.parameters = [membercontext.baseclass,member,membercontext.baseclass,member];
+							data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
 						}
 					}
 					const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -4444,9 +4495,10 @@ connection.onDefinition(
 										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("parameter") !== -1)
 									) {
 										// This is the right type of class member
-										var memberlineidx = docrespdata.data.result.content[j].indexOf(member);
-										if (memberlineidx !==  -1) {
+										const searchstr = docrespdata.data.result.content[j].slice(docrespdata.data.result.content[j].indexOf(" ")+1).trim();
+										if (searchstr.indexOf(member) === 0) {
 											// This is the right member
+											const memberlineidx = docrespdata.data.result.content[j].indexOf(searchstr);
 											targetrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+member.length-1));
 											break;
 										}
