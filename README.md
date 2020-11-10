@@ -21,7 +21,8 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Invalid UDL Parameter types.
   - Mismatches between declared UDL Parameter types and the assigned value.
 - [Folding Ranges](https://code.visualstudio.com/docs/editor/codebasics#_folding) for the following:
-  - ObjectScript class members
+  - ObjectScript code blocks (If/ElseIf/Else, Try/Catch, For, While, etc.)
+  - UDL class members
   - ObjectScript routine labels
   - UDL descriptions
   - ObjectScript documentation comments (/// in first column)

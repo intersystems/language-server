@@ -5409,43 +5409,59 @@ connection.onFoldingRanges(
 				) {
 					// This line starts with a routine label
 
-					// Open a new member range
-					openranges.push({
-						startLine: line,
-						endLine: line,
-						kind: "isc-member"
-					});
-
-					// Loop through the file from this line to find the next label
-					var precedingcomments = 0;
-					for (let nl = line+1; nl < parsed.length; nl++) {
-						if (parsed[nl].length === 0) {
-							precedingcomments = 0;
-							continue;
-						}
-						if (parsed[nl][0].l === ld.cos_langindex && (parsed[nl][0].s === ld.cos_comment_attrindex || parsed[nl][0].s === ld.cos_dcom_attrindex)) {
-							// Don't fold comments that immediately precede the next label
-							precedingcomments++;
-						}
-						else if (parsed[nl][0].l === ld.cos_langindex && parsed[nl][0].s === ld.cos_label_attrindex) {
-							// This is the next label
-							openranges[openranges.length-1].endLine = nl-precedingcomments-1;
-							if (openranges[openranges.length-1].startLine < openranges[openranges.length-1].endLine) {
-								result.push(openranges[openranges.length-1]);
+					// Scan through the line to look for an open curly
+					var foundopencurly =  false;
+					for (let tkn = 1; tkn < parsed[line].length; tkn++) {
+						if (parsed[line][tkn].l === ld.cos_langindex && parsed[line][tkn].s === ld.cos_brace_attrindex) {
+							const bracetext = doc.getText(Range.create(Position.create(line,parsed[line][tkn].p),Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)));
+							if (bracetext === "{") {
+								foundopencurly = true;
+								break;
 							}
-							openranges.pop();
-							break;
-						}
-						else {
-							precedingcomments = 0;
 						}
 					}
 
-					if (openranges.length > 0 && openranges[openranges.length-1].kind === "isc-member") {
-						// This is the last label in the file so its endLine is the end of the file
-						openranges[openranges.length-1].endLine = parsed.length-1;
-						result.push(openranges[openranges.length-1]);
-						openranges.pop();
+					if (!foundopencurly) {
+						// Only create a label range if it won't be handled by our ObjectScript code block processing code
+
+						// Open a new member range
+						openranges.push({
+							startLine: line,
+							endLine: line,
+							kind: "isc-member"
+						});
+
+						// Loop through the file from this line to find the next label
+						var precedingcomments = 0;
+						for (let nl = line+1; nl < parsed.length; nl++) {
+							if (parsed[nl].length === 0) {
+								precedingcomments = 0;
+								continue;
+							}
+							if (parsed[nl][0].l === ld.cos_langindex && (parsed[nl][0].s === ld.cos_comment_attrindex || parsed[nl][0].s === ld.cos_dcom_attrindex)) {
+								// Don't fold comments that immediately precede the next label
+								precedingcomments++;
+							}
+							else if (parsed[nl][0].l === ld.cos_langindex && parsed[nl][0].s === ld.cos_label_attrindex) {
+								// This is the next label
+								openranges[openranges.length-1].endLine = nl-precedingcomments-1;
+								if (openranges[openranges.length-1].startLine < openranges[openranges.length-1].endLine) {
+									result.push(openranges[openranges.length-1]);
+								}
+								openranges.pop();
+								break;
+							}
+							else {
+								precedingcomments = 0;
+							}
+						}
+
+						if (openranges.length > 0 && openranges[openranges.length-1].kind === "isc-member") {
+							// This is the last label in the file so its endLine is the end of the file
+							openranges[openranges.length-1].endLine = parsed.length-1;
+							result.push(openranges[openranges.length-1]);
+							openranges.pop();
+						}
 					}
 				}
 				if (
@@ -5808,6 +5824,35 @@ connection.onFoldingRanges(
 							var prevrange = openranges.length-1;
 							for (let rge = openranges.length-1; rge >= 0; rge--) {
 								if (openranges[rge].kind === "isc-embedded") {
+									prevrange = rge;
+									break;
+								}
+							}
+							if (prevrange >= 0 && openranges[prevrange].startLine < line-1) {
+								openranges[prevrange].endLine = line-1;
+								result.push(openranges[prevrange]);
+							}
+							openranges.splice(prevrange,1);
+						}
+					}
+				}
+				// Done with special processing, so loop again to find all ObjectScript braces
+				for (let tkn = 0; tkn < parsed[line].length; tkn++) {
+					if (parsed[line][tkn].l === ld.cos_langindex && parsed[line][tkn].s === ld.cos_brace_attrindex) {
+						const bracetext = doc.getText(Range.create(Position.create(line,parsed[line][tkn].p),Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)));
+						if (bracetext === "{") {
+							// Open a new ObjectScript code block range
+							openranges.push({
+								startLine: line,
+								endLine: line,
+								kind: "isc-cosblock"
+							});
+						}
+						else {
+							// Close the most recent ObjectScript code block range
+							var prevrange = openranges.length-1;
+							for (let rge = openranges.length-1; rge >= 0; rge--) {
+								if (openranges[rge].kind === "isc-cosblock") {
 									prevrange = rge;
 									break;
 								}
