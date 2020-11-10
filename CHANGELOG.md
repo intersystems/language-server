@@ -15,6 +15,7 @@
 - Fix issue [#73](https://github.com/intersystems/language-server/issues/73): Subroutine folding is too greedy
 - Fix issue [#76](https://github.com/intersystems/language-server/issues/76): Properly handle quoted class member identifiers
 - Fix issue [#79](https://github.com/intersystems/language-server/issues/79): Add Folding Ranges for ObjectScript code blocks
+- Fix issue [#80](https://github.com/intersystems/language-server/issues/80): Invoking signature help on existing methods
 
 ## [1.0.4] - 2020-10-28
 - Fix issue [#27](https://github.com/intersystems/language-server/issues/27): DeprecationWarning in LS Output channel at startup
