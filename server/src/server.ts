@@ -252,6 +252,11 @@ var signatureHelpMacroCache: SignatureHelpMacroContext;
 var signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefined;
 
 /**
+ * The start position of the active SignatureHelp.
+ */
+var signatureHelpStartPosition: Position | undefined = undefined;
+
+/**
  * Cookie jar for REST requests to InterSystems servers.
  */
 let cookieJar: tough.CookieJar = new tough.CookieJar();
@@ -2407,22 +2412,42 @@ connection.onSignatureHelp(
 				}
 			}
 			const triggerlang: number = parsed[params.position.line][thistoken].l;
-			if (params.context.isRetrigger) {
-				if (params.context.triggerKind === SignatureHelpTriggerKind.TriggerCharacter &&
-					params.context.triggerCharacter === "," &&
-					params.context.activeSignatureHelp !== undefined
-				) {
-					// User moved to next parameter
-					if (params.context.activeSignatureHelp.activeParameter !== null) {
-						params.context.activeSignatureHelp.activeParameter = params.context.activeSignatureHelp.activeParameter + 1;
+			if (params.context.isRetrigger && params.context.activeSignatureHelp !== undefined) {
+				const prevchar = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
+				if (prevchar === ")") {
+					// The user closed the signature
+					signatureHelpDocumentationCache = undefined;
+					signatureHelpStartPosition = undefined;
+					return null;
+				}
+
+				if (signatureHelpStartPosition !== undefined) {
+					// Determine the active parameter
+					var activeparam = 0;
+					const text = doc.getText(Range.create(signatureHelpStartPosition,params.position));
+					var openparencount = 0;
+					for (let i = 0; i < text.length; i++) {
+						const char = text.charAt(i);
+						if (char === "(") {
+							openparencount++;
+						}
+						else if (char === ")") {
+							openparencount--;
+						}
+						else if (char === "," && openparencount === 0) {
+							// Only increment parameter number if comma isn't inside nested parentheses
+							activeparam++;
+						}
 					}
+
+					params.context.activeSignatureHelp.activeParameter = activeparam;
 					if (signatureHelpDocumentationCache !== undefined) {
 						if (signatureHelpDocumentationCache.type === "macro" && params.context.activeSignatureHelp.activeParameter !== null) {
 							// This is a macro with active parameter
 
 							// Get the macro expansion with the next parameter emphasized
 							var expinputdata = {...signatureHelpMacroCache};
-							expinputdata.arguments = emphasizeArgument(expinputdata.arguments,params.context.activeSignatureHelp.activeParameter+1);
+							expinputdata.arguments = emphasizeArgument(expinputdata.arguments,params.context.activeSignatureHelp.activeParameter);
 							const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expinputdata)
 							if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
 								signatureHelpDocumentationCache.doc = {
@@ -2438,22 +2463,6 @@ connection.onSignatureHelp(
 						}
 					}
 					return params.context.activeSignatureHelp;
-				}
-				else if (params.context.triggerKind === SignatureHelpTriggerKind.ContentChange && params.context.activeSignatureHelp !== undefined) {
-					// The content of the document changed
-					const prevchar = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
-					if (prevchar === ")") {
-						// The user closed the signature
-						signatureHelpDocumentationCache = undefined;
-						return null;
-					}
-					else {
-						// The user is still in the same parameter
-						if (signatureHelpDocumentationCache !== undefined) {
-							params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
-						}
-						return params.context.activeSignatureHelp;
-					}
 				}
 			}
 			else if (
@@ -2527,6 +2536,7 @@ connection.onSignatureHelp(
 							};
 							sig.documentation = signatureHelpDocumentationCache.doc;
 						}
+						signatureHelpStartPosition = params.position;
 						result.push(sig);
 					}
 				}
@@ -2586,6 +2596,7 @@ connection.onSignatureHelp(
 						if (memobj.ReturnType !== "") {
 							sig.label = sig.label.concat(" As ",memobj.ReturnType);
 						}
+						signatureHelpStartPosition = params.position;
 						result.push(sig);
 					}
 				}

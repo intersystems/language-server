@@ -9,6 +9,7 @@
 - Fix issue [#63](https://github.com/intersystems/language-server/issues/63): Don't provide completion suggestions inside a comment
 - Fix issue [#64](https://github.com/intersystems/language-server/issues/64): Code completion needs to understand that %&lt;classname&gt; is shorthand for %Library.&lt;classname&gt;
 - Fix issue [#66](https://github.com/intersystems/language-server/issues/66): Suggestions for $functions and variables should follow system.case settings
+- Fix issue [#67](https://github.com/intersystems/language-server/issues/67): Signature help logic
 - Fix issue [#69](https://github.com/intersystems/language-server/issues/69): Update class definition regex to support unicode characters
 - Fix issue [#72](https://github.com/intersystems/language-server/issues/72): Dotted-DO folding is too greedy
 - Fix issue [#73](https://github.com/intersystems/language-server/issues/73): Subroutine folding is too greedy
