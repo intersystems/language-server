@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.5] - 2020-XX-XX
+## [1.0.5] - 2020-11-12
 - Fix issue [#52](https://github.com/intersystems/language-server/issues/52): Request textDocument/documentSymbol failed with message: Cannot read property 'p' of undefined
 - Fix issue [#53](https://github.com/intersystems/language-server/issues/53): Become a FoldingRangeProvider
 - Fix issue [#54](https://github.com/intersystems/language-server/issues/54): Completion request fails when "." is typed as first non-whitespace character on a line
@@ -16,6 +16,7 @@
 - Fix issue [#76](https://github.com/intersystems/language-server/issues/76): Properly handle quoted class member identifiers
 - Fix issue [#79](https://github.com/intersystems/language-server/issues/79): Add Folding Ranges for ObjectScript code blocks
 - Fix issue [#80](https://github.com/intersystems/language-server/issues/80): Invoking signature help on existing methods
+- Fix issue [#82](https://github.com/intersystems/language-server/issues/82): Incorrect destination go to definition
 
 ## [1.0.4] - 2020-10-28
 - Fix issue [#27](https://github.com/intersystems/language-server/issues/27): DeprecationWarning in LS Output channel at startup
