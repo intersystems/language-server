@@ -5595,12 +5595,20 @@ connection.onFoldingRanges(
 						kind: "isc-member"
 					});
 
-					// Scan forward in the file and look for the next line that starts with UDL
+					// Scan forward in the file and look for the next line that starts with a UDL keyword or close brace
 					for (let nl = line+1; nl < parsed.length; nl++) {
 						if (parsed[nl].length === 0) {
 							continue;
 						}
-						if (parsed[nl][0].l === ld.cls_langindex) {
+						if (
+							parsed[nl][0].l === ld.cls_langindex &&
+							(parsed[nl][0].s === ld.cls_keyword_attrindex ||
+							(parsed[nl][0].s === ld.cls_delim_attrindex && 
+							doc.getText(Range.create(
+								Position.create(nl,parsed[nl][0].p),
+								Position.create(nl,parsed[nl][0].p+parsed[nl][0].c)
+							)) === "}"))
+						) {
 							// Close the member range
 							if (
 								parsed[nl][0].s === ld.cls_delim_attrindex && 
