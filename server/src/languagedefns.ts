@@ -56,6 +56,7 @@ export const cos_brace_attrindex = 0x2a;
 export const cos_localdec_attrindex = 0x2E;
 export const cos_otw_attrindex = 0x2F;
 export const cos_param_attrindex = 0x30;
+export const cos_localundec_attrindex = 0x31;
 export const cos_dcom_attrindex = 0x33;
 export const cos_zcom_attrindex = 0x34;
 export const cos_zf_attrindex = 0x35;
