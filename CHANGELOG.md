@@ -1,6 +1,7 @@
 # Changelog
 
 ## [1.0.6] - 2020-XX-XX
+- Fix issue [#75](https://github.com/intersystems/language-server/issues/75): Problem reported for valid ##class("classname") syntax
 - Fix issue [#83](https://github.com/intersystems/language-server/issues/83): Support for renaming variables
 - Fix issue [#85](https://github.com/intersystems/language-server/issues/85): Folding of class Storage section is incorrect
 

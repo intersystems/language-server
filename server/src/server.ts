@@ -464,6 +464,10 @@ async function computeDiagnostics(doc: TextDocument) {
 							}
 							continue;
 						}
+						if (word.charAt(0) === '"') {
+							// This classname is delimited with ", so strip them
+							word = word.slice(1,-1);
+						}
 
 						// Normalize the class name if there are imports
 						var possiblecls = {num: 0};
@@ -3825,6 +3829,10 @@ connection.onHover(
 							return null;
 						}
 					}
+					if (word.charAt(0) === '"') {
+						// This classname is delimited with ", so strip them
+						word = word.slice(1,-1);
+					}
 
 					// Normalize the class name if there are imports
 					let normalizedname = await normalizeClassname(doc,parsed,word,server,params.position.line);
@@ -4506,6 +4514,10 @@ connection.onDefinition(
 							// This classname is invalid
 							return null;
 						}
+					}
+					if (word.charAt(0) === '"') {
+						// This classname is delimited with ", so strip them
+						word = word.slice(1,-1);
 					}
 
 					// Normalize the class name if there are imports
