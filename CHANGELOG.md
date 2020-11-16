@@ -4,6 +4,7 @@
 - Fix issue [#75](https://github.com/intersystems/language-server/issues/75): Problem reported for valid ##class("classname") syntax
 - Fix issue [#83](https://github.com/intersystems/language-server/issues/83): Support for renaming variables
 - Fix issue [#85](https://github.com/intersystems/language-server/issues/85): Folding of class Storage section is incorrect
+- Fix issue [#87](https://github.com/intersystems/language-server/issues/87): Frequent errors reported with incomplete code
 
 ## [1.0.5] - 2020-11-12
 - Fix issue [#52](https://github.com/intersystems/language-server/issues/52): Request textDocument/documentSymbol failed with message: Cannot read property 'p' of undefined

@@ -5905,14 +5905,17 @@ connection.onFoldingRanges(
 									Position.create(line,parsed[line][k].p+parsed[line][k].c)
 								)).toLowerCase();
 								if (keytext === "mimetype") {
-									// An MimeType is specified
-									const mimetype = doc.getText(Range.create(
-										Position.create(line,parsed[line][k+2].p+1),
-										Position.create(line,parsed[line][k+2].p+parsed[line][k+2].c-1)
-									));
-									if (mimetype === "application/json") {
-										// This is the start of an XData block containing JSON
-										injsonxdata = true;
+									// The MimeType keyword is present
+									if (parsed[line][k+2] !== undefined) {
+										// An MimeType is specified
+										const mimetype = doc.getText(Range.create(
+											Position.create(line,parsed[line][k+2].p+1),
+											Position.create(line,parsed[line][k+2].p+parsed[line][k+2].c-1)
+										));
+										if (mimetype === "application/json") {
+											// This is the start of an XData block containing JSON
+											injsonxdata = true;
+										}
 									}
 									break;
 								}
