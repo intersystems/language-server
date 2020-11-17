@@ -3926,9 +3926,23 @@ connection.onHover(
 						// If this macro takes arguments, send them in the request body
 						var macroargs = "";
 						if (restofline.charAt(0) === "(") {
-							if (restofline.indexOf(")") !== -1) {
+							var opencount: number = 1;
+							var closeidx: number = -1;
+							for (let rlidx = 1; rlidx < restofline.length; rlidx++) {
+								if (restofline.charAt(rlidx) === ")") {
+									opencount--;
+									if (opencount === 0) {
+										closeidx = rlidx;
+										break;
+									}
+								}
+								else if (restofline.charAt(rlidx) === "(") {
+									opencount++;
+								}
+							}
+							if (closeidx !== -1) {
 								// Get all of the arguments
-								macroargs = restofline.slice(0,restofline.indexOf(")")+1).replace(" ","");
+								macroargs = restofline.slice(0,closeidx+1).replace(" ","");
 							}
 							else {
 								// The argument list is incomplete
