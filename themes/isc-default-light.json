@@ -986,6 +986,9 @@
         "ISC_SQLKeyword": "#000000",
 		"ISC_SQLFunction": "#0000ff",
 		"ISC_Neutral": {"foreground": "#000000", "italic": true},
-		"XML_Grayout": "#555555"
+		"XML_Grayout": "#555555",
+		"ISC_Operator": "#000000",
+		"ISC_Delimiter": "#000000",
+		"ISC_MarkupText": "#000000"
     }
 }
