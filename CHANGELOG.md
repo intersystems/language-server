@@ -6,6 +6,7 @@
 - Fix issue [#85](https://github.com/intersystems/language-server/issues/85): Folding of class Storage section is incorrect
 - Fix issue [#87](https://github.com/intersystems/language-server/issues/87): Frequent errors reported with incomplete code
 - Fix issue [#89](https://github.com/intersystems/language-server/issues/89): Properly parse macro arguments that contain () for hover expansion
+- Fix issue [#90](https://github.com/intersystems/language-server/issues/90): Return macro definition for hover documentation if expansion fails
 
 ## [1.0.5] - 2020-11-12
 - Fix issue [#52](https://github.com/intersystems/language-server/issues/52): Request textDocument/documentSymbol failed with message: Cannot read property 'p' of undefined

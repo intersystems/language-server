@@ -3953,7 +3953,7 @@ connection.onHover(
 						// If the arguments list is either not needed or complete, get the macro expansion
 						if (macroargs !== "incomplete") {
 							// Get the macro expansion from the server
-							const querydata = {
+							const expquerydata = {
 								docname: maccon.docname,
 								macroname: macrotext,
 								arguments: macroargs,
@@ -3963,13 +3963,45 @@ connection.onHover(
 								imports: maccon.imports,
 								mode: maccon.mode
 							};
-							const respdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,querydata);
-							if (respdata !== undefined && respdata.data.result.content.expansion.length > 0) {
-								// The macro expansion was found
-								return {
-									contents: respdata.data.result.content.expansion.join("  \n"),
-									range: macrorange
-								};
+							const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expquerydata);
+							if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
+								// We got data back
+								const exptext = exprespdata.data.result.content.expansion.join("  \n");
+								if (exptext.slice(0,5) === "ERROR") {
+									// An error occurred while generating the expansion, so return the definition instead
+									const defquerydata = {
+										docname: maccon.docname,
+										macroname: macrotext,
+										superclasses: maccon.superclasses,
+										includes: maccon.includes,
+										includegenerators: maccon.includegenerators,
+										imports: maccon.imports,
+										mode: maccon.mode
+									};
+									const defrespdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,defquerydata);
+									if (defrespdata !== undefined && defrespdata.data.result.content.definition.length > 0) {
+										// The macro definition was found
+										const parts = defrespdata.data.result.content.definition[0].trim().split(/[ ]+/);
+										var defstr = "";
+										if (parts[0].charAt(0) === "#") {
+											defstr = parts.slice(2).join(" ");
+										}
+										else {
+											defstr = parts.slice(1).join(" ");
+										}
+										return {
+											contents: defstr,
+											range: macrorange
+										};
+									}
+								}
+								else {
+									// The expansion was generated successfully
+									return {
+										contents: exprespdata.data.result.content.expansion.join("  \n"),
+										range: macrorange
+									};
+								}
 							}
 						}
 						// If the argument list is incomplete, get the non-expanded definition
