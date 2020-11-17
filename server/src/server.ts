@@ -2472,9 +2472,11 @@ connection.onSignatureHelp(
 				}
 			}
 			const triggerlang: number = parsed[params.position.line][thistoken].l;
+			const triggerattr: number = parsed[params.position.line][thistoken].s;
 			if (
 				!params.context.isRetrigger && params.context.triggerKind === SignatureHelpTriggerKind.TriggerCharacter &&
-				params.context.triggerCharacter === "(" && triggerlang === ld.cos_langindex
+				params.context.triggerCharacter === "(" && triggerlang === ld.cos_langindex &&
+				triggerattr !== ld.cos_comment_attrindex && triggerattr !== ld.cos_dcom_attrindex
 			) {
 				// This is potentially the start of a signature
 	
@@ -2618,7 +2620,8 @@ connection.onSignatureHelp(
 			}
 			else if (
 				!params.context.isRetrigger && params.context.triggerKind === SignatureHelpTriggerKind.TriggerCharacter &&
-				params.context.triggerCharacter === "," && triggerlang === ld.cos_langindex
+				params.context.triggerCharacter === "," && triggerlang === ld.cos_langindex &&
+				triggerattr !== ld.cos_comment_attrindex && triggerattr !== ld.cos_dcom_attrindex
 			) {
 				// This is potentially the argument list for a signature
 
