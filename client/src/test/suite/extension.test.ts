@@ -6,20 +6,21 @@ import { before } from "mocha";
 import { window, extensions } from "vscode";
 import { extensionId } from "../../extension";
 
+import { sleep } from "./helper";
+
 suite("Extension Test Suite", () => {
   suiteSetup(async function () {
     // make sure extension is activated
-    const mainExt = extensions.getExtension("intersystems-community.vscode-objectscript");
-    await mainExt?.activate();
     const ext = extensions.getExtension(extensionId);
-    await ext?.activate();
+    await ext.activate();
+    await sleep(5000); // Wait for server activation
   });
 
   before(() => {
     window.showInformationMessage("Start all tests.");
   });
 
-  test("Sample test", () => {
+  test("Extension started", () => {
     assert.ok("All good");
   });
 });
