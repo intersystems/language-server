@@ -1,6 +1,10 @@
 # Changelog
 
 ## [1.0.6] - 2020-XX-XX
+- Fix issue [#19](https://github.com/intersystems/language-server/issues/19): do {} while in SqlComputeCode marked as a syntax error
+- Fix issue [#39](https://github.com/intersystems/language-server/issues/39): embeded &js syntax
+- Fix issue [#56](https://github.com/intersystems/language-server/issues/56): attempt to zw the value of a returned object is highlighted as a syntax error
+- Fix issue [#60](https://github.com/intersystems/language-server/issues/60): Double quotes in an embedded SQL statement (needed when using reserved words) is marked as syntax error
 - Fix issue [#75](https://github.com/intersystems/language-server/issues/75): Problem reported for valid ##class("classname") syntax
 - Fix issue [#83](https://github.com/intersystems/language-server/issues/83): Support for renaming variables
 - Fix issue [#85](https://github.com/intersystems/language-server/issues/85): Folding of class Storage section is incorrect
@@ -9,6 +13,7 @@
 - Fix issue [#90](https://github.com/intersystems/language-server/issues/90): Return macro definition for hover documentation if expansion fails
 - Fix issue [#92](https://github.com/intersystems/language-server/issues/92): Edit default themes to explictly color all tokens
 - Fix issue [#93](https://github.com/intersystems/language-server/issues/93): Adding comment causes A request has failed error
+- Fix issue [#94](https://github.com/intersystems/language-server/issues/94): zwrite supports any expression not only variables
 
 ## [1.0.5] - 2020-11-12
 - Fix issue [#52](https://github.com/intersystems/language-server/issues/52): Request textDocument/documentSymbol failed with message: Cannot read property 'p' of undefined
