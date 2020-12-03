@@ -1595,86 +1595,17 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
 	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_param_attrindex) {
 		// The token before the dot is a parameter
 
-		const thisparam = doc.getText(findFullRange(line,parsed,dot-1,parsed[line][dot-1].p,parsed[line][dot-1].p+parsed[line][dot-1].c));
-		// Scan to the method definition
-		for (let j = line; j >= 0; j--) {
-			if (parsed[j].length === 0) {
-				continue;
-			}
-			else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
-				// This is the method definition
-				if (
-					parsed[j][parsed[j].length-1].l == ld.cls_langindex && parsed[j][parsed[j].length-1].s == ld.cls_delim_attrindex &&
-					doc.getText(Range.create(
-						Position.create(j,parsed[j][parsed[j].length-1].p),
-						Position.create(j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c)
-					)) === "("
-				) {
-					// This is a multi-line method definition
-					for (let mline = j+1; mline < parsed.length; mline++) {
-						// Loop through the line and look for this parameter
-
-						const paramcon = await findMethodParameterClass(doc,parsed,mline,server,thisparam);
-						if (paramcon !== undefined) {
-							// We found the parameter
-							result = paramcon;
-							break;
-						}
-						else if (
-							parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
-							doc.getText(Range.create(
-								Position.create(mline,parsed[mline][parsed[mline].length-1].p),
-								Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
-							)) !== ","
-						) {
-							// We've reached the end of the method definition
-							break;
-						}
-					}
-				}
-				else {
-					// This is a single-line method definition
-					const paramcon = await findMethodParameterClass(doc,parsed,j,server,thisparam);
-					if (paramcon !== undefined) {
-						result = paramcon;
-					}
-				}
-				break;
-			}
+		const paramcon = await determineParameterClass(doc,parsed,line,dot-1,server);
+		if (paramcon !== undefined) {
+			result = paramcon;
 		}
 	}
 	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_localdec_attrindex) {
 		// The token before the dot is a declared local variable 
 
-		var founddim = false;
-		const thisvar = doc.getText(findFullRange(line,parsed,dot-1,parsed[line][dot-1].p,parsed[line][dot-1].p+parsed[line][dot-1].c));
-		// Scan to the top of the method to find the #Dim
-		for (let j = line; j >= 0; j--) {
-			if (parsed[j].length === 0) {
-				continue;
-			}
-			else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
-				// This is the definition for the method that the variable is in
-				break;
-			}
-			else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
-				// This is a preprocessor command
-				const command = doc.getText(Range.create(Position.create(j,parsed[j][0].p),Position.create(j,parsed[j][1].p+parsed[j][1].c)));
-				if (command.toLowerCase() === "#dim") {
-					// This is a #Dim
-					const dimresult = parseDimLine(doc,parsed,j,thisvar);
-					founddim = dimresult.founddim;
-					if (founddim) {
-						result = {
-							baseclass: await normalizeClassname(doc,parsed,dimresult.class,server,j),
-							context: "instance"
-						};
-					}
-				}
-				if (founddim) {
-					break;
-				}
-			}
+		const localdeccon = await determineDeclaredLocalVarClass(doc,parsed,line,dot-1,server);
+		if (localdeccon !== undefined) {
+			result = localdeccon;
 		}
 	}
 	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_sysv_attrindex) {
@@ -2273,6 +2204,113 @@ function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string {
 	return result;
 }
 
+/**
+ * Determine the normalized name of the class for the parameter at (line,tkn).
+ * If it's found, return its class. Helper method for getClassMemberContext() and onTypeDefinition().
+ * 
+ * @param doc The TextDocument that the parameter is in.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line that the parameter is in.
+ * @param tkn The token of the parameter in the line.
+ * @param server The server that doc is associated with.
+ */
+async function determineParameterClass(doc: TextDocument, parsed: compressedline[], line: number, tkn: number, server: ServerSpec): Promise<ClassMemberContext | undefined> {
+	var result: ClassMemberContext | undefined = undefined;
+	const thisparam = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
+	// Scan to the method definition
+	for (let j = line; j >= 0; j--) {
+		if (parsed[j].length === 0) {
+			continue;
+		}
+		else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+			// This is the method definition
+			if (
+				parsed[j][parsed[j].length-1].l == ld.cls_langindex && parsed[j][parsed[j].length-1].s == ld.cls_delim_attrindex &&
+				doc.getText(Range.create(
+					Position.create(j,parsed[j][parsed[j].length-1].p),
+					Position.create(j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c)
+				)) === "("
+			) {
+				// This is a multi-line method definition
+				for (let mline = j+1; mline < parsed.length; mline++) {
+					// Loop through the line and look for this parameter
+
+					const paramcon = await findMethodParameterClass(doc,parsed,mline,server,thisparam);
+					if (paramcon !== undefined) {
+						// We found the parameter
+						result = paramcon;
+						break;
+					}
+					else if (
+						parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
+						doc.getText(Range.create(
+							Position.create(mline,parsed[mline][parsed[mline].length-1].p),
+							Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
+						)) !== ","
+					) {
+						// We've reached the end of the method definition
+						break;
+					}
+				}
+			}
+			else {
+				// This is a single-line method definition
+				const paramcon = await findMethodParameterClass(doc,parsed,j,server,thisparam);
+				if (paramcon !== undefined) {
+					result = paramcon;
+				}
+			}
+			break;
+		}
+	}
+	return result;
+}
+
+/**
+ * Determine the normalized name of the class for the declared local variable at (line,tkn).
+ * If it's found, return its class. Helper method for getClassMemberContext() and onTypeDefinition().
+ * 
+ * @param doc The TextDocument that the declared local variable is in.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line that the declared local variable is in.
+ * @param tkn The token of the declared local variable in the line.
+ * @param server The server that doc is associated with.
+ */
+async function determineDeclaredLocalVarClass(doc: TextDocument, parsed: compressedline[], line: number, tkn: number, server: ServerSpec): Promise<ClassMemberContext | undefined> {
+	var result: ClassMemberContext | undefined = undefined;
+	var founddim = false;
+	const thisvar = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
+	// Scan to the top of the method to find the #Dim
+	for (let j = line; j >= 0; j--) {
+		if (parsed[j].length === 0) {
+			continue;
+		}
+		else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+			// This is the definition for the method that the variable is in
+			break;
+		}
+		else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
+			// This is a preprocessor command
+			const command = doc.getText(Range.create(Position.create(j,parsed[j][0].p),Position.create(j,parsed[j][1].p+parsed[j][1].c)));
+			if (command.toLowerCase() === "#dim") {
+				// This is a #Dim
+				const dimresult = parseDimLine(doc,parsed,j,thisvar);
+				founddim = dimresult.founddim;
+				if (founddim) {
+					result = {
+						baseclass: await normalizeClassname(doc,parsed,dimresult.class,server,j),
+						context: "instance"
+					};
+				}
+			}
+			if (founddim) {
+				break;
+			}
+		}
+	}
+	return result;
+}
+
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries
 	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL");
@@ -2302,7 +2340,8 @@ connection.onInitialize((params: InitializeParams) => {
 			foldingRangeProvider: true,
 			renameProvider: {
 				prepareProvider: true
-			}
+			},
+			typeDefinitionProvider: true
 		}
 	};
 });
@@ -4577,7 +4616,7 @@ connection.onDefinition(
 					if (respdata !== undefined && respdata.data.result.status === "") {
 						// The class was found
 
-						// Loop through the file contents to find this member
+						// Loop through the file contents to find the class definition
 						var resultrange = Range.create(Position.create(0,0),Position.create(0,0));
 						for (let j = 0; j < respdata.data.result.content.length; j++) {
 							if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
@@ -6518,6 +6557,89 @@ connection.onRenameRequest(
 		}
 		else {
 			return null;
+		}
+	}
+);
+
+connection.onTypeDefinition(
+	async (params: TextDocumentPositionParams) => {
+		const parsed = parsedDocuments.get(params.textDocument.uri);
+		if (parsed === undefined) {return null;}
+		const doc = documents.get(params.textDocument.uri);
+		if (doc === undefined) {return null;}
+		const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+
+		for (let i = 0; i < parsed[params.position.line].length; i++) {
+			const symbolstart: number = parsed[params.position.line][i].p;
+			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
+			if (params.position.character >= symbolstart && params.position.character <= symbolend) {
+				// We found the right symbol in the line
+
+				if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_param_attrindex) {
+					// This token is a parameter
+
+					// Determine the class of the parameter
+					const paramcon = await determineParameterClass(doc,parsed,params.position.line,i,server);
+					if (paramcon !== undefined) {
+						// The parameter has a class
+
+						// Get the full text of this class
+						const respdata = await makeRESTRequest("GET",1,"/doc/".concat(paramcon.baseclass,".cls"),server);
+						if (respdata !== undefined && respdata.data.result.status === "") {
+							// The class was found
+
+							// Loop through the file contents to find the class definition
+							var resultrange = Range.create(Position.create(0,0),Position.create(0,0));
+							for (let j = 0; j < respdata.data.result.content.length; j++) {
+								if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
+									// This line is the class definition
+									resultrange = Range.create(Position.create(j,0),Position.create(j,0));
+									break;
+								}
+							}
+							const newuri = await createDefinitionUri(params.textDocument.uri,paramcon.baseclass,".cls");
+							if (newuri !== "") {
+								return {
+									uri: newuri,
+									range: resultrange
+								};
+							}
+						}
+					}
+				}
+				else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_localdec_attrindex) {
+					// This token is a declared local variable
+
+					// Determine the class of the declared local variable
+					const localdeccon = await determineDeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
+					if (localdeccon !== undefined) {
+						// The declared local variable has a class
+
+						// Get the full text of this class
+						const respdata = await makeRESTRequest("GET",1,"/doc/".concat(localdeccon.baseclass,".cls"),server);
+						if (respdata !== undefined && respdata.data.result.status === "") {
+							// The class was found
+
+							// Loop through the file contents to find the class definition
+							var resultrange = Range.create(Position.create(0,0),Position.create(0,0));
+							for (let j = 0; j < respdata.data.result.content.length; j++) {
+								if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
+									// This line is the class definition
+									resultrange = Range.create(Position.create(j,0),Position.create(j,0));
+									break;
+								}
+							}
+							const newuri = await createDefinitionUri(params.textDocument.uri,localdeccon.baseclass,".cls");
+							if (newuri !== "") {
+								return {
+									uri: newuri,
+									range: resultrange
+								};
+							}
+						}
+					}
+				}
+			}
 		}
 	}
 );

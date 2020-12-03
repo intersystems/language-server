@@ -7,6 +7,7 @@
 - Fix issue [#60](https://github.com/intersystems/language-server/issues/60): Double quotes in an embedded SQL statement (needed when using reserved words) is marked as syntax error
 - Fix issue [#75](https://github.com/intersystems/language-server/issues/75): Problem reported for valid ##class("classname") syntax
 - Fix issue [#83](https://github.com/intersystems/language-server/issues/83): Support for renaming variables
+- Fix issue [#84](https://github.com/intersystems/language-server/issues/84): Be a TypeDefinitionProvider
 - Fix issue [#85](https://github.com/intersystems/language-server/issues/85): Folding of class Storage section is incorrect
 - Fix issue [#87](https://github.com/intersystems/language-server/issues/87): Frequent errors reported with incomplete code
 - Fix issue [#89](https://github.com/intersystems/language-server/issues/89): Properly parse macro arguments that contain () for hover expansion
