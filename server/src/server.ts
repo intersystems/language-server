@@ -2216,51 +2216,55 @@ function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string {
  */
 async function determineParameterClass(doc: TextDocument, parsed: compressedline[], line: number, tkn: number, server: ServerSpec): Promise<ClassMemberContext | undefined> {
 	var result: ClassMemberContext | undefined = undefined;
-	const thisparam = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
-	// Scan to the method definition
-	for (let j = line; j >= 0; j--) {
-		if (parsed[j].length === 0) {
-			continue;
-		}
-		else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
-			// This is the method definition
-			if (
-				parsed[j][parsed[j].length-1].l == ld.cls_langindex && parsed[j][parsed[j].length-1].s == ld.cls_delim_attrindex &&
-				doc.getText(Range.create(
-					Position.create(j,parsed[j][parsed[j].length-1].p),
-					Position.create(j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c)
-				)) === "("
-			) {
-				// This is a multi-line method definition
-				for (let mline = j+1; mline < parsed.length; mline++) {
-					// Loop through the line and look for this parameter
+	if (doc.languageId === "objectscript-class") {
+		// Parameters can only have a type if they're in a UDL method
 
-					const paramcon = await findMethodParameterClass(doc,parsed,mline,server,thisparam);
+		const thisparam = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
+		// Scan to the method definition
+		for (let j = line; j >= 0; j--) {
+			if (parsed[j].length === 0) {
+				continue;
+			}
+			else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+				// This is the method definition
+				if (
+					parsed[j][parsed[j].length-1].l == ld.cls_langindex && parsed[j][parsed[j].length-1].s == ld.cls_delim_attrindex &&
+					doc.getText(Range.create(
+						Position.create(j,parsed[j][parsed[j].length-1].p),
+						Position.create(j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c)
+					)) === "("
+				) {
+					// This is a multi-line method definition
+					for (let mline = j+1; mline < parsed.length; mline++) {
+						// Loop through the line and look for this parameter
+
+						const paramcon = await findMethodParameterClass(doc,parsed,mline,server,thisparam);
+						if (paramcon !== undefined) {
+							// We found the parameter
+							result = paramcon;
+							break;
+						}
+						else if (
+							parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
+							doc.getText(Range.create(
+								Position.create(mline,parsed[mline][parsed[mline].length-1].p),
+								Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
+							)) !== ","
+						) {
+							// We've reached the end of the method definition
+							break;
+						}
+					}
+				}
+				else {
+					// This is a single-line method definition
+					const paramcon = await findMethodParameterClass(doc,parsed,j,server,thisparam);
 					if (paramcon !== undefined) {
-						// We found the parameter
 						result = paramcon;
-						break;
-					}
-					else if (
-						parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
-						doc.getText(Range.create(
-							Position.create(mline,parsed[mline][parsed[mline].length-1].p),
-							Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
-						)) !== ","
-					) {
-						// We've reached the end of the method definition
-						break;
 					}
 				}
+				break;
 			}
-			else {
-				// This is a single-line method definition
-				const paramcon = await findMethodParameterClass(doc,parsed,j,server,thisparam);
-				if (paramcon !== undefined) {
-					result = paramcon;
-				}
-			}
-			break;
 		}
 	}
 	return result;
@@ -2285,8 +2289,12 @@ async function determineDeclaredLocalVarClass(doc: TextDocument, parsed: compres
 		if (parsed[j].length === 0) {
 			continue;
 		}
-		else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+		else if (doc.languageId === "objectscript-class" && parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
 			// This is the definition for the method that the variable is in
+			break;
+		}
+		else if (doc.languageId === "objectscript" && parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex) {
+			// This is the label for the code block that the variable is in
 			break;
 		}
 		else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
@@ -5245,6 +5253,135 @@ connection.onDefinition(
 								}
 							}
 						}
+					}
+				}
+				else if (doc.languageId === "objectscript-class" && parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_param_attrindex) {
+					// This is a parameter
+
+					var decrange: Range | null = null;
+					const thisparam = doc.getText(findFullRange(params.position.line,parsed,i,symbolstart,symbolend));
+					// Scan to the method definition or label that denotes the code block
+					for (let j = params.position.line; j >= 0; j--) {
+						if (parsed[j].length === 0) {
+							continue;
+						}
+						else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+							// This is the method definition
+							if (
+								parsed[j][parsed[j].length-1].l == ld.cls_langindex && parsed[j][parsed[j].length-1].s == ld.cls_delim_attrindex &&
+								doc.getText(Range.create(
+									Position.create(j,parsed[j][parsed[j].length-1].p),
+									Position.create(j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c)
+								)) === "("
+							) {
+								// This is a multi-line method definition
+								for (let mline = j+1; mline < parsed.length; mline++) {
+									// Loop through the line and look for this parameter
+
+									for (let tkn = 0; tkn < parsed[mline].length; tkn++) {
+										if (parsed[mline][tkn].l == ld.cls_langindex && parsed[mline][tkn].s == ld.cls_param_attrindex) {
+											// This is a parameter
+											const paramrange = Range.create(
+												Position.create(mline,parsed[mline][tkn].p),
+												Position.create(mline,parsed[mline][tkn].p+parsed[mline][tkn].c)
+											);
+											const paramtext = doc.getText(paramrange);
+											if (thisparam === paramtext) {
+												// This is the correct parameter
+												decrange = paramrange;
+												break;
+											}
+										}
+									}
+									if (decrange !== null) {
+										// We found the parameter
+										break;
+									}
+									else if (
+										parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
+										doc.getText(Range.create(
+											Position.create(mline,parsed[mline][parsed[mline].length-1].p),
+											Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
+										)) !== ","
+									) {
+										// We've reached the end of the method definition
+										break;
+									}
+								}
+							}
+							else {
+								// This is a single-line method definition
+								for (let tkn = 0; tkn < parsed[j].length; tkn++) {
+									if (parsed[j][tkn].l == ld.cls_langindex && parsed[j][tkn].s == ld.cls_param_attrindex) {
+										// This is a parameter
+										const paramrange = Range.create(
+											Position.create(j,parsed[j][tkn].p),
+											Position.create(j,parsed[j][tkn].p+parsed[j][tkn].c)
+										);
+										const paramtext = doc.getText(paramrange);
+										if (thisparam === paramtext) {
+											// This is the correct parameter
+											decrange = paramrange;
+											break;
+										}
+									}
+								}
+							}
+							break;
+						}
+					}
+					if (decrange !== null) {
+						// We found the parameter declaration
+						return {
+							uri: params.textDocument.uri,
+							range: decrange
+						};
+					}
+				}
+				else if (doc.languageId === "objectscript-class" && parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_localdec_attrindex) {
+					// This is a declared local variable
+
+					var decrange: Range | null = null;
+					const thisvar = doc.getText(findFullRange(params.position.line,parsed,i,symbolstart,symbolend));
+					// Scan to the top of the method to find the #Dim
+					for (let j = params.position.line; j >= 0; j--) {
+						if (parsed[j].length === 0) {
+							continue;
+						}
+						else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+							// This is the definition for the method that the variable is in
+							break;
+						}
+						else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
+							// This is a preprocessor command
+							const command = doc.getText(Range.create(Position.create(j,parsed[j][0].p),Position.create(j,parsed[j][1].p+parsed[j][1].c)));
+							if (command.toLowerCase() === "#dim") {
+								// This is a #Dim
+								for (let k = 2; k < parsed[j].length; k++) {
+									if (parsed[j][k].s === ld.cos_localdec_attrindex) {
+										// This is a declared local variable
+										const localdecrange = Range.create(Position.create(j,parsed[j][k].p),Position.create(j,parsed[j][k].p+parsed[j][k].c));
+										var localvar = doc.getText(localdecrange);
+										if (localvar === thisvar) {
+											// This is the #Dim for this variable
+											decrange = localdecrange;
+											break;
+										}
+									}
+								}
+							}
+							if (decrange !== null) {
+								// We found the local variable declaration
+								break;
+							}
+						}
+					}
+					if (decrange !== null) {
+						// We found the local variable declaration
+						return {
+							uri: params.textDocument.uri,
+							range: decrange
+						};
 					}
 				}
 				break;

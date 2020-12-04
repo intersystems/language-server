@@ -6,7 +6,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
 
 - [InterSystems Studio](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GSTD_Intro)-style semantic token coloring for InterSystems ObjectScript classes, routines and CSP files, with support for embedded languages like SQL, Basic, MultiValue Basic, HTML, XML, Java, JavaScript and CSS.
 - Hover information for ObjectScript commands, system functions, system variables, classes, class members, macros, preprocessor directives, UDL keywords and Parameter types, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
-- Go to definition for ObjectScript classes, class members, macros, routines, routine labels, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
+- Go to definition for ObjectScript classes, class members, macros, routines, routine labels, method arguments, local variables declared with `#Dim` and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
 - Code completion for ObjectScript classes, class members, system functions, system variables, macros, include files, package imports, preprocessor directives, UDL keywords, UDL keyword values and UDL Parameter types.
 - Code completion for XML Element names, Attribute names and Attribute values within XData blocks that have the XMLNamespace keyword set to a URL that corresponds to a Studio Assist Schema (SASchema).
 - Signature help for ObjectScript methods and macros that accept arguments.

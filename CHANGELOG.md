@@ -15,6 +15,7 @@
 - Fix issue [#92](https://github.com/intersystems/language-server/issues/92): Edit default themes to explictly color all tokens
 - Fix issue [#93](https://github.com/intersystems/language-server/issues/93): Adding comment causes A request has failed error
 - Fix issue [#94](https://github.com/intersystems/language-server/issues/94): zwrite supports any expression not only variables
+- Fix issue [#96](https://github.com/intersystems/language-server/issues/96): Go to definition on a declared local variable or method parameter should jump to the declaration
 
 ## [1.0.5] - 2020-11-12
 - Fix issue [#52](https://github.com/intersystems/language-server/issues/52): Request textDocument/documentSymbol failed with message: Cannot read property 'p' of undefined
