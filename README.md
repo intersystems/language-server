@@ -36,6 +36,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Embedded code blocks (SQL, HTML, JavaScript)
   - Region markers (`#;#region` or `//#region` to start and `#;#endregion` or `//#endregion` to end)
 - [Symbol Renaming](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol) for ObjectScript local variables and method arguments within class definitions.
+- [Go to type definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-type-definition) for ObjectScript method arguments and local variables declared with `#Dim`.
 
 ## Setup Notes
 
