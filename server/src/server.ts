@@ -3043,16 +3043,6 @@ connection.onCompletion(
 				}
 			}
 		}
-		else if (
-			(prevline.slice(-6).toLowerCase() === "class(" && triggerlang === ld.cos_langindex) ||
-			(prevline.slice(-3).toLowerCase() === "as " && prevline.slice(0,9).toLowerCase() !== "parameter"  && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
-			(prevline.slice(-3).toLowerCase() === "of "  && triggerlang === ld.cos_langindex) ||
-			classregex.test(prevline)
-		) {
-			// This is a full class name
-
-			result = await completionFullClassName(doc,parsed,server,params.position.line);
-		}
 		else if (prevline.slice(-3).toLowerCase() === "as " && prevline.slice(0,9).toLowerCase() === "parameter"  && triggerlang === ld.cls_langindex) {
 			// This is a parameter type
 			for (let pt of parameterTypes) {
@@ -3066,6 +3056,69 @@ connection.onCompletion(
 					}
 				});
 			}
+		}
+		else if (prevline.slice(-3).toLowerCase() === "as " && prevline.slice(0,5).toLowerCase() === "query"  && triggerlang === ld.cls_langindex) {
+			// This is a class query type
+			
+			// Get the list of imports for resolution
+			const imports = getImports(doc,parsed,params.position.line);
+
+			// Get all appropriate subclasses of %Query
+			const querydata = {
+				query: "SELECT Name FROM %Dictionary.ClassDefinitionQuery_SubclassOf(?) WHERE Name != ? AND Name != ?",
+				parameters: ["%Library.Query","%Library.ExtentSQLQuery","%Library.RowSQLQuery"]
+			};
+			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+			if (respdata !== undefined && respdata.data.result.content.length > 0) {
+				for (let clsobj of respdata.data.result.content) {
+					var displayname: string = clsobj.Name;
+					if (imports.length > 0) {
+						// Resolve import
+						for (let imp of imports) {
+							if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length+1).indexOf(".") === -1) {
+								displayname = displayname.slice(imp.length+1);
+								break;
+							}
+						}
+						if (displayname.slice(0,9) === "%Library.") {
+							// Use short form for %Library classes
+							displayname = "%" + displayname.slice(9);
+						}
+						result.push({
+							label: displayname,
+							kind: CompletionItemKind.Class,
+							data: ["class",clsobj.Name+".cls",doc.uri]
+						});
+					}
+					else {
+						if (displayname.slice(0,9) === "%Library.") {
+							// Use short form for %Library classes
+							displayname = "%" + displayname.slice(9);
+						}
+						result.push({
+							label: displayname,
+							kind: CompletionItemKind.Class,
+							data: ["class",clsobj.Name+".cls",doc.uri]
+						});
+					}
+				}
+				// Add a CompletionItem for %Query
+				result.push({
+					label: "%Query",
+					kind: CompletionItemKind.Class,
+					data: ["class","%Library.Query.cls",doc.uri]
+				});
+			}
+		}
+		else if (
+			(prevline.slice(-6).toLowerCase() === "class(" && triggerlang === ld.cos_langindex) ||
+			(prevline.slice(-3).toLowerCase() === "as " && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
+			(prevline.slice(-3).toLowerCase() === "of "  && triggerlang === ld.cos_langindex) ||
+			classregex.test(prevline)
+		) {
+			// This is a full class name
+
+			result = await completionFullClassName(doc,parsed,server,params.position.line);
 		}
 		else if (
 			(prevline.slice(-1) === "." && prevline.slice(-2,-1) !== "," && prevline.slice(-2,-1) !== " "  &&
