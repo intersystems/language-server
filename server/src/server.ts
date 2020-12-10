@@ -4250,30 +4250,30 @@ connection.onHover(
 					};
 					if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 						// This is a parameter
-						data.query = "SELECT Description FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
+						data.query = "SELECT Description, '' AS FormalSpec, '' AS ReturnType FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
 						// This is a method
-						data.query = "SELECT Description FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+						data.query = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
 						// This is a property
-						data.query = "SELECT Description FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
+						data.query = "SELECT Description, '' AS FormalSpec, '' AS ReturnType FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else {
 						// This is a generic member
 						if (membercontext.baseclass.substr(0,7) === "%SYSTEM") {
 							// This is always a method
-							data.query = "SELECT Description FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+							data.query = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 							data.parameters = [membercontext.baseclass,unquotedname];
 						}
 						else {
 							// This can be a method or property
-							data.query = "SELECT Description FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-							data.query = data.query.concat("SELECT Description FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
+							data.query = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
+							data.query = data.query.concat("SELECT Description, '' AS FormalSpec, '' AS ReturnType FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
 							data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
 						}
 					}
@@ -4284,7 +4284,10 @@ connection.onHover(
 							var header = membercontext.baseclass.concat("::",member);
 							const nextchar = doc.getText(Range.create(Position.create(params.position.line,memberrange.end.character),Position.create(params.position.line,memberrange.end.character+1)));
 							if (nextchar === "(") {
-								header = header.concat("()");
+								header = header.concat("(",respdata.data.result.content[0].FormalSpec.replace(/:/g," As ").replace(/,/g,", ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = "),")");
+								if (respdata.data.result.content[0].ReturnType !== "") {
+									header = header.concat(" As ",respdata.data.result.content[0].ReturnType);
+								}
 							}
 							return {
 								contents: [header,turndown.turndown(respdata.data.result.content[0].Description)],
@@ -4510,8 +4513,8 @@ connection.onHover(
 						const normalizedname = await normalizeClassname(doc,parsed,clsname,server,params.position.line);
 						if (normalizedname !== "") {
 							// Query the server to get the description
-							var querystr = "SELECT Description FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-							querystr = querystr.concat("SELECT Description FROM %Dictionary.CompiledQuery WHERE parent->ID = ? AND name = ?");
+							var querystr = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
+							querystr = querystr.concat("SELECT Description, FormalSpec, Type AS ReturnType FROM %Dictionary.CompiledQuery WHERE parent->ID = ? AND name = ?");
 							const data: QueryData = {
 								query: querystr,
 								parameters: [normalizedname,procname,normalizedname,procname]
@@ -4519,8 +4522,16 @@ connection.onHover(
 							const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 							if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 								// We got data back
+								var header = normalizedname.concat("::",procname);
+								const nextchar = doc.getText(Range.create(Position.create(params.position.line,idenrange.end.character),Position.create(params.position.line,idenrange.end.character+1)));
+								if (nextchar === "(") {
+									header = header.concat("(",respdata.data.result.content[0].FormalSpec.replace(/:/g," As ").replace(/,/g,", ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = "),")");
+									if (respdata.data.result.content[0].ReturnType !== "") {
+										header = header.concat(" As ",respdata.data.result.content[0].ReturnType);
+									}
+								}
 								return {
-									contents: [normalizedname.concat("::",procname),turndown.turndown(respdata.data.result.content[0].Description)],
+									contents: [header,turndown.turndown(respdata.data.result.content[0].Description)],
 									range: idenrange
 								};
 							}
