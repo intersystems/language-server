@@ -359,15 +359,18 @@ async function computeDiagnostics(doc: TextDocument) {
 					doc.getText(Range.create(Position.create(i,0),Position.create(i,9))).toLowerCase() === "parameter" &&
 					settings.diagnostics.parameters
 				) {
+					// This line is a UDL Parameter definition
 					if (
 						parsed[i].length > 3 &&
 						parsed[i][2].l == ld.cls_langindex && parsed[i][2].s === ld.cls_keyword_attrindex &&
 						doc.getText(Range.create(Position.create(i,parsed[i][2].p),Position.create(i,parsed[i][2].p+parsed[i][2].c))).toLowerCase() === "as"
 					) {
+						// This Parameter has a type
 						const tokenrange = Range.create(Position.create(i,parsed[i][3].p),Position.create(i,parsed[i][3].p+parsed[i][3].c));
 						const tokentext = doc.getText(tokenrange).toUpperCase();
 						const thistypedoc = parameterTypes.find((typedoc) => typedoc.name === tokentext);
 						if (thistypedoc === undefined) {
+							// The type is invalid
 							let diagnostic: Diagnostic = {
 								severity: DiagnosticSeverity.Warning,
 								range: tokenrange,
@@ -377,6 +380,7 @@ async function computeDiagnostics(doc: TextDocument) {
 							diagnostics.push(diagnostic);
 						}
 						else {
+							// The type is valid
 							if (parsed[i].length > 5) {
 								const valrange = Range.create(Position.create(i,parsed[i][parsed[i].length-2].p),Position.create(i,parsed[i][parsed[i].length-2].p+parsed[i][parsed[i].length-2].c));
 								const valtext = doc.getText(valrange);
