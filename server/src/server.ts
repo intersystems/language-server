@@ -63,6 +63,9 @@ import queryKeywords = require("./documentation/keywords/Query.json");
 import triggerKeywords = require("./documentation/keywords/Trigger.json");
 import xdataKeywords = require("./documentation/keywords/XData.json");
 
+var turndownService = require('turndown');
+var turndown = new turndownService();
+
 /**
  * The configuration options exposed by the client.
  */
@@ -2641,7 +2644,7 @@ connection.onSignatureHelp(
 								type: "method",
 								doc: {
 									kind: "markdown",
-									value: memobj.Description
+									value: turndown.turndown(memobj.Description)
 								}
 							};
 							sig.documentation = signatureHelpDocumentationCache.doc;
@@ -2840,7 +2843,7 @@ connection.onSignatureHelp(
 									type: "method",
 									doc: {
 										kind: "markdown",
-										value: memobj.Description
+										value: turndown.turndown(memobj.Description)
 									}
 								};
 								sig.documentation = signatureHelpDocumentationCache.doc;
@@ -3150,7 +3153,7 @@ connection.onCompletion(
 								data: "member",
 								documentation: {
 									kind: "markdown",
-									value: memobj.Description
+									value: turndown.turndown(memobj.Description)
 								},
 								sortText: quotedname,
 								insertText: quotedname
@@ -3212,7 +3215,7 @@ connection.onCompletion(
 									data: "member",
 									documentation: {
 										kind: "markdown",
-										value: memobj.Description
+										value: turndown.turndown(memobj.Description)
 									}
 								};
 								if (memobj.Type !== "") {
@@ -3230,7 +3233,7 @@ connection.onCompletion(
 									data: "member",
 									documentation: {
 										kind: "markdown",
-										value: memobj.Description
+										value: turndown.turndown(memobj.Description)
 									},
 									sortText: quotedname
 								};
@@ -3245,7 +3248,7 @@ connection.onCompletion(
 									data: "member",
 									documentation: {
 										kind: "markdown",
-										value: memobj.Description
+										value: turndown.turndown(memobj.Description)
 									}
 								};
 								if (memobj.Type !== "") {
@@ -3499,7 +3502,7 @@ connection.onCompletion(
 									data: "member",
 									documentation: {
 										kind: "markdown",
-										value: method.Description
+										value: turndown.turndown(method.Description)
 									}
 								};
 								if (method.Origin === method.baseclass) {
@@ -3808,7 +3811,7 @@ connection.onCompletionResolve(
 				// The class was found
 				item.documentation = {
 					kind: "markdown",
-					value: respdata.data.result.content[0].content.desc.join(" ")
+					value: turndown.turndown(respdata.data.result.content[0].content.desc.join(" "))
 				};
 			}
 		}
@@ -3896,7 +3899,7 @@ connection.onHover(
 					if (respdata !== undefined && respdata.data.result.content.length === 1 && respdata.data.result.content[0].status === "") {
 						// The class was found
 						return {
-							contents: [normalizedname,respdata.data.result.content[0].content.desc.join(" ")],
+							contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].content.desc.join(" "))],
 							range: wordrange
 						};
 					}
@@ -4284,7 +4287,7 @@ connection.onHover(
 								header = header.concat("()");
 							}
 							return {
-								contents: [header,respdata.data.result.content[0].Description],
+								contents: [header,turndown.turndown(respdata.data.result.content[0].Description)],
 								range: memberrange
 							};
 						}
@@ -4473,7 +4476,7 @@ connection.onHover(
 								if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 									// We got data back
 									return {
-										contents: [normalizedname.concat("::",propname),respdata.data.result.content[0].Description],
+										contents: [normalizedname.concat("::",propname),turndown.turndown(respdata.data.result.content[0].Description)],
 										range: idenrange
 									};
 								}
@@ -4490,7 +4493,7 @@ connection.onHover(
 								if (respdata !== undefined && respdata.data.result.content.length === 1 && respdata.data.result.content[0].status === "") {
 									// The class was found
 									return {
-										contents: [normalizedname,respdata.data.result.content[0].content.desc.join(" ")],
+										contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].content.desc.join(" "))],
 										range: idenrange
 									};
 								}
@@ -4517,7 +4520,7 @@ connection.onHover(
 							if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 								// We got data back
 								return {
-									contents: [normalizedname.concat("::",procname),respdata.data.result.content[0].Description],
+									contents: [normalizedname.concat("::",procname),turndown.turndown(respdata.data.result.content[0].Description)],
 									range: idenrange
 								};
 							}
@@ -4546,7 +4549,7 @@ connection.onHover(
 									if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 										// We got data back
 										return {
-											contents: [normalizedname.concat("::",propname),respdata.data.result.content[0].Description],
+											contents: [normalizedname.concat("::",propname),turndown.turndown(respdata.data.result.content[0].Description)],
 											range: idenrange
 										};
 									}
