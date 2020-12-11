@@ -65,6 +65,7 @@ import xdataKeywords = require("./documentation/keywords/XData.json");
 
 var turndownService = require('turndown');
 var turndown = new turndownService();
+turndown.remove("style");
 
 /**
  * The configuration options exposed by the client.
