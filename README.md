@@ -6,7 +6,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
 
 - [InterSystems Studio](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GSTD_Intro)-style semantic token coloring for InterSystems ObjectScript classes, routines and CSP files, with support for embedded languages like SQL, Basic, MultiValue Basic, HTML, XML, Java, JavaScript and CSS.
 - Hover information for ObjectScript commands, system functions, system variables, classes, class members, macros, preprocessor directives, UDL keywords and Parameter types, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
-- Go to definition for ObjectScript classes, class members, macros, routines, routine labels, method arguments, local variables declared with `#Dim` and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
+- [Go to definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-definition) for ObjectScript classes, class members, macros, routines, routine labels and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
 - Code completion for ObjectScript classes, class members, system functions, system variables, macros, include files, package imports, preprocessor directives, UDL keywords, UDL keyword values and UDL Parameter types.
 - Code completion for XML Element names, Attribute names and Attribute values within XData blocks that have the XMLNamespace keyword set to a URL that corresponds to a Studio Assist Schema (SASchema).
 - Signature help for ObjectScript methods and macros that accept arguments.
@@ -36,7 +36,8 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Embedded code blocks (SQL, HTML, JavaScript)
   - Region markers (`#;#region` or `//#region` to start and `#;#endregion` or `//#endregion` to end)
 - [Symbol Renaming](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol) for ObjectScript local variables and method arguments within class definitions.
-- [Go to type definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-type-definition) for ObjectScript method arguments and local variables declared with `#Dim`.
+- [Go to type definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-type-definition) for ObjectScript method arguments and variables declared with `#Dim`.
+- Go to declaration for ObjectScript method arguments, variables declared with `#Dim` and variables in the [PublicList](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_publiclist).
 
 ## Setup Notes
 
