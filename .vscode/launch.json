@@ -1,0 +1,57 @@
+// A launch configuration that launches the extension inside a new window
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "type": "node",
+			"request": "attach",
+			"name": "Attach to Server",
+			"port": 6009,
+      "restart": true,
+      "timeout": 30000,
+      "outFiles": ["${workspaceRoot}/server/out/**/*.js"]
+    },
+    {
+      "name": "Launch Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceRoot}",
+        "${workspaceRoot}/test-fixtures/test.code-workspace"
+      ],
+      "outFiles": ["${workspaceRoot}/client/out/**/*.js"],
+			"preLaunchTask": {
+				"type": "npm",
+				"script": "watch"
+			}
+    },
+    {
+      "name": "Extension Tests",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "${workspaceFolder}/test-fixtures/test.code-workspace",
+        "--extensionDevelopmentPath=${workspaceFolder}",
+        "--extensionTestsPath=${workspaceFolder}/client/out/test/suite/index"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/client/out/test/**/*.js"
+      ],
+      "preLaunchTask": {
+				"type": "npm",
+				"script": "compile"
+			}
+    }
+  ],
+  "compounds": [
+    {
+      "name": "Client + Server",
+      "configurations": [
+        "Attach to Server",
+        "Launch Extension"
+      ]
+    }
+  ]
+}

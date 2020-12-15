@@ -1,3 +1,4 @@
+export const extensionId = "intersystems.language-server";
 import * as path from 'path';
 import {
 	ExtensionContext,
