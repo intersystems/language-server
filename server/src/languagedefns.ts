@@ -43,6 +43,7 @@ export const cos_macro_attrindex = 0x0C;
 export const cos_delim_attrindex = 0x0D;
 export const cos_extrfn_attrindex = 0x0F;
 export const cos_sysf_attrindex = 0x11;
+export const cos_localvar_attrindex = 0x14;
 export const cos_oper_attrindex = 0x18;
 export const cos_rtnname_attrindex = 0x19;
 export const cos_ssysv_attrindex = 0x1B;

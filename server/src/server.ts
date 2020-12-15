@@ -1255,8 +1255,8 @@ function parseDimLine(doc: TextDocument, parsed: compressedline[], line: number,
 		class: ""
 	};
 	for (let k = 2; k < parsed[line].length; k++) {
-		if (parsed[line][k].s === ld.cos_localdec_attrindex) {
-			// This is a declared local variable
+		if (parsed[line][k].s === ld.cos_localdec_attrindex || parsed[line][k].s === ld.cos_localvar_attrindex) {
+			// This is a declared local variable or a public variable
 			var localvar = doc.getText(Range.create(Position.create(line,parsed[line][k].p),Position.create(line,parsed[line][k].p+parsed[line][k].c)));
 			if (localvar === selector) {
 				// This is the #Dim for the selector
@@ -1608,8 +1608,8 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
 			result = paramcon;
 		}
 	}
-	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_localdec_attrindex) {
-		// The token before the dot is a declared local variable 
+	else if (parsed[line][dot-1].l == ld.cos_langindex && (parsed[line][dot-1].s == ld.cos_localdec_attrindex || parsed[line][dot-1].s == ld.cos_localvar_attrindex)) {
+		// The token before the dot is a declared local variable or public variable 
 
 		const localdeccon = await determineDeclaredLocalVarClass(doc,parsed,line,dot-1,server);
 		if (localdeccon !== undefined) {
@@ -2298,7 +2298,7 @@ async function determineDeclaredLocalVarClass(doc: TextDocument, parsed: compres
 			continue;
 		}
 		else if (doc.languageId === "objectscript-class" && parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
-			// This is the definition for the method that the variable is in
+			// This is the definition for the class member that the variable is in
 			break;
 		}
 		else if (doc.languageId === "objectscript" && parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex) {
@@ -5415,13 +5415,13 @@ connection.onDefinition(
 
 					var decrange: Range | null = null;
 					const thisvar = doc.getText(findFullRange(params.position.line,parsed,i,symbolstart,symbolend));
-					// Scan to the top of the method to find the #Dim
+					// Scan to the top of the class member to find the #Dim
 					for (let j = params.position.line; j >= 0; j--) {
 						if (parsed[j].length === 0) {
 							continue;
 						}
 						else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
-							// This is the definition for the method that the variable is in
+							// This is the definition for the class member that the variable is in
 							break;
 						}
 						else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
@@ -5450,6 +5450,52 @@ connection.onDefinition(
 					}
 					if (decrange !== null) {
 						// We found the local variable declaration
+						return {
+							uri: params.textDocument.uri,
+							range: decrange
+						};
+					}
+				}
+				else if (doc.languageId === "objectscript-class" && parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_localvar_attrindex) {
+					// This is a public variable
+
+					var decrange: Range | null = null;
+					const thisvar = doc.getText(findFullRange(params.position.line,parsed,i,symbolstart,symbolend));
+					// Scan to the top of the class member to find the #Dim
+					for (let j = params.position.line; j >= 0; j--) {
+						if (parsed[j].length === 0) {
+							continue;
+						}
+						else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+							// This is the definition for the class member that the variable is in
+							break;
+						}
+						else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
+							// This is a preprocessor command
+							const command = doc.getText(Range.create(Position.create(j,parsed[j][0].p),Position.create(j,parsed[j][1].p+parsed[j][1].c)));
+							if (command.toLowerCase() === "#dim") {
+								// This is a #Dim
+								for (let k = 2; k < parsed[j].length; k++) {
+									if (parsed[j][k].s === ld.cos_localvar_attrindex) {
+										// This is a public variable
+										const pubrange = Range.create(Position.create(j,parsed[j][k].p),Position.create(j,parsed[j][k].p+parsed[j][k].c));
+										var localvar = doc.getText(pubrange);
+										if (localvar === thisvar) {
+											// This is the #Dim for this variable
+											decrange = pubrange;
+											break;
+										}
+									}
+								}
+							}
+							if (decrange !== null) {
+								// We found the public variable declaration
+								break;
+							}
+						}
+					}
+					if (decrange !== null) {
+						// We found the pubic variable declaration
 						return {
 							uri: params.textDocument.uri,
 							range: decrange
@@ -6816,8 +6862,11 @@ connection.onTypeDefinition(
 						}
 					}
 				}
-				else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_localdec_attrindex) {
-					// This token is a declared local variable
+				else if (
+					parsed[params.position.line][i].l == ld.cos_langindex &&
+					(parsed[params.position.line][i].s == ld.cos_localdec_attrindex || parsed[params.position.line][i].s == ld.cos_localvar_attrindex)
+				) {
+					// This token is a declared local variable or public variable
 
 					// Determine the class of the declared local variable
 					const localdeccon = await determineDeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
