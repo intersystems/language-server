@@ -6734,6 +6734,7 @@ connection.onDeclaration(
 		if (parsed === undefined) {return null;}
 		const doc = documents.get(params.textDocument.uri);
 		if (doc === undefined) {return null;}
+		if (doc.languageId !== "objectscript-class") {return null;}
 
 		for (let i = 0; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
@@ -6741,7 +6742,7 @@ connection.onDeclaration(
 			if (params.position.character >= symbolstart && params.position.character <= symbolend) {
 				// We found the right symbol in the line
 
-				if (doc.languageId === "objectscript-class" && parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_param_attrindex) {
+				if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_param_attrindex) {
 					// This is a parameter
 
 					var decrange: Range | null = null;
@@ -6824,7 +6825,7 @@ connection.onDeclaration(
 						};
 					}
 				}
-				else if (doc.languageId === "objectscript-class" && parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_localdec_attrindex) {
+				else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_localdec_attrindex) {
 					// This is a declared local variable
 
 					var decrange: Range | null = null;
@@ -6870,7 +6871,7 @@ connection.onDeclaration(
 						};
 					}
 				}
-				else if (doc.languageId === "objectscript-class" && parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_localvar_attrindex) {
+				else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_localvar_attrindex) {
 					// This is a public variable
 
 					var decrange: Range | null = null;
@@ -6882,6 +6883,33 @@ connection.onDeclaration(
 						}
 						else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
 							// This is the definition for the class member that the variable is in
+							const keytext = doc.getText(Range.create(
+								Position.create(j,parsed[j][0].p),
+								Position.create(j,parsed[j][0].p+parsed[j][0].c)
+							)).toLowerCase();
+							if (keytext.indexOf("method") !== -1) {
+								// This public variable is in a method so see if it's in the PublicList
+								var prevkey: string = "";
+								for (let tkn = 1; tkn < parsed[j].length; tkn++) {
+									if (parsed[j][tkn].l == ld.cls_langindex && parsed[j][tkn].s == ld.cls_keyword_attrindex) {
+										// This token is a keyword
+										prevkey = doc.getText(Range.create(
+											Position.create(j,parsed[j][tkn].p),
+											Position.create(j,parsed[j][tkn].p+parsed[j][tkn].c)
+										)).toLowerCase();
+									}
+									else if (prevkey === "publiclist" && parsed[j][tkn].l == ld.cls_langindex && parsed[j][tkn].s == ld.cls_iden_attrindex) {
+										// This is an identifier in the PublicList
+										const idenrange = Range.create(Position.create(j,parsed[j][tkn].p),Position.create(j,parsed[j][tkn].p+parsed[j][tkn].c));
+										const identext = doc.getText(idenrange);
+										if (identext === thisvar) {
+											// This identifier is the variable that we're looking for
+											decrange = idenrange;
+											break;
+										}
+									}
+								}
+							}
 							break;
 						}
 						else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
