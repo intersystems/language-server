@@ -91,15 +91,18 @@ export async function activate(context: ExtensionContext) {
 		// Suggest an InterSystems default theme depending on the current active theme type
 		if (window.activeColorTheme.kind === ColorThemeKind.Light) {
 			const answer = await window.showInformationMessage(
-				`You currently have a light theme active. InterSystems recommends that you use the default light theme included with the [Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server).`,
-				"Activate",
-				"Ask Me Later",
-				"Don't Ask Me Again"
+				`For the best user experience, InterSystems recommends that you activate the default light theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+				"Globally",
+				"Only This Workspace",
+				"Don't Ask Again"
 			);
-			if (answer === "Activate") {
+			if (answer === "Globally") {
 				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Light",true);
 			}
-			else if (answer === "Don't Ask Me Again") {
+			else if (answer === "Only This Workspace") {
+				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Light",false);
+			}
+			else if (answer === "Don't Ask Again") {
 				workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
 			}
 			else {
@@ -108,15 +111,18 @@ export async function activate(context: ExtensionContext) {
 		}
 		else if (window.activeColorTheme.kind === ColorThemeKind.Dark) {
 			const answer = await window.showInformationMessage(
-				`You currently have a dark theme active. InterSystems recommends that you use the default dark theme included with the [Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server).`,
-				"Activate",
-				"Ask Me Later",
-				"Don't Ask Me Again"
+				`For the best user experience, InterSystems recommends that you activate the default dark theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+				"Globally",
+				"Only This Workspace",
+				"Don't Ask Again"
 			);
-			if (answer === "Activate") {
+			if (answer === "Globally") {
 				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Dark",true);
 			}
-			else if (answer === "Don't Ask Me Again") {
+			else if (answer === "Only This Workspace") {
+				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Dark",false);
+			}
+			else if (answer === "Don't Ask Again") {
 				workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
 			}
 			else {
