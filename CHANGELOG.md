@@ -17,9 +17,11 @@
 - Fix issue [#94](https://github.com/intersystems/language-server/issues/94): zwrite supports any expression not only variables
 - Fix issue [#96](https://github.com/intersystems/language-server/issues/96): Go to definition on a declared local variable or method parameter should jump to the declaration
 - Fix issue [#98](https://github.com/intersystems/language-server/issues/98): Bug: Parameter type detection incorrectly indicates type-value mismatch
+- Fix issue [#99](https://github.com/intersystems/language-server/issues/99): Bug: Include files with '.' in the name are parsed incorrectly when referenced from another include file
 - Fix issue [#100](https://github.com/intersystems/language-server/issues/100): Bug: Hover suggestions don't include documatic description if description begins with html tag
 - Fix issue [#101](https://github.com/intersystems/language-server/issues/101): Hover suggestion for methods does not include method parameters and return type
 - Fix issue [#102](https://github.com/intersystems/language-server/issues/102): Completion provider should only suggest %Library.Query or its subclasses for the type of a Class Query
+- Fix issue [#103](https://github.com/intersystems/language-server/issues/103): $System.Context parsed incorrectly
 - Fix issue [#104](https://github.com/intersystems/language-server/issues/104): Strip out "style" HTML tags from class reference documentation
 - Fix issue [#106](https://github.com/intersystems/language-server/issues/106): #dim provides no code completion inside a trigger
 - Fix issue [#107](https://github.com/intersystems/language-server/issues/107): Add "Go To Declaration" support
