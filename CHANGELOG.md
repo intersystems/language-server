@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.6] - 2020-XX-XX
+## [1.0.6] - 2020-12-16
 - Fix issue [#19](https://github.com/intersystems/language-server/issues/19): do {} while in SqlComputeCode marked as a syntax error
 - Fix issue [#39](https://github.com/intersystems/language-server/issues/39): embeded &js syntax
 - Fix issue [#56](https://github.com/intersystems/language-server/issues/56): attempt to zw the value of a returned object is highlighted as a syntax error
