@@ -3861,12 +3861,16 @@ connection.onCompletionResolve(
 		if (item.data instanceof Array && item.data[0] === "class") {
 			// Get the description for this class from the server
 			const server: ServerSpec = await getServerSpec(item.data[2]);
-			const respdata = await makeRESTRequest("POST",1,"/action/index",server,[item.data[1]]);
+			const querydata: QueryData = {
+				query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
+				parameters: [item.data[1].slice(0,-4)]
+			};
+			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
 				// The class was found
 				item.documentation = {
 					kind: "markdown",
-					value: turndown.turndown(respdata.data.result.content[0].content.desc.join(" "))
+					value: turndown.turndown(respdata.data.result.content[0].Description)
 				};
 			}
 		}
@@ -3950,11 +3954,15 @@ connection.onHover(
 					let normalizedname = await normalizeClassname(doc,parsed,word,server,params.position.line);
 
 					// Get the description for this class from the server
-					const respdata = await makeRESTRequest("POST",1,"/action/index",server,[normalizedname.concat(".cls")]);
-					if (respdata !== undefined && respdata.data.result.content.length === 1 && respdata.data.result.content[0].status === "") {
+					const querydata: QueryData = {
+						query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
+						parameters: [normalizedname]
+					};
+					const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+					if (respdata !== undefined && respdata.data.result.content.length === 1) {
 						// The class was found
 						return {
-							contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].content.desc.join(" "))],
+							contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].Description)],
 							range: wordrange
 						};
 					}
@@ -4547,11 +4555,15 @@ connection.onHover(
 							const normalizedname = await normalizeClassname(doc,parsed,iden.replace(/_/g,"."),server,params.position.line);
 							if (normalizedname !== "") {
 								// Get the description for this class from the server
-								const respdata = await makeRESTRequest("POST",1,"/action/index",server,[normalizedname.concat(".cls")]);
-								if (respdata !== undefined && respdata.data.result.content.length === 1 && respdata.data.result.content[0].status === "") {
+								const querydata: QueryData = {
+									query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
+									parameters: [normalizedname]
+								};
+								const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+								if (respdata !== undefined && respdata.data.result.content.length === 1) {
 									// The class was found
 									return {
-										contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].content.desc.join(" "))],
+										contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].Description)],
 										range: idenrange
 									};
 								}
