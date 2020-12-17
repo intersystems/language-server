@@ -331,234 +331,254 @@ async function computeDiagnostics(doc: TextDocument) {
 				const symbolend: number =  parsed[i][j].p + parsed[i][j].c;
 
 				if (j > 0 && parsed[i][j].l === parsed[i][j-1].l && parsed[i][j].s === parsed[i][j-1].s) {
-					// If this token is the same as the last, skip it
-					continue;
-				}
-				if (parsed[i][j].s === ld.error_attrindex) {
-					// This is an error token
-					let diagnostic: Diagnostic = {
-						severity: DiagnosticSeverity.Error,
-						range: {
-							start: Position.create(i,symbolstart),
-							end: Position.create(i,symbolend)
-						},
-						message: "Syntax error.",
-						source: 'InterSystems Language Server'
-					};
-					diagnostics.push(diagnostic);
-				}
-				else if (parsed[i][j].l == ld.cos_langindex && parsed[i][j].s === ld.cos_otw_attrindex) {
-					// This is an OptionTrackWarning (unset local variable)
-					const varrange = Range.create(Position.create(i,symbolstart),Position.create(i,symbolend));
-					let diagnostic: Diagnostic = {
-						severity: DiagnosticSeverity.Warning,
-						range: varrange,
-						message: "Local variable '"+doc.getText(varrange)+"' is undefined.",
-						source: 'InterSystems Language Server'
-					};
-					diagnostics.push(diagnostic);
-				}
-				else if (
-					j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-					doc.getText(Range.create(Position.create(i,0),Position.create(i,9))).toLowerCase() === "parameter" &&
-					settings.diagnostics.parameters
-				) {
-					// This line is a UDL Parameter definition
-					if (
-						parsed[i].length > 3 &&
-						parsed[i][2].l == ld.cls_langindex && parsed[i][2].s === ld.cls_keyword_attrindex &&
-						doc.getText(Range.create(Position.create(i,parsed[i][2].p),Position.create(i,parsed[i][2].p+parsed[i][2].c))).toLowerCase() === "as"
-					) {
-						// This Parameter has a type
-						const tokenrange = Range.create(Position.create(i,parsed[i][3].p),Position.create(i,parsed[i][3].p+parsed[i][3].c));
-						const tokentext = doc.getText(tokenrange).toUpperCase();
-						const thistypedoc = parameterTypes.find((typedoc) => typedoc.name === tokentext);
-						if (thistypedoc === undefined) {
-							// The type is invalid
-							let diagnostic: Diagnostic = {
-								severity: DiagnosticSeverity.Warning,
-								range: tokenrange,
-								message: "Invalid parameter type.",
-								source: 'InterSystems Language Server'
-							};
-							diagnostics.push(diagnostic);
+					// This token is the same as the last
+
+					if (parsed[i][j].s === ld.error_attrindex) {
+						if (doc.getText(Range.create(Position.create(i,symbolstart-1),Position.create(i,symbolstart))) !== " ") {
+							// This is an error token without a space in between, so extend the existing syntax error Diagnostic to cover this token
+							diagnostics[diagnostics.length-1].range.end = Position.create(i,symbolend);
 						}
 						else {
-							// The type is valid
-							if (parsed[i].length > 5) {
-								const valrange = Range.create(Position.create(i,parsed[i][parsed[i].length-2].p),Position.create(i,parsed[i][parsed[i].length-2].p+parsed[i][parsed[i].length-2].c));
-								const valtext = doc.getText(valrange);
-								if (
-									(thistypedoc.name === "STRING" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
-									(thistypedoc.name === "COSEXPRESSION" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
-									(thistypedoc.name === "CLASSNAME" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
-									(thistypedoc.name === "INTEGER" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_num_attrindex)) ||
-									(thistypedoc.name === "BOOLEAN" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_num_attrindex || (valtext !== "1" && valtext !== "0")))
-								) {
-									let diagnostic: Diagnostic = {
-										severity: DiagnosticSeverity.Warning,
-										range: valrange,
-										message: "Parameter value and type do not match.",
-										source: 'InterSystems Language Server'
-									};
-									diagnostics.push(diagnostic);
-								}
-								else if (thistypedoc.name === "CLASSNAME" && settings.diagnostics.classes) {
-									// Validate the class name in the string
-									var classname: string = valtext.slice(1,-1);
-									if (classname.indexOf("%") === 0 && classname.indexOf(".") === -1) {
-										classname = "%Library.".concat(classname.slice(1));
-									}
-									// Check if class exists
-									const filtered = files.filter(file => file.Name === classname+".cls");
-									if (filtered.length !== 1) {
+							// This is an error token with a space in between, so create a new syntax error Diagnostic for it
+							diagnostics.push({
+								severity: DiagnosticSeverity.Error,
+								range: {
+									start: Position.create(i,symbolstart),
+									end: Position.create(i,symbolend)
+								},
+								message: "Syntax error.",
+								source: 'InterSystems Language Server'
+							});
+						}
+					}
+				}
+				else {
+					if (parsed[i][j].s === ld.error_attrindex) {
+						// This is an error token
+						let diagnostic: Diagnostic = {
+							severity: DiagnosticSeverity.Error,
+							range: {
+								start: Position.create(i,symbolstart),
+								end: Position.create(i,symbolend)
+							},
+							message: "Syntax error.",
+							source: 'InterSystems Language Server'
+						};
+						diagnostics.push(diagnostic);
+					}
+					else if (parsed[i][j].l == ld.cos_langindex && parsed[i][j].s === ld.cos_otw_attrindex) {
+						// This is an OptionTrackWarning (unset local variable)
+						const varrange = Range.create(Position.create(i,symbolstart),Position.create(i,symbolend));
+						let diagnostic: Diagnostic = {
+							severity: DiagnosticSeverity.Warning,
+							range: varrange,
+							message: "Local variable '"+doc.getText(varrange)+"' is undefined.",
+							source: 'InterSystems Language Server'
+						};
+						diagnostics.push(diagnostic);
+					}
+					else if (
+						j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
+						doc.getText(Range.create(Position.create(i,0),Position.create(i,9))).toLowerCase() === "parameter" &&
+						settings.diagnostics.parameters
+					) {
+						// This line is a UDL Parameter definition
+						if (
+							parsed[i].length > 3 &&
+							parsed[i][2].l == ld.cls_langindex && parsed[i][2].s === ld.cls_keyword_attrindex &&
+							doc.getText(Range.create(Position.create(i,parsed[i][2].p),Position.create(i,parsed[i][2].p+parsed[i][2].c))).toLowerCase() === "as"
+						) {
+							// This Parameter has a type
+							const tokenrange = Range.create(Position.create(i,parsed[i][3].p),Position.create(i,parsed[i][3].p+parsed[i][3].c));
+							const tokentext = doc.getText(tokenrange).toUpperCase();
+							const thistypedoc = parameterTypes.find((typedoc) => typedoc.name === tokentext);
+							if (thistypedoc === undefined) {
+								// The type is invalid
+								let diagnostic: Diagnostic = {
+									severity: DiagnosticSeverity.Warning,
+									range: tokenrange,
+									message: "Invalid parameter type.",
+									source: 'InterSystems Language Server'
+								};
+								diagnostics.push(diagnostic);
+							}
+							else {
+								// The type is valid
+								if (parsed[i].length > 5) {
+									const valrange = Range.create(Position.create(i,parsed[i][parsed[i].length-2].p),Position.create(i,parsed[i][parsed[i].length-2].p+parsed[i][parsed[i].length-2].c));
+									const valtext = doc.getText(valrange);
+									if (
+										(thistypedoc.name === "STRING" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
+										(thistypedoc.name === "COSEXPRESSION" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
+										(thistypedoc.name === "CLASSNAME" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
+										(thistypedoc.name === "INTEGER" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_num_attrindex)) ||
+										(thistypedoc.name === "BOOLEAN" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_num_attrindex || (valtext !== "1" && valtext !== "0")))
+									) {
 										let diagnostic: Diagnostic = {
 											severity: DiagnosticSeverity.Warning,
 											range: valrange,
-											message: "Class '"+classname+"' does not exist.",
+											message: "Parameter value and type do not match.",
 											source: 'InterSystems Language Server'
 										};
 										diagnostics.push(diagnostic);
 									}
+									else if (thistypedoc.name === "CLASSNAME" && settings.diagnostics.classes) {
+										// Validate the class name in the string
+										var classname: string = valtext.slice(1,-1);
+										if (classname.indexOf("%") === 0 && classname.indexOf(".") === -1) {
+											classname = "%Library.".concat(classname.slice(1));
+										}
+										// Check if class exists
+										const filtered = files.filter(file => file.Name === classname+".cls");
+										if (filtered.length !== 1) {
+											let diagnostic: Diagnostic = {
+												severity: DiagnosticSeverity.Warning,
+												range: valrange,
+												message: "Class '"+classname+"' does not exist.",
+												source: 'InterSystems Language Server'
+											};
+											diagnostics.push(diagnostic);
+										}
+									}
 								}
 							}
 						}
+						break;
 					}
-					break;
-				}
-				else if (j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex && doc.getText(Range.create(Position.create(i,0),Position.create(i,6))).toLowerCase() === "import") {
-					// Don't validate import packages
-					break;
-				}
-				else if (files.length > 0) {
-					// Check that all classes, routines and include files in this document exist in the database
-					if (
-						((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
-						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
-						settings.diagnostics.classes
-					) {
-						// This is a class name
+					else if (j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex && doc.getText(Range.create(Position.create(i,0),Position.create(i,6))).toLowerCase() === "import") {
+						// Don't validate import packages
+						break;
+					}
+					else if (files.length > 0) {
+						// Check that all classes, routines and include files in this document exist in the database
+						if (
+							((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
+							(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
+							settings.diagnostics.classes
+						) {
+							// This is a class name
 
-						// Don't validate a class name that follows the "Class" keyword
-						if (j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex) {
-							// The previous token is a UDL keyword
-							const prevkeytext = doc.getText(Range.create(
-								Position.create(i,parsed[i][j-1].p),
-								Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
-							)).toLowerCase();
-							if (prevkeytext === "class") {
+							// Don't validate a class name that follows the "Class" keyword
+							if (j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex) {
+								// The previous token is a UDL keyword
+								const prevkeytext = doc.getText(Range.create(
+									Position.create(i,parsed[i][j-1].p),
+									Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
+								)).toLowerCase();
+								if (prevkeytext === "class") {
+									continue;
+								}
+							}
+
+							// Get the full text of the selection
+							let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
+							let word = doc.getText(wordrange);
+							if (word.charAt(0) === ".") {
+								// This might be $SYSTEM.ClassName
+								const prevseven = doc.getText(Range.create(
+									Position.create(i,wordrange.start.character-7),
+									Position.create(i,wordrange.start.character)
+								));
+								if (prevseven.toUpperCase() !== "$SYSTEM") {
+									// This classname is invalid
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: wordrange,
+										message: "Invalid class name.",
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
 								continue;
 							}
-						}
+							if (word.charAt(0) === '"') {
+								// This classname is delimited with ", so strip them
+								word = word.slice(1,-1);
+							}
 
-						// Get the full text of the selection
-						let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
-						let word = doc.getText(wordrange);
-						if (word.charAt(0) === ".") {
-							// This might be $SYSTEM.ClassName
-							const prevseven = doc.getText(Range.create(
-								Position.create(i,wordrange.start.character-7),
-								Position.create(i,wordrange.start.character)
-							));
-							if (prevseven.toUpperCase() !== "$SYSTEM") {
-								// This classname is invalid
+							// Normalize the class name if there are imports
+							var possiblecls = {num: 0};
+							let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls);
+							
+							if (normalizedname === "" && possiblecls.num > 0) {
+								// The class couldn't be resolved with the imports
 								let diagnostic: Diagnostic = {
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
-									message: "Invalid class name.",
+									message: "Class name '"+word+"' is ambiguous.",
 									source: 'InterSystems Language Server'
 								};
 								diagnostics.push(diagnostic);
 							}
-							continue;
-						}
-						if (word.charAt(0) === '"') {
-							// This classname is delimited with ", so strip them
-							word = word.slice(1,-1);
-						}
-
-						// Normalize the class name if there are imports
-						var possiblecls = {num: 0};
-						let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls);
-						
-						if (normalizedname === "" && possiblecls.num > 0) {
-							// The class couldn't be resolved with the imports
-							let diagnostic: Diagnostic = {
-								severity: DiagnosticSeverity.Error,
-								range: wordrange,
-								message: "Class name '"+word+"' is ambiguous.",
-								source: 'InterSystems Language Server'
-							};
-							diagnostics.push(diagnostic);
-						}
-						else {
-							// Check if class exists
-							const filtered = files.filter(file => file.Name === normalizedname+".cls");
-							if (filtered.length !== 1) {
-								let diagnostic: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: wordrange,
-									message: "Class '"+word+"' does not exist.",
-									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+							else {
+								// Check if class exists
+								const filtered = files.filter(file => file.Name === normalizedname+".cls");
+								if (filtered.length !== 1) {
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: wordrange,
+										message: "Class '"+word+"' does not exist.",
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
 							}
 						}
-					}
-					else if (
-						((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) ||
-						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_rtnname_attrindex)) &&
-						settings.diagnostics.routines
-					) {
-						// This is a routine name
+						else if (
+							((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) ||
+							(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_rtnname_attrindex)) &&
+							settings.diagnostics.routines
+						) {
+							// This is a routine name
 
-						// Get the full text of the selection
-						let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
-						let word = doc.getText(wordrange);
+							// Get the full text of the selection
+							let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
+							let word = doc.getText(wordrange);
 
-						// Determine if this is an include file
-						var isinc = false;
-						if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) {
-							isinc = true;
-						}
-						else {
-							if (
-								parsed[i][j-1].l == ld.cos_langindex &&
-								parsed[i][j-1].s == ld.cos_ppc_attrindex &&
-								doc.getText(
-									Range.create(
-										Position.create(i,parsed[i][j-1].p),
-										Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
-									)
-								).toLowerCase() === "include"
-							) {
+							// Determine if this is an include file
+							var isinc = false;
+							if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) {
 								isinc = true;
 							}
-						}
-
-						// Check if the routine exists
-						if (isinc) {
-							if (!files.some(file => file.Name === (word+".inc"))) {
-								let diagnostic: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: wordrange,
-									message: "Include file '"+word+"' does not exist.",
-									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+							else {
+								if (
+									parsed[i][j-1].l == ld.cos_langindex &&
+									parsed[i][j-1].s == ld.cos_ppc_attrindex &&
+									doc.getText(
+										Range.create(
+											Position.create(i,parsed[i][j-1].p),
+											Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
+										)
+									).toLowerCase() === "include"
+								) {
+									isinc = true;
+								}
 							}
-						}
-						else {
-							const macexists = files.some(file => file.Name === (word+".mac"));
-							const intexists = files.some(file => file.Name === (word+".int"));
-							if (!macexists && !intexists) {
-								let diagnostic: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: wordrange,
-									message: "Routine '"+word+"' does not exist.",
-									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+
+							// Check if the routine exists
+							if (isinc) {
+								if (!files.some(file => file.Name === (word+".inc"))) {
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: wordrange,
+										message: "Include file '"+word+"' does not exist.",
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
+							}
+							else {
+								const macexists = files.some(file => file.Name === (word+".mac"));
+								const intexists = files.some(file => file.Name === (word+".int"));
+								if (!macexists && !intexists) {
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: wordrange,
+										message: "Routine '"+word+"' does not exist.",
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
 							}
 						}
 					}
