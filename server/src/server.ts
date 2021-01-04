@@ -280,6 +280,7 @@ async function computeDiagnostics(doc: TextDocument) {
 		let diagnostics: Diagnostic[] = [];
 
 		var files: StudioOpenDialogFile[] = [];
+		var inheritedpackages: string[] | undefined = undefined;
 		var querydata: QueryData;
 		if (settings.diagnostics.routines || settings.diagnostics.classes) {
 			if (settings.diagnostics.routines && settings.diagnostics.classes) {
@@ -306,6 +307,55 @@ async function computeDiagnostics(doc: TextDocument) {
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 			if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content !== undefined) {
 				files = respdata.data.result.content;
+			}
+		}
+		if (doc.languageId === "objectscript-class" && settings.diagnostics.classes) {
+			var clsname = "";
+			var hassupers = false;
+
+			// Find the class name and if the class has supers
+			for (let i = 0; i < parsed.length; i++) {
+				if (parsed[i].length === 0) {
+					continue;
+				}
+				else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
+					// This line starts with a UDL keyword
+
+					var keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c))).toLowerCase();
+					if (keyword === "class") {
+						clsname = doc.getText(findFullRange(i,parsed,1,parsed[i][1].p,parsed[i][1].p+parsed[i][1].c));
+						for (let j = 1; j < parsed[i].length; j++) {
+							if (
+								parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
+								doc.getText(Range.create(
+									Position.create(i,parsed[i][j].p),
+									Position.create(i,parsed[i][j].p+parsed[i][j].c)
+								)).toLowerCase() === "extends"
+							) {
+								// The 'Extends' keyword is present
+								hassupers = true;
+								break;
+							}
+						}
+						break;
+					}
+				}
+			}
+			if (hassupers) {
+				const pkgquerydata = {
+					query: "SELECT $LISTTOSTRING(Importall) AS Importall FROM %Dictionary.CompiledClass WHERE Name = ?",
+					parameters: [clsname]
+				};
+				const pkgrespdata = await makeRESTRequest("POST",1,"/action/query",server,pkgquerydata);
+				if (pkgrespdata !== undefined && pkgrespdata.data.result.content.length === 1) {
+					// We got data back
+					if (pkgrespdata.data.result.content[0].Importall !== "") {
+						inheritedpackages = pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',');
+					}
+					else {
+						inheritedpackages = [];
+					}
+				}
 			}
 		}
 		
@@ -498,7 +548,7 @@ async function computeDiagnostics(doc: TextDocument) {
 
 							// Normalize the class name if there are imports
 							var possiblecls = {num: 0};
-							let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls);
+							let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls,inheritedpackages);
 							
 							if (normalizedname === "" && possiblecls.num > 0) {
 								// The class couldn't be resolved with the imports
@@ -952,7 +1002,7 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 	var result: CompletionItem[] = [];
 
 	// Get the list of imports for resolution
-	const imports = getImports(doc,parsed,line);
+	const imports = await getImports(doc,parsed,line,server);
 
 	// Get all classes
 	const querydata = {
@@ -1313,11 +1363,17 @@ function parseDimLine(doc: TextDocument, parsed: compressedline[], line: number,
  * @param doc The TextDocument of the class to examine.
  * @param parsed The tokenized representation of doc.
  * @param line The line in the document that we need to resolve imports at.
+ * @param server The server that this document is associated with.
+ * 
+ * The following optional parameter is only provided when called via computeDiagnostics():
+ * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-function getImports(doc: TextDocument, parsed: compressedline[], line: number): string[] {
+async function getImports(doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec, inheritedpackages?: string[]): Promise<string[]> {
 	var result: string[] = [];
 	if (doc.languageId === "objectscript-class") {
 		// Look for the "Import" keyword
+		var hassupers = false;
+		var clsname = "";
 		for (let i = 0; i < parsed.length; i++) {
 			if (parsed[i].length === 0) {
 				continue;
@@ -1332,9 +1388,22 @@ function getImports(doc: TextDocument, parsed: compressedline[], line: number): 
 				}
 				else if (keyword === "class") {
 					// Add the current package if it's not explicitly imported
-					const classname = doc.getText(findFullRange(i,parsed,1,parsed[i][1].p,parsed[i][1].p+parsed[i][1].c));
-					if (!result.includes(classname.slice(0,classname.lastIndexOf(".")))) {
-						result.push(classname.slice(0,classname.lastIndexOf(".")));
+					clsname = doc.getText(findFullRange(i,parsed,1,parsed[i][1].p,parsed[i][1].p+parsed[i][1].c));
+					if (!result.includes(clsname.slice(0,clsname.lastIndexOf(".")))) {
+						result.push(clsname.slice(0,clsname.lastIndexOf(".")));
+					}
+					for (let j = 1; j < parsed[i].length; j++) {
+						if (
+							parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
+							doc.getText(Range.create(
+								Position.create(i,parsed[i][j].p),
+								Position.create(i,parsed[i][j].p+parsed[i][j].c)
+							)).toLowerCase() === "extends"
+						) {
+							// The 'Extends' keyword is present
+							hassupers = true;
+							break;
+						}
 					}
 					break;
 				}
@@ -1362,6 +1431,35 @@ function getImports(doc: TextDocument, parsed: compressedline[], line: number): 
 					for (let p of packages) {
 						if (!result.includes(p)) {
 							result.push(p);
+						}
+					}
+				}
+			}
+		}
+		// If this class has supers, make a query to find any inherited imports
+		if (hassupers) {
+			if (inheritedpackages !== undefined) {
+				// inheritedpackages was passed in from computeDiagnostics()
+				for (let pkg of inheritedpackages) {
+					if (!result.includes(pkg)) {
+						result.push(pkg);
+					}
+				}
+			}
+			else {
+				const querydata = {
+					query: "SELECT $LISTTOSTRING(Importall) AS Importall FROM %Dictionary.CompiledClass WHERE Name = ?",
+					parameters: [clsname]
+				};
+				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				if (respdata !== undefined && respdata.data.result.content.length === 1) {
+					// We got data back
+					if (respdata.data.result.content[0].Importall !== "") {
+						const pkgs = respdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',');
+						for (let pkg of pkgs) {
+							if (!result.includes(pkg)) {
+								result.push(pkg);
+							}
 						}
 					}
 				}
@@ -1401,18 +1499,21 @@ function getImports(doc: TextDocument, parsed: compressedline[], line: number): 
  * Normalize a class name using the import statements at the top of the class, if applicable.
  * Optionally pass in an array of all the files in that database to avoid making an extra REST request and
  * an object to output the number full class names that this short class name may resolve to.
- * The optional arguments are only used by computeDiagnostics().
  * 
  * @param doc The TextDocument that the class name is in.
  * @param parsed The tokenized representation of doc.
  * @param clsname The class name to normalize.
  * @param server The server that doc is associated with.
  * @param line The line of doc that we're in.
+ * 
+ * The following optional parameters are only provided when called via computeDiagnostics():
  * @param allfiles An array of all files in a database.
  * @param possiblecls The number of possible classes that this short class name could map to.
+ * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
 async function normalizeClassname(
-	doc: TextDocument, parsed: compressedline[], clsname: string, server: ServerSpec, line: number, allfiles?: StudioOpenDialogFile[], possiblecls?: PossibleClasses
+	doc: TextDocument, parsed: compressedline[], clsname: string, server: ServerSpec, line: number,
+	allfiles?: StudioOpenDialogFile[], possiblecls?: PossibleClasses, inheritedpackages?: string[]
 ): Promise<string> {
 	var result = "";
 
@@ -1434,7 +1535,7 @@ async function normalizeClassname(
 		// Any class name that contains a "." is fully resolved
 		return clsname;
 	}
-	const imports = getImports(doc,parsed,line);
+	const imports = await getImports(doc,parsed,line,server,inheritedpackages);
 	if (imports.length > 0) {
 		if (allfiles === undefined) {
 			// Get all potential fully qualified classnames
@@ -3083,7 +3184,7 @@ connection.onCompletion(
 			// This is a class query type
 			
 			// Get the list of imports for resolution
-			const imports = getImports(doc,parsed,params.position.line);
+			const imports = await getImports(doc,parsed,params.position.line,server);
 
 			// Get all appropriate subclasses of %Query
 			const querydata = {
