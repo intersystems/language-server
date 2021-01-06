@@ -7,7 +7,7 @@
 		"node": "*"
 	},
 	"dependencies": {
-		"axios": "^0.20.0",
+		"axios": "^0.21.1",
 		"axios-cookiejar-support": "^1.0.0",
 		"ffi-napi": "^3.0.1",
 		"ref-array-napi": "^1.2.1",
