@@ -3180,7 +3180,7 @@ connection.onCompletion(
 				});
 			}
 		}
-		else if (prevline.slice(-3).toLowerCase() === "as " && prevline.slice(0,5).toLowerCase() === "query"  && triggerlang === ld.cls_langindex) {
+		else if (/.*\) *as $/.test(prevline.toLowerCase()) && prevline.slice(0,5).toLowerCase() === "query"  && triggerlang === ld.cls_langindex) {
 			// This is a class query type
 			
 			// Get the list of imports for resolution
