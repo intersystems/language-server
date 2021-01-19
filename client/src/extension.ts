@@ -90,43 +90,81 @@ export async function activate(context: ExtensionContext) {
 	) {
 		// Suggest an InterSystems default theme depending on the current active theme type
 		if (window.activeColorTheme.kind === ColorThemeKind.Light) {
-			const answer = await window.showInformationMessage(
-				`For the best user experience, InterSystems recommends that you activate the default light theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
-				"Globally",
-				"Only This Workspace",
-				"Don't Ask Again"
-			);
-			if (answer === "Globally") {
-				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Light",true);
-			}
-			else if (answer === "Only This Workspace") {
-				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Light",false);
-			}
-			else if (answer === "Don't Ask Again") {
-				workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+			if (workspace.name === undefined) {
+				const answer = await window.showInformationMessage(
+					`For the best user experience, InterSystems recommends that you activate the default light theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+					"Yes",
+					"Don't Ask Again"
+				);
+				if (answer === "Yes") {
+					workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Light",true);
+				}
+				else if (answer === "Don't Ask Again") {
+					workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+				}
+				else {
+					// Do nothing
+				}
 			}
 			else {
-				// Do nothing
+				// Only give the "Only This Workspace" option if a workspace is open
+				const answer = await window.showInformationMessage(
+					`For the best user experience, InterSystems recommends that you activate the default light theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+					"Globally",
+					"Only This Workspace",
+					"Don't Ask Again"
+				);
+				if (answer === "Globally") {
+					workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Light",true);
+				}
+				else if (answer === "Only This Workspace") {
+					workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Light",false);
+				}
+				else if (answer === "Don't Ask Again") {
+					workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+				}
+				else {
+					// Do nothing
+				}
 			}
 		}
 		else if (window.activeColorTheme.kind === ColorThemeKind.Dark) {
-			const answer = await window.showInformationMessage(
-				`For the best user experience, InterSystems recommends that you activate the default dark theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
-				"Globally",
-				"Only This Workspace",
-				"Don't Ask Again"
-			);
-			if (answer === "Globally") {
-				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Dark",true);
-			}
-			else if (answer === "Only This Workspace") {
-				workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Dark",false);
-			}
-			else if (answer === "Don't Ask Again") {
-				workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+			if (workspace.name === undefined) {
+				const answer = await window.showInformationMessage(
+					`For the best user experience, InterSystems recommends that you activate the default dark theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+					"Yes",
+					"Don't Ask Again"
+				);
+				if (answer === "Yes") {
+					workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Dark",true);
+				}
+				else if (answer === "Don't Ask Again") {
+					workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+				}
+				else {
+					// Do nothing
+				}
 			}
 			else {
-				// Do nothing
+				// Only give the "Only This Workspace" option if a workspace is open
+				const answer = await window.showInformationMessage(
+					`For the best user experience, InterSystems recommends that you activate the default dark theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+					"Globally",
+					"Only This Workspace",
+					"Don't Ask Again"
+				);
+				if (answer === "Globally") {
+					workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Dark",true);
+				}
+				else if (answer === "Only This Workspace") {
+					workspace.getConfiguration("workbench").update("colorTheme","InterSystems Default Dark",false);
+				}
+				else if (answer === "Don't Ask Again") {
+					workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+				}
+				else {
+					// Do nothing
+				}
 			}
 		}
 	}
