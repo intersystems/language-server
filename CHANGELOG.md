@@ -6,6 +6,7 @@
 - Fix issue [#114](https://github.com/intersystems/language-server/issues/114): Import resolution does not include import statements from superclasses
 - Fix issue [#116](https://github.com/intersystems/language-server/issues/116): List of suggestions for argument datatypes for a class query is incomplete
 - Fix issue [#117](https://github.com/intersystems/language-server/issues/117): Theme suggestion dialog should not offer workspace option when no workspace is open
+- Fix issue [#118](https://github.com/intersystems/language-server/issues/118): Hover documentation for commands and system functions needs more linebreaks
 
 ## [1.0.6] - 2020-12-16
 - Fix issue [#19](https://github.com/intersystems/language-server/issues/19): do {} while in SqlComputeCode marked as a syntax error
