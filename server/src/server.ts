@@ -1016,9 +1016,11 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 			var displayname: string = clsobj.Name.slice(0,-4);
 			if (imports.length > 0) {
 				// Resolve import
+				var sorttext: string = "";
 				for (let imp of imports) {
 					if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length+1).indexOf(".") === -1) {
 						displayname = displayname.slice(imp.length+1);
+						sorttext = "%%%" + displayname;
 						break;
 					}
 				}
@@ -1026,11 +1028,21 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 					// Use short form for %Library classes
 					displayname = "%" + displayname.slice(9);
 				}
-				result.push({
-					label: displayname,
-					kind: CompletionItemKind.Class,
-					data: ["class",clsobj.Name,doc.uri]
-				});
+				if (sorttext !== "") {
+					result.push({
+						label: displayname,
+						kind: CompletionItemKind.Class,
+						data: ["class",clsobj.Name,doc.uri],
+						sortText: sorttext
+					});
+				}
+				else {
+					result.push({
+						label: displayname,
+						kind: CompletionItemKind.Class,
+						data: ["class",clsobj.Name,doc.uri]
+					});
+				}
 			}
 			else {
 				if (displayname.slice(0,9) === "%Library.") {
@@ -3198,9 +3210,11 @@ connection.onCompletion(
 					var displayname: string = clsobj.Name;
 					if (imports.length > 0) {
 						// Resolve import
+						var sorttext: string = "";
 						for (let imp of imports) {
 							if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length+1).indexOf(".") === -1) {
 								displayname = displayname.slice(imp.length+1);
+								sorttext = "%%%" + displayname;
 								break;
 							}
 						}
@@ -3208,11 +3222,21 @@ connection.onCompletion(
 							// Use short form for %Library classes
 							displayname = "%" + displayname.slice(9);
 						}
-						result.push({
-							label: displayname,
-							kind: CompletionItemKind.Class,
-							data: ["class",clsobj.Name+".cls",doc.uri]
-						});
+						if (sorttext !== "") {
+							result.push({
+								label: displayname,
+								kind: CompletionItemKind.Class,
+								data: ["class",clsobj.Name+".cls",doc.uri],
+								sortText: sorttext
+							});
+						}
+						else {
+							result.push({
+								label: displayname,
+								kind: CompletionItemKind.Class,
+								data: ["class",clsobj.Name+".cls",doc.uri]
+							});
+						}
 					}
 					else {
 						if (displayname.slice(0,9) === "%Library.") {
