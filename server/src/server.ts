@@ -28,7 +28,8 @@ import {
 	FoldingRangeParams,
 	FoldingRange,
 	FoldingRangeKind,
-	RenameParams
+	RenameParams,
+	CompletionItemTag
 } from 'vscode-languageserver';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -3311,7 +3312,7 @@ connection.onCompletion(
 
 					// Query the server to get the names and descriptions of all parameters
 					const data: QueryData = {
-						query: "SELECT Name, Description, Origin, Type FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND deprecated = 0",
+						query: "SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?",
 						parameters: [membercontext.baseclass]
 					}
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -3344,6 +3345,9 @@ connection.onCompletion(
 							else {
 								item.sortText = item.label;
 							}
+							if (memobj.Deprecated) {
+								item.tags = [CompletionItemTag.Deprecated];
+							}
 							result.push(item);
 						}
 					}
@@ -3362,17 +3366,17 @@ connection.onCompletion(
 						parameters: []
 					};
 					if (membercontext.context === "class") {
-						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND deprecated = 0 UNION ALL ";
-						data.query = data.query.concat("SELECT Name, Description, Origin, '' AS FormalSpec, Type, 'parameter' AS MemberType FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND deprecated = 0");
+						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 UNION ALL ";
+						data.query = data.query.concat("SELECT Name, Description, Origin, '' AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?");
 						data.parameters = [membercontext.baseclass,membercontext.baseclass];
 					}
 					else if (membercontext.context === "instance") {
-						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 AND deprecated = 0 UNION ALL ";
-						data.query = data.query.concat("SELECT Name, Description, Origin, '' AS FormalSpec, Type, 'property' AS MemberType FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND relationship = 0 AND deprecated = 0");
+						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 UNION ALL ";
+						data.query = data.query.concat("SELECT Name, Description, Origin, '' AS FormalSpec, Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND relationship = 0");
 						data.parameters = [membercontext.baseclass,membercontext.baseclass];
 					}
 					else {
-						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND deprecated = 0";
+						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1";
 						data.parameters = [membercontext.baseclass];
 					}
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -3437,6 +3441,9 @@ connection.onCompletion(
 							}
 							else {
 								item.sortText = item.label;
+							}
+							if (memobj.Deprecated) {
+								item.tags = [CompletionItemTag.Deprecated];
 							}
 							result.push(item);
 						}
