@@ -1,6 +1,7 @@
 # Changelog
 
 ## [1.0.7] - 2021-XX-XX
+- Fix issue [#88](https://github.com/intersystems/language-server/issues/88): Properly handle retrigger signatureHelp requests that don't contain an active signature
 - Fix issue [#111](https://github.com/intersystems/language-server/issues/111): Replace requests to POST /action/index with POST /action/query where possible
 - Fix issue [#113](https://github.com/intersystems/language-server/issues/113): Syntax error diagnostic should span entire range of continuous error tokens
 - Fix issue [#114](https://github.com/intersystems/language-server/issues/114): Import resolution does not include import statements from superclasses

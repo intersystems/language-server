@@ -2598,59 +2598,66 @@ connection.onSignatureHelp(
 			return null;
 		}
 		else {
-			if (params.context.isRetrigger && params.context.activeSignatureHelp !== undefined) {
-				const prevchar = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
-				if (prevchar === ")") {
-					// The user closed the signature
-					signatureHelpDocumentationCache = undefined;
-					signatureHelpStartPosition = undefined;
-					return null;
-				}
-
-				if (signatureHelpStartPosition !== undefined) {
-					// Determine the active parameter
-					var activeparam = 0;
-					const text = doc.getText(Range.create(signatureHelpStartPosition,params.position));
-					var openparencount = 0;
-					for (let i = 0; i < text.length; i++) {
-						const char = text.charAt(i);
-						if (char === "(") {
-							openparencount++;
-						}
-						else if (char === ")") {
-							openparencount--;
-						}
-						else if (char === "," && openparencount === 0) {
-							// Only increment parameter number if comma isn't inside nested parentheses
-							activeparam++;
-						}
+			if (params.context.isRetrigger) {
+				if (params.context.activeSignatureHelp !== undefined) {
+					const prevchar = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
+					if (prevchar === ")") {
+						// The user closed the signature
+						signatureHelpDocumentationCache = undefined;
+						signatureHelpStartPosition = undefined;
+						return null;
 					}
-
-					params.context.activeSignatureHelp.activeParameter = activeparam;
-					if (signatureHelpDocumentationCache !== undefined) {
-						if (signatureHelpDocumentationCache.type === "macro" && params.context.activeSignatureHelp.activeParameter !== null) {
-							// This is a macro with active parameter
-
-							// Get the macro expansion with the next parameter emphasized
-							var expinputdata = {...signatureHelpMacroCache};
-							expinputdata.arguments = emphasizeArgument(expinputdata.arguments,params.context.activeSignatureHelp.activeParameter+1);
-							const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expinputdata)
-							if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
-								signatureHelpDocumentationCache.doc = {
-									kind: "markdown",
-									value: exprespdata.data.result.content.expansion.join("\n")
-								};
+	
+					if (signatureHelpStartPosition !== undefined) {
+						// Determine the active parameter
+						var activeparam = 0;
+						const text = doc.getText(Range.create(signatureHelpStartPosition,params.position));
+						var openparencount = 0;
+						for (let i = 0; i < text.length; i++) {
+							const char = text.charAt(i);
+							if (char === "(") {
+								openparencount++;
+							}
+							else if (char === ")") {
+								openparencount--;
+							}
+							else if (char === "," && openparencount === 0) {
+								// Only increment parameter number if comma isn't inside nested parentheses
+								activeparam++;
+							}
+						}
+	
+						params.context.activeSignatureHelp.activeParameter = activeparam;
+						if (signatureHelpDocumentationCache !== undefined) {
+							if (signatureHelpDocumentationCache.type === "macro" && params.context.activeSignatureHelp.activeParameter !== null) {
+								// This is a macro with active parameter
+	
+								// Get the macro expansion with the next parameter emphasized
+								var expinputdata = {...signatureHelpMacroCache};
+								expinputdata.arguments = emphasizeArgument(expinputdata.arguments,params.context.activeSignatureHelp.activeParameter+1);
+								const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expinputdata)
+								if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
+									signatureHelpDocumentationCache.doc = {
+										kind: "markdown",
+										value: exprespdata.data.result.content.expansion.join("\n")
+									};
+									params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
+								}
+							}
+							else {
+								// This is a method or macro without active parameter
 								params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
 							}
 						}
-						else {
-							// This is a method or macro without active parameter
-							params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
-						}
+						return params.context.activeSignatureHelp;
 					}
-					return params.context.activeSignatureHelp;
+				}
+				else {
+					// Can't do anything with a retrigger that lacks an active signature
+					return null;
 				}
 			}
+
 			var thistoken: number = -1;
 			for (let i = 0; i < parsed[params.position.line].length; i++) {
 				const symbolstart: number = parsed[params.position.line][i].p;
