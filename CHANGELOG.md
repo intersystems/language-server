@@ -11,6 +11,7 @@
 - Fix issue [#118](https://github.com/intersystems/language-server/issues/118): Hover documentation for commands and system functions needs more linebreaks
 - Fix issue [#119](https://github.com/intersystems/language-server/issues/119): Add "deprecated" CompletionItemFlag for deprecated class members
 - Fix issue [#120](https://github.com/intersystems/language-server/issues/120): Filter imported classes to the top of completion list
+- Fix issue [#121](https://github.com/intersystems/language-server/issues/121): Support nested SignatureHelp's
 
 ## [1.0.6] - 2020-12-16
 - Fix issue [#19](https://github.com/intersystems/language-server/issues/19): do {} while in SqlComputeCode marked as a syntax error
