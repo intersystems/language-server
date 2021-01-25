@@ -34,6 +34,8 @@ import {
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
+import { URI } from 'vscode-uri';
+
 import axios, { AxiosResponse } from 'axios';
 import axiosCookieJarSupport from 'axios-cookiejar-support';
 import tough = require('tough-cookie');
@@ -2013,9 +2015,9 @@ async function createDefinitionUri(paramsUri: string, filename: string, ext: str
 			return "";
 		}
 	}
-	var url = new URL(thisdocuri);
-	url.pathname = encodeURI("/" + filename.replace(/\./g,"/") + ext);
-	return url.toString();
+	var urijson = URI.parse(thisdocuri).toJSON();
+	urijson.path = "/" + filename.replace(/\./g,"/") + ext;
+	return URI.from(urijson).toString();
 };
 
 /**
