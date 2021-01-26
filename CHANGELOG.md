@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.0.7] - 2021-XX-XX
+## [1.0.7] - 2021-01-26
 - Fix issue [#88](https://github.com/intersystems/language-server/issues/88): Properly handle retrigger signatureHelp requests that don't contain an active signature
 - Fix issue [#111](https://github.com/intersystems/language-server/issues/111): Replace requests to POST /action/index with POST /action/query where possible
 - Fix issue [#112](https://github.com/intersystems/language-server/issues/112): Parsing problem with $system.SQL
