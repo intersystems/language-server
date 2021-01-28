@@ -3409,7 +3409,7 @@ connection.onCompletion(
 					}
 					else if (membercontext.context === "instance") {
 						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 UNION ALL ";
-						data.query = data.query.concat("SELECT Name, Description, Origin, '' AS FormalSpec, Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND relationship = 0");
+						data.query = data.query.concat("SELECT Name, Description, Origin, '' AS FormalSpec, Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ?");
 						data.parameters = [membercontext.baseclass,membercontext.baseclass];
 					}
 					else {

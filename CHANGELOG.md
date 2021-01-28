@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.0] - 2021-XX-XX
+- Fix issue [#125](https://github.com/intersystems/language-server/issues/125): Relationships are not showing up in completion suggestion list
+
 ## [1.0.7] - 2021-01-26
 - Fix issue [#88](https://github.com/intersystems/language-server/issues/88): Properly handle retrigger signatureHelp requests that don't contain an active signature
 - Fix issue [#111](https://github.com/intersystems/language-server/issues/111): Replace requests to POST /action/index with POST /action/query where possible
