@@ -2087,7 +2087,7 @@ function emphasizeArgument(arglist: string, arg: number): string {
 function isMacroDefinedAbove(doc: TextDocument, parsed: compressedline[], line: number, macro: string): number {
 	var result: number = -1;
 
-	// Loop through the file, looking for macro definitions
+	// Scan up through the file, looking for macro definitions
 	for (let ln = line-1; ln >= 0; ln--) {
 		if (parsed[ln].length < 4) {
 			continue;
@@ -3142,6 +3142,114 @@ connection.onCompletion(
 					cursorisopen = false;
 				}
 			}
+
+			// Scan up through the file, looking for macro definitions
+			for (let ln = params.position.line-1; ln >= 0; ln--) {
+				if (parsed[ln].length < 4) {
+					continue;
+				}
+				if (parsed[ln][0].l == ld.cos_langindex && parsed[ln][0].s == ld.cos_ppc_attrindex) {
+					// This line begins with a preprocessor command
+					const ppctext = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][1].p),
+						Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
+					)).toLowerCase();
+					if (ppctext === "define" || ppctext === "def1arg") {
+						// This is a macro definition
+						var macrodef: CompletionItem = {
+							label: doc.getText(Range.create(Position.create(ln,parsed[ln][2].p),Position.create(ln,parsed[ln][2].p+parsed[ln][2].c))),
+							kind: CompletionItemKind.Text,
+							data: ["macro",doc.uri]
+						};
+						const valregex = /^(?:\([^\(\)]+\) *){0,1}(.+)$/;
+						const argsregex = /^(\([^\(\)]+\))(?:.*)$/;
+						if (
+							parsed[ln][parsed[ln].length-1].l === ld.cos_langindex && parsed[ln][parsed[ln].length-1].s === ld.cos_ppf_attrindex &&
+							doc.getText(Range.create(
+								Position.create(ln,parsed[ln][parsed[ln].length-1].p),
+								Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+							)).toLowerCase() === "continue"
+						) {
+							// This is the start of a multi-line macro definition
+							const restofline = doc.getText(Range.create(
+								Position.create(ln,parsed[ln][3].p),
+								Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+							));
+							var docstr = macrodef.label;
+							if (parsed[ln][3].l == ld.cos_langindex && parsed[ln][3].s == ld.cos_delim_attrindex) {
+								// This macro has args
+								var argsmatchres = restofline.match(argsregex);
+								if (argsmatchres !== null) {
+									docstr = docstr + argsmatchres[1];
+								}
+							}
+
+							var flvalmatchres = restofline.match(/^(?:\([^\(\)]+\) *){0,1}(.*)( *##continue)$/i);
+							if (flvalmatchres !== null) {
+								if (flvalmatchres[1] !== "") {
+									docstr = docstr + "\n" + flvalmatchres[1].trim();
+								}
+								for (let mln = ln+1; mln < parsed.length; mln++) {
+									if (
+										parsed[mln][parsed[mln].length-1].l === ld.cos_langindex && parsed[mln][parsed[mln].length-1].s === ld.cos_ppf_attrindex &&
+										doc.getText(Range.create(
+											Position.create(mln,parsed[mln][parsed[mln].length-1].p),
+											Position.create(mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c)
+										)).toLowerCase() === "continue"
+									) {
+										// This is a line of the multi-line macro definition
+										docstr = docstr + "\n" + doc.getText(Range.create(
+											Position.create(mln,parsed[mln][0].p),
+											Position.create(mln,parsed[mln][parsed[mln].length-3].p+parsed[mln][parsed[mln].length-3].c)
+										));
+									}
+									else {
+										// This is the last line of the multi-line macro definition
+										docstr = docstr + "\n" + doc.getText(Range.create(
+											Position.create(mln,parsed[mln][0].p),
+											Position.create(mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c)
+										));
+										break;
+									}
+								}
+							}
+							if (docstr !== macrodef.label) {
+								macrodef.documentation = {
+									kind: "plaintext",
+									value: docstr
+								};
+							}
+						}
+						else {
+							// This is a single line macro definition
+							const restofline = doc.getText(Range.create(
+								Position.create(ln,parsed[ln][3].p),
+								Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+							));
+							var docstr = macrodef.label;
+							if (parsed[ln][3].l == ld.cos_langindex && parsed[ln][3].s == ld.cos_delim_attrindex) {
+								// This macro has args
+								var argsmatchres = restofline.match(argsregex);
+								if (argsmatchres !== null) {
+									docstr = docstr + argsmatchres[1];
+								}
+							}
+							var valmatchres = restofline.match(valregex);
+							if (valmatchres !== null) {
+								macrodef.documentation = {
+									kind: "plaintext",
+									value: docstr + "\n" + valmatchres[1]
+								};
+							}
+						}
+						result.push(macrodef);
+					}
+				}
+				if (doc.languageId === "objectscript-class" && parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
+					// We've reached the top of the containing method 
+					break;
+				}
+			}
 		}
 		else if (prevline.slice(-1) === "$" && prevline.charAt(prevline.length-2) !== "$" && triggerlang === ld.cos_langindex) {
 			if (prevline.charAt(prevline.length-2) === "^") {
@@ -4039,7 +4147,7 @@ connection.onCompletionResolve(
 				};
 			}
 		}
-		else if (item.data instanceof Array && item.data[0] === "macro") {
+		else if (item.data instanceof Array && item.data[0] === "macro" && item.documentation === undefined) {
 			// Get the macro definition from the server
 			const server: ServerSpec = await getServerSpec(item.data[1]);
 			const querydata = {
