@@ -1781,7 +1781,29 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
 					}
 				}
 			}
+		}
+	}
+	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_attr_attrindex && dot >= 2) {
+		// The token before the dot is an object attribute
 
+		// This is a nested reference, so get the base class of the previous token
+		const prevtokenctxt = await getClassMemberContext(doc,parsed,dot-2,line,server);
+		if (prevtokenctxt.baseclass !== "") {
+			// We got a base class for the previous token
+			const attrtxt = doc.getText(Range.create(Position.create(line,parsed[line][dot-1].p),Position.create(line,parsed[line][dot-1].p+parsed[line][dot-1].c)));
+
+			// Query the database to find the type of this attribute, if it has one
+			const querydata: QueryData = {
+				query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE parent->id = ? AND Name = ?",
+				parameters: [prevtokenctxt.baseclass,attrtxt]
+			};
+			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+			if (respdata !== undefined && respdata.data.result.content.length > 0) {
+				result = {
+					baseclass: respdata.data.result.content[0].RuntimeType,
+					context: "instance"
+				};
+			}
 		}
 	}
 
@@ -3517,7 +3539,7 @@ connection.onCompletion(
 					}
 					else if (membercontext.context === "instance") {
 						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 UNION ALL ";
-						data.query = data.query.concat("SELECT Name, Description, Origin, '' AS FormalSpec, Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ?");
+						data.query = data.query.concat("SELECT Name, Description, Origin, '' AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ?");
 						data.parameters = [membercontext.baseclass,membercontext.baseclass];
 					}
 					else {
@@ -3527,7 +3549,6 @@ connection.onCompletion(
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 					if (respdata !== undefined && respdata.data.result.content.length > 0) {
 						// We got data back
-						
 						for (let memobj of respdata.data.result.content) {
 							const quotedname = quoteUDLIdentifier(memobj.Name,1);
 							var item: CompletionItem = {
@@ -3663,7 +3684,7 @@ connection.onCompletion(
 				else if (keywordtype === "projection") {
 					keywordsarr = projectionKeywords.slice();
 				}
-				else if (keywordtype === "property") {
+				else if (keywordtype === "property" || keywordtype === "relationship") {
 					keywordsarr = propertyKeywords.slice();
 				}
 				else if (keywordtype === "query") {
@@ -3751,7 +3772,7 @@ connection.onCompletion(
 				else if (keywordtype === "projection") {
 					keywordsarr = projectionKeywords.slice();
 				}
-				else if (keywordtype === "property") {
+				else if (keywordtype === "property" || keywordtype === "relationship") {
 					keywordsarr = propertyKeywords.slice();
 				}
 				else if (keywordtype === "query") {
@@ -4696,7 +4717,7 @@ connection.onHover(
 							// This is a projection keyword
 							thiskeydoc = <KeywordDoc>projectionKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 						}
-						else if (firstkey === "property") {
+						else if (firstkey === "property" || firstkey === "relationship") {
 							// This is a property keyword
 							thiskeydoc = <KeywordDoc>propertyKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 						}
@@ -5188,7 +5209,8 @@ connection.onDefinition(
 									if (
 										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("method") !== -1) ||
 										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1) ||
-										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("parameter") !== -1)
+										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("parameter") !== -1) ||
+										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("relationship") !== -1)
 									) {
 										// This is the right type of class member
 										const searchstr = docrespdata.data.result.content[j].slice(docrespdata.data.result.content[j].indexOf(" ")+1).trim();

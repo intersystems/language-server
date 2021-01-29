@@ -3,6 +3,9 @@
 ## [1.1.0] - 2021-XX-XX
 - Fix issue [#125](https://github.com/intersystems/language-server/issues/125): Relationships are not showing up in completion suggestion list
 - Fix issue [#126](https://github.com/intersystems/language-server/issues/126): Macros defined in current file are not showing up in completion suggestion list
+- Fix issue [#127](https://github.com/intersystems/language-server/issues/127): Add code completion for nested references
+- Fix issue [#128](https://github.com/intersystems/language-server/issues/128): Go to definition on Relationship doesn't take you to its location in the class
+- Fix issue [#130](https://github.com/intersystems/language-server/issues/130): Hover and code completion doesn't work for Relationship compiler keywords
 
 ## [1.0.7] - 2021-01-26
 - Fix issue [#88](https://github.com/intersystems/language-server/issues/88): Properly handle retrigger signatureHelp requests that don't contain an active signature
