@@ -13,7 +13,7 @@ import {
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind
-} from 'vscode-languageclient';
+} from 'vscode-languageclient/node';
 
 let client: LanguageClient;
 
@@ -79,9 +79,6 @@ export async function activate(context: ExtensionContext) {
 			});
 		}
 	});
-
-	// Register for proposed features becuase semantic token support is still in a proposed state
-	client.registerProposedFeatures();
 
 	if (
 		workspace.getConfiguration("intersystems.language-server").get("suggestTheme") === true &&

@@ -1,15 +1,15 @@
 
-import {Proposed,ProposedFeatures} from 'vscode-languageserver';
+import { SemanticTokensBuilder, SemanticTokensLegend } from 'vscode-languageserver/node';
 
-import {extname} from 'path';
+import { extname } from 'path';
 
-import {parsedocument, startcombridge} from './parse';
+import { parsedocument } from './parse';
 import { studiolegend, lookupattr } from './semanticdefns';
-import { startupdumps, logcompressedresult } from './applogging';
+import { logcompressedresult } from './applogging';
 import { parserlogcompressedresult, makeclsparsetree } from './config';
 import { LANGUAGES } from './languagedefns';
 import { monikerinfo, monikeropttype } from './types';
-import { parseClassDocument, parseClassDocumentText } from './udlast';
+import { parseClassDocument } from './udlast';
 
 
 const WARNING = 'isc_warning';
@@ -17,7 +17,7 @@ const WARNING = 'isc_warning';
 const tokenModifiers = new Map<string, number>();
 tokenModifiers.set(WARNING,0);
 
-export function parseText(text: string, moninfo: monikerinfo, builder: ProposedFeatures.SemanticTokensBuilder) {
+export function parseText(text: string, moninfo: monikerinfo, builder: SemanticTokensBuilder) {
 
 	//console.log('parseText: ' + moninfo.moniker + ':' + moninfo.monikeropt);
 
@@ -131,7 +131,7 @@ function simpleMoniker(moniker: string): monikerinfo {
 }
 
 
-export function getLegend(): Proposed.SemanticTokensLegend {
+export function getLegend(): SemanticTokensLegend {
 	return {
 		tokenTypes: studiolegend,
 		tokenModifiers: [WARNING]

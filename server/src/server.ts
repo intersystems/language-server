@@ -19,8 +19,6 @@ import {
 	TextEdit,
 	CompletionParams,
 	DocumentRangeFormattingParams,
-	Proposed,
-	ProposedFeatures,
 	MarkupContent,
 	DocumentSymbolParams,
 	SymbolKind,
@@ -29,8 +27,11 @@ import {
 	FoldingRange,
 	FoldingRangeKind,
 	RenameParams,
-	CompletionItemTag
-} from 'vscode-languageserver';
+	CompletionItemTag,
+	SemanticTokensBuilder,
+	SemanticTokensParams,
+	SemanticTokensDeltaParams
+} from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
@@ -217,7 +218,7 @@ let parsedDocuments: Map<string, compressedline[]> = new Map();
 /**
  * Node IPC connection between the server and client.
  */
-let connection = createConnection(ProposedFeatures.all);
+let connection = createConnection();
 
 /**
  * TextDocument manager.
@@ -237,7 +238,7 @@ var macroCompletionCache: MacroContext;
 /**
  * TextDocument URI's mapped to the document's semantic tokens builder.
  */
-let tokenBuilders: Map<string, ProposedFeatures.SemanticTokensBuilder> = new Map();
+let tokenBuilders: Map<string, SemanticTokensBuilder> = new Map();
 
 /**
  * ServerSpec's mapped to the XML assist schema cache for that server.
@@ -268,6 +269,12 @@ var signatureHelpStartPosition: Position | undefined = undefined;
  * Cookie jar for REST requests to InterSystems servers.
  */
 let cookieJar: tough.CookieJar = new tough.CookieJar();
+
+/**
+ * The maximum number of lines to include in the `targetRange` property
+ * of the `LocationLink` object returned by a definition request.
+ */
+const definitionTargetRangeMaxLines: number = 10;
 
 /**
  * Compute diagnositcs for this document and sent them to the client.
@@ -1994,12 +2001,12 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
  * 
  * @param document The TextDocument
  */
-function getTokenBuilder(document: TextDocument): ProposedFeatures.SemanticTokensBuilder {
+function getTokenBuilder(document: TextDocument): SemanticTokensBuilder {
 	let result = tokenBuilders.get(document.uri);
 	if (result !== undefined) {
 		return result;
 	}
-	result = new ProposedFeatures.SemanticTokensBuilder();
+	result = new SemanticTokensBuilder();
 	tokenBuilders.set(document.uri, result);
 	return result;
 }
@@ -2506,8 +2513,8 @@ connection.onInitialize((params: InitializeParams) => {
 			documentRangeFormattingProvider: true,
 			semanticTokensProvider: {
 				legend: getLegend(),
-				documentProvider: {
-					edits: true
+				full: {
+					delta: true
 				}
 			},
 			documentSymbolProvider: true,
@@ -5004,21 +5011,26 @@ connection.onDefinition(
 						// The class was found
 
 						// Loop through the file contents to find the class definition
-						var resultrange = Range.create(Position.create(0,0),Position.create(0,0));
-						for (let j = 0; j < respdata.data.result.content.length; j++) {
-							if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
-								// This line is the class definition
-								resultrange = Range.create(Position.create(j,0),Position.create(j,0));
-								break;
-							}
-						}
-						const newuri = await createDefinitionUri(params.textDocument.uri,normalizedname,".cls");
-						if (newuri !== "") {
-							return {
-								uri: newuri,
-								range: resultrange
-							};
-						}
+                        var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+                        var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+                        for (let j = 0; j < respdata.data.result.content.length; j++) {
+                            if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
+                                // This line is the class definition
+                                const namestart = respdata.data.result.content[j].indexOf(normalizedname);
+                                targetrange = Range.create(Position.create(j,0),Position.create(j+1,0));
+                                targetselrange = Range.create(Position.create(j,namestart),Position.create(j,namestart+normalizedname.length));
+                                break;
+                            }
+                        }
+                        const newuri = await createDefinitionUri(params.textDocument.uri,normalizedname,".cls");
+                        if (newuri !== "") {
+                            return [{
+                                targetUri: newuri,
+                                targetRange: targetrange,
+                                originSelectionRange: wordrange,
+                                targetSelectionRange: targetselrange
+                            }];
+                        }
 					}
 				}
 				else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex ) {
@@ -5040,10 +5052,36 @@ connection.onDefinition(
 					if (macrodefline !== -1) {
 						// The macro definition is in the current file
 
-						return {
-							uri: params.textDocument.uri,
-							range: Range.create(Position.create(macrodefline,0),Position.create(macrodefline,0))
-						};
+						var targetrange = Range.create(Position.create(macrodefline,0),Position.create(macrodefline+1,0));
+						if (
+							parsed[macrodefline][parsed[macrodefline].length-1].l === ld.cos_langindex && parsed[macrodefline][parsed[macrodefline].length-1].s === ld.cos_ppf_attrindex &&
+							doc.getText(Range.create(
+								Position.create(macrodefline,parsed[macrodefline][parsed[macrodefline].length-1].p),
+								Position.create(macrodefline,parsed[macrodefline][parsed[macrodefline].length-1].p+parsed[macrodefline][parsed[macrodefline].length-1].c)
+							)).toLowerCase() === "continue"
+						) {
+							// This is a multi-line macro definition so scan down the file to capture the full range of the definition
+							for (let mln = macrodefline+1; mln < parsed.length; mln++) {
+								if (
+									parsed[mln][parsed[mln].length-1].l !== ld.cos_langindex || parsed[mln][parsed[mln].length-1].s !== ld.cos_ppf_attrindex ||
+									doc.getText(Range.create(
+										Position.create(mln,parsed[mln][parsed[mln].length-1].p),
+										Position.create(mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c)
+									)).toLowerCase() !== "continue"
+								) {
+									// This is the last line of the macro definition so update the target range
+									targetrange.end = Position.create(mln+1,0);
+									break;
+								}
+							}
+						}
+
+						return [{
+							targetUri: params.textDocument.uri,
+							targetRange: targetrange,
+							originSelectionRange: macrorange,
+							targetSelectionRange: Range.create(Position.create(macrodefline,parsed[macrodefline][2].p),Position.create(macrodefline,parsed[macrodefline][2].p+parsed[macrodefline][2].c))
+						}];
 					}
 					else {
 						// The macro is defined in another file
@@ -5066,10 +5104,12 @@ connection.onDefinition(
 							const ext = respdata.data.result.content.document.substring(lastdot);
 							const newuri = await createDefinitionUri(params.textDocument.uri,filename,ext);
 							if (newuri !== "") {
-								return {
-									uri: newuri,
-									range: Range.create(Position.create(respdata.data.result.content.line,0),Position.create(respdata.data.result.content.line,0))
-								};
+								return [{
+									targetUri: newuri,
+									targetRange: Range.create(Position.create(respdata.data.result.content.line,0),Position.create(respdata.data.result.content.line+1,0)),
+									originSelectionRange: macrorange,
+									targetSelectionRange: Range.create(Position.create(respdata.data.result.content.line,0),Position.create(respdata.data.result.content.line+1,0))
+								}];
 							}
 						}
 					}
@@ -5127,34 +5167,64 @@ connection.onDefinition(
 					}
 
 					var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+					var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
 					if (thisclass === membercontext.baseclass) {
 						// The member may be defined in this class
 
 						// Loop through the file contents to find this member
+						var linect = 0;
 						for (let dln = 0; dln < parsed.length; dln++) {
-							if (parsed[dln].length === 0) {
-								continue;
+							if (linect > 0) {
+								linect++;
+								if (linect === definitionTargetRangeMaxLines) {
+									// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+									targetrange.end = Position.create(dln+1,0);
+									break;
+								}
+								if (
+									parsed[dln].length > 0 && parsed[dln][0].l === ld.cls_langindex &&
+									(parsed[dln][0].s === ld.cls_keyword_attrindex || parsed[dln][0].s === ld.cls_desc_attrindex)
+								) {
+									// This is the first class member following the one we needed the definition for, so cut off the preview range here
+									targetrange.end = Position.create(dln,0);
+									break;
+								}
 							}
-							else if (parsed[dln][0].l == ld.cls_langindex && parsed[dln][0].s == ld.cls_keyword_attrindex) {
+							else if (parsed[dln].length > 0 && parsed[dln][0].l == ld.cls_langindex && parsed[dln][0].s == ld.cls_keyword_attrindex) {
 								// This line starts with a UDL keyword
 					
 								var keyword = doc.getText(Range.create(Position.create(dln,parsed[dln][0].p),Position.create(dln,parsed[dln][0].p+parsed[dln][0].c))).toLowerCase();
-								if (keyword.indexOf("method") !== -1 || keyword.indexOf("property") !== -1 || keyword.indexOf("parameter") !== -1) {
+								if (keyword.indexOf("method") !== -1 || keyword.indexOf("property") !== -1 || keyword.indexOf("parameter") !== -1 || keyword.indexOf("relationship") !== -1) {
 									const thismemberrange = findFullRange(dln,parsed,1,parsed[dln][1].p,parsed[dln][1].p+parsed[dln][1].c);
 									const thismember = doc.getText(thismemberrange);
 									if (thismember === member) {
 										// We found the member
-										targetrange = thismemberrange;
-										break;
+										targetselrange = thismemberrange;
+										targetrange.start = Position.create(dln,0);
+										linect++;
 									}
 								}
 							}
 						}
 						if (targetrange.start.line !== 0) {
-							return {
-								uri: params.textDocument.uri,
-								range: targetrange
-							};
+							// Remove any blank lines or comments from the end of the preview range
+							for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+								if (parsed[pvrln].length === 0) {
+									targetrange.end.line = pvrln;
+								}
+								else if (parsed[pvrln][0].l === ld.cos_langindex && (parsed[pvrln][0].s === ld.cos_comment_attrindex || parsed[pvrln][0].s === ld.cos_dcom_attrindex)) {
+									targetrange.end.line = pvrln;
+								}
+								else {
+									break;
+								}
+							}
+							return [{
+								targetUri: params.textDocument.uri,
+								originSelectionRange: memberrange,
+								targetSelectionRange: targetselrange,
+								targetRange: targetrange
+							}];
 						}
 					}
 					// The member is defined in another class
@@ -5205,8 +5275,25 @@ connection.onDefinition(
 								// The class was found
 	
 								// Loop through the file contents to find this member
+								var linect = 0;
 								for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-									if (
+									if (linect > 0) {
+										linect++;
+										if (linect === definitionTargetRangeMaxLines) {
+											// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+											targetrange.end = Position.create(j+1,0);
+											break;
+										}
+										if (
+											docrespdata.data.result.content[j].slice(0,1).trim() !== '' &&  docrespdata.data.result.content[j].slice(0,1) !== "}" &&
+											docrespdata.data.result.content[j].slice(0,1) !== "{"
+										) {
+											// This is the first class member following the one we needed the definition for, so cut off the preview range here
+											targetrange.end = Position.create(j,0);
+											break;
+										}
+									}
+									else if (
 										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("method") !== -1) ||
 										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1) ||
 										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("parameter") !== -1) ||
@@ -5217,17 +5304,38 @@ connection.onDefinition(
 										if (searchstr.indexOf(member) === 0) {
 											// This is the right member
 											const memberlineidx = docrespdata.data.result.content[j].indexOf(searchstr);
-											targetrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+member.length-1));
-											break;
+											if (memberlineidx !== -1) {
+												targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+member.length));
+												targetrange.start = Position.create(j,0);
+												linect++;
+											}
 										}
+									}
+								}
+								// Remove any blank lines or comments from the end of the preview range
+								for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+									const trimmed = docrespdata.data.result.content[pvrln].trim();
+									if (trimmed === "") {
+										targetrange.end.line = pvrln;
+									}
+									else if (
+										trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+										trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+									) {
+										targetrange.end.line = pvrln;
+									}
+									else {
+										break;
 									}
 								}
 								const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
 								if (newuri !== "") {
-									return {
-										uri: newuri,
-										range: targetrange
-									};
+									return [{
+										targetUri: newuri,
+										targetRange: targetrange,
+										originSelectionRange: memberrange,
+										targetSelectionRange: targetselrange
+									}];
 								}
 							}
 						}
@@ -5243,7 +5351,8 @@ connection.onDefinition(
 					// This is a routine name
 
 					// Get the full text of the selection
-					let word = doc.getText(findFullRange(params.position.line,parsed,i,symbolstart,symbolend));
+					let wordrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+					let word = doc.getText(wordrange);
 
 					// Determine if this is an include file
 					var isinc = false;
@@ -5267,10 +5376,12 @@ connection.onDefinition(
 					if (isinc) {
 						const newuri = await createDefinitionUri(params.textDocument.uri,word,".inc");
 						if (newuri !== "") {
-							return {
-								uri: newuri,
-								range: Range.create(Position.create(0,0),Position.create(0,0))
-							};
+							return [{
+                                targetUri: newuri,
+                                targetRange: Range.create(Position.create(0,0),Position.create(1,0)),
+                                originSelectionRange: wordrange,
+                                targetSelectionRange: Range.create(Position.create(0,8),Position.create(1,0))
+                            }];
 						}
 					}
 					else {
@@ -5281,20 +5392,24 @@ connection.onDefinition(
 								// This is a MAC routine
 								const newuri = await createDefinitionUri(params.textDocument.uri,word,".mac");
 								if (newuri !== "") {
-									return {
-										uri: newuri,
-										range: Range.create(Position.create(0,0),Position.create(0,0))
-									};
+									return [{
+										targetUri: newuri,
+										targetRange: Range.create(Position.create(0,0),Position.create(1,0)),
+										originSelectionRange: wordrange,
+										targetSelectionRange: Range.create(Position.create(0,8),Position.create(1,0))
+									}];
 								}
 							}
 							else {
 								// This is an INT routine
 								const newuri = await createDefinitionUri(params.textDocument.uri,word,".int");
 								if (newuri !== "") {
-									return {
-										uri: newuri,
-										range: Range.create(Position.create(0,0),Position.create(0,0))
-									};
+									return [{
+										targetUri: newuri,
+										targetRange: Range.create(Position.create(0,0),Position.create(1,0)),
+										originSelectionRange: wordrange,
+										targetSelectionRange: Range.create(Position.create(0,8),Position.create(1,0))
+									}];
 								}
 							}
 						}
@@ -5304,15 +5419,24 @@ connection.onDefinition(
 				(parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_extrfn_attrindex)) {
 					// This is a routine label
 
-					// Get the text of the label
-					var label: string;
+					// Get the range and text of the label
+					var labelrange: Range;
 					if (parsed[params.position.line][i].s == ld.cos_extrfn_attrindex) {
 						// This is the $$ before the label
-						label = doc.getText(findFullRange(params.position.line,parsed,i+1,parsed[params.position.line][i+1].p,parsed[params.position.line][i+1].p+parsed[params.position.line][i+1].c));
+						labelrange = findFullRange(params.position.line,parsed,i+1,parsed[params.position.line][i+1].p,parsed[params.position.line][i+1].p+parsed[params.position.line][i+1].c);
 					}
 					else {
 						// This is the label
-						label = doc.getText(findFullRange(params.position.line,parsed,i,symbolstart,symbolend));
+						labelrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+					}
+					const label = doc.getText(labelrange);
+
+					// Now that we got the label text, add the $$ to the front of the range
+					if (parsed[params.position.line][i].s == ld.cos_extrfn_attrindex) {
+						labelrange.start.character = labelrange.start.character-2;
+					}
+					else if (i !== 0 && parsed[params.position.line][i-1].s == ld.cos_extrfn_attrindex) {
+						labelrange.start.character = labelrange.start.character-2;
 					}
 
 					// Get the text of the routine name
@@ -5330,7 +5454,13 @@ connection.onDefinition(
 						}
 					}
 
-					if (routine !== "") {
+					// If the current file is a routine, get its name
+					var currentroutine = "";
+					if (doc.languageId === "objectscript") {
+						currentroutine = doc.getText(Range.create(Position.create(0,parsed[0][1].p),Position.create(0,parsed[0][1].p+parsed[0][1].c)));
+					}
+
+					if (routine !== "" && routine !== currentroutine) {
 						// This label is in another routine
 
 						// Check if this routine is a MAC or INT
@@ -5348,20 +5478,58 @@ connection.onDefinition(
 								// The routine was found
 
 								// Loop through the file contents to find this label
-								var resultrange = Range.create(Position.create(0,0),Position.create(0,0));
+								var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+								var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+								var linect = 0;
 								for (let k = 0; k < respdata.data.result.content.length; k++) {
-									if (respdata.data.result.content[k].substr(0,label.length).toLowerCase() === label.toLowerCase()) {
+									if (linect > 0) {
+										linect++;
+										if (linect === definitionTargetRangeMaxLines) {
+											// We've seen the maximum number of lines without hitting the next label so cut off the preview range here
+											targetrange.end = Position.create(k+1,0);
+											break;
+										}
+										const firstcharcode = respdata.data.result.content[k].charCodeAt(0);
+										if (
+											(firstcharcode > 47 && firstcharcode < 58) || (firstcharcode > 64 && firstcharcode < 91) ||
+											(firstcharcode > 96 && firstcharcode < 123) || (firstcharcode === 37)
+										) {
+											// This is the first label following the one we needed the definition for, so cut off the preview range here
+											targetrange.end = Position.create(k,0);
+											break;
+										}
+									}
+									else if (respdata.data.result.content[k].substr(0,label.length).toLowerCase() === label.toLowerCase()) {
 										// This is the label definition
-										resultrange = Range.create(Position.create(k,0),Position.create(k,label.length));
+										targetselrange = Range.create(Position.create(k,0),Position.create(k,label.length));
+										targetrange.start = Position.create(k,0);
+										linect++;
+									}
+								}
+								// Remove any blank lines or comments from the end of the preview range
+								for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+									const trimmed = respdata.data.result.content[pvrln].trim();
+									if (trimmed === "") {
+										targetrange.end.line = pvrln;
+									}
+									else if (
+										trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+										trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+									) {
+										targetrange.end.line = pvrln;
+									}
+									else {
 										break;
 									}
 								}
 								const newuri = await createDefinitionUri(params.textDocument.uri,routine,ext);
 								if (newuri !== "") {
-									return {
-										uri: newuri,
-										range: resultrange
-									};
+									return [{
+										targetUri: newuri,
+										targetRange: targetrange,
+										originSelectionRange: labelrange,
+										targetSelectionRange: targetselrange
+									}];
 								}
 							}
 						}
@@ -5369,23 +5537,55 @@ connection.onDefinition(
 					else {
 						// This label is in the current routine
 
-						var resultrange = Range.create(Position.create(0,0),Position.create(0,0));
+						var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+						var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+						var linect = 0;
 						for (let line = 0; line < parsed.length; line++) {
+							if (linect > 0) {
+								linect++;
+							}
+							if (linect === definitionTargetRangeMaxLines) {
+								// We've seen the maximum number of lines without hitting the next label so cut off the preview range here
+								targetrange.end = Position.create(line+1,0);
+								break;
+							}
 							if (parsed[line].length > 0 && parsed[line][0].l == ld.cos_langindex && parsed[line][0].s == ld.cos_label_attrindex) {
 								// This is a label
-								const firstwordrange = Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c));
-								const firstwordtext = doc.getText(firstwordrange);
-								if (firstwordtext.toLowerCase() === label.toLowerCase()) {
-									// This is the correct label
-									resultrange = firstwordrange;
+								if (linect > 0) {
+									// This is the first label following the one we needed the definition for, so cut off the preview range here
+									targetrange.end = Position.create(line,0);
 									break;
+								}
+								else {
+									const firstwordrange = Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c));
+									const firstwordtext = doc.getText(firstwordrange);
+									if (firstwordtext.toLowerCase() === label.toLowerCase()) {
+										// This is the correct label
+										targetselrange = firstwordrange;
+										targetrange.start = Position.create(line,0);
+										linect++;
+									}
 								}
 							}
 						}
-						return {
-							uri: params.textDocument.uri,
-							range: resultrange
-						};
+						// Remove any blank lines or comments from the end of the preview range
+						for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+							if (parsed[pvrln].length === 0) {
+								targetrange.end.line = pvrln;
+							}
+							else if (parsed[pvrln][0].l === ld.cos_langindex && (parsed[pvrln][0].s === ld.cos_comment_attrindex || parsed[pvrln][0].s === ld.cos_dcom_attrindex)) {
+								targetrange.end.line = pvrln;
+							}
+							else {
+								break;
+							}
+						}
+						return [{
+							targetUri: params.textDocument.uri,
+							targetRange: targetrange,
+							originSelectionRange: labelrange,
+							targetSelectionRange: targetselrange
+						}];
 					}
 				}
 				else if (parsed[params.position.line][i].l == ld.sql_langindex && parsed[params.position.line][i].s == ld.sql_iden_attrindex) {
@@ -5460,23 +5660,63 @@ connection.onDefinition(
 				
 											// Loop through the file contents to find this member
 											var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+											var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+											var linect = 0;
 											for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-												if (docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1) {
-													// This is the right type of class member
-													var memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
-													if (memberlineidx !==  -1) {
-														// This is the right member
-														targetrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length-1));
+												if (linect > 0) {
+													linect++;
+													if (linect === definitionTargetRangeMaxLines) {
+														// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+														targetrange.end = Position.create(j+1,0);
 														break;
 													}
+													if (
+														docrespdata.data.result.content[j].slice(0,1).trim() !== '' &&  docrespdata.data.result.content[j].slice(0,1) !== "}" &&
+														docrespdata.data.result.content[j].slice(0,1) !== "{"
+													) {
+														// This is the first class member following the one we needed the definition for, so cut off the preview range here
+														targetrange.end = Position.create(j,0);
+														break;
+													}
+												}
+												else if (
+													docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1 ||
+													docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("relationship") !== -1
+												) {
+													// This is the right type of class member
+													const memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
+													if (memberlineidx !== -1) {
+														// This is the right member
+														targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length));
+														targetrange.start = Position.create(j,0);
+														linect++;
+													}
+												}
+											}
+											// Remove any blank lines or comments from the end of the preview range
+											for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+												const trimmed = docrespdata.data.result.content[pvrln].trim();
+												if (trimmed === "") {
+													targetrange.end.line = pvrln;
+												}
+												else if (
+													trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+													trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+												) {
+													targetrange.end.line = pvrln;
+												}
+												else {
+													break;
 												}
 											}
 											const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
 											if (newuri !== "") {
-												return {
-													uri: newuri,
-													range: targetrange
-												};
+												return [{
+													targetUri: newuri,
+													targetRange: targetrange,
+													originSelectionRange: idenrange,
+													targetSelectionRange: targetselrange
+												}];
 											}
 										}
 									}
@@ -5499,21 +5739,26 @@ connection.onDefinition(
 								if (respdata !== undefined && respdata.data.result.status === "") {
 									// The class was found
 
-									// Loop through the file contents to find this member
-									var resultrange = Range.create(Position.create(0,0),Position.create(0,0));
+									// Loop through the file contents to find the class definition
+									var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+									var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
 									for (let j = 0; j < respdata.data.result.content.length; j++) {
 										if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
 											// This line is the class definition
-											resultrange = Range.create(Position.create(j,0),Position.create(j,0));
+											const namestart = respdata.data.result.content[j].indexOf(normalizedname);
+											targetrange = Range.create(Position.create(j,0),Position.create(j+1,0));
+											targetselrange = Range.create(Position.create(j,namestart),Position.create(j,namestart+normalizedname.length));
 											break;
 										}
 									}
 									const newuri = await createDefinitionUri(params.textDocument.uri,normalizedname,".cls");
 									if (newuri !== "") {
-										return {
-											uri: newuri,
-											range: resultrange
-										};
+										return [{
+											targetUri: newuri,
+											targetRange: targetrange,
+											originSelectionRange: idenrange,
+											targetSelectionRange: targetselrange
+										}];
 									}
 								}
 							}
@@ -5547,26 +5792,67 @@ connection.onDefinition(
 		
 									// Loop through the file contents to find this member
 									var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+									var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+									var linect = 0;
 									for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-										if (
-											(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1) ||
+										if (linect > 0) {
+											linect++;
+											if (linect === definitionTargetRangeMaxLines) {
+												// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+												targetrange.end = Position.create(j+1,0);
+												break;
+											}
+											if (
+												docrespdata.data.result.content[j].slice(0,1).trim() !== '' &&  docrespdata.data.result.content[j].slice(0,1) !== "}" &&
+												docrespdata.data.result.content[j].slice(0,1) !== "{"
+											) {
+												// This is the first class member following the one we needed the definition for, so cut off the preview range here
+												targetrange.end = Position.create(j,0);
+												break;
+											}
+										}
+										else if (
+											(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("classmethod") !== -1) ||
 											(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("query") !== -1)
 										) {
 											// This is the right type of class member
 											var memberlineidx = docrespdata.data.result.content[j].indexOf(procname);
 											if (memberlineidx !==  -1) {
-												// This is the right member
-												targetrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+procname.length-1));
-												break;
+												// This is the right type of class member
+												const memberlineidx = docrespdata.data.result.content[j].indexOf(procname);
+												if (memberlineidx !== -1) {
+													// This is the right member
+													targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+procname.length));
+													targetrange.start = Position.create(j,0);
+													linect++;
+												}
 											}
+										}
+									}
+									// Remove any blank lines or comments from the end of the preview range
+									for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+										const trimmed = docrespdata.data.result.content[pvrln].trim();
+										if (trimmed === "") {
+											targetrange.end.line = pvrln;
+										}
+										else if (
+											trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+											trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+										) {
+											targetrange.end.line = pvrln;
+										}
+										else {
+											break;
 										}
 									}
 									const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
 									if (newuri !== "") {
-										return {
-											uri: newuri,
-											range: targetrange
-										};
+										return [{
+											targetUri: newuri,
+											targetRange: targetrange,
+											originSelectionRange: idenrange,
+											targetSelectionRange: targetselrange
+										}];
 									}
 								}
 							}
@@ -5604,23 +5890,67 @@ connection.onDefinition(
 					
 												// Loop through the file contents to find this member
 												var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+												var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+												var linect = 0;
 												for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-													if (docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1) {
+													if (linect > 0) {
+														linect++;
+														if (linect === definitionTargetRangeMaxLines) {
+															// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+															targetrange.end = Position.create(j+1,0);
+															break;
+														}
+														if (
+															docrespdata.data.result.content[j].slice(0,1).trim() !== '' &&  docrespdata.data.result.content[j].slice(0,1) !== "}" &&
+															docrespdata.data.result.content[j].slice(0,1) !== "{"
+														) {
+															// This is the first class member following the one we needed the definition for, so cut off the preview range here
+															targetrange.end = Position.create(j,0);
+															break;
+														}
+													}
+													else if (
+														docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1 ||
+														docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("relationship") !== -1
+													) {
 														// This is the right type of class member
 														var memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
 														if (memberlineidx !==  -1) {
-															// This is the right member
-															targetrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length-1));
-															break;
+															// This is the right type of class member
+															const memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
+															if (memberlineidx !== -1) {
+																// This is the right member
+																targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length));
+																targetrange.start = Position.create(j,0);
+																linect++;
+															}
 														}
+													}
+												}
+												// Remove any blank lines or comments from the end of the preview range
+												for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+													const trimmed = docrespdata.data.result.content[pvrln].trim();
+													if (trimmed === "") {
+														targetrange.end.line = pvrln;
+													}
+													else if (
+														trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+														trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+													) {
+														targetrange.end.line = pvrln;
+													}
+													else {
+														break;
 													}
 												}
 												const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
 												if (newuri !== "") {
-													return {
-														uri: newuri,
-														range: targetrange
-													};
+													return [{
+														targetUri: newuri,
+														targetRange: targetrange,
+														originSelectionRange: idenrange,
+														targetSelectionRange: targetselrange
+													}];
 												}
 											}
 										}
@@ -5643,7 +5973,7 @@ connection.onDefinition(
 );
 
 connection.languages.semanticTokens.on(
-	(params: Proposed.SemanticTokensParams) => {
+	(params: SemanticTokensParams) => {
 		try {
 			const doc = documents.get(params.textDocument.uri);
 			if (doc === undefined) {return { data: [] };}
@@ -5679,8 +6009,8 @@ connection.languages.semanticTokens.on(
 	}
 );
 
-connection.languages.semanticTokens.onEdits(
-	(params: Proposed.SemanticTokensEditsParams) => {
+connection.languages.semanticTokens.onDelta(
+	(params: SemanticTokensDeltaParams) => {
 		try {
 			const doc = documents.get(params.textDocument.uri);
 			if (doc === undefined) {return { data: [] };}
