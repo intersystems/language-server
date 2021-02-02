@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.0] - 2021-XX-XX
+## [1.1.0] - 2021-02-02
 - Fix issue [#15](https://github.com/intersystems/language-server/issues/15): Better support for Peek Definition functionality
 - Fix issue [#125](https://github.com/intersystems/language-server/issues/125): Relationships are not showing up in completion suggestion list
 - Fix issue [#126](https://github.com/intersystems/language-server/issues/126): Macros defined in current file are not showing up in completion suggestion list
