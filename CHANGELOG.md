@@ -2,6 +2,7 @@
 
 ## [1.1.1] - 2021-XX-XX
 - Fix issue [#134](https://github.com/intersystems/language-server/issues/134): Outdated documentation for $LISTFROMSTRING
+- Fix issue [#135](https://github.com/intersystems/language-server/issues/135): False syntax error when using 3rd parameter of $LISTFROMSTRING
 
 ## [1.1.0] - 2021-02-02
 - Fix issue [#15](https://github.com/intersystems/language-server/issues/15): Better support for Peek Definition functionality
