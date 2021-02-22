@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.1] - 2021-XX-XX
+- Fix issue [#134](https://github.com/intersystems/language-server/issues/134): Outdated documentation for $LISTFROMSTRING
+
 ## [1.1.0] - 2021-02-02
 - Fix issue [#15](https://github.com/intersystems/language-server/issues/15): Better support for Peek Definition functionality
 - Fix issue [#125](https://github.com/intersystems/language-server/issues/125): Relationships are not showing up in completion suggestion list

@@ -473,11 +473,11 @@
     "documentation":[
       "Creates a list from a string.\n",
       "```objectscript\n",
-      "$LISTFROMSTRING(string,delimiter)\n",
-      "$LFS(string,delimiter)\n",
+      "$LISTFROMSTRING(string,delimiter,flag)\n",
+      "$LFS(string,delimiter,flag)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - A string to be converted into an InterSystems IRIS list. This string contains one or more elements, separated by a `delimiter`. The `delimiter` does not become part of the resulting InterSystems IRIS list.\n\n`delimiter` _Optional_ &#151; The delimiter used to separate substrings (elements) in `string`. Specify `delimiter` as a quoted string. If no `delimiter` is specified, the default is the comma (,) character.\n"
+      "`string` - A string to be converted into an InterSystems IRIS list. This string contains one or more elements, separated by a `delimiter`. The `delimiter` does not become part of the resulting InterSystems IRIS list.\n\n`delimiter` _Optional_ &#151; The delimiter used to separate substrings (elements) in `string`. Specify `delimiter` as a quoted string. If no `delimiter` is specified, the default is the comma (,) character.\n\n`flag` _Optional_ &#151; A two-bit binary bit flag. Available values are 0 (00), 1 (01), 2 (10), and 3 (11). The default is 0.\n"
     ],
     "link":"/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_flistfromstring"
   },
