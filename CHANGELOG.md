@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.2] - 2021-02-23
+- Fix issue [#137](https://github.com/intersystems/language-server/issues/137): Completion request fails for local variables
+
 ## [1.1.1] - 2021-02-23
 - Fix issue [#134](https://github.com/intersystems/language-server/issues/134): Outdated documentation for $LISTFROMSTRING
 - Fix issue [#135](https://github.com/intersystems/language-server/issues/135): False syntax error when using 3rd parameter of $LISTFROMSTRING

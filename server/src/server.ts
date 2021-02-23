@@ -3200,7 +3200,7 @@ connection.onCompletion(
 			}
 		}
 		const settings = await getLanguageServerSettings();
-
+		
 		if (prevline.slice(-3) === "$$$" && triggerlang === ld.cos_langindex) {
 			// This is a macro
 
@@ -3626,7 +3626,7 @@ connection.onCompletion(
 						data.parameters = new Array(6).fill(membercontext.baseclass);
 					}
 					else if (membercontext.context === "instance") {
-						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated "
+						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 AND Stub IS NULL UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL " +
@@ -3655,6 +3655,7 @@ connection.onCompletion(
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 					if (respdata !== undefined && respdata.data.result.content.length > 0) {
 						// We got data back
+						
 						for (let memobj of respdata.data.result.content) {
 							const quotedname = quoteUDLIdentifier(memobj.Name,1);
 							var item: CompletionItem = {
