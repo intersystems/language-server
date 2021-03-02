@@ -2,6 +2,9 @@
 
 ## [1.1.3] - 2021-XX-XX
 - Fix issue [#71](https://github.com/intersystems/language-server/issues/71): Override method command
+- Fix issue [#139](https://github.com/intersystems/language-server/issues/139): Don't show methods marked NotInheritable in the completion list
+- Fix issue [#140](https://github.com/intersystems/language-server/issues/140): Hover not working for properties and parameters
+- Fix issue [#141](https://github.com/intersystems/language-server/issues/141): Provide Hover and Completion support for ClientMethod compiler keywords
 
 ## [1.1.2] - 2021-02-23
 - Fix issue [#137](https://github.com/intersystems/language-server/issues/137): Completion request fails for local variables

@@ -3653,7 +3653,7 @@ connection.onCompletion(
 					};
 					if (membercontext.context === "class") {
 						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND Stub IS NULL UNION ALL " +
+							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
@@ -3662,12 +3662,12 @@ connection.onCompletion(
 							"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL " +
-							"SELECT Name, Description, Origin, '' AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?";
+							"SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?";
 						data.parameters = new Array(6).fill(membercontext.baseclass);
 					}
 					else if (membercontext.context === "instance") {
 						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 AND Stub IS NULL UNION ALL " +
+							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
@@ -3676,12 +3676,12 @@ connection.onCompletion(
 							"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL " +
-							"SELECT Name, Description, Origin, '' AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ?";
+							"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ?";
 						data.parameters = new Array(6).fill(membercontext.baseclass);
 					}
 					else {
 						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND Stub IS NULL UNION ALL " +
+							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL " +
 							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
@@ -3822,7 +3822,7 @@ connection.onCompletion(
 				else if (keywordtype === "index") {
 					keywordsarr = indexKeywords.slice();
 				}
-				else if (keywordtype === "method" || keywordtype === "classmethod") {
+				else if (keywordtype === "method" || keywordtype === "classmethod" || keywordtype === "clientmethod") {
 					keywordsarr = methodKeywords.slice();
 				}
 				else if (keywordtype === "parameter") {
@@ -3910,7 +3910,7 @@ connection.onCompletion(
 				else if (keywordtype === "index") {
 					keywordsarr = indexKeywords.slice();
 				}
-				else if (keywordtype === "method" || keywordtype === "classmethod") {
+				else if (keywordtype === "method" || keywordtype === "classmethod" || keywordtype === "clientmethod") {
 					keywordsarr = methodKeywords.slice();
 				}
 				else if (keywordtype === "parameter") {
@@ -4754,7 +4754,7 @@ connection.onHover(
 					};
 					if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 						// This is a parameter
-						data.query = "SELECT Description, '' AS FormalSpec, '' AS ReturnType, '' AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
+						data.query = "SELECT Description, NULL AS FormalSpec, NULL AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
@@ -4764,7 +4764,7 @@ connection.onHover(
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
 						// This is a property
-						data.query = "SELECT Description, '' AS FormalSpec, '' AS ReturnType, '' AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
+						data.query = "SELECT Description, NULL AS FormalSpec, NULL AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else {
@@ -4777,7 +4777,7 @@ connection.onHover(
 						else {
 							// This can be a method or property
 							data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-							data.query = data.query.concat("SELECT Description, '' AS FormalSpec, '' AS ReturnType, '' AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
+							data.query = data.query.concat("SELECT Description, NULL AS FormalSpec, NULL AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
 							data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
 						}
 					}
@@ -4830,7 +4830,7 @@ connection.onHover(
 								}
 							}
 							else {
-								// This is a regular method
+								// This is a regular member
 
 								if (nextchar === "(") {
 									header = header.concat("(",respdata.data.result.content[0].FormalSpec.replace(/:/g," As ").replace(/,/g,", ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = "),")");
@@ -4898,7 +4898,7 @@ connection.onHover(
 							// This is a index keyword
 							thiskeydoc = <KeywordDoc>indexKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 						}
-						else if (firstkey === "method" || firstkey === "classmethod") {
+						else if (firstkey === "method" || firstkey === "classmethod" || firstkey === "clientmethod") {
 							// This is a method keyword
 							thiskeydoc = <KeywordDoc>methodKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 						}
@@ -5422,7 +5422,7 @@ connection.onDefinition(
 					};
 					if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 						// This is a parameter
-						data.query = "SELECT Origin, '' AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
+						data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
@@ -5432,7 +5432,7 @@ connection.onDefinition(
 					}
 					else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
 						// This is a property
-						data.query = "SELECT Origin, '' AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
+						data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else {
@@ -5445,7 +5445,7 @@ connection.onDefinition(
 						else {
 							// This can be a method or property
 							data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-							data.query = data.query.concat("SELECT Origin, '' AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
+							data.query = data.query.concat("SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
 							data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
 						}
 					}
