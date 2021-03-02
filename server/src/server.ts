@@ -30,7 +30,8 @@ import {
 	CompletionItemTag,
 	SemanticTokensBuilder,
 	SemanticTokensParams,
-	SemanticTokensDeltaParams
+	SemanticTokensDeltaParams,
+	WorkspaceEdit
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -211,6 +212,40 @@ type PossibleClasses = {
 };
 
 /**
+ * The parameter literal for the `intersystems/refactor/listOverridableMembers` request.
+ */
+type ListOverridableMembersParams = {
+	uri: string,
+	memberType: string
+};
+
+/**
+ * Represents an item that can be selected from a list of items.
+ */
+type QuickPickItem = {
+	description: string,
+	detail: string,
+	label: string
+};
+
+/**
+ * The parameter literal for the `intersystems/refactor/addOverridableMembers` request.
+ */
+type AddOverridableMembersParams = {
+	uri: string,
+	members: QuickPickItem[],
+	cursor: Position
+};
+
+/**
+ * The parameter literal for the `intersystems/refactor/validateOverrideCursor` request.
+ */
+type ValidateOverrideCursorParams = {
+	uri: string,
+	line: number
+};
+
+/**
  * TextDocument URI's mapped to the tokenized representation of the document.
  */
 let parsedDocuments: Map<string, compressedline[]> = new Map();
@@ -275,6 +310,11 @@ let cookieJar: tough.CookieJar = new tough.CookieJar();
  * of the `LocationLink` object returned by a definition request.
  */
 const definitionTargetRangeMaxLines: number = 10;
+
+/**
+ * An array containing all UDL class member types.
+ */
+const classMemberTypes: string[] = ["Parameter","Property","Relationship","ForeignKey","Index","Query","Storage","Trigger","XData","Projection","Method","ClassMethod","ClientMethod"];
 
 /**
  * Compute diagnositcs for this document and sent them to the client.
@@ -5465,10 +5505,7 @@ connection.onDefinition(
 												targetrange.end = Position.create(j+1,0);
 												break;
 											}
-											if (
-												docrespdata.data.result.content[j].slice(0,1).trim() !== '' &&  docrespdata.data.result.content[j].slice(0,1) !== "}" &&
-												docrespdata.data.result.content[j].slice(0,1) !== "{"
-											) {
+											if (classMemberTypes.indexOf(docrespdata.data.result.content[j].split(" ",1)[0]) !== -1) {
 												// This is the first class member following the one we needed the definition for, so cut off the preview range here
 												targetrange.end = Position.create(j,0);
 												break;
@@ -7765,6 +7802,330 @@ connection.onDeclaration(
 				}
 			}
 		}
+	}
+);
+
+connection.onRequest("intersystems/refactor/listOverridableMembers",
+	async (params: ListOverridableMembersParams): Promise<QuickPickItem[]> => {
+		const parsed = parsedDocuments.get(params.uri);
+		if (parsed === undefined) {return [];}
+		const doc = documents.get(params.uri);
+		if (doc === undefined) {return [];}
+		if (doc.languageId !== "objectscript-class") {
+			// Can't override class members if the document isn't a class
+			return [];
+		}
+		const server: ServerSpec = await getServerSpec(params.uri);
+		var result: QuickPickItem[] = [];
+
+		// Determine what class this is
+		var thisclass = "";
+		for (let ln = 0; ln < parsed.length; ln++) {
+			if (parsed[ln].length === 0) {
+				continue;
+			}
+			else if (parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
+				// This line starts with a UDL keyword
+	
+				var keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
+				if (keyword === "class") {
+					thisclass = doc.getText(findFullRange(ln,parsed,1,parsed[ln][1].p,parsed[ln][1].p+parsed[ln][1].c));
+					break;
+				}
+			}
+		}
+
+		if (thisclass !== "") {
+			// We found the name of this class
+
+			// Build the list of QuickPickItems
+			if (params.memberType === "Method") {
+				const querydata: QueryData = {
+					query: "SELECT Name, Origin, ClassMethod, ReturnType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Stub IS NULL AND Origin != ? AND Final = 0 AND NotInheritable = 0",
+					parameters: [thisclass,thisclass]
+				};
+				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				if (respdata !== undefined && respdata.data.result.content.length > 0) {
+					for (let memobj of respdata.data.result.content) {
+						if (memobj.ClassMethod) {
+							result.push({
+								label: memobj.Name,
+								description: memobj.ReturnType,
+								detail: "ClassMethod, Origin class: "+memobj.Origin
+							});
+						}
+						else {
+							result.push({
+								label: memobj.Name,
+								description: memobj.ReturnType,
+								detail: "Method, Origin class: "+memobj.Origin
+							});
+						}
+					}
+				}
+			}
+			else if (params.memberType === "Parameter") {
+				const querydata: QueryData = {
+					query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND Origin != ? AND Final = 0",
+					parameters: [thisclass,thisclass]
+				};
+				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				if (respdata !== undefined && respdata.data.result.content.length > 0) {
+					for (let memobj of respdata.data.result.content) {
+						result.push({
+							label: memobj.Name,
+							description: memobj.Type,
+							detail: "Origin class: "+memobj.Origin
+						});
+					}
+				}
+			}
+			else if (params.memberType === "Property") {
+				const querydata: QueryData = {
+					query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND Origin != ? AND Final = 0",
+					parameters: [thisclass,thisclass]
+				};
+				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				if (respdata !== undefined && respdata.data.result.content.length > 0) {
+					for (let memobj of respdata.data.result.content) {
+						result.push({
+							label: memobj.Name,
+							description: memobj.Type,
+							detail: "Origin class: "+memobj.Origin
+						});
+					}
+				}
+			}
+			else if (params.memberType === "Query") {
+				const querydata: QueryData = {
+					query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledQuery WHERE parent->ID = ? AND Origin != ? AND Final = 0",
+					parameters: [thisclass,thisclass]
+				};
+				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				if (respdata !== undefined && respdata.data.result.content.length > 0) {
+					for (let memobj of respdata.data.result.content) {
+						result.push({
+							label: memobj.Name,
+							description: memobj.Type,
+							detail: "Origin class: "+memobj.Origin
+						});
+					}
+				}
+			}
+			else if (params.memberType === "Trigger") {
+				const querydata: QueryData = {
+					query: "SELECT Name, Origin, Event FROM %Dictionary.CompiledTrigger WHERE parent->ID = ? AND Origin != ? AND Final = 0",
+					parameters: [thisclass,thisclass]
+				};
+				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				if (respdata !== undefined && respdata.data.result.content.length > 0) {
+					for (let memobj of respdata.data.result.content) {
+						result.push({
+							label: memobj.Name,
+							description: memobj.Event,
+							detail: "Origin class: "+memobj.Origin
+						});
+					}
+				}
+			}
+			else if (params.memberType === "XData") {
+				const querydata: QueryData = {
+					query: "SELECT Name, Origin, MimeType FROM %Dictionary.CompiledXData WHERE parent->ID = ? AND Origin != ?",
+					parameters: [thisclass,thisclass]
+				};
+				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				if (respdata !== undefined && respdata.data.result.content.length > 0) {
+					for (let memobj of respdata.data.result.content) {
+						result.push({
+							label: memobj.Name,
+							description: memobj.MimeType,
+							detail: "Origin class: "+memobj.Origin
+						});
+					}
+				}
+			}
+		}
+
+		return result;
+	}
+);
+
+connection.onRequest("intersystems/refactor/addOverridableMembers",
+	async (params: AddOverridableMembersParams): Promise<WorkspaceEdit> => {
+		const parsed = parsedDocuments.get(params.uri);
+		if (parsed === undefined) {return {};}
+		const doc = documents.get(params.uri);
+		if (doc === undefined) {return {};}
+		if (doc.languageId !== "objectscript-class") {
+			// Can't override class members if the document isn't a class
+			return {};
+		}
+		const server: ServerSpec = await getServerSpec(params.uri);
+
+		// Insert the new members at the cursor position (offset by one line)
+		var insertpos = params.cursor;
+		insertpos.line++;
+		var change: TextEdit = {
+			range: Range.create(insertpos,insertpos),
+			newText: ""
+		};
+
+		// Loop through the QuickPickItem array and map all origin classes to the members
+		var membersPerOrigin: Map<string, string[]> = new Map();
+		for (let member of params.members) {
+			const origin = member.detail.split(" ")[member.detail.split(" ").length - 1] + ".cls";
+			if (membersPerOrigin.has(origin)) {
+				// Add this member to the array of members for this origin class
+				var membersarr = membersPerOrigin.get(origin);
+				if (membersarr !== undefined) {
+					membersarr.push(quoteUDLIdentifier(member.label,1));
+					membersPerOrigin.set(origin,membersarr);
+				}
+			}
+			else {
+				// Add this origin class to the map with this member in the members array
+				membersPerOrigin.set(origin,[quoteUDLIdentifier(member.label,1)]);
+			}
+		}
+
+		// Get the text of all origin classes that we need
+		const respdata = await makeRESTRequest("POST",1,"/docs",server,[...membersPerOrigin.keys()]);
+		if (respdata !== undefined && respdata.data.result.content.length > 0) {
+			for (let cls of respdata.data.result.content) {
+
+				// For each member in this class, add it to the 'newText' string
+				const members = membersPerOrigin.get(cls.name);
+				if (members !== undefined) {
+					for (let member of members) {
+						// Find this member in the document contents
+
+						var desclinect = 0;
+						for (let ln = 0; ln < cls.content.length; ln++) {
+							const firstword = cls.content[ln].split(" ",1)[0].toLowerCase();
+							if (cls.content[ln].slice(0,3) === "///") {
+								desclinect++;
+							}
+							else if (
+								(firstword.indexOf("method") !== -1) || (firstword.indexOf("property") !== -1) ||
+								(firstword.indexOf("parameter") !== -1) || (firstword.indexOf("relationship") !== -1) ||
+								(firstword.indexOf("query") !== -1) || (firstword.indexOf("trigger") !== -1) ||
+								(firstword.indexOf("xdata") !== -1)
+							) {
+								// This line is the start of a class member definition
+								const searchstr = cls.content[ln].slice(cls.content[ln].indexOf(" ")+1).trim();
+								if (searchstr.indexOf(member) === 0) {
+									// This is the right member
+									
+									// Add the description lines to the 'newtText' string if there are any
+									if (desclinect > 0) {
+										change.newText = change.newText + cls.content.slice(ln-desclinect,ln).join("\n") + "\n";
+									}
+
+									// Continue looping until you hit the end of the member or the start of its implementation
+									for (let mln = ln; mln < cls.content.length; mln++) {
+										var line = cls.content[mln];
+
+										// Remove the Abstract keyword if it appears on this line
+										line = line.replace(" [ Abstract ]","").replace("[ Abstract,","[");
+
+										// Add this line to the 'newText' string
+										change.newText = change.newText + line + "\n";
+
+										if (
+											(firstword.indexOf("property") !== -1) || (firstword.indexOf("relationship") !== -1) ||
+											(firstword.indexOf("parameter") !== -1)
+										) {
+											// Look for the end of the member
+											if (cls.content[mln].trim().slice(-1) === ";") {
+												break;
+											}
+										}
+										else {
+											// Look for the start of the member's implementation
+											if (cls.content[mln].trim() === "{") {
+												// Add a blank line and closing curly brace
+												change.newText = change.newText + "\t\n";
+												change.newText = change.newText + "}\n";
+
+												break;
+											}
+										}
+									}
+
+									// Add a trailing newline
+									change.newText = change.newText + "\n";
+								}
+								else {
+									desclinect = 0;
+								}
+							}
+							else {
+								desclinect = 0;
+							}
+						}
+					}
+				}
+			}
+		}
+
+		return {
+			changes: {
+				[params.uri]: [change]
+			}
+		};
+	}
+);
+
+connection.onRequest("intersystems/refactor/validateOverrideCursor",
+	(params: ValidateOverrideCursorParams): boolean => {
+		const parsed = parsedDocuments.get(params.uri);
+		if (parsed === undefined) {return false;}
+		const doc = documents.get(params.uri);
+		if (doc === undefined) {return false;}
+		if (doc.languageId !== "objectscript-class") {
+			// Can't override class members if the document isn't a class
+			return false;
+		}
+
+		// Check that the first non-empty line above the cursor ends with a UDL token
+		var abovevalid = false;
+		for (let ln = params.line-1; ln >=0; ln--) {
+			if (parsed[ln].length > 0) {
+				if (parsed[ln][parsed[ln].length-1].l === ld.cls_langindex) {
+					if (parsed[ln].length === 1 && doc.getText(Range.create(
+						Position.create(ln,parsed[ln][0].p),
+						Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))) === "{"
+					) {
+						// This line only contains a UDL open curly brace, so check that the preceding line is the class definition
+						if (parsed[ln-1][0].l === ld.cls_langindex && parsed[ln-1][0].s === ld.cls_keyword_attrindex && doc.getText(Range.create(
+							Position.create(ln-1,parsed[ln-1][0].p),
+							Position.create(ln-1,parsed[ln-1][0].p+parsed[ln-1][0].c))).toLowerCase() === "class"
+						) {
+							abovevalid = true;
+						}
+					}
+					else {
+						abovevalid = true;
+					}
+				}
+				break;
+			}
+		}
+
+		// Check that the first non-empty line below the cursor starts with a UDL token
+		var belowvalid = false;
+		if (abovevalid) {
+			for (let ln = params.line+1; ln < parsed.length; ln++) {
+				if (parsed[ln].length > 0) {
+					if (parsed[ln][0].l === ld.cls_langindex) {
+						belowvalid = true;
+					}
+					break;
+				}
+			}
+		}
+
+		return (abovevalid && belowvalid);
 	}
 );
 

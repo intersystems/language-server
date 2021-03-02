@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.3] - 2021-XX-XX
+- Fix issue [#71](https://github.com/intersystems/language-server/issues/71): Override method command
+
 ## [1.1.2] - 2021-02-23
 - Fix issue [#137](https://github.com/intersystems/language-server/issues/137): Completion request fails for local variables
 
