@@ -3788,6 +3788,7 @@ connection.onCompletion(
 		) {
 			var foundopenbrace = false;
 			var foundclosingbrace = false;
+			var existingkeywords: string[] = [];
 			for (let i = 1; i < parsed[params.position.line].length; i++) {
 				const symbolstart: number = parsed[params.position.line][i].p;
 				const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
@@ -3800,6 +3801,10 @@ connection.onCompletion(
 				}
 				else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_delim_attrindex && symboltext === "]") {
 					foundclosingbrace = true;
+				}
+				else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_keyword_attrindex && symboltext.toLowerCase() !== "not") {
+					// If this keyword has already been specified, don't suggest it
+					existingkeywords.push(symboltext.toLowerCase());
 				}
 			}
 			if (foundopenbrace && !foundclosingbrace) {
@@ -3845,7 +3850,7 @@ connection.onCompletion(
 				}
 				for (let keydoc of keywordsarr) {
 					var doctext = keydoc.description;
-					if (doctext.toLowerCase() !== "deprecated.") {
+					if (doctext.toLowerCase() !== "deprecated." && !existingkeywords.includes(keydoc.name.toLowerCase())) {
 						if ("constraint" in keydoc && keydoc.constraint instanceof Array) {
 							doctext = doctext.concat("\n\n","Permitted Values: ",keydoc.constraint.join(", "));
 						}
