@@ -170,7 +170,7 @@ export async function activate(context: ExtensionContext) {
 	}
 
 	// Register the override class member command
-	commands.registerCommand("intersystems.language-server.overrideClassMembers",
+	let overrideCommandDisposable = commands.registerCommand("intersystems.language-server.overrideClassMembers",
 		async () => {
 
 			// Get the open document and check that it's an ObjectScript class
@@ -271,6 +271,9 @@ export async function activate(context: ExtensionContext) {
 			workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));
 		}
 	);
+
+	// Add the override class member command to the subscriptions array
+	context.subscriptions.push(overrideCommandDisposable);
 
 	// Start the client. This will also launch the server
 	client.start();
