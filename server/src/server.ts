@@ -1177,8 +1177,11 @@ function findFullRange(line: number, parsed: compressedline[], lineidx: number, 
 	var newidx = lineidx;
 	while (true) {
 		newidx--;
-		if ((newidx == -1) || (parsed[line][newidx].l != parsed[line][lineidx].l) || 
-		(parsed[line][newidx].s != parsed[line][lineidx].s)) {
+		if ((newidx == -1) || (parsed[line][newidx].l != parsed[line][lineidx].l) || (parsed[line][newidx].s != parsed[line][lineidx].s)) {
+			break;
+		}
+		else if (parsed[line][newidx].p+parsed[line][newidx].c !== parsed[line][newidx+1].p) {
+			// There's whitespace in between the next token and this one
 			break;
 		}
 		rangestart = parsed[line][newidx].p;
@@ -1187,9 +1190,11 @@ function findFullRange(line: number, parsed: compressedline[], lineidx: number, 
 	var newidx = lineidx;
 	while (true) {
 		newidx++;
-		if ((parsed[line][newidx] === undefined) ||
-		(parsed[line][newidx].l != parsed[line][lineidx].l) || 
-		(parsed[line][newidx].s != parsed[line][lineidx].s)) {
+		if ((parsed[line][newidx] === undefined) || (parsed[line][newidx].l != parsed[line][lineidx].l) || (parsed[line][newidx].s != parsed[line][lineidx].s)) {
+			break;
+		}
+		else if (parsed[line][newidx].p !== parsed[line][newidx-1].p+parsed[line][newidx-1].c) {
+			// There's whitespace in between the previous token and this one
 			break;
 		}
 		rangeend = parsed[line][newidx].p + parsed[line][newidx].c;
@@ -6674,7 +6679,7 @@ connection.onFoldingRanges(
 				}
 				if (
 					parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_label_attrindex &&
-					firsttokentext !== routinename
+					firsttokentext !== routinename && doc.languageId === "objectscript"
 				) {
 					// This line starts with a routine label
 

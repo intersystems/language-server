@@ -6,6 +6,8 @@
 - Fix issue [#140](https://github.com/intersystems/language-server/issues/140): Hover not working for properties and parameters
 - Fix issue [#141](https://github.com/intersystems/language-server/issues/141): Provide Hover and Completion support for ClientMethod compiler keywords
 - Fix issue [#142](https://github.com/intersystems/language-server/issues/142): Don't suggest UDL keyword in code completion if it's already specified
+- Fix issue [#143](https://github.com/intersystems/language-server/issues/143): Don't create Folding Ranges for labels in classes
+- Fix issue [#144](https://github.com/intersystems/language-server/issues/144): No intellisense for back-to-back macros
 
 ## [1.1.2] - 2021-02-23
 - Fix issue [#137](https://github.com/intersystems/language-server/issues/137): Completion request fails for local variables
