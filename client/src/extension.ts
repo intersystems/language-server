@@ -175,7 +175,6 @@ export async function activate(context: ExtensionContext) {
 
 			// Get the open document and check that it's an ObjectScript class
 			const openDoc = window.activeTextEditor.document;
-			console.log(openDoc);
 			if (openDoc.languageId !== "objectscript-class") {
 				// Can only override members in a class
 				return;
