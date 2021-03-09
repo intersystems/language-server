@@ -161,7 +161,7 @@ type ClassMemberContext = {
  */
 type KeywordDoc = {
 	name: string,
-	description: string,
+	description?: string,
 	type?: string,
 	constraint?: string | string[]
 };
@@ -3855,9 +3855,15 @@ connection.onCompletion(
 				}
 				for (let keydoc of keywordsarr) {
 					var doctext = keydoc.description;
-					if (doctext.toLowerCase() !== "deprecated." && !existingkeywords.includes(keydoc.name.toLowerCase())) {
+					if (doctext === undefined) {
+						doctext = "";
+					}
+					if (!existingkeywords.includes(keydoc.name.toLowerCase())) {
 						if ("constraint" in keydoc && keydoc.constraint instanceof Array) {
-							doctext = doctext.concat("\n\n","Permitted Values: ",keydoc.constraint.join(", "));
+							if (doctext !== "") {
+								doctext = doctext + "\n\n";
+							}
+							doctext = doctext.concat("Permitted Values: ",keydoc.constraint.join(", "));
 						}
 						var compitem: CompletionItem = {
 							label: keydoc.name,
@@ -4937,11 +4943,23 @@ connection.onHover(
 							thiskeydoc = <KeywordDoc>xdataKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 						}
 						if (thiskeydoc !== undefined) {
+							var hoverdocstr = thiskeydoc.description;
+							if (hoverdocstr === undefined) {
+								hoverdocstr = "";
+							}
 							if ("constraint" in thiskeydoc && thiskeydoc.constraint instanceof Array) {
-								return {
-									contents: [thiskeydoc.description,"Permitted values: "+thiskeydoc.constraint.join(", ")],
-									range: thiskeyrange
-								};
+								if (hoverdocstr !== "") {
+									return {
+										contents: [thiskeydoc.description,"Permitted values: "+thiskeydoc.constraint.join(", ")],
+										range: thiskeyrange
+									};
+								}
+								else {
+									return {
+										contents: ["Permitted values: "+thiskeydoc.constraint.join(", ")],
+										range: thiskeyrange
+									};
+								}
 							}
 							else {
 								return {
