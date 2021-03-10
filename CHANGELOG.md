@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.3] - 2021-XX-XX
+## [1.1.3] - 2021-03-10
 - Fix issue [#71](https://github.com/intersystems/language-server/issues/71): Override method command
 - Fix issue [#139](https://github.com/intersystems/language-server/issues/139): Don't show methods marked NotInheritable in the completion list
 - Fix issue [#140](https://github.com/intersystems/language-server/issues/140): Hover not working for properties and parameters
