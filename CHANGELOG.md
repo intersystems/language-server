@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.4] - 2021-XX-XX
+- Fix issue [#146](https://github.com/intersystems/language-server/issues/146): Values for keywords "Owner" and "Aliases" are not tokenized correctly
+
 ## [1.1.3] - 2021-03-10
 - Fix issue [#71](https://github.com/intersystems/language-server/issues/71): Override method command
 - Fix issue [#139](https://github.com/intersystems/language-server/issues/139): Don't show methods marked NotInheritable in the completion list
