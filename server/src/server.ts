@@ -41,8 +41,8 @@ import { URI } from 'vscode-uri';
 import axios, { AxiosResponse } from 'axios';
 import axiosCookieJarSupport from 'axios-cookiejar-support';
 import tough = require('tough-cookie');
-axiosCookieJarSupport(axios);
 
+import { EvaluatableExpression, findEvaluatableExpression } from './evaluatableExpression';
 import { compressedline, monikeropttype, monikerinfo } from './types';
 import { startcombridge, parsedocument } from './parse';
 import { parseText, getLegend } from './sem';
@@ -67,6 +67,8 @@ import propertyKeywords = require("./documentation/keywords/Property.json");
 import queryKeywords = require("./documentation/keywords/Query.json");
 import triggerKeywords = require("./documentation/keywords/Trigger.json");
 import xdataKeywords = require("./documentation/keywords/XData.json");
+
+axiosCookieJarSupport(axios);
 
 var turndownService = require('turndown');
 var turndown = new turndownService();
@@ -162,7 +164,7 @@ type ClassMemberContext = {
 type KeywordDoc = {
 	name: string,
 	description?: string,
-	type?: string,
+	type: string,
 	constraint?: string | string[]
 };
 
@@ -243,6 +245,14 @@ type AddOverridableMembersParams = {
 type ValidateOverrideCursorParams = {
 	uri: string,
 	line: number
+};
+
+/**
+ * The parameter literal for the `intersystems/debugger/evaluatableExpression` request.
+ */
+type EvaluatableExpressionParams = {
+	uri: string,
+	position: Position
 };
 
 /**
@@ -1015,7 +1025,7 @@ function formatToken(doc: TextDocument, parsed: compressedline[], settings: Lang
 			};
 		}
 	}
-	else if (parsed[line][token].l == ld.cos_langindex && (parsed[line][token].s == ld.cos_zf_attrindex || parsed[line][token].s == ld.cos_zv_attrindex)) {
+	else if (parsed[line][token].l == ld.cos_langindex && (parsed[line][token].s == ld.cos_uknzfunc_attrindex || parsed[line][token].s == ld.cos_uknzvar_attrindex)) {
 		// This is an unknown Z function or variable
 
 		const unknsrange = Range.create(Position.create(line,parsed[line][token].p),Position.create(line,parsed[line][token].p + parsed[line][token].c));
@@ -3823,9 +3833,6 @@ connection.onCompletion(
 				if (keywordtype === "class") {
 					keywordsarr = classKeywords.slice();
 				}
-				else if (keywordtype === "constraint") {
-					keywordsarr = constraintKeywords.slice();
-				}
 				else if (keywordtype === "foreignkey") {
 					keywordsarr = foreignkeyKeywords.slice();
 				}
@@ -3916,9 +3923,6 @@ connection.onCompletion(
 				var keywordsarr: KeywordDoc[] =[];
 				if (keywordtype === "class") {
 					keywordsarr = classKeywords.slice();
-				}
-				else if (keywordtype === "constraint") {
-					keywordsarr = constraintKeywords.slice();
 				}
 				else if (keywordtype === "foreignkey") {
 					keywordsarr = foreignkeyKeywords.slice();
@@ -8154,6 +8158,33 @@ connection.onRequest("intersystems/refactor/validateOverrideCursor",
 		}
 
 		return (abovevalid && belowvalid);
+	}
+);
+
+connection.onRequest("intersystems/debugger/evaluatableExpression",
+	(params: EvaluatableExpressionParams): EvaluatableExpression | null => {
+		const parsed = parsedDocuments.get(params.uri);
+		if (parsed === undefined) {return null;}
+		const doc = documents.get(params.uri);
+		if (doc === undefined) {return null;}
+
+		var tkn: number = -1;
+		for (let i = 0; i < parsed[params.position.line].length; i++) {
+			const symbolstart: number = parsed[params.position.line][i].p;
+			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
+			if (params.position.character >= symbolstart && params.position.character <= symbolend) {
+				// We found the right symbol in the line
+				tkn = i;
+				break;
+			}
+		}
+
+		if (tkn !== -1) {
+			return findEvaluatableExpression(doc,parsed,params.position.line,tkn);
+		}
+		else {
+			return null;
+		}
 	}
 );
 

@@ -7,7 +7,8 @@ import {
 	ColorThemeKind,
 	workspace,
 	commands,
-	QuickPickItem
+	QuickPickItem,
+	languages
 } from 'vscode';
 
 import {
@@ -17,6 +18,8 @@ import {
 	TransportKind,
 	WorkspaceEdit
 } from 'vscode-languageclient/node';
+
+import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
 
 let client: LanguageClient;
 
@@ -44,15 +47,17 @@ export async function activate(context: ExtensionContext) {
 		}
 	};
 
+	const documentSelector = [
+		{language: 'objectscript'},
+		{language: 'objectscript-class'},
+		{language: 'objectscript-csp'},
+		{language: 'objectscript-macros'}
+	];
+
 	// Options to control the language client
 	let clientOptions: LanguageClientOptions = {
 		// Register the server for InterSystems files
-		documentSelector: [
-			{language: 'objectscript'},
-			{language: 'objectscript-class'},
-			{language: 'objectscript-csp'},
-			{language: 'objectscript-macros'}
-		]
+		documentSelector: documentSelector
 	};
 
 	// Create the language client and start the client.
@@ -273,6 +278,13 @@ export async function activate(context: ExtensionContext) {
 
 	// Add the override class member command to the subscriptions array
 	context.subscriptions.push(overrideCommandDisposable);
+
+	// Initialize the EvaluatableExpressionProvider
+	const evaluatableExpressionProvider = new ObjectScriptEvaluatableExpressionProvider(client);
+	let evaluatableExpressionDisposable = languages.registerEvaluatableExpressionProvider(documentSelector,evaluatableExpressionProvider);
+
+	// Add the EvaluatableExpressionProvider to the subscriptions array
+	context.subscriptions.push(evaluatableExpressionDisposable);
 
 	// Start the client. This will also launch the server
 	client.start();
