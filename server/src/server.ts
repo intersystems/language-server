@@ -31,7 +31,10 @@ import {
 	SemanticTokensBuilder,
 	SemanticTokensParams,
 	SemanticTokensDeltaParams,
-	WorkspaceEdit
+	WorkspaceEdit,
+	CodeActionKind,
+	CodeActionParams,
+	CodeAction
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -2578,7 +2581,13 @@ connection.onInitialize((params: InitializeParams) => {
 				prepareProvider: true
 			},
 			typeDefinitionProvider: true,
-			declarationProvider: true
+			declarationProvider: true,
+			codeActionProvider: {
+				codeActionKinds: [
+					CodeActionKind.Refactor
+				],
+				resolveProvider: false
+			}
 		}
 	};
 });
@@ -8185,6 +8194,35 @@ connection.onRequest("intersystems/debugger/evaluatableExpression",
 		else {
 			return null;
 		}
+	}
+);
+
+connection.onCodeAction(
+	(params: CodeActionParams): CodeAction[] | null => {
+		const parsed = parsedDocuments.get(params.textDocument.uri);
+		if (parsed === undefined) {return null;}
+		const doc = documents.get(params.textDocument.uri);
+		if (doc === undefined) {return null;}
+		if (params.context.only !== undefined && !params.context.only.includes(CodeActionKind.Refactor)) {
+			// We only supply refactor CodeActions but the client isn't requesting them, so return null
+			return null;
+		}
+
+		// Finding where you are in the document
+
+		// Validate the selection range
+		// params.range.start.line -> params.range.end.line
+
+		// Computing the WorkspaceEdit
+
+		// Returning the CodeAction
+		const result: CodeAction = {
+			title: 'Wrap in Try/Catch',
+			edit: {},
+			kind: CodeActionKind.Refactor
+		};
+
+		return null;
 	}
 );
 
