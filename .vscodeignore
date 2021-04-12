@@ -1,0 +1,12 @@
+.vscode/**
+**/*.ts
+**/*.map
+.gitignore
+**/tsconfig.json
+**/tslint.json
+server/node_modules/ref-napi/build/**
+server/node_modules/ffi-napi/build/**
+server/node_modules/ffi-napi/node_modules/ref-napi/build/**
+server/node_modules/ref-array-napi/node_modules/ref-napi/build/**
+server/node_modules/ref-struct-napi/node_modules/ref-napi/build/**
+testfiles/**
