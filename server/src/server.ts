@@ -35,6 +35,7 @@ import {
 	CodeActionKind,
 	CodeActionParams,
 	CodeAction
+	integer
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -8226,32 +8227,52 @@ connection.onCodeAction(
 		var startiscos: boolean = false;
 		var endiscos: boolean = false;
 		var foundcls: boolean = false;
-		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {
-			if (parsed[ln].length === 0) {
+
+		var firstbraceisopen:boolean=true;
+		var countopenbraces: integer = 0;
+
+		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {// Loop through each line of the selection
+			if (parsed[ln].length === 0) {// Empty line
 				continue;
 			}
-			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) {
+			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) { // Check that first token of the selection is objectscript
 				startiscos = true;
 				checkedstart = true;
 			}
 			else if (!checkedstart && parsed[ln][0].l !== ld.cos_langindex) {
 				break;
 			}
-			for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
-				if (parsed[ln][tkn].l == ld.cls_langindex) {
+			for (let tkn = 0; tkn < parsed[ln].length; tkn++) { // Loop through each token on the line
+				if (parsed[ln][tkn].l == ld.cls_langindex) { // break if token is cls
 					foundcls = true;
 					break;
 				}
-				if (tkn === parsed[ln].length-1) {
-					if (parsed[ln][tkn].l == ld.cos_langindex) {
+				if (tkn === parsed[ln].length-1) { // check that last token of the selection is objectscript
+					if (parsed[ln][tkn].l == ld.cos_langindex) { 
 						endiscos = true;
 					}
 					else {
 						endiscos = false;
 					}
 				}
+
+
+				// Check if token is a brace
+				if ( parsed[ln][tkn].s === ld.cos_brace_attrindex && parsed[ln][tkn].l == ld.cos_langindex) {
+					const bracetext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the brace
+					if (bracetext === "{") { // count number of open and close brackets
+						countopenbraces++;				
+					} else{
+						if( countopenbraces===0){ 
+							firstbraceisopen=false // if the first brace is an closing brace "}" -- break
+							break
+						}
+						countopenbraces--;
+					}
+				}
+
 			}
-			if (foundcls) {
+			if (foundcls || !firstbraceisopen) {
 				break;
 			}
 		}
@@ -8262,10 +8283,24 @@ connection.onCodeAction(
 			};
 			return [result];
 		}
+		if(firstbraceisopen===false){// the first brace is a close brace "}"
+			// Return disabled CodeAction
+			result.disabled = {
+				reason: "Must select full code block -- First brace not open"
+			};
+			return [result];
+		}
 		if (!startiscos || !endiscos) {
 			// Selection range begins or ends with a non-COS token, so return disabled CodeAction
 			result.disabled = {
 				reason: "Must select ObjectScript code block"
+			};
+			return [result];
+		}
+		if(countopenbraces!==0){// the braces are not paired
+			// Return disabled CodeAction
+			result.disabled = {
+				reason: "Must select full code block -- Brace mismatch"
 			};
 			return [result];
 		}
