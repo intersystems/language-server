@@ -8208,19 +8208,64 @@ connection.onCodeAction(
 			return null;
 		}
 
-		// Finding where you are in the document
+		var result: CodeAction = {
+			title: 'Wrap in Try/Catch',
+			kind: CodeActionKind.Refactor
+		};
 
 		// Validate the selection range
-		// params.range.start.line -> params.range.end.line
+		var checkedstart: boolean = false;
+		var startiscos: boolean = false;
+		var endiscos: boolean = false;
+		var foundcls: boolean = false;
+		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {
+			if (parsed[ln].length === 0) {
+				continue;
+			}
+			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) {
+				startiscos = true;
+				checkedstart = true;
+			}
+			else if (!checkedstart && parsed[ln][0].l !== ld.cos_langindex) {
+				break;
+			}
+			for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
+				if (parsed[ln][tkn].l == ld.cls_langindex) {
+					foundcls = true;
+					break;
+				}
+				if (tkn === parsed[ln].length-1) {
+					if (parsed[ln][tkn].l == ld.cos_langindex) {
+						endiscos = true;
+					}
+					else {
+						endiscos = false;
+					}
+				}
+			}
+			if (foundcls) {
+				break;
+			}
+		}
+		if (foundcls) {
+			// Return disabled CodeAction
+			result.disabled = {
+				reason: "Code block can't contain class definition code"
+			};
+			return [result];
+		}
+		if (!startiscos || !endiscos) {
+			// Return disabled CodeAction
+			result.disabled = {
+				reason: "Must select ObjectScript code block"
+			};
+			return [result];
+		}
 
 		// Computing the WorkspaceEdit
 
 		// Returning the CodeAction
-		const result: CodeAction = {
-			title: 'Wrap in Try/Catch',
-			edit: {},
-			kind: CodeActionKind.Refactor
-		};
+		
 
 		return null;
 	}
