@@ -330,9 +330,9 @@ const definitionTargetRangeMaxLines: number = 10;
 const classMemberTypes: string[] = ["Parameter","Property","Relationship","ForeignKey","Index","Query","Storage","Trigger","XData","Projection","Method","ClassMethod","ClientMethod"];
 
 /**
- * Compute diagnositcs for this document and sent them to the client.
+ * Compute diagnostics for this document and sent them to the client.
  * 
- * @param doc The TextDocument to compute diagnostic for.
+ * @param doc The TextDocument to compute diagnostics for.
  */
 async function computeDiagnostics(doc: TextDocument) {
 	// Get the parsed document
@@ -8213,6 +8213,14 @@ connection.onCodeAction(
 			kind: CodeActionKind.Refactor
 		};
 
+		if (doc.languageId === "objectscript-macros") {
+			// Can't wrap macro definitions in try/catch, so return disabled CodeAction
+			result.disabled = {
+				reason: "Can't wrap macro definitions in a Try/Catch"
+			};
+			return [result];
+		}
+
 		// Validate the selection range
 		var checkedstart: boolean = false;
 		var startiscos: boolean = false;
@@ -8248,26 +8256,31 @@ connection.onCodeAction(
 			}
 		}
 		if (foundcls) {
-			// Return disabled CodeAction
+			// Selection range contains UDL code, so return disabled CodeAction
 			result.disabled = {
 				reason: "Code block can't contain class definition code"
 			};
 			return [result];
 		}
 		if (!startiscos || !endiscos) {
-			// Return disabled CodeAction
+			// Selection range begins or ends with a non-COS token, so return disabled CodeAction
 			result.disabled = {
 				reason: "Must select ObjectScript code block"
 			};
 			return [result];
 		}
 
-		// Computing the WorkspaceEdit
-
-		// Returning the CodeAction
+		// Compute the WorkspaceEdit
+		var edit: WorkspaceEdit = {
+			changes: {
+				[params.textDocument.uri]: []
+			}
+		};
 		
-
-		return null;
+		result.edit = edit;
+		
+		// Return the CodeAction
+		return [result];
 	}
 );
 
