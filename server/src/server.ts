@@ -34,7 +34,7 @@ import {
 	WorkspaceEdit,
 	CodeActionKind,
 	CodeActionParams,
-	CodeAction
+	CodeAction,
 	integer
 } from 'vscode-languageserver/node';
 
@@ -8231,9 +8231,16 @@ connection.onCodeAction(
 		var firstbraceisopen:boolean=true;
 		var countopenbraces: integer = 0;
 
+		var lnstart:integer=0 // first non-empty line
+		var lnend:integer=0	  // last non-empty line
+
 		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {// Loop through each line of the selection
 			if (parsed[ln].length === 0) {// Empty line
 				continue;
+			}
+			lnend=ln 
+			if(lnstart==0){
+				lnstart=ln
 			}
 			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) { // Check that first token of the selection is objectscript
 				startiscos = true;
@@ -8305,10 +8312,47 @@ connection.onCodeAction(
 			return [result];
 		}
 
+		// TODO: Other validations
+			// - if contains an "if" or "else if" - -check that the next non-empty or comment line (outside the selection) is not "else if" or "else"
+			//		also, if "if, else if, else"  must contain the the code blocks that goes with it (not just select condition)
+			// - if contains try block, must also contans the catch block too
+			// - "write" and "set" -- check that the selection contains the whole command. write and set can go over several lines (with emoty line and comment in between )
+			//		check next non-empty/non-comment line - if it is another command/or closed bracket, ok!
+			// for, while, do while... 
+		
+		
+
+
+		// TO DO:
+		// - If selection contains a "return", add the return in the catch block?
+		// - Add status in catch block? default is "Set tSC=ex.AsStatus()"
+
+		// Compute the TextEdits
+		var edits: TextEdit[] = [];
+		const whitespace =doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)))
+		edits.push({ //Open try block
+			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
+			newText: "Try{\n" + whitespace
+		});
+		for (let ln = lnstart; ln <= lnend; ln++) {// Indent the selection block
+			if (parsed[ln].length === 0) {
+				continue;
+			}
+			edits.push({
+				range: Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p)),
+				newText: "\t"
+			});
+		}
+		const insertposend=Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)
+		edits.push({ // close try block and add catch block
+			range: Range.create(insertposend,insertposend),
+			newText: "\n"+whitespace+"}Catch ex{\n"+whitespace+"\t//\n"+whitespace+"} "
+		});
+		
 		// Compute the WorkspaceEdit
 		var edit: WorkspaceEdit = {
 			changes: {
-				[params.textDocument.uri]: []
+				[params.textDocument.uri]: edits
 			}
 		};
 		
