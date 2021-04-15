@@ -71,6 +71,7 @@ import propertyKeywords = require("./documentation/keywords/Property.json");
 import queryKeywords = require("./documentation/keywords/Query.json");
 import triggerKeywords = require("./documentation/keywords/Trigger.json");
 import xdataKeywords = require("./documentation/keywords/XData.json");
+import { deepStrictEqual } from 'assert';
 
 axiosCookieJarSupport(axios);
 
@@ -8202,7 +8203,7 @@ connection.onRequest("intersystems/debugger/evaluatableExpression",
 );
 
 connection.onCodeAction(
-	(params: CodeActionParams): CodeAction[] | null => {
+	async (params: CodeActionParams): Promise<CodeAction[] | null> => {
 		const parsed = parsedDocuments.get(params.textDocument.uri);
 		if (parsed === undefined) {return null;}
 		const doc = documents.get(params.textDocument.uri);
@@ -8314,28 +8315,44 @@ connection.onCodeAction(
 			};
 			return [result];
 		}
-
-		// TODO: Other validations
-			// - if contains an "if" or "else if" - -check that the next non-empty or comment line (outside the selection) is not "else if" or "else"
-			//		also, if "if, else if, else"  must contain the the code blocks that goes with it (not just select condition)
-			// - if contains try block, must also contans the catch block too
-			// - "write" and "set" -- check that the selection contains the whole command. write and set can go over several lines (with emoty line and comment in between )
-			//		check next non-empty/non-comment line - if it is another command/or closed bracket, ok!
-			// for, while, do while... 
+			
+		const settings =   await getLanguageServerSettings();
+		const whitespace =doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)))
+	
+		// Add #Dim ex As %Exception.AbstractException before Try/Catch block
+		const ext = doc.uri.substring(doc.uri.lastIndexOf(".")).toLowerCase();// file extension
+		var dimline=""
+		const exname=settings.refactor.exceptionVariable
+		if (ext===".cls" || ext===".mac"){
+			dimline="#Dim "+exname+" As %Exception.AbstractException\n"+ whitespace
+		}
 		
+		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
+		const insertSpaces = await connection.workspace.getConfiguration("editor.insertSpaces");
+		const tabSize = await connection.workspace.getConfiguration("editor.tabSize");
+		var tab:string="\t"
+		if(insertSpaces===true){
+			tab=" ".repeat(tabSize)
+		}
+
+		// Adpapt to InterSystems Language Server Settings
+		var trycommandtext:string="Try"
+		var catchcommandtext:string="Catch"
+		if (settings.formatting.commands.case === "lower") {
+			trycommandtext=trycommandtext.toLowerCase()
+			catchcommandtext=catchcommandtext.toLowerCase()
+		}
+		else if (settings.formatting.commands.case === "upper"){
+			trycommandtext=trycommandtext.toUpperCase()
+			catchcommandtext=catchcommandtext.toUpperCase()
+		}
 		
-
-
-		// TO DO:
-		// - If selection contains a "return", add the return in the catch block?
-		// - Add status in catch block? default is "Set tSC=ex.AsStatus()"
-
 		// Compute the TextEdits
 		var edits: TextEdit[] = [];
-		const whitespace =doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)))
+		
 		edits.push({ //Open try block
 			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
-			newText: "Try{\n" + whitespace
+			newText: dimline+ trycommandtext +"{\n" + whitespace
 		});
 		for (let ln = lnstart; ln <= lnend; ln++) {// Indent the selection block
 			if (parsed[ln].length === 0) {
@@ -8343,13 +8360,13 @@ connection.onCodeAction(
 			}
 			edits.push({
 				range: Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p)),
-				newText: "\t"
+				newText: tab
 			});
 		}
 		const insertposend=Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)
 		edits.push({ // close try block and add catch block
-			range: Range.create(insertposend,insertposend),
-			newText: "\n"+whitespace+"}Catch ex{\n"+whitespace+"\t//\n"+whitespace+"} "
+			range: Range.create(insertposend,insertposend), 
+			newText: "\n"+whitespace+"}"+ catchcommandtext +" "+exname+"{\n"+whitespace+""+tab+"//\n"+whitespace+"} "
 		});
 		
 		// Compute the WorkspaceEdit
