@@ -167,6 +167,12 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether the extension will suggest that one of the InterSystems default themes be used if neither one is active upon extension activation."
+				},
+				"intersystems.language-server.refactor.exceptionVariable": {
+					"scope": "application",
+					"type": "string",
+					"default": "ex",
+					"description": "The name of the exception variable inserted in a 'Wrap in Try/Catch' refactor."
 				}
 			}
 		},

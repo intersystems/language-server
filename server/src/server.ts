@@ -103,6 +103,9 @@ type LanguageServerConfiguration = {
 	},
 	signaturehelp: {
 		documentation: boolean
+	},
+	refactor: {
+		exceptionVariable: string
 	}
 };
 
