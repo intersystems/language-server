@@ -34,7 +34,8 @@ import {
 	WorkspaceEdit,
 	CodeActionKind,
 	CodeActionParams,
-	CodeAction
+	CodeAction,
+	integer
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -8229,32 +8230,59 @@ connection.onCodeAction(
 		var startiscos: boolean = false;
 		var endiscos: boolean = false;
 		var foundcls: boolean = false;
-		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {
-			if (parsed[ln].length === 0) {
+
+		var firstbraceisopen:boolean=true;
+		var countopenbraces: integer = 0;
+
+		var lnstart:integer=0 // first non-empty line
+		var lnend:integer=0	  // last non-empty line
+
+		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {// Loop through each line of the selection
+			if (parsed[ln].length === 0) {// Empty line
 				continue;
 			}
-			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) {
+			lnend=ln 
+			if(lnstart==0){
+				lnstart=ln
+			}
+			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) { // Check that first token of the selection is objectscript
 				startiscos = true;
 				checkedstart = true;
 			}
 			else if (!checkedstart && parsed[ln][0].l !== ld.cos_langindex) {
 				break;
 			}
-			for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
-				if (parsed[ln][tkn].l == ld.cls_langindex) {
+			for (let tkn = 0; tkn < parsed[ln].length; tkn++) { // Loop through each token on the line
+				if (parsed[ln][tkn].l == ld.cls_langindex) { // break if token is cls
 					foundcls = true;
 					break;
 				}
-				if (tkn === parsed[ln].length-1) {
-					if (parsed[ln][tkn].l == ld.cos_langindex) {
+				if (tkn === parsed[ln].length-1) { // check that last token of the selection is objectscript
+					if (parsed[ln][tkn].l == ld.cos_langindex) { 
 						endiscos = true;
 					}
 					else {
 						endiscos = false;
 					}
 				}
+
+
+				// Check if token is a brace
+				if ( parsed[ln][tkn].s === ld.cos_brace_attrindex && parsed[ln][tkn].l == ld.cos_langindex) {
+					const bracetext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the brace
+					if (bracetext === "{") { // count number of open and close brackets
+						countopenbraces++;				
+					} else{
+						if( countopenbraces===0){ 
+							firstbraceisopen=false // if the first brace is an closing brace "}" -- break
+							break
+						}
+						countopenbraces--;
+					}
+				}
+
 			}
-			if (foundcls) {
+			if (foundcls || !firstbraceisopen) {
 				break;
 			}
 		}
@@ -8265,6 +8293,13 @@ connection.onCodeAction(
 			};
 			return [result];
 		}
+		if(firstbraceisopen===false){// the first brace is a close brace "}"
+			// Return disabled CodeAction
+			result.disabled = {
+				reason: "Must select full code block -- First brace not open"
+			};
+			return [result];
+		}
 		if (!startiscos || !endiscos) {
 			// Selection range begins or ends with a non-COS token, so return disabled CodeAction
 			result.disabled = {
@@ -8272,11 +8307,55 @@ connection.onCodeAction(
 			};
 			return [result];
 		}
+		if(countopenbraces!==0){// the braces are not paired
+			// Return disabled CodeAction
+			result.disabled = {
+				reason: "Must select full code block -- Brace mismatch"
+			};
+			return [result];
+		}
 
+		// TODO: Other validations
+			// - if contains an "if" or "else if" - -check that the next non-empty or comment line (outside the selection) is not "else if" or "else"
+			//		also, if "if, else if, else"  must contain the the code blocks that goes with it (not just select condition)
+			// - if contains try block, must also contans the catch block too
+			// - "write" and "set" -- check that the selection contains the whole command. write and set can go over several lines (with emoty line and comment in between )
+			//		check next non-empty/non-comment line - if it is another command/or closed bracket, ok!
+			// for, while, do while... 
+		
+		
+
+
+		// TO DO:
+		// - If selection contains a "return", add the return in the catch block?
+		// - Add status in catch block? default is "Set tSC=ex.AsStatus()"
+
+		// Compute the TextEdits
+		var edits: TextEdit[] = [];
+		const whitespace =doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)))
+		edits.push({ //Open try block
+			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
+			newText: "Try{\n" + whitespace
+		});
+		for (let ln = lnstart; ln <= lnend; ln++) {// Indent the selection block
+			if (parsed[ln].length === 0) {
+				continue;
+			}
+			edits.push({
+				range: Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p)),
+				newText: "\t"
+			});
+		}
+		const insertposend=Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)
+		edits.push({ // close try block and add catch block
+			range: Range.create(insertposend,insertposend),
+			newText: "\n"+whitespace+"}Catch ex{\n"+whitespace+"\t//\n"+whitespace+"} "
+		});
+		
 		// Compute the WorkspaceEdit
 		var edit: WorkspaceEdit = {
 			changes: {
-				[params.textDocument.uri]: []
+				[params.textDocument.uri]: edits
 			}
 		};
 		
