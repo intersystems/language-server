@@ -2754,7 +2754,8 @@ connection.onSignatureHelp(
 		if (
 			params.context.triggerKind === SignatureHelpTriggerKind.TriggerCharacter &&
 			params.context.triggerCharacter === "(" && triggerlang === ld.cos_langindex &&
-			triggerattr !== ld.cos_comment_attrindex && triggerattr !== ld.cos_dcom_attrindex
+			triggerattr !== ld.cos_comment_attrindex && triggerattr !== ld.cos_dcom_attrindex &&
+			thistoken > 0
 		) {
 			// This is potentially the start of a signature
 
@@ -4377,6 +4378,10 @@ connection.onHover(
 		const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 		const settings = await getLanguageServerSettings();
 
+		if (parsed[params.position.line] === undefined) {
+			// This is the blank last line of the file
+			return null;
+		}
 		for (let i = 0; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
 			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
@@ -5186,6 +5191,10 @@ connection.onDefinition(
 		if (doc === undefined) {return null;}
 		const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 
+		if (parsed[params.position.line] === undefined) {
+			// This is the blank last line of the file
+			return null;
+		}
 		for (let i = 0; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
 			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
@@ -7538,6 +7547,10 @@ connection.onTypeDefinition(
 		if (doc === undefined) {return null;}
 		const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 
+		if (parsed[params.position.line] === undefined) {
+			// This is the blank last line of the file
+			return null;
+		}
 		for (let i = 0; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
 			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;

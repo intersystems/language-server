@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.1.5] - 2021-XX-XX
+- Fix issue [#150](https://github.com/intersystems/language-server/issues/150): Hovering over blank last line of file causes error
+- Fix issue [#151](https://github.com/intersystems/language-server/issues/151): Typing "(" on a blank line causes an error
+
 ## [1.1.4] - 2021-04-09
 - Fix issue [#74](https://github.com/intersystems/language-server/issues/74): Be an EvaluatableExpressionProvider
 - Fix issue [#146](https://github.com/intersystems/language-server/issues/146): Values for keywords "Owner" and "Aliases" are not tokenized correctly
