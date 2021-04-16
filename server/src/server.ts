@@ -8241,8 +8241,17 @@ connection.onCodeAction(
 		var lnend:integer=0	  // last non-empty line
 
 		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {// Loop through each line of the selection
-			if (parsed[ln].length === 0) {// Empty line
-				continue;
+			try{
+				if (parsed[ln].length === 0) {// Empty line
+					continue;
+				}
+			}catch{ // parsed[ln] is undefined
+				//console.log("typeof(parsed[ln]) === "+typeof(parsed[ln]))
+				// Return disabled CodeAction
+				result[0].disabled = {
+				reason: "Must select full code block -- Last empty line"
+				};
+				return result;
 			}
 			lnend=ln 
 			if(lnstart==0){
