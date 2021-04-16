@@ -72,6 +72,7 @@ import queryKeywords = require("./documentation/keywords/Query.json");
 import triggerKeywords = require("./documentation/keywords/Trigger.json");
 import xdataKeywords = require("./documentation/keywords/XData.json");
 import { deepStrictEqual } from 'assert';
+import { resourceLimits } from 'worker_threads';
 
 axiosCookieJarSupport(axios);
 
@@ -2591,7 +2592,7 @@ connection.onInitialize((params: InitializeParams) => {
 				codeActionKinds: [
 					CodeActionKind.Refactor
 				],
-				resolveProvider: false
+				resolveProvider: true
 			}
 		}
 	};
@@ -8213,17 +8214,18 @@ connection.onCodeAction(
 			return null;
 		}
 
-		var result: CodeAction = {
+		var result: CodeAction[] = []
+		result.push({
 			title: 'Wrap in Try/Catch',
 			kind: CodeActionKind.Refactor
-		};
+		})
 
 		if (doc.languageId === "objectscript-macros") {
 			// Can't wrap macro definitions in try/catch, so return disabled CodeAction
-			result.disabled = {
+			result[0].disabled = {
 				reason: "Can't wrap macro definitions in a Try/Catch"
 			};
-			return [result];
+			return result;
 		}
 
 		// Validate the selection range
@@ -8289,99 +8291,116 @@ connection.onCodeAction(
 		}
 		if (foundcls) {
 			// Selection range contains UDL code, so return disabled CodeAction
-			result.disabled = {
+			result[0].disabled = {
 				reason: "Code block can't contain class definition code"
 			};
-			return [result];
+			return result;
 		}
 		if(firstbraceisopen===false){// the first brace is a close brace "}"
 			// Return disabled CodeAction
-			result.disabled = {
+			result[0].disabled = {
 				reason: "Must select full code block -- First brace not open"
 			};
-			return [result];
+			return result;
 		}
 		if (!startiscos || !endiscos) {
 			// Selection range begins or ends with a non-COS token, so return disabled CodeAction
-			result.disabled = {
+			result[0].disabled = {
 				reason: "Must select ObjectScript code block"
 			};
-			return [result];
+			return result;
 		}
 		if(countopenbraces!==0){// the braces are not paired
 			// Return disabled CodeAction
-			result.disabled = {
+			result[0].disabled = {
 				reason: "Must select full code block -- Brace mismatch"
 			};
-			return [result];
-		}
-			
-		const settings =   await getLanguageServerSettings();
-		const whitespace =doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)))
-	
-		// Add #Dim ex As %Exception.AbstractException before Try/Catch block
-		const ext = doc.uri.substring(doc.uri.lastIndexOf(".")).toLowerCase();// file extension
-		var dimline=""
-		const exname=settings.refactor.exceptionVariable
-		if (ext===".cls" || ext===".mac"){
-			dimline="#Dim "+exname+" As %Exception.AbstractException\n"+ whitespace
-		}
-		
-		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
-		const insertSpaces = await connection.workspace.getConfiguration("editor.insertSpaces");
-		const tabSize = await connection.workspace.getConfiguration("editor.tabSize");
-		var tab:string="\t"
-		if(insertSpaces===true){
-			tab=" ".repeat(tabSize)
+			return result;
 		}
 
-		// Adpapt to InterSystems Language Server Settings
-		var trycommandtext:string="Try"
-		var catchcommandtext:string="Catch"
-		if (settings.formatting.commands.case === "lower") {
-			trycommandtext=trycommandtext.toLowerCase()
-			catchcommandtext=catchcommandtext.toLowerCase()
-		}
-		else if (settings.formatting.commands.case === "upper"){
-			trycommandtext=trycommandtext.toUpperCase()
-			catchcommandtext=catchcommandtext.toUpperCase()
-		}
+		result[0].data =[doc.uri,lnstart,lnend]
 		
+		// Return the CodeAction
+		return result;
+	}
+);
+
+connection.onCodeActionResolve(
+	async (codeAction: CodeAction): Promise<CodeAction> => {
+		const data: [string,number,number] =<[string,number,number]>codeAction.data;
+		const parsed = parsedDocuments.get(data[0])
+		if (parsed === undefined) {return codeAction;}
+		const doc = documents.get(data[0]);
+		if (doc === undefined) {return codeAction;}
+
 		// Compute the TextEdits
 		var edits: TextEdit[] = [];
+
+		if ( codeAction.title === 'Wrap in Try/Catch') {
+			const lnstart=data[1]
+			const lnend=data[2]
+			const whitespace =doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)))
 		
-		edits.push({ //Open try block
-			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
-			newText: dimline+ trycommandtext +"{\n" + whitespace
-		});
-		for (let ln = lnstart; ln <= lnend; ln++) {// Indent the selection block
-			if (parsed[ln].length === 0) {
-				continue;
+			// Add #Dim ex As %Exception.AbstractException before Try/Catch block
+			const settings =   await getLanguageServerSettings();
+			const ext = data[0].substring(data[0].lastIndexOf(".")).toLowerCase();// file extension
+			var dimline=""
+			const exname=settings.refactor.exceptionVariable
+			if (ext===".cls" || ext===".mac"){
+				dimline="#Dim "+exname+" As %Exception.AbstractException\n"+ whitespace
 			}
-			edits.push({
-				range: Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p)),
-				newText: tab
+			
+			// Adapt to VSCode Workspace settings (tabsize/insertspaces)
+			const insertSpaces = await connection.workspace.getConfiguration("editor.insertSpaces");
+			const tabSize = await connection.workspace.getConfiguration("editor.tabSize");
+			var tab:string="\t"
+			if(insertSpaces===true){
+				tab=" ".repeat(tabSize)
+			}
+
+			// Adpapt to InterSystems Language Server Settings
+			var trycommandtext:string="Try"
+			var catchcommandtext:string="Catch"
+			if (settings.formatting.commands.case === "lower") {
+				trycommandtext=trycommandtext.toLowerCase()
+				catchcommandtext=catchcommandtext.toLowerCase()
+			}
+			else if (settings.formatting.commands.case === "upper"){
+				trycommandtext=trycommandtext.toUpperCase()
+				catchcommandtext=catchcommandtext.toUpperCase()
+			}
+			
+			edits.push({ //Open try block
+				range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
+				newText: dimline+ trycommandtext +"{\n" + whitespace
 			});
+			for (let ln = lnstart; ln <= lnend; ln++) {// Indent the selection block
+				if (parsed[ln].length === 0) {
+					continue;
+				}
+				edits.push({
+					range: Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p)),
+					newText: tab
+				});
+			}
+			const insertposend=Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)
+			edits.push({ // close try block and add catch block
+				range: Range.create(insertposend,insertposend), 
+				newText: "\n"+whitespace+"}"+ catchcommandtext +" "+exname+"{\n"+whitespace+""+tab+"\n"+whitespace+"} "
+			});	
 		}
-		const insertposend=Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)
-		edits.push({ // close try block and add catch block
-			range: Range.create(insertposend,insertposend), 
-			newText: "\n"+whitespace+"}"+ catchcommandtext +" "+exname+"{\n"+whitespace+""+tab+"//\n"+whitespace+"} "
-		});
-		
-		// Compute the WorkspaceEdit
-		var edit: WorkspaceEdit = {
+
+		codeAction.edit ={
 			changes: {
-				[params.textDocument.uri]: edits
+				[data[0]]: edits
 			}
 		};
 		
-		result.edit = edit;
-		
-		// Return the CodeAction
-		return [result];
+		return codeAction;
 	}
 );
+	
+		
 
 // Make the text document manager listen on the connection for open, change and close text document events
 documents.listen(connection);
