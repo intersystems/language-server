@@ -8327,7 +8327,21 @@ connection.onCodeAction(
 			result[0].data =[doc.uri,lnstart,lnend]
 		}
 		else if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.QuickFix)) {
-			
+			const diagnostics=params.context.diagnostics // Diagnostics array of the selection
+			if (diagnostics.length>0 ){
+				for (let i =0; i <diagnostics.length; i++){
+					if(diagnostics[i].message==="Invalid parameter type."){
+						result.push({
+							title: 'Remove incorrect type',
+							kind: CodeActionKind.QuickFix
+						})
+						result[result.length-1].data=[doc.uri,params.range]
+
+						break
+					}
+				}
+			}
+
 		}
 
 		if (result.length > 0) {
@@ -8341,16 +8355,18 @@ connection.onCodeAction(
 
 connection.onCodeActionResolve(
 	async (codeAction: CodeAction): Promise<CodeAction> => {
-		const data: [string,number,number] =<[string,number,number]>codeAction.data;
-		const parsed = parsedDocuments.get(data[0])
-		if (parsed === undefined) {return codeAction;}
-		const doc = documents.get(data[0]);
-		if (doc === undefined) {return codeAction;}
-
+		
 		// Compute the TextEdits
 		var edits: TextEdit[] = [];
 
 		if ( codeAction.title === 'Wrap in Try/Catch') {
+			const data: [string,number,number] =<[string,number,number]>codeAction.data; 
+			const parsed = parsedDocuments.get(data[0])
+			if (parsed === undefined) {return codeAction;}
+			const doc = documents.get(data[0]);
+			if (doc === undefined) {return codeAction;}
+
+
 			const lnstart=data[1]
 			const lnend=data[2]
 			const whitespace =doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)))
@@ -8402,13 +8418,34 @@ connection.onCodeActionResolve(
 				range: Range.create(insertposend,insertposend), 
 				newText: "\n"+whitespace+"}"+ catchcommandtext +" "+exname+"{\n"+whitespace+""+tab+"\n"+whitespace+"} "
 			});	
+
+
+			codeAction.edit ={
+				changes: {
+					[data[0]]: edits
+				}
+			};
+		}else if ( codeAction.title === 'Remove incorrect type'){
+			const data: [string,Range] =<[string,Range]>codeAction.data;
+			const parsed = parsedDocuments.get(data[0])
+			if (parsed === undefined) {return codeAction;}
+
+
+			const ln = data[1].start.line
+			const range = Range.create(Position.create(ln,parsed[ln][1].p+parsed[ln][1].c),Position.create(ln,parsed[ln][3].p+parsed[ln][3].c));
+
+			edits.push({ // Remove "As InvalidParameter"
+				range: range, 
+				newText: ""
+			});
+			codeAction.edit ={
+				changes: {
+					[data[0]]: edits
+				}
+			};
 		}
 
-		codeAction.edit ={
-			changes: {
-				[data[0]]: edits
-			}
-		};
+		
 		
 		return codeAction;
 	}
