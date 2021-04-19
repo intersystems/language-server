@@ -276,8 +276,15 @@ export async function activate(context: ExtensionContext) {
 		}
 	);
 
-	// Add the override class member command to the subscriptions array
-	context.subscriptions.push(overrideCommandDisposable);
+	// Register the select parameter type
+	let selectParameterTypeCommandDisposable = commands.registerCommand("intersystems.language-server.selectParameterType",
+		async () => {
+
+		}
+	);
+
+	// Add the commands to the subscriptions array
+	context.subscriptions.push(overrideCommandDisposable,selectParameterTypeCommandDisposable);
 
 	// Initialize the EvaluatableExpressionProvider
 	const evaluatableExpressionProvider = new ObjectScriptEvaluatableExpressionProvider(client);

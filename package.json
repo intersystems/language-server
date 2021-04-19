@@ -46,12 +46,21 @@
 				"command": "intersystems.language-server.overrideClassMembers",
 				"title": "Override Class Members",
 				"category": "InterSystems Language Server"
+			},
+			{
+				"command": "intersystems.language-server.selectParameterType",
+				"title": "Select Parameter Type",
+				"category": "InterSystems Language Server"
 			}
 		],
 		"menus": {
 			"commandPalette": [
 				{
 					"command": "intersystems.language-server.overrideClassMembers",
+					"when": "false"
+				},
+				{
+					"command": "intersystems.language-server.selectParameterType",
 					"when": "false"
 				}
 			],
