@@ -34,8 +34,7 @@ import {
 	WorkspaceEdit,
 	CodeActionKind,
 	CodeActionParams,
-	CodeAction,
-	integer
+	CodeAction
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -71,8 +70,6 @@ import propertyKeywords = require("./documentation/keywords/Property.json");
 import queryKeywords = require("./documentation/keywords/Query.json");
 import triggerKeywords = require("./documentation/keywords/Trigger.json");
 import xdataKeywords = require("./documentation/keywords/XData.json");
-import { deepStrictEqual } from 'assert';
-import { resourceLimits } from 'worker_threads';
 
 axiosCookieJarSupport(axios);
 
@@ -2590,7 +2587,8 @@ connection.onInitialize((params: InitializeParams) => {
 			declarationProvider: true,
 			codeActionProvider: {
 				codeActionKinds: [
-					CodeActionKind.Refactor
+					CodeActionKind.Refactor,
+					CodeActionKind.QuickFix
 				],
 				resolveProvider: true
 			}
@@ -8209,128 +8207,135 @@ connection.onCodeAction(
 		if (parsed === undefined) {return null;}
 		const doc = documents.get(params.textDocument.uri);
 		if (doc === undefined) {return null;}
-		if (params.context.only !== undefined && !params.context.only.includes(CodeActionKind.Refactor)) {
-			// We only supply refactor CodeActions but the client isn't requesting them, so return null
-			return null;
-		}
 
-		var result: CodeAction[] = []
-		result.push({
-			title: 'Wrap in Try/Catch',
-			kind: CodeActionKind.Refactor
-		})
+		var result: CodeAction[] = [];
+		if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.Refactor)) {
+			// The only refactor CodeAction that we currently support is 'Wrap in Try/Catch'
 
-		if (doc.languageId === "objectscript-macros") {
-			// Can't wrap macro definitions in try/catch, so return disabled CodeAction
-			result[0].disabled = {
-				reason: "Can't wrap macro definitions in a Try/Catch"
-			};
-			return result;
-		}
-
-		// Validate the selection range
-		var checkedstart: boolean = false;
-		var startiscos: boolean = false;
-		var endiscos: boolean = false;
-		var foundcls: boolean = false;
-
-		var firstbraceisopen:boolean=true;
-		var countopenbraces: integer = 0;
-
-		var lnstart:integer=0 // first non-empty line
-		var lnend:integer=0	  // last non-empty line
-
-		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {// Loop through each line of the selection
-			try{
-				if (parsed[ln].length === 0) {// Empty line
-					continue;
-				}
-			}catch{ // parsed[ln] is undefined
-				//console.log("typeof(parsed[ln]) === "+typeof(parsed[ln]))
-				// Return disabled CodeAction
+			result.push({
+				title: 'Wrap in Try/Catch',
+				kind: CodeActionKind.Refactor
+			})
+	
+			if (doc.languageId === "objectscript-macros") {
+				// Can't wrap macro definitions in try/catch, so return disabled CodeAction
 				result[0].disabled = {
-				reason: "Must select full code block -- Last empty line"
+					reason: "Can't wrap macro definitions in a Try/Catch"
 				};
 				return result;
 			}
-			lnend=ln 
-			if(lnstart==0){
-				lnstart=ln
-			}
-			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) { // Check that first token of the selection is objectscript
-				startiscos = true;
-				checkedstart = true;
-			}
-			else if (!checkedstart && parsed[ln][0].l !== ld.cos_langindex) {
-				break;
-			}
-			for (let tkn = 0; tkn < parsed[ln].length; tkn++) { // Loop through each token on the line
-				if (parsed[ln][tkn].l == ld.cls_langindex) { // break if token is cls
-					foundcls = true;
+	
+			// Validate the selection range
+			var checkedstart: boolean = false;
+			var startiscos: boolean = false;
+			var endiscos: boolean = false;
+			var foundcls: boolean = false;
+	
+			var firstbraceisopen:boolean=true;
+			var countopenbraces: number = 0;
+	
+			var lnstart:number=0 // first non-empty line
+			var lnend:number=0	  // last non-empty line
+	
+			for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {// Loop through each line of the selection
+				try{
+					if (parsed[ln].length === 0) {// Empty line
+						continue;
+					}
+				}catch{ // parsed[ln] is undefined
+					//console.log("typeof(parsed[ln]) === "+typeof(parsed[ln]))
+					// Return disabled CodeAction
+					result[0].disabled = {
+					reason: "Must select full code block -- Last empty line"
+					};
+					return result;
+				}
+				lnend=ln 
+				if(lnstart==0){
+					lnstart=ln
+				}
+				if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) { // Check that first token of the selection is objectscript
+					startiscos = true;
+					checkedstart = true;
+				}
+				else if (!checkedstart && parsed[ln][0].l !== ld.cos_langindex) {
 					break;
 				}
-				if (tkn === parsed[ln].length-1) { // check that last token of the selection is objectscript
-					if (parsed[ln][tkn].l == ld.cos_langindex) { 
-						endiscos = true;
+				for (let tkn = 0; tkn < parsed[ln].length; tkn++) { // Loop through each token on the line
+					if (parsed[ln][tkn].l == ld.cls_langindex) { // break if token is cls
+						foundcls = true;
+						break;
 					}
-					else {
-						endiscos = false;
-					}
-				}
-
-
-				// Check if token is a brace
-				if ( parsed[ln][tkn].s === ld.cos_brace_attrindex && parsed[ln][tkn].l == ld.cos_langindex) {
-					const bracetext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the brace
-					if (bracetext === "{") { // count number of open and close brackets
-						countopenbraces++;				
-					} else{
-						if( countopenbraces===0){ 
-							firstbraceisopen=false // if the first brace is an closing brace "}" -- break
-							break
+					if (tkn === parsed[ln].length-1) { // check that last token of the selection is objectscript
+						if (parsed[ln][tkn].l == ld.cos_langindex) { 
+							endiscos = true;
 						}
-						countopenbraces--;
+						else {
+							endiscos = false;
+						}
 					}
+	
+	
+					// Check if token is a brace
+					if ( parsed[ln][tkn].s === ld.cos_brace_attrindex && parsed[ln][tkn].l == ld.cos_langindex) {
+						const bracetext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the brace
+						if (bracetext === "{") { // count number of open and close brackets
+							countopenbraces++;				
+						} else{
+							if( countopenbraces===0){ 
+								firstbraceisopen=false // if the first brace is an closing brace "}" -- break
+								break
+							}
+							countopenbraces--;
+						}
+					}
+	
 				}
-
+				if (foundcls || !firstbraceisopen) {
+					break;
+				}
 			}
-			if (foundcls || !firstbraceisopen) {
-				break;
+			if (foundcls) {
+				// Selection range contains UDL code, so return disabled CodeAction
+				result[0].disabled = {
+					reason: "Code block can't contain class definition code"
+				};
+				return result;
 			}
+			if(firstbraceisopen===false){// the first brace is a close brace "}"
+				// Return disabled CodeAction
+				result[0].disabled = {
+					reason: "Must select full code block -- First brace not open"
+				};
+				return result;
+			}
+			if (!startiscos || !endiscos) {
+				// Selection range begins or ends with a non-COS token, so return disabled CodeAction
+				result[0].disabled = {
+					reason: "Must select ObjectScript code block"
+				};
+				return result;
+			}
+			if(countopenbraces!==0){// the braces are not paired
+				// Return disabled CodeAction
+				result[0].disabled = {
+					reason: "Must select full code block -- Brace mismatch"
+				};
+				return result;
+			}
+	
+			result[0].data =[doc.uri,lnstart,lnend]
 		}
-		if (foundcls) {
-			// Selection range contains UDL code, so return disabled CodeAction
-			result[0].disabled = {
-				reason: "Code block can't contain class definition code"
-			};
-			return result;
-		}
-		if(firstbraceisopen===false){// the first brace is a close brace "}"
-			// Return disabled CodeAction
-			result[0].disabled = {
-				reason: "Must select full code block -- First brace not open"
-			};
-			return result;
-		}
-		if (!startiscos || !endiscos) {
-			// Selection range begins or ends with a non-COS token, so return disabled CodeAction
-			result[0].disabled = {
-				reason: "Must select ObjectScript code block"
-			};
-			return result;
-		}
-		if(countopenbraces!==0){// the braces are not paired
-			// Return disabled CodeAction
-			result[0].disabled = {
-				reason: "Must select full code block -- Brace mismatch"
-			};
-			return result;
+		else if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.QuickFix)) {
+			
 		}
 
-		result[0].data =[doc.uri,lnstart,lnend]
-		
-		// Return the CodeAction
-		return result;
+		if (result.length > 0) {
+			return result;
+		}
+		else {
+			return null;
+		}
 	}
 );
 
