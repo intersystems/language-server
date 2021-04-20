@@ -8,7 +8,8 @@ import {
 	workspace,
 	commands,
 	QuickPickItem,
-	languages
+	languages,
+	Range,
 } from 'vscode';
 
 import {
@@ -16,7 +17,8 @@ import {
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind,
-	WorkspaceEdit
+	WorkspaceEdit,
+	TextEdit,
 } from 'vscode-languageclient/node';
 
 import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
@@ -278,8 +280,32 @@ export async function activate(context: ExtensionContext) {
 
 	// Register the select parameter type
 	let selectParameterTypeCommandDisposable = commands.registerCommand("intersystems.language-server.selectParameterType",
-		async () => {
+		async (uri:string,parameterRange:Range) => {
+			// Ask for all parameter types
+			const allparametertypes: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listParameterTypes");
 
+			// Ask the user to select a parameter type
+			const selectedParameter = await window.showQuickPick(allparametertypes,{
+				placeHolder: "Select the parameter type",
+				canPickMany: false
+			});
+			if (!selectedParameter ) {
+				// No parameter was selected
+				return;
+			}
+			
+			// Compute the workspace edit on the client side
+			const change:TextEdit={
+				range:parameterRange,
+				newText:selectedParameter.label
+			}
+			const edit:WorkspaceEdit={
+				changes: {
+					[uri]: [change]
+				}
+			}
+			// Apply the workspace edit
+			workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));	
 		}
 	);
 

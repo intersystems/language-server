@@ -34,7 +34,8 @@ import {
 	WorkspaceEdit,
 	CodeActionKind,
 	CodeActionParams,
-	CodeAction
+	CodeAction,
+	Command
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -259,6 +260,16 @@ type ValidateOverrideCursorParams = {
 type EvaluatableExpressionParams = {
 	uri: string,
 	position: Position
+};
+
+/**
+ * The parameter literal for the `intersystems/refactor/addParameterType` request.
+ */
+ type AddParameterTypeParams = {
+	uri: string,
+	parameterType: string,
+	parameterRange: Range
+
 };
 
 /**
@@ -8201,6 +8212,20 @@ connection.onRequest("intersystems/debugger/evaluatableExpression",
 	}
 );
 
+connection.onRequest("intersystems/refactor/listParameterTypes",
+	 ():QuickPickItem[] => {
+		var result: QuickPickItem[] = [];
+		for (let i =0; i <parameterTypes.length; i++){ // Fetch the list of parameter types
+			result.push({
+			label: parameterTypes[i].name,
+			description: parameterTypes[i].documentation,
+			detail: ""
+			});
+		}
+		return result
+	}
+);
+
 connection.onCodeAction(
 	async (params: CodeActionParams): Promise<CodeAction[] | null> => {
 		const parsed = parsedDocuments.get(params.textDocument.uri);
@@ -8337,6 +8362,11 @@ connection.onCodeAction(
 						})
 						result[result.length-1].data=[doc.uri,params.range]
 
+						result.push({
+							title: 'Select Parameter Type',
+							kind: CodeActionKind.QuickFix,
+							command: Command.create("Select Parameter Type","intersystems.language-server.selectParameterType",params.textDocument.uri,params.range) //params.textDocument.uri
+						})
 						break
 					}
 				}
