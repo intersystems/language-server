@@ -308,8 +308,35 @@ export async function activate(context: ExtensionContext) {
 		}
 	);
 
+	// Register the select parameter type
+	let selectImportPackageDisposable = commands.registerCommand("intersystems.language-server.selectImportPackage",
+		async (uri:string,classname:string) => {
+			// Ask for all import packages
+			const allimportpackages: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listImportPackages",{
+				uri:uri,
+				classmame:classname
+			});
+			// Ask the user to select a import package
+			const selectedPackage = await window.showQuickPick(allimportpackages,{
+				placeHolder: "Select the package to import",
+				canPickMany: false 
+			});
+			if (!selectedPackage ) {
+				// No parameter was selected
+				return;
+			}
+			// Ask the server to compute the workspace edit that the client should apply
+			const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addImportPackages",{
+				uri: uri,
+				packagename: selectedPackage.label,
+			});
+			// Apply the workspace edit
+			workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
+		}
+	);
+
 	// Add the commands to the subscriptions array
-	context.subscriptions.push(overrideCommandDisposable,selectParameterTypeCommandDisposable);
+	context.subscriptions.push(overrideCommandDisposable,selectParameterTypeCommandDisposable,selectImportPackageDisposable);
 
 	// Initialize the EvaluatableExpressionProvider
 	const evaluatableExpressionProvider = new ObjectScriptEvaluatableExpressionProvider(client);

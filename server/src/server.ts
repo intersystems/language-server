@@ -263,6 +263,22 @@ type EvaluatableExpressionParams = {
 };
 
 /**
+ * The parameter literal for the `intersystems/refactor/listImportPackages` request.
+ */
+ type ListImportPackagesParams = {
+	uri: string,
+	classmame:string
+};
+
+/**
+ * The parameter literal for the `intersystems/refactor/listImportPackages` request.
+ */
+ type AddImportPackagesParams = {
+	uri: string,
+	packagename:string
+};
+
+/**
  * TextDocument URI's mapped to the tokenized representation of the document.
  */
 let parsedDocuments: Map<string, compressedline[]> = new Map();
@@ -8216,6 +8232,96 @@ connection.onRequest("intersystems/refactor/listParameterTypes",
 	}
 );
 
+connection.onRequest("intersystems/refactor/listImportPackages",
+	async (params: ListImportPackagesParams): Promise<QuickPickItem[]> => {
+		const server: ServerSpec = await getServerSpec(params.uri);
+		var result: QuickPickItem[] = [];
+		const classname:string=params.classmame;
+
+		// Fetch the list of import packages
+		const querydata: QueryData = {
+			query: "SELECT ... ?",
+			parameters: [classname]
+		};
+		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+	
+		result.push({
+			label: "%Net",
+			description: "Description Package",
+			detail: "c"
+		});
+
+		for (let i =0; i <parameterTypes.length; i++){ // Fetch the list of import types
+			
+		}
+		return result
+	 }
+);
+
+connection.onRequest("intersystems/refactor/addImportPackages",
+	(params: AddImportPackagesParams): WorkspaceEdit => {
+		const parsed = parsedDocuments.get(params.uri);
+		if (parsed === undefined) {
+			return {
+				changes: {
+					[params.uri]: []
+				}
+			};
+		}
+		const doc = documents.get(params.uri);
+		if (doc === undefined) {
+			return {
+				changes: {
+					[params.uri]: []
+				}
+			};
+		}
+		// Q: is Import always the first line?
+		// P: Does not work, when the line is empty. -- check that the line is not empty -- loop until first not empty line
+		// var ln=0;
+		// while(parsed[ln].length === 0)
+		
+		// Compute the TextEdits
+		var edits: TextEdit[] = [];
+		
+		if(parsed[0][0].l===ld.cls_langindex && parsed[0][0].s===ld.cls_keyword_attrindex && doc.getText(Range.create(Position.create(0,parsed[0][0].p),Position.create(0,parsed[0][0].p+parsed[0][0].c)))==="Import"){
+			// There is an "Import" keyword
+			if(parsed[0][1].l===ld.cls_langindex && parsed[0][1].s===ld.cls_delim_attrindex && doc.getText(Range.create(Position.create(0,parsed[0][1].p),Position.create(0,parsed[0][1].p+parsed[0][1].c)))==="("){
+				// There are several imported packages already
+				const lastparentkn=parsed[0][parsed[0].length-1]
+				edits.push({
+					range: Range.create(Position.create(0,lastparentkn.p),Position.create(0,lastparentkn.p)),
+					newText: ", "+params.packagename
+				});
+			}else{ // There is only one imported package 
+				const startcurrentpackagetkn=parsed[0][1]
+				const endcurrentpackagetkn=parsed[0][parsed[0].length-1]
+				edits.push({
+					range: Range.create(Position.create(0,startcurrentpackagetkn.p),Position.create(0,startcurrentpackagetkn.p)),
+					newText: "("
+				});
+				edits.push({
+					range: Range.create(Position.create(0,endcurrentpackagetkn.p+endcurrentpackagetkn.c),Position.create(0,endcurrentpackagetkn.p+endcurrentpackagetkn.c)),
+					newText: ", "+params.packagename+")"
+				});
+			}
+
+		}else{ // There is no "Import" keyword
+			edits.push({
+				range: Range.create(Position.create(0,0),Position.create(0,0)),
+				newText: "Import " + params.packagename +"\n"
+			});
+
+		}
+
+
+		return {
+			changes: {
+				[params.uri]: edits
+			}
+		};
+	}
+);
 connection.onCodeAction(
 	async (params: CodeActionParams): Promise<CodeAction[] | null> => {
 		const parsed = parsedDocuments.get(params.textDocument.uri);
@@ -8358,6 +8464,13 @@ connection.onCodeAction(
 							title: 'Select Parameter Type',
 							kind: CodeActionKind.QuickFix,
 							command: Command.create("Select Parameter Type","intersystems.language-server.selectParameterType",params.textDocument.uri,range) 
+						})
+						break
+					}else if(diagnostics[i].message==="Class '"+diagnostics[i].message.split('\'')[1]+"' does not exist."){
+						result.push({
+							title: 'Select Import Package',
+							kind: CodeActionKind.QuickFix,
+							command: Command.create("Select Import Package","intersystems.language-server.selectImportPackage",params.textDocument.uri,diagnostics[i].message.split('\'')[1]) 
 						})
 						break
 					}

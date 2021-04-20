@@ -51,6 +51,11 @@
 				"command": "intersystems.language-server.selectParameterType",
 				"title": "Select Parameter Type",
 				"category": "InterSystems Language Server"
+			},
+			{
+				"command": "intersystems.language-server.selectImportPackage",
+				"title": "Select Import Package",
+				"category": "InterSystems Language Server"
 			}
 		],
 		"menus": {
@@ -61,6 +66,10 @@
 				},
 				{
 					"command": "intersystems.language-server.selectParameterType",
+					"when": "false"
+				},
+				{
+					"command": "intersystems.language-server.selectImportPackage",
 					"when": "false"
 				}
 			],
