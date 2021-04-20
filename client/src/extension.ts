@@ -293,7 +293,6 @@ export async function activate(context: ExtensionContext) {
 				// No parameter was selected
 				return;
 			}
-			
 			// Compute the workspace edit on the client side
 			const change:TextEdit={
 				range:parameterRange,

@@ -263,16 +263,6 @@ type EvaluatableExpressionParams = {
 };
 
 /**
- * The parameter literal for the `intersystems/refactor/addParameterType` request.
- */
- type AddParameterTypeParams = {
-	uri: string,
-	parameterType: string,
-	parameterRange: Range
-
-};
-
-/**
  * TextDocument URI's mapped to the tokenized representation of the document.
  */
 let parsedDocuments: Map<string, compressedline[]> = new Map();
@@ -8355,17 +8345,19 @@ connection.onCodeAction(
 			const diagnostics=params.context.diagnostics // Diagnostics array of the selection
 			if (diagnostics.length>0 ){
 				for (let i =0; i <diagnostics.length; i++){
-					if(diagnostics[i].message==="Invalid parameter type."){
+					if(diagnostics[i].message==="Invalid parameter type." || diagnostics[i].message==="Parameter value and type do not match."){
 						result.push({
 							title: 'Remove incorrect type',
 							kind: CodeActionKind.QuickFix
 						})
 						result[result.length-1].data=[doc.uri,params.range]
 
+						const ln=params.range.start.line
+						const range:Range=Range.create(Position.create(ln,parsed[ln][3].p),Position.create(ln,parsed[ln][3].p+parsed[ln][3].c));
 						result.push({
 							title: 'Select Parameter Type',
 							kind: CodeActionKind.QuickFix,
-							command: Command.create("Select Parameter Type","intersystems.language-server.selectParameterType",params.textDocument.uri,params.range) //params.textDocument.uri
+							command: Command.create("Select Parameter Type","intersystems.language-server.selectParameterType",params.textDocument.uri,range) 
 						})
 						break
 					}
