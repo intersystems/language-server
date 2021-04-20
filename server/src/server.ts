@@ -8240,20 +8240,20 @@ connection.onRequest("intersystems/refactor/listImportPackages",
 
 		// Fetch the list of import packages
 		const querydata: QueryData = {
-			query: "SELECT ... ?",
-			parameters: [classname]
+		    query: "SELECT $PIECE(Name,'.',1,$LENGTH(Name,'.')-2) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE $PIECE(Name,'.',$LENGTH(Name,'.')-1) = ?",
+    		parameters: ["*.cls",1,1,1,1,0,0,classname]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-	
-		result.push({
-			label: "%Net",
-			description: "Description Package",
-			detail: "c"
-		});
-
-		for (let i =0; i <parameterTypes.length; i++){ // Fetch the list of import types
-			
+		if (respdata !== undefined && respdata.data.result.content.length > 0) {
+			for (let packobj of respdata.data.result.content) {
+				result.push({
+					label: packobj.Package,
+					description: "",
+					detail: ""
+				});
+			}
 		}
+
 		return result
 	 }
 );
