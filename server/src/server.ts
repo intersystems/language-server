@@ -71,6 +71,7 @@ import propertyKeywords = require("./documentation/keywords/Property.json");
 import queryKeywords = require("./documentation/keywords/Query.json");
 import triggerKeywords = require("./documentation/keywords/Trigger.json");
 import xdataKeywords = require("./documentation/keywords/XData.json");
+import { link } from 'fs';
 
 axiosCookieJarSupport(axios);
 
@@ -8276,45 +8277,44 @@ connection.onRequest("intersystems/refactor/addImportPackages",
 				}
 			};
 		}
-		// Q: is Import always the first line?
-		// P: Does not work, when the line is empty. -- check that the line is not empty -- loop until first not empty line
-		// var ln=0;
-		// while(parsed[ln].length === 0)
-		
 		// Compute the TextEdits
 		var edits: TextEdit[] = [];
-		
-		if(parsed[0][0].l===ld.cls_langindex && parsed[0][0].s===ld.cls_keyword_attrindex && doc.getText(Range.create(Position.create(0,parsed[0][0].p),Position.create(0,parsed[0][0].p+parsed[0][0].c)))==="Import"){
-			// There is an "Import" keyword
-			if(parsed[0][1].l===ld.cls_langindex && parsed[0][1].s===ld.cls_delim_attrindex && doc.getText(Range.create(Position.create(0,parsed[0][1].p),Position.create(0,parsed[0][1].p+parsed[0][1].c)))==="("){
-				// There are several imported packages already
-				const lastparentkn=parsed[0][parsed[0].length-1]
-				edits.push({
-					range: Range.create(Position.create(0,lastparentkn.p),Position.create(0,lastparentkn.p)),
-					newText: ", "+params.packagename
-				});
-			}else{ // There is only one imported package 
-				const startcurrentpackagetkn=parsed[0][1]
-				const endcurrentpackagetkn=parsed[0][parsed[0].length-1]
-				edits.push({
-					range: Range.create(Position.create(0,startcurrentpackagetkn.p),Position.create(0,startcurrentpackagetkn.p)),
-					newText: "("
-				});
-				edits.push({
-					range: Range.create(Position.create(0,endcurrentpackagetkn.p+endcurrentpackagetkn.c),Position.create(0,endcurrentpackagetkn.p+endcurrentpackagetkn.c)),
-					newText: ", "+params.packagename+")"
-				});
+		for(let ln = 0; ln <parsed.length; ln++){
+			if(parsed[ln].length === 0){
+				continue;
 			}
-
-		}else{ // There is no "Import" keyword
-			edits.push({
-				range: Range.create(Position.create(0,0),Position.create(0,0)),
-				newText: "Import " + params.packagename +"\n"
-			});
-
+			if(parsed[ln][0].l===ld.cls_langindex && parsed[ln][0].s===ld.cls_keyword_attrindex){ 
+				const keyword:string= doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase()
+				if(keyword==="import"){// There is an "Import" keyword
+					if(parsed[ln][1].l===ld.cls_langindex && parsed[ln][1].s===ld.cls_delim_attrindex && doc.getText(Range.create(Position.create(ln,parsed[ln][1].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)))==="("){
+						// There are several imported packages already
+						const lastparentkn=parsed[ln][parsed[ln].length-1]
+						edits.push({
+							range: Range.create(Position.create(ln,lastparentkn.p),Position.create(ln,lastparentkn.p)),
+							newText: ", "+params.packagename
+						});
+					}else{ // There is only one imported package 
+						const startcurrentpackagetkn=parsed[ln][1]
+						const endcurrentpackagetkn=parsed[ln][parsed[ln].length-1]
+						edits.push({
+							range: Range.create(Position.create(ln,startcurrentpackagetkn.p),Position.create(ln,startcurrentpackagetkn.p)),
+							newText: "("
+						});
+						edits.push({
+							range: Range.create(Position.create(ln,endcurrentpackagetkn.p+endcurrentpackagetkn.c),Position.create(ln,endcurrentpackagetkn.p+endcurrentpackagetkn.c)),
+							newText: ", "+params.packagename+")"
+						});
+					}
+					break
+				}else if(keyword==="class"){// There is no "Import" keyword
+					edits.push({
+						range: Range.create(Position.create(0,0),Position.create(0,0)),
+						newText: "Import " + params.packagename +"\n"
+					});
+					break
+				}
+			}
 		}
-
-
 		return {
 			changes: {
 				[params.uri]: edits
@@ -8322,6 +8322,7 @@ connection.onRequest("intersystems/refactor/addImportPackages",
 		};
 	}
 );
+
 connection.onCodeAction(
 	async (params: CodeActionParams): Promise<CodeAction[] | null> => {
 		const parsed = parsedDocuments.get(params.textDocument.uri);
@@ -8454,7 +8455,8 @@ connection.onCodeAction(
 					if(diagnostics[i].message==="Invalid parameter type." || diagnostics[i].message==="Parameter value and type do not match."){
 						result.push({
 							title: 'Remove incorrect type',
-							kind: CodeActionKind.QuickFix
+							kind: CodeActionKind.QuickFix,
+							diagnostics: [diagnostics[i]]
 						})
 						result[result.length-1].data=[doc.uri,params.range]
 
@@ -8463,15 +8465,23 @@ connection.onCodeAction(
 						result.push({
 							title: 'Select Parameter Type',
 							kind: CodeActionKind.QuickFix,
-							command: Command.create("Select Parameter Type","intersystems.language-server.selectParameterType",params.textDocument.uri,range) 
+							command: Command.create("Select Parameter Type","intersystems.language-server.selectParameterType",params.textDocument.uri,range),
+							diagnostics: [diagnostics[i]]
 						})
 						break
 					}else if(diagnostics[i].message==="Class '"+diagnostics[i].message.split('\'')[1]+"' does not exist."){
+						const classname=diagnostics[i].message.split('\'')[1];
 						result.push({
 							title: 'Select Import Package',
 							kind: CodeActionKind.QuickFix,
-							command: Command.create("Select Import Package","intersystems.language-server.selectImportPackage",params.textDocument.uri,diagnostics[i].message.split('\'')[1]) 
+							command: Command.create("Select Import Package","intersystems.language-server.selectImportPackage",params.textDocument.uri,classname),
+							diagnostics: [diagnostics[i]] 
 						})
+						if(classname.includes('.')){
+							result[result.length-1].disabled= {
+								reason: "The class name from the diagnostic contains a dot"
+							};
+						}
 						break
 					}
 				}

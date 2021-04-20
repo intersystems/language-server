@@ -308,7 +308,7 @@ export async function activate(context: ExtensionContext) {
 		}
 	);
 
-	// Register the select parameter type
+	// Register the select import package
 	let selectImportPackageDisposable = commands.registerCommand("intersystems.language-server.selectImportPackage",
 		async (uri:string,classname:string) => {
 			// Ask for all import packages
@@ -316,15 +316,26 @@ export async function activate(context: ExtensionContext) {
 				uri:uri,
 				classmame:classname
 			});
-			// Ask the user to select a import package
-			const selectedPackage = await window.showQuickPick(allimportpackages,{
-				placeHolder: "Select the package to import",
-				canPickMany: false 
-			});
-			if (!selectedPackage ) {
-				// No parameter was selected
+
+			if(allimportpackages.length===0){
+				// There are no packages of this class, so tell the user and exit
+				window.showInformationMessage("There are no packages for \'"+classname+"\'","Dismiss");
 				return;
+			}else if(allimportpackages.length===1){
+				// There is only one package, the user does not need to choose
+				var selectedPackage=allimportpackages[0]
+			}else{
+				// Ask the user to select an import package
+				var selectedPackage = await window.showQuickPick(allimportpackages,{
+					placeHolder: "Select the package to import",
+					canPickMany: false 
+				});
+				if (!selectedPackage ) {
+					// No package was selected
+					return;
+				}
 			}
+	
 			// Ask the server to compute the workspace edit that the client should apply
 			const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addImportPackages",{
 				uri: uri,
