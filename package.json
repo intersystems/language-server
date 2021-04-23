@@ -56,6 +56,11 @@
 				"command": "intersystems.language-server.selectImportPackage",
 				"title": "Select Import Package",
 				"category": "InterSystems Language Server"
+			},
+			{
+				"command": "intersystems.language-server.extractMethodDisposable",
+				"title": "Extract ClassMethod",
+				"category": "InterSystems Language Server"
 			}
 		],
 		"menus": {
@@ -70,6 +75,10 @@
 				},
 				{
 					"command": "intersystems.language-server.selectImportPackage",
+					"when": "false"
+				},
+				{
+					"command": "intersystems.language-server.extractMethodDisposable",
 					"when": "false"
 				}
 			],

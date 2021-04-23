@@ -71,7 +71,6 @@ import propertyKeywords = require("./documentation/keywords/Property.json");
 import queryKeywords = require("./documentation/keywords/Query.json");
 import triggerKeywords = require("./documentation/keywords/Trigger.json");
 import xdataKeywords = require("./documentation/keywords/XData.json");
-import { link } from 'fs';
 
 axiosCookieJarSupport(axios);
 
@@ -277,6 +276,16 @@ type EvaluatableExpressionParams = {
  type AddImportPackagesParams = {
 	uri: string,
 	packagename:string
+};
+
+/**
+ * The parameter literal for the `intersystems/refactor/addMethod` request.
+ */
+ type addMethodParams = {
+	uri: string,
+	newmethodname:string,
+	lnstart:number,
+	lnend:number,
 };
 
 /**
@@ -8323,6 +8332,142 @@ connection.onRequest("intersystems/refactor/addImportPackages",
 	}
 );
 
+connection.onRequest("intersystems/refactor/validateMethodName",
+	 (methodname:string):string|null => {
+		var validname=""
+		if(methodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/gm)!==null){// start with first letter or %, then letter or number or ascii >128
+			if(methodname.length>220){ return null;} // name is too long
+			validname=methodname
+			
+		}else{
+			if((methodname.split("\"").length - 1)%2!==0){return null;}// uneven number of "
+			if(methodname.length>218){return null;}// name is too long
+			validname="\""+methodname+"\""
+
+		}		
+		return  validname
+	 }
+);
+
+connection.onRequest("intersystems/refactor/addMethod",
+	async (params: addMethodParams): Promise<WorkspaceEdit> => {
+		// Compute the TextEdits
+		var edits: TextEdit[] = [];
+		const parsed = parsedDocuments.get(params.uri);
+		if (parsed === undefined) {
+			return {
+				changes: {
+					[params.uri]: []
+				}
+			};
+		}
+		const doc = documents.get(params.uri);
+		if (doc === undefined) {
+			return {
+				changes: {
+					[params.uri]: []
+				}
+			};
+		}
+
+		const lnstart=params.lnstart
+		const lnend=params.lnend
+		
+		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
+		const insertSpaces = await connection.workspace.getConfiguration("editor.insertSpaces");
+		const tabSize = await connection.workspace.getConfiguration("editor.tabSize");
+		var tab:string="\t"
+		if(insertSpaces===true){
+			tab=" ".repeat(tabSize)
+		}
+
+		// Adpapt to InterSystems Language Server Settings
+		const settings =   await getLanguageServerSettings();
+		var docommandtext:string="Do"
+		if (settings.formatting.commands.case === "lower") {
+			docommandtext=docommandtext.toLowerCase()
+		}
+		else if (settings.formatting.commands.case === "upper"){
+			docommandtext=docommandtext.toUpperCase()
+		}
+
+
+		var signature="" // TODO
+
+		// Find type of donor method
+		var donormethod=""
+		for (let ln = lnstart-1; ln >= 0; ln--){ 
+			if (parsed[ln].length === 0) {// Empty line
+				continue;
+			}
+			if(parsed[ln][0].l===ld.cls_langindex && parsed[ln][0].s===ld.cls_keyword_attrindex){
+				const keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c)));
+				if (keyword.toLowerCase()==="classmethod" || keyword.toLowerCase()==="method"){
+					donormethod=keyword;
+					break
+				}
+			}
+		}
+
+		// Find the location of the method insertion - below the donor method
+		var insertpos:Position=Position.create(0,0)
+		var foundbracket:boolean=false
+		for (let ln = lnend+1; ln < parsed.length; ln++){ 
+			if (parsed[ln].length === 0) {// Empty line
+				continue;
+			}
+			for (let tkn =0;tkn< parsed[ln].length; tkn++){ 
+				if ( parsed[ln][tkn].s === ld.cls_delim_attrindex && parsed[ln][tkn].l == ld.cls_langindex) {
+					const bracetext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the brace
+					if (bracetext === "}") {// we found the closed bracket of the donor method
+						insertpos=Position.create(ln, parsed[ln][tkn].p+parsed[ln][tkn].c);
+						foundbracket=true;
+						break;
+					}
+				}
+			}
+			if(foundbracket){
+				break;
+			}
+		}
+
+		edits.push({ // Open the method
+			range: Range.create(insertpos,insertpos),
+			newText: "\n\n"+donormethod+" "+params.newmethodname+"("+signature+")\n{\n"
+		});
+		for (let ln = lnstart; ln <= lnend; ln++) {// Add the selection block in the method
+			if (parsed[ln].length === 0) {
+				edits.push({ 
+					range: Range.create(insertpos,insertpos),
+					newText: "\n"
+				});
+			}
+			else{ 
+				var gapspace:string=doc.getText(Range.create(Position.create(ln,parsed[lnstart][0].p),Position.create(ln,parsed[ln][0].p)))
+				edits.push({ 
+					range: Range.create(insertpos,insertpos),
+					newText: tab+gapspace+doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)))+"\n"
+				});
+			}
+		}
+		edits.push({ // close method
+			range: Range.create(insertpos,insertpos),
+			newText:  "}"
+		});
+		edits.push({ // replace code selection with do.. command
+			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),//Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
+			newText: docommandtext+" .."+params.newmethodname+"("+signature+")"
+		});
+
+
+		return {
+			changes: {
+				[params.uri]: edits
+			}
+		};
+	}
+);
+
 connection.onCodeAction(
 	async (params: CodeActionParams): Promise<CodeAction[] | null> => {
 		const parsed = parsedDocuments.get(params.textDocument.uri);
@@ -8338,11 +8483,18 @@ connection.onCodeAction(
 				title: 'Wrap in Try/Catch',
 				kind: CodeActionKind.Refactor
 			})
+			result.push({
+				title: 'Extract ClassMethod',
+				kind: CodeActionKind.Refactor,
+			})
 	
 			if (doc.languageId === "objectscript-macros") {
 				// Can't wrap macro definitions in try/catch, so return disabled CodeAction
 				result[0].disabled = {
 					reason: "Can't wrap macro definitions in a Try/Catch"
+				};
+				result[1].disabled = {
+					reason: "Can't extract macro definitions in a ClassMethod"
 				};
 				return result;
 			}
@@ -8365,11 +8517,11 @@ connection.onCodeAction(
 						continue;
 					}
 				}catch{ // parsed[ln] is undefined
-					//console.log("typeof(parsed[ln]) === "+typeof(parsed[ln]))
 					// Return disabled CodeAction
 					result[0].disabled = {
-					reason: "Must select full code block -- Last empty line"
+						reason: "Must select full code block -- Last empty line"
 					};
+					result[1].disabled =result[0].disabled
 					return result;
 				}
 				lnend=ln 
@@ -8422,6 +8574,7 @@ connection.onCodeAction(
 				result[0].disabled = {
 					reason: "Code block can't contain class definition code"
 				};
+				result[1].disabled = result[0].disabled
 				return result;
 			}
 			if(firstbraceisopen===false){// the first brace is a close brace "}"
@@ -8429,6 +8582,7 @@ connection.onCodeAction(
 				result[0].disabled = {
 					reason: "Must select full code block -- First brace not open"
 				};
+				result[1].disabled = result[0].disabled
 				return result;
 			}
 			if (!startiscos || !endiscos) {
@@ -8436,6 +8590,7 @@ connection.onCodeAction(
 				result[0].disabled = {
 					reason: "Must select ObjectScript code block"
 				};
+				result[1].disabled = result[0].disabled
 				return result;
 			}
 			if(countopenbraces!==0){// the braces are not paired
@@ -8443,9 +8598,17 @@ connection.onCodeAction(
 				result[0].disabled = {
 					reason: "Must select full code block -- Brace mismatch"
 				};
+				result[1].disabled =result[0].disabled
 				return result;
 			}
-	
+			if(params.textDocument.uri.substring(params.textDocument.uri.lastIndexOf(".")).toLowerCase()===".cls"){// file extension
+				result[1].command=Command.create("Extract Class Method","intersystems.language-server.extractMethod",params.textDocument.uri,lnstart,lnend)
+			}
+			else{
+				result[1].disabled = {
+					reason: "Must have a .cls file extension"
+				};
+			}
 			result[0].data =[doc.uri,lnstart,lnend]
 		}
 		else if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.QuickFix)) {
@@ -8589,9 +8752,6 @@ connection.onCodeActionResolve(
 				}
 			};
 		}
-
-		
-		
 		return codeAction;
 	}
 );

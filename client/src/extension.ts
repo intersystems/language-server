@@ -346,8 +346,39 @@ export async function activate(context: ExtensionContext) {
 		}
 	);
 
+	// Register the Extract Method
+	let extractMethodDisposable = commands.registerCommand("intersystems.language-server.extractMethod",
+		async (uri:string,lnstart:number,lnend:number) => {
+
+			var newmethodname = await window.showInputBox({
+				placeHolder: "Choose the name of the new Method"
+			});
+			if (!newmethodname ) {
+				// No name
+				return;
+			}
+			// Validate name 
+			newmethodname = await client.sendRequest("intersystems/refactor/validateMethodName",newmethodname);
+			
+			if (!newmethodname ) {
+				// Not a valid name
+				window.showInformationMessage("Not a valid name (too many characters or uneven number of \")","Dismiss");
+				return;
+			}
+
+			// Extract Method
+			const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addMethod",{
+				uri: uri,
+				newmethodname: newmethodname,
+				lnstart:lnstart,
+				lnend:lnend,
+			});
+			// Apply the workspace edit
+			workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
+		}
+	);
 	// Add the commands to the subscriptions array
-	context.subscriptions.push(overrideCommandDisposable,selectParameterTypeCommandDisposable,selectImportPackageDisposable);
+	context.subscriptions.push(overrideCommandDisposable,selectParameterTypeCommandDisposable,selectImportPackageDisposable,extractMethodDisposable);
 
 	// Initialize the EvaluatableExpressionProvider
 	const evaluatableExpressionProvider = new ObjectScriptEvaluatableExpressionProvider(client);
