@@ -8350,49 +8350,62 @@ connection.onRequest("intersystems/refactor/validateMethodName",
 );
 
 connection.onRequest("intersystems/refactor/addMethod",
-	async (params: addMethodParams): Promise<WorkspaceEdit> => {
+	async (params: addMethodParams): Promise<WorkspaceEdit|null> => {
 		// Compute the TextEdits
 		var edits: TextEdit[] = [];
 		const parsed = parsedDocuments.get(params.uri);
-		if (parsed === undefined) {
-			return {
-				changes: {
-					[params.uri]: []
-				}
-			};
-		}
+		if (parsed === undefined) {return null;}
 		const doc = documents.get(params.uri);
-		if (doc === undefined) {
-			return {
-				changes: {
-					[params.uri]: []
-				}
-			};
-		}
+		if (doc === undefined) {return null;}
 
-		const lnstart=params.lnstart
-		const lnend=params.lnend
+		const lnstart=params.lnstart // First non-empty line of the selection
+		const lnend=params.lnend	 // Last non-empty line of the selection
+
+		var signature:string="" 
+		var methodarguments:string=""
 		
-		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
-		const insertSpaces = await connection.workspace.getConfiguration("editor.insertSpaces");
-		const tabSize = await connection.workspace.getConfiguration("editor.tabSize");
-		var tab:string="\t"
-		if(insertSpaces===true){
-			tab=" ".repeat(tabSize)
+		var publicvar:string[]=[];	  // list of public variable 
+		var parametervar:string[]=[]; // list of cos parameters (arguments of the donor method)
+
+		for (let ln = lnstart; ln <= lnend; ln++) {
+			if (parsed[ln].length === 0) {// Empty line
+				continue;
+			}
+			for (let tkn =0;tkn< parsed[ln].length; tkn++){
+				if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localvar_attrindex){
+					// This is a public variable -- Add the variable to public list
+					const localvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+					if(!publicvar.includes(localvar)){
+						publicvar.push(localvar)
+					} 
+				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_param_attrindex){
+					// This is parameter variable -- look for signature of the donor method
+					const param:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+					if(!parametervar.includes(param)){
+						parametervar.push(param)
+					} 
+				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localdec_attrindex){
+					// This is local declared variable -- look for #dim
+				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localundec_attrindex){
+					// This is local undeclared variable -- look for set. If set in the selection, remove from signature
+				}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_otw_attrindex){
+					// This is an unset local variable (OptionTrackWarning)
+				}
+			}
 		}
 
-		// Adpapt to InterSystems Language Server Settings
-		const settings =   await getLanguageServerSettings();
-		var docommandtext:string="Do"
-		if (settings.formatting.commands.case === "lower") {
-			docommandtext=docommandtext.toLowerCase()
-		}
-		else if (settings.formatting.commands.case === "upper"){
-			docommandtext=docommandtext.toUpperCase()
+		// Add public list
+		var publiclist:string=""
+		if(publicvar.length>0){
+			publiclist=" [ PublicList = (" + publicvar[0]
+			if(publicvar.length>1){
+				for (let i = 1; i< publicvar.length; i++){
+					publiclist+=", " +publicvar[i]
+				}
+			}
+			publiclist+=") ]"
 		}
 
-
-		var signature="" // TODO
 
 		// Find type of donor method
 		var donormethod=""
@@ -8404,9 +8417,71 @@ connection.onRequest("intersystems/refactor/addMethod",
 				const keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c)));
 				if (keyword.toLowerCase()==="classmethod" || keyword.toLowerCase()==="method"){
 					donormethod=keyword;
+
+
+					// Scan donor method definition 
+					if(parametervar.length>0){
+						var foundclosedparen:boolean=false;
+						var foundparam:boolean=false;
+						var countparam:number=0;
+						var previoustknln=ln
+						var previoustkn=0
+
+						for (let methodln = ln; methodln<lnstart; methodln++){// scan through definition of the method
+							if (parsed[methodln].length === 0) {// Empty line
+								continue;
+							}
+							for (let tkn =0;tkn< parsed[methodln].length; tkn++){ 
+								if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_delim_attrindex){
+									// This is a cls delimiter 
+									const delimtext = doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c))); // Get the parenthesis
+									if (delimtext === ")") {// we found the closed parenthesis of the donor method signature - break
+										foundclosedparen=true
+										break
+									}else if(delimtext === ","){
+										if(countparam<parametervar.length){
+											signature+=", "
+											methodarguments+=", ";
+										}
+										foundparam=false; // look for the next parameter
+									}
+
+								}
+								if(!foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_param_attrindex){
+									// This is a cls parameter 
+									const param:string=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
+									if(parametervar.includes(param)){ 
+										countparam++;
+										// Check Prefix
+										if(parsed[previoustknln][previoustkn].l===ld.cls_langindex && parsed[previoustknln][previoustkn].s===ld.cls_keyword_attrindex){
+											const keywordtext:string=doc.getText(Range.create(Position.create(previoustknln,parsed[previoustknln][previoustkn].p),Position.create(previoustknln,parsed[previoustknln][previoustkn].p+parsed[previoustknln][previoustkn].c)));
+											if(keywordtext.toLowerCase()==="output" || keywordtext.toLowerCase()==="byref"){
+												// There is a "Output" or "ByRef" prefix -> add keyword to the signature and "." in argument
+												signature+=keywordtext+" ";
+												methodarguments+="."
+											}
+										}
+										signature+=param;
+										methodarguments+=param;
+										foundparam=true;
+									} 
+								}else if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex ){ // add types and default values to the signature
+									if(doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+1)))!=="."){
+										signature+=" "
+									}
+									signature+=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
+									
+								}
+								previoustkn=tkn	
+								previoustknln=methodln
+							}
+							if(foundclosedparen){break;}
+						}
+					}
 					break
 				}
 			}
+
 		}
 
 		// Find the location of the method insertion - below the donor method
@@ -8430,11 +8505,31 @@ connection.onRequest("intersystems/refactor/addMethod",
 				break;
 			}
 		}
+		
+		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
+		const insertSpaces = await connection.workspace.getConfiguration("editor.insertSpaces");
+		const tabSize = await connection.workspace.getConfiguration("editor.tabSize");
+		var tab:string="\t"
+		if(insertSpaces===true){
+			tab=" ".repeat(tabSize)
+		}
 
+		// Adpapt to InterSystems Language Server Settings
+		const settings =   await getLanguageServerSettings();
+		var docommandtext:string="Do"
+		if (settings.formatting.commands.case === "lower") {
+			docommandtext=docommandtext.toLowerCase()
+		}
+		else if (settings.formatting.commands.case === "upper"){
+			docommandtext=docommandtext.toUpperCase()
+		}
+
+		
 		edits.push({ // Open the method
 			range: Range.create(insertpos,insertpos),
-			newText: "\n\n"+donormethod+" "+params.newmethodname+"("+signature+")\n{\n"
+			newText: "\n\n"+donormethod+" "+params.newmethodname+"("+signature+")"+ publiclist +"\n{\n"
 		});
+		const firstwhitspace:string=doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p))).replace(/\t/g, " ".repeat(tabSize)); 
 		for (let ln = lnstart; ln <= lnend; ln++) {// Add the selection block in the method
 			if (parsed[ln].length === 0) {
 				edits.push({ 
@@ -8443,10 +8538,14 @@ connection.onRequest("intersystems/refactor/addMethod",
 				});
 			}
 			else{ 
-				var gapspace:string=doc.getText(Range.create(Position.create(ln,parsed[lnstart][0].p),Position.create(ln,parsed[ln][0].p)))
+				var whitespace=doc.getText(Range.create(Position.create(ln,0),Position.create(ln,parsed[ln][0].p))).replace(/\t/g, " ".repeat(tabSize))
+				var gapspace=" ".repeat(whitespace.length-firstwhitspace.length)
+				if(!insertSpaces){
+					gapspace=gapspace.replace("/ {"+tabSize+"}/g", "\t")
+				}
 				edits.push({ 
 					range: Range.create(insertpos,insertpos),
-					newText: tab+gapspace+doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)))+"\n"
+					newText:tab+gapspace+doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)))+"\n"
 				});
 			}
 		}
@@ -8456,7 +8555,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 		});
 		edits.push({ // replace code selection with do.. command
 			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),//Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
-			newText: docommandtext+" .."+params.newmethodname+"("+signature+")"
+			newText: docommandtext+" .."+params.newmethodname+"("+methodarguments+")"
 		});
 
 
