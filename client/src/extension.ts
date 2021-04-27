@@ -346,7 +346,7 @@ export async function activate(context: ExtensionContext) {
 		}
 	);
 
-	// Register the Extract Method
+	// Register the Extract Method command
 	let extractMethodDisposable = commands.registerCommand("intersystems.language-server.extractMethod",
 		async (uri:string,lnstart:number,lnend:number) => {
 			// Get the list of class member names
@@ -363,23 +363,20 @@ export async function activate(context: ExtensionContext) {
 					if(newmethodname===""){
 						return "Empty method name"
 					}
-					if(newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g)!==null){// start with first letter or %, then letter or number or ascii >128
-						if(newmethodname.length>220){
-							return "Not a valid name (too many characters)";
-						}
-						if(clsmembers.includes(newmethodname)){
-							return "Name already in use";
-						}
-					}else{
-						if((newmethodname.split("\"").length - 1)%2!==0){
-							return "Not a valid name (uneven number of \")";
-						}
-						if(newmethodname.length>218){
-							return "Not a valid name (too many characters)";
-						}
-						if(clsmembers.includes("\""+newmethodname+"\"")){
-							return "Name already in use";
-						}
+					var testname: string = newmethodname;
+					if (
+						(newmethodname.charAt(0) !== '"' || newmethodname.charAt(newmethodname.length) !== '"') &&
+						newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g) === null
+					) {
+						// Input contains forbidden characters so double exisiting " and add leading and trailing "
+						testname = '"' + newmethodname.replace('"','""') + '"';
+					}
+
+					if(testname.length>220){
+						return "Not a valid name (too many characters)";
+					}
+					if(clsmembers.includes(testname)){
+						return "Name already in use";
 					}
 				}
 			});
@@ -390,7 +387,8 @@ export async function activate(context: ExtensionContext) {
 			}
 			// Format name 
 			if(newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g)===null){
-				newmethodname="\""+newmethodname+"\"" // add quotes if the name does not start with letter or %, then followed by letter/number/ascii>128
+				// add quotes if the name does not start with letter or %, then followed by letter/number/ascii>128
+				newmethodname = '"' + newmethodname.replace('"','""') + '"';
 			}
 
 			// Extract Method
