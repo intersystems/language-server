@@ -8332,23 +8332,6 @@ connection.onRequest("intersystems/refactor/addImportPackages",
 	}
 );
 
-connection.onRequest("intersystems/refactor/validateMethodName",
-	 (methodname:string):string|null => {
-		var validname=""
-		if(methodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/gm)!==null){// start with first letter or %, then letter or number or ascii >128
-			if(methodname.length>220){ return null;} // name is too long
-			validname=methodname
-			
-		}else{
-			if((methodname.split("\"").length - 1)%2!==0){return null;}// uneven number of "
-			if(methodname.length>218){return null;}// name is too long
-			validname="\""+methodname+"\""
-
-		}		
-		return  validname
-	 }
-);
-
 connection.onRequest("intersystems/refactor/addMethod",
 	async (params: addMethodParams): Promise<WorkspaceEdit|null> => {
 		// Compute the TextEdits
@@ -8357,7 +8340,6 @@ connection.onRequest("intersystems/refactor/addMethod",
 		if (parsed === undefined) {return null;}
 		const doc = documents.get(params.uri);
 		if (doc === undefined) {return null;}
-
 		const lnstart=params.lnstart // First non-empty line of the selection
 		const lnend=params.lnend	 // Last non-empty line of the selection
 
@@ -8375,8 +8357,8 @@ connection.onRequest("intersystems/refactor/addMethod",
 				if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localvar_attrindex){
 					// This is a public variable -- Add the variable to public list
 					const localvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
-					if(!publicvar.includes(localvar)){
-						publicvar.push(localvar)
+					if(!publicvar.includes(localvar) && localvar.charAt(0)!=="%"){
+						publicvar.push(localvar) 
 					} 
 				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_param_attrindex){
 					// This is parameter variable -- look for signature of the donor method
@@ -8397,118 +8379,119 @@ connection.onRequest("intersystems/refactor/addMethod",
 		// Add public list
 		var publiclist:string=""
 		if(publicvar.length>0){
-			publiclist=" [ PublicList = (" + publicvar[0]
-			if(publicvar.length>1){
+			publiclist=" [ PublicList = "
+			if (publicvar.length>1){
+				publiclist+= "("+publicvar[0]
 				for (let i = 1; i< publicvar.length; i++){
 					publiclist+=", " +publicvar[i]
 				}
+				publiclist+= ")"
+			}else{
+				publiclist+=publicvar[0]
 			}
-			publiclist+=") ]"
+			publiclist+=" ]"
 		}
-
-
+		
 		// Find type of donor method
-		var donormethod=""
+		var newmethodtype =""
+		var founddonor:boolean=false;
+		var insertpos:Position=Position.create(0,0)
 		for (let ln = lnstart-1; ln >= 0; ln--){ 
 			if (parsed[ln].length === 0) {// Empty line
 				continue;
 			}
-			if(parsed[ln][0].l===ld.cls_langindex && parsed[ln][0].s===ld.cls_keyword_attrindex){
-				const keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c)));
-				if (keyword.toLowerCase()==="classmethod" || keyword.toLowerCase()==="method"){
-					donormethod=keyword;
+			for (let methodtkn =0;methodtkn< parsed[ln].length; methodtkn++){
+				if(parsed[ln][methodtkn].l===ld.cls_langindex && parsed[ln][methodtkn].s===ld.cls_keyword_attrindex){
+					const keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][methodtkn].p),Position.create(ln,parsed[ln][methodtkn].p+parsed[ln][methodtkn].c))).toLowerCase();
+					if (keyword==="classmethod" || keyword==="method" || keyword==="query"|| keyword==="trigger"|| keyword==="clientmethod"){ 
+						if(keyword==="method"){newmethodtype="Method";}
+						else{newmethodtype="ClassMethod";}
+						
+						// Scan donor method definition 
+						if(parametervar.length>0){
+							var foundclosedparen:boolean=false;
+							var foundparam:boolean=false;
+							var countparam:number=0;
+							var previoustknln=ln
+							var previoustkn=0
 
-
-					// Scan donor method definition 
-					if(parametervar.length>0){
-						var foundclosedparen:boolean=false;
-						var foundparam:boolean=false;
-						var countparam:number=0;
-						var previoustknln=ln
-						var previoustkn=0
-
-						for (let methodln = ln; methodln<lnstart; methodln++){// scan through definition of the method
-							if (parsed[methodln].length === 0) {// Empty line
-								continue;
-							}
-							for (let tkn =0;tkn< parsed[methodln].length; tkn++){ 
-								if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_delim_attrindex){
-									// This is a cls delimiter 
-									const delimtext = doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c))); // Get the parenthesis
-									if (delimtext === ")") {// we found the closed parenthesis of the donor method signature - break
-										foundclosedparen=true
-										break
-									}else if(delimtext === ","){
-										if(countparam<parametervar.length){
-											signature+=", "
-											methodarguments+=", ";
-										}
-										foundparam=false; // look for the next parameter
-									}
-
+							for (let methodln = ln; methodln<lnstart; methodln++){// scan through definition of the method
+								if (parsed[methodln].length === 0) {// Empty line
+									continue;
 								}
-								if(!foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_param_attrindex){
-									// This is a cls parameter 
-									const param:string=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
-									if(parametervar.includes(param)){ 
-										countparam++;
-										// Check Prefix
-										if(parsed[previoustknln][previoustkn].l===ld.cls_langindex && parsed[previoustknln][previoustkn].s===ld.cls_keyword_attrindex){
-											const keywordtext:string=doc.getText(Range.create(Position.create(previoustknln,parsed[previoustknln][previoustkn].p),Position.create(previoustknln,parsed[previoustknln][previoustkn].p+parsed[previoustknln][previoustkn].c)));
-											if(keywordtext.toLowerCase()==="output" || keywordtext.toLowerCase()==="byref"){
+								for (let tkn =0;tkn< parsed[methodln].length; tkn++){ 
+									if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_delim_attrindex){
+										// This is a cls delimiter 
+										const delimtext = doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c))); // Get the parenthesis
+										if (delimtext === ")") {// we found the closed parenthesis of the donor method signature - break
+											foundclosedparen=true
+											break
+										}else if(delimtext === ","){
+											if(countparam<parametervar.length){
+												signature+=", "
+												methodarguments+=", ";
+											}
+											foundparam=false; // look for the next parameter
+										}
+									}
+									if(!foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_param_attrindex){
+										// This is a cls parameter 
+										const param:string=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
+										if(parametervar.includes(param)){ 
+											countparam++;
+											// Check Prefix
+											if(parsed[previoustknln][previoustkn].l===ld.cls_langindex && parsed[previoustknln][previoustkn].s===ld.cls_keyword_attrindex){
+												const keywordtext:string=doc.getText(Range.create(Position.create(previoustknln,parsed[previoustknln][previoustkn].p),Position.create(previoustknln,parsed[previoustknln][previoustkn].p+parsed[previoustknln][previoustkn].c)));
 												// There is a "Output" or "ByRef" prefix -> add keyword to the signature and "." in argument
 												signature+=keywordtext+" ";
 												methodarguments+="."
+												
 											}
+											signature+=param;
+											methodarguments+=param;
+											foundparam=true;
+										} 
+									}else if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex ){ // add types and default values to the signature
+										if(doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+1)))!=="."){
+											signature+=" "
 										}
-										signature+=param;
-										methodarguments+=param;
-										foundparam=true;
-									} 
-								}else if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex ){ // add types and default values to the signature
-									if(doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+1)))!=="."){
-										signature+=" "
+										signature+=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
 									}
-									signature+=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
-									
+									previoustkn=tkn	
+									previoustknln=methodln
 								}
-								previoustkn=tkn	
-								previoustknln=methodln
+								if(foundclosedparen){break;}
 							}
-							if(foundclosedparen){break;}
 						}
-					}
-					break
-				}
-			}
 
-		}
-
-		// Find the location of the method insertion - below the donor method
-		var insertpos:Position=Position.create(0,0)
-		var foundbracket:boolean=false
-		for (let ln = lnend+1; ln < parsed.length; ln++){ 
-			if (parsed[ln].length === 0) {// Empty line
-				continue;
-			}
-			for (let tkn =0;tkn< parsed[ln].length; tkn++){ 
-				if ( parsed[ln][tkn].s === ld.cls_delim_attrindex && parsed[ln][tkn].l == ld.cls_langindex) {
-					const bracetext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the brace
-					if (bracetext === "}") {// we found the closed bracket of the donor method
-						insertpos=Position.create(ln, parsed[ln][tkn].p+parsed[ln][tkn].c);
-						foundbracket=true;
-						break;
+						// Find the location of the method insertion - above donor method
+						if(methodtkn===0){
+							for (let methodln = ln-1; methodln>0; methodln--){
+								if(parsed[methodln].length === 0) {// Empty line
+									insertpos=Position.create(methodln, 0);
+									break;
+								}else if(parsed[methodln][0].l===ld.cls_langindex && parsed[methodln][0].s===ld.cls_desc_attrindex){
+									continue;
+								}else{
+									insertpos=Position.create(methodln, parsed[methodln][parsed[methodln].length-1].p+parsed[methodln][parsed[methodln].length-1].c);
+									break;
+								}
+							}
+						}else{
+							insertpos=Position.create(ln, parsed[ln][methodtkn].p);
+						}
+						founddonor=true;
+						break
 					}
 				}
 			}
-			if(foundbracket){
-				break;
-			}
+			if(founddonor){break}
 		}
-		
+
 		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
-		const insertSpaces = await connection.workspace.getConfiguration("editor.insertSpaces");
-		const tabSize = await connection.workspace.getConfiguration("editor.tabSize");
+		const vscodesettings= await connection.workspace.getConfiguration([{scopeUri:params.uri,section:"editor.tabSize"},{scopeUri:params.uri,section:"editor.insertSpaces"}])
+		const tabSize = vscodesettings[0];
+		const insertSpaces = vscodesettings[1];
 		var tab:string="\t"
 		if(insertSpaces===true){
 			tab=" ".repeat(tabSize)
@@ -8524,22 +8507,21 @@ connection.onRequest("intersystems/refactor/addMethod",
 			docommandtext=docommandtext.toUpperCase()
 		}
 
-		
 		edits.push({ // Open the method
 			range: Range.create(insertpos,insertpos),
-			newText: "\n\n"+donormethod+" "+params.newmethodname+"("+signature+")"+ publiclist +"\n{\n"
+			newText: "\n/// Description\n"+newmethodtype+" "+params.newmethodname+"("+signature+")"+ publiclist +"\n{\n"
 		});
-		const firstwhitspace:string=doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p))).replace(/\t/g, " ".repeat(tabSize)); 
+		const firstwhitespace:string=doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p))).replace(/\t/g, " ".repeat(tabSize)); 
 		for (let ln = lnstart; ln <= lnend; ln++) {// Add the selection block in the method
 			if (parsed[ln].length === 0) {
 				edits.push({ 
-					range: Range.create(insertpos,insertpos),
+				    range: Range.create(insertpos,insertpos),
 					newText: "\n"
 				});
 			}
 			else{ 
 				var whitespace=doc.getText(Range.create(Position.create(ln,0),Position.create(ln,parsed[ln][0].p))).replace(/\t/g, " ".repeat(tabSize))
-				var gapspace=" ".repeat(whitespace.length-firstwhitspace.length)
+				var gapspace=" ".repeat(Math.max(whitespace.length-firstwhitespace.length,0))
 				if(!insertSpaces){
 					gapspace=gapspace.replace("/ {"+tabSize+"}/g", "\t")
 				}
@@ -8551,7 +8533,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 		}
 		edits.push({ // close method
 			range: Range.create(insertpos,insertpos),
-			newText:  "}"
+			newText:  "}\n"
 		});
 		edits.push({ // replace code selection with do.. command
 			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),//Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
@@ -8583,7 +8565,7 @@ connection.onCodeAction(
 				kind: CodeActionKind.Refactor
 			})
 			result.push({
-				title: 'Extract ClassMethod',
+				title: 'Extract Method',
 				kind: CodeActionKind.Refactor,
 			})
 	
@@ -8593,7 +8575,7 @@ connection.onCodeAction(
 					reason: "Can't wrap macro definitions in a Try/Catch"
 				};
 				result[1].disabled = {
-					reason: "Can't extract macro definitions in a ClassMethod"
+					reason: "Can't extract macro definitions in ClassMethod or Method"
 				};
 				return result;
 			}
@@ -8700,10 +8682,10 @@ connection.onCodeAction(
 				result[1].disabled =result[0].disabled
 				return result;
 			}
-			if(params.textDocument.uri.substring(params.textDocument.uri.lastIndexOf(".")).toLowerCase()===".cls"){// file extension
-				result[1].command=Command.create("Extract Class Method","intersystems.language-server.extractMethod",params.textDocument.uri,lnstart,lnend)
-			}
-			else{
+
+			if(doc.languageId === "objectscript-class"){
+				result[1].command=Command.create("Extract Method","intersystems.language-server.extractMethod",params.textDocument.uri,lnstart,lnend)
+			}else{
 				result[1].disabled = {
 					reason: "Must have a .cls file extension"
 				};
@@ -8788,8 +8770,9 @@ connection.onCodeActionResolve(
 			}
 			
 			// Adapt to VSCode Workspace settings (tabsize/insertspaces)
-			const insertSpaces = await connection.workspace.getConfiguration("editor.insertSpaces");
-			const tabSize = await connection.workspace.getConfiguration("editor.tabSize");
+			const vscodesettings= await connection.workspace.getConfiguration([{scopeUri:data[0],section:"editor.tabSize"},{scopeUri:data[0],section:"editor.insertSpaces"}])
+			const tabSize = vscodesettings[0];
+			const insertSpaces = vscodesettings[1];
 			var tab:string="\t"
 			if(insertSpaces===true){
 				tab=" ".repeat(tabSize)

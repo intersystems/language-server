@@ -349,21 +349,48 @@ export async function activate(context: ExtensionContext) {
 	// Register the Extract Method
 	let extractMethodDisposable = commands.registerCommand("intersystems.language-server.extractMethod",
 		async (uri:string,lnstart:number,lnend:number) => {
-
+			// Get the list of class member names
+			const symbols =  await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
+			var clsmembers:string[]=[]
+			var m:string=""
+			for(let clsmember =0; clsmember < symbols[0].children.length; clsmember++){
+				clsmembers.push(symbols[0].children[clsmember].name)
+			}
 			var newmethodname = await window.showInputBox({
-				placeHolder: "Choose the name of the new Method"
+				placeHolder: "Choose the name of the new Method",
+				value:"newmethod",
+				validateInput:(newmethodname:string)=>{
+					if(newmethodname===""){
+						return "Empty method name"
+					}
+					if(newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g)!==null){// start with first letter or %, then letter or number or ascii >128
+						if(newmethodname.length>220){
+							return "Not a valid name (too many characters)";
+						}
+						if(clsmembers.includes(newmethodname)){
+							return "Name already in use";
+						}
+					}else{
+						if((newmethodname.split("\"").length - 1)%2!==0){
+							return "Not a valid name (uneven number of \")";
+						}
+						if(newmethodname.length>218){
+							return "Not a valid name (too many characters)";
+						}
+						if(clsmembers.includes("\""+newmethodname+"\"")){
+							return "Name already in use";
+						}
+					}
+				}
 			});
+
 			if (!newmethodname ) {
 				// No name
 				return;
 			}
-			// Validate name 
-			newmethodname = await client.sendRequest("intersystems/refactor/validateMethodName",newmethodname);
-			
-			if (!newmethodname ) {
-				// Not a valid name
-				window.showInformationMessage("Not a valid name (too many characters or uneven number of \")","Dismiss");
-				return;
+			// Format name 
+			if(newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g)===null){
+				newmethodname="\""+newmethodname+"\"" // add quotes if the name does not start with letter or %, then followed by letter/number/ascii>128
 			}
 
 			// Extract Method

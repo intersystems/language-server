@@ -59,7 +59,7 @@
 			},
 			{
 				"command": "intersystems.language-server.extractMethodDisposable",
-				"title": "Extract ClassMethod",
+				"title": "Extract Method",
 				"category": "InterSystems Language Server"
 			}
 		],
