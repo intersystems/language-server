@@ -60,7 +60,8 @@ export async function activate(context: ExtensionContext) {
 	const targetSchemes = [
 		'isfs',
 		'isfs-readonly',
-		'objectscripts',
+		'objectscript',
+		'objectscriptxml',
 		'file',
 		'vscode-remote',
 		'vscode-notebook-cell'
