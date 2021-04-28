@@ -514,15 +514,56 @@ async function computeDiagnostics(doc: TextDocument) {
 							}
 							else {
 								// The type is valid
-								if (parsed[i].length > 5) {
-									const valrange = Range.create(Position.create(i,parsed[i][parsed[i].length-2].p),Position.create(i,parsed[i][parsed[i].length-2].p+parsed[i][parsed[i].length-2].c));
-									const valtext = doc.getText(valrange);
+
+								// See if this Parameter has a value
+								var valuetkn = -1;
+								const delimtext = doc.getText(Range.create(Position.create(i,parsed[i][4].p),Position.create(i,parsed[i][4].p+parsed[i][4].c)));
+								if (delimtext === "[") {
+									// Loop through the line to find the closing brace
+
+									var closingtkn = -1;
+									for (let ptkn = 5; ptkn < parsed[i].length; ptkn++) {
+										if (
+											parsed[i][ptkn].l == ld.cls_langindex && parsed[i][ptkn].s === ld.cls_delim_attrindex &&
+											doc.getText(Range.create(
+												Position.create(i,parsed[i][ptkn].p),
+												Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c)
+											)) === "]"
+										) {
+											closingtkn = ptkn;
+											break;
+										}
+									}
+
+									// Check if the token following the closing brace is =
 									if (
-										(thistypedoc.name === "STRING" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
-										(thistypedoc.name === "COSEXPRESSION" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
-										(thistypedoc.name === "CLASSNAME" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_str_attrindex)) ||
-										(thistypedoc.name === "INTEGER" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_num_attrindex)) ||
-										(thistypedoc.name === "BOOLEAN" && (parsed[i][parsed[i].length-2].l !== ld.cls_langindex || parsed[i][parsed[i].length-2].s !== ld.cls_num_attrindex || (valtext !== "1" && valtext !== "0")))
+										closingtkn !== -1 && parsed[i].length > closingtkn &&
+										doc.getText(Range.create(
+											Position.create(i,parsed[i][closingtkn+1].p),
+											Position.create(i,parsed[i][closingtkn+1].p+parsed[i][closingtkn+1].c)
+										)) === "="
+									) {
+										// There is a value following the =
+										valuetkn = closingtkn + 2;
+									}
+								}
+								else if (delimtext === "=") {
+									// The value follows this delimiter
+									valuetkn = 5;
+								}
+								else {
+									// Delimiter is a ; so there isn't a value to evaluate
+								}
+
+								if (valuetkn !== -1 && parsed[i].length > valuetkn+1) {
+									const valtext = doc.getText(Range.create(Position.create(i,parsed[i][valuetkn].p),Position.create(i,parsed[i][valuetkn].p+parsed[i][valuetkn].c)));
+									const valrange = Range.create(Position.create(i,parsed[i][valuetkn].p),Position.create(i,parsed[i][parsed[i].length-2].p+parsed[i][parsed[i].length-2].c));
+									if (
+										(thistypedoc.name === "STRING" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_str_attrindex)) ||
+										(thistypedoc.name === "COSEXPRESSION" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_str_attrindex)) ||
+										(thistypedoc.name === "CLASSNAME" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_str_attrindex)) ||
+										(thistypedoc.name === "INTEGER" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_num_attrindex)) ||
+										(thistypedoc.name === "BOOLEAN" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_num_attrindex || (valtext !== "1" && valtext !== "0")))
 									) {
 										let diagnostic: Diagnostic = {
 											severity: DiagnosticSeverity.Warning,
