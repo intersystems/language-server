@@ -8346,8 +8346,11 @@ connection.onRequest("intersystems/refactor/addMethod",
 		var signature:string="" 
 		var methodarguments:string=""
 		
-		var publicvar:string[]=[];	  // list of public variable 
-		var parametervar:string[]=[]; // list of cos parameters (arguments of the donor method)
+		var publicvar:string[]=[];	    // list of public variable 
+		var parametervar:string[]=[];   // list of cos parameters (arguments of the donor method)
+		
+		var dimvar:string[]=[];         // list of variables that can be declared by a #dim, local declared variables + public variable
+		var linedimvar:number[]=[];     // list of line number of the lines with a #dim in the code selection
 
 		for (let ln = lnstart; ln <= lnend; ln++) {
 			if (parsed[ln].length === 0) {// Empty line
@@ -8355,25 +8358,57 @@ connection.onRequest("intersystems/refactor/addMethod",
 			}
 			for (let tkn =0;tkn< parsed[ln].length; tkn++){
 				if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localvar_attrindex){
-					// This is a public variable -- Add the variable to public list
+					// This is a public variable 
 					const localvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
-					if(!publicvar.includes(localvar) && localvar.charAt(0)!=="%"){
+					if(!publicvar.includes(localvar) && localvar.charAt(0)!=="%"){ // Add not % variables to public list
 						publicvar.push(localvar) 
 					} 
+					if(!dimvar.includes(localvar)){ // Add all public variables to the list of variables that can be declared by #dim
+						dimvar.push(localvar) 
+					}
 				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_param_attrindex){
-					// This is parameter variable -- look for signature of the donor method
+					// This is parameter variable 
 					const param:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
 					if(!parametervar.includes(param)){
 						parametervar.push(param)
 					} 
 				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localdec_attrindex){
-					// This is local declared variable -- look for #dim
+					// This is local declared variable 
+					const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+					if(!dimvar.includes(thisvar)){ // Add the local declared variables to the list of variables that can be declared by #dim
+						dimvar.push(thisvar)
+					} 
 				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localundec_attrindex){
-					// This is local undeclared variable -- look for set. If set in the selection, remove from signature
+					// This is local undeclared variable 
 				}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_otw_attrindex){
 					// This is an unset local variable (OptionTrackWarning)
 				}
 			}
+
+			// Save the line number if the line contains a #dim
+			if(parsed[ln][0].l===ld.cos_langindex && parsed[ln][0].s===ld.cos_ppc_attrindex && parsed[ln][1].l===ld.cos_langindex && parsed[ln][1].s===ld.cos_ppc_attrindex){
+				// This is 2 preprocessor command
+				const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)))
+				if(thisvar.toLowerCase()==="#dim"){
+					linedimvar.push(ln) 
+				}		
+			}
+		}
+		
+		// Check if the public variable or the local declared variable is declared in the selection block
+		var founddimvar:string[]=[]; // list of variables that have been declared in the selection block
+		if( dimvar.length>0 && linedimvar.length>0){ 
+			for (let idimvar = 0; idimvar< dimvar.length; idimvar++){
+				for (let ln = linedimvar[0]; ln<= linedimvar[linedimvar.length-1]; ln++){ 
+					const dimresult = parseDimLine(doc,parsed,ln,dimvar[idimvar]);
+					if (dimresult.founddim) { // The variable has been declared by a dim in the selection block
+						founddimvar.push(dimvar[idimvar]);
+						break 
+					}
+				}
+			}
+			// Update "dimvar" array: delete the variables that already have been declared in the code selection
+			dimvar=dimvar.filter(dim=>!founddimvar.includes(dim)) 
 		}
 
 		// Add public list
@@ -8394,98 +8429,121 @@ connection.onRequest("intersystems/refactor/addMethod",
 		
 		// Find type of donor method
 		var newmethodtype =""
-		var founddonor:boolean=false;
 		var insertpos:Position=Position.create(0,0)
+		var dimadd:string[]=[];
 		for (let ln = lnstart-1; ln >= 0; ln--){ 
 			if (parsed[ln].length === 0) {// Empty line
 				continue;
 			}
-			for (let methodtkn =0;methodtkn< parsed[ln].length; methodtkn++){
-				if(parsed[ln][methodtkn].l===ld.cls_langindex && parsed[ln][methodtkn].s===ld.cls_keyword_attrindex){
-					const keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][methodtkn].p),Position.create(ln,parsed[ln][methodtkn].p+parsed[ln][methodtkn].c))).toLowerCase();
-					if (keyword==="classmethod" || keyword==="method" || keyword==="query"|| keyword==="trigger"|| keyword==="clientmethod"){ 
-						if(keyword==="method"){newmethodtype="Method";}
-						else{newmethodtype="ClassMethod";}
-						
-						// Scan donor method definition 
-						if(parametervar.length>0){
-							var foundclosedparen:boolean=false;
-							var foundparam:boolean=false;
-							var countparam:number=0;
-							var previoustknln=ln
-							var previoustkn=0
+			
+			if(parsed[ln][0].l===ld.cls_langindex && parsed[ln][0].s===ld.cls_keyword_attrindex){
+				const keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
+				if (keyword==="classmethod" || keyword==="method" || keyword==="query"|| keyword==="trigger"|| keyword==="clientmethod"){ 
+					if(keyword==="method"){newmethodtype="Method";}
+					else{newmethodtype="ClassMethod";}
 
-							for (let methodln = ln; methodln<lnstart; methodln++){// scan through definition of the method
-								if (parsed[methodln].length === 0) {// Empty line
-									continue;
-								}
-								for (let tkn =0;tkn< parsed[methodln].length; tkn++){ 
-									if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_delim_attrindex){
-										// This is a cls delimiter 
-										const delimtext = doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c))); // Get the parenthesis
-										if (delimtext === ")") {// we found the closed parenthesis of the donor method signature - break
-											foundclosedparen=true
-											break
-										}else if(delimtext === ","){
-											if(countparam<parametervar.length){
-												signature+=", "
-												methodarguments+=", ";
-											}
-											foundparam=false; // look for the next parameter
-										}
-									}
-									if(!foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_param_attrindex){
-										// This is a cls parameter 
-										const param:string=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
-										if(parametervar.includes(param)){ 
-											countparam++;
-											// Check Prefix
-											if(parsed[previoustknln][previoustkn].l===ld.cls_langindex && parsed[previoustknln][previoustkn].s===ld.cls_keyword_attrindex){
-												const keywordtext:string=doc.getText(Range.create(Position.create(previoustknln,parsed[previoustknln][previoustkn].p),Position.create(previoustknln,parsed[previoustknln][previoustkn].p+parsed[previoustknln][previoustkn].c)));
-												// There is a "Output" or "ByRef" prefix -> add keyword to the signature and "." in argument
-												signature+=keywordtext+" ";
-												methodarguments+="."
-												
-											}
-											signature+=param;
-											methodarguments+=param;
-											foundparam=true;
-										} 
-									}else if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex ){ // add types and default values to the signature
-										if(doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+1)))!=="."){
-											signature+=" "
-										}
-										signature+=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
-									}
-									previoustkn=tkn	
-									previoustknln=methodln
-								}
-								if(foundclosedparen){break;}
-							}
-						}
+					// Scan donor method definition 
+					if(parametervar.length>0){
+						var foundclosedparen:boolean=false;
+						var foundparam:boolean=false;
+						var countparam:number=0;
+						var previoustknln=ln
+						var previoustkn=0
 
-						// Find the location of the method insertion - above donor method
-						if(methodtkn===0){
-							for (let methodln = ln-1; methodln>0; methodln--){
-								if(parsed[methodln].length === 0) {// Empty line
-									insertpos=Position.create(methodln, 0);
-									break;
-								}else if(parsed[methodln][0].l===ld.cls_langindex && parsed[methodln][0].s===ld.cls_desc_attrindex){
-									continue;
-								}else{
-									insertpos=Position.create(methodln, parsed[methodln][parsed[methodln].length-1].p+parsed[methodln][parsed[methodln].length-1].c);
-									break;
-								}
+						for (let methodln = ln; methodln<lnstart; methodln++){// scan through definition of the method
+							if (parsed[methodln].length === 0) {// Empty line
+								continue;
 							}
-						}else{
-							insertpos=Position.create(ln, parsed[ln][methodtkn].p);
+							for (let tkn =0;tkn< parsed[methodln].length; tkn++){ 
+								if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_delim_attrindex){
+									// This is a cls delimiter 
+									const delimtext = doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c))); // Get the parenthesis
+									if (delimtext === ")") {// we found the closed parenthesis of the donor method signature - break
+										foundclosedparen=true
+										break
+									}else if(delimtext === "," || delimtext === "="){
+										if(countparam<parametervar.length){
+											signature+=", "
+											methodarguments+=", ";
+										}
+										foundparam=false; // look for the next parameter
+									}
+								}
+								if(!foundparam && parsed[methodln][tkn].l===ld.cls_langindex && parsed[methodln][tkn].s===ld.cls_param_attrindex){
+									// This is a cls parameter 
+									const param:string=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
+									if(parametervar.includes(param)){ 
+										countparam++;
+										// Check Prefix
+										if(parsed[previoustknln][previoustkn].l===ld.cls_langindex && parsed[previoustknln][previoustkn].s===ld.cls_keyword_attrindex){
+											// There is a "Output" or "ByRef" prefix -> add keyword "ByRef" to the signature and "." in argument
+											signature+="ByRef "; // 
+											methodarguments+="."
+										}
+										signature+=param;
+										methodarguments+=param;
+										foundparam=true;
+									} 
+								}else if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex ){ // add types and default values to the signature
+									if(doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+1)))!=="."){
+										signature+=" "
+									}
+									signature+=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
+								}
+								previoustkn=tkn	
+								previoustknln=methodln
+							}
+							if(foundclosedparen){break;}
 						}
-						founddonor=true;
-						break
 					}
+
+					// Find the location of the method insertion - above donor method
+					for (let methodln = ln-1; methodln>0; methodln--){
+						if(parsed[methodln].length === 0) {// Empty line
+							insertpos=Position.create(methodln, 0);
+							break;
+						}else if(parsed[methodln][0].l===ld.cls_langindex && parsed[methodln][0].s===ld.cls_desc_attrindex){
+							continue;
+						}else{
+							insertpos=Position.create(methodln, parsed[methodln][parsed[methodln].length-1].p+parsed[methodln][parsed[methodln].length-1].c);
+							break;
+						}
+					}
+					break
 				}
 			}
-			if(founddonor){break}
+
+			// Scan for #dim above selection block
+			if(dimvar.length>0){
+				var todel:string[]=[]; // list of varibles that have been declared at line ln
+				if(parsed[ln][0].l===ld.cos_langindex && parsed[ln][0].s===ld.cos_ppc_attrindex && parsed[ln][1].l===ld.cos_langindex && parsed[ln][1].s===ld.cos_ppc_attrindex){
+					// This is 2 preprocessor command
+					const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)))
+					if(thisvar.toLowerCase()==="#dim"){ // this is a dim
+						var dimaddtext:string="" 
+						var dimtype:string=""
+						// Check whether the variables have been declared by this dim
+						for (let idimvar = 0; idimvar< dimvar.length; idimvar++){
+							const dimresult = parseDimLine(doc,parsed,ln,dimvar[idimvar]);
+							if (dimresult.founddim) { // The variable has been declared by a dim. 
+								dimtype=dimresult.class;
+								todel.push(dimvar[idimvar]); 
+								if(dimaddtext===""){
+									dimaddtext+="#Dim "+dimvar[idimvar]
+								}else{
+									dimaddtext+=", "+dimvar[idimvar]
+								}
+							}
+						}
+						if(dimaddtext!==""){
+							dimaddtext+=" As "+dimtype;
+							dimadd.push(dimaddtext);
+						}
+					}		
+				}
+				// Update "dimvar" array: delete the variables that already have been declared above code selection, at line ln
+				dimvar=dimvar.filter(dim=>!todel.includes(dim))
+			}
 		}
 
 		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
@@ -8509,8 +8567,23 @@ connection.onRequest("intersystems/refactor/addMethod",
 
 		edits.push({ // Open the method
 			range: Range.create(insertpos,insertpos),
-			newText: "\n/// Description\n"+newmethodtype+" "+params.newmethodname+"("+signature+")"+ publiclist +"\n{\n"
+			newText: "\n/// \n"+newmethodtype+" "+params.newmethodname+"("+signature+")"+ publiclist +"\n{\n"
 		});
+
+		// Add #Dim variable declaration for local declared variables and public variables
+		if(dimadd.length>0){
+			for (let dimln=dimadd.length-1;dimln>=0;dimln--){
+				edits.push({ 
+					range: Range.create(insertpos,insertpos),
+					newText:tab+dimadd[dimln]+"\n"
+				});
+			}
+			edits.push({ 
+				range: Range.create(insertpos,insertpos),
+				newText:"\n"
+			});
+		}
+
 		const firstwhitespace:string=doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p))).replace(/\t/g, " ".repeat(tabSize)); 
 		for (let ln = lnstart; ln <= lnend; ln++) {// Add the selection block in the method
 			if (parsed[ln].length === 0) {

@@ -352,7 +352,6 @@ export async function activate(context: ExtensionContext) {
 			// Get the list of class member names
 			const symbols =  await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
 			var clsmembers:string[]=[]
-			var m:string=""
 			for(let clsmember =0; clsmember < symbols[0].children.length; clsmember++){
 				clsmembers.push(symbols[0].children[clsmember].name)
 			}
@@ -369,7 +368,7 @@ export async function activate(context: ExtensionContext) {
 						newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g) === null
 					) {
 						// Input contains forbidden characters so double exisiting " and add leading and trailing "
-						testname = '"' + newmethodname.replace('"','""') + '"';
+						testname = '"' + newmethodname.replace(/\"/g,'""') + '"';
 					}
 
 					if(testname.length>220){
@@ -388,7 +387,7 @@ export async function activate(context: ExtensionContext) {
 			// Format name 
 			if(newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g)===null){
 				// add quotes if the name does not start with letter or %, then followed by letter/number/ascii>128
-				newmethodname = '"' + newmethodname.replace('"','""') + '"';
+				newmethodname = '"' + newmethodname.replace(/\"/g,'""') + '"';
 			}
 
 			// Extract Method
