@@ -18,7 +18,7 @@ import {
 	ServerOptions,
 	TransportKind,
 	WorkspaceEdit
-} from 'vscode-languageclient';
+} from 'vscode-languageclient/node';
 
 import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
 
