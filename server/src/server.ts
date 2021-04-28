@@ -8444,11 +8444,12 @@ connection.onRequest("intersystems/refactor/addMethod",
 
 					// Scan donor method definition 
 					if(parametervar.length>0){
-						var foundclosedparen:boolean=false;
+						var foundlastclosedparen:boolean=false;
 						var foundparam:boolean=false;
 						var countparam:number=0;
 						var previoustknln=ln
 						var previoustkn=0
+						var countparenthesis:number=1
 
 						for (let methodln = ln; methodln<lnstart; methodln++){// scan through definition of the method
 							if (parsed[methodln].length === 0) {// Empty line
@@ -8459,9 +8460,15 @@ connection.onRequest("intersystems/refactor/addMethod",
 									// This is a cls delimiter 
 									const delimtext = doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c))); // Get the parenthesis
 									if (delimtext === ")") {// we found the closed parenthesis of the donor method signature - break
-										foundclosedparen=true
-										break
-									}else if(delimtext === "," || delimtext === "="){
+										countparenthesis--
+										if(countparenthesis===0){
+											foundlastclosedparen=true;
+											break;
+										}
+									}else if (delimtext === "(") {
+										countparenthesis++
+									}else if(delimtext === "," || (delimtext === "=" && countparenthesis===1)){ 
+										// Move to the next parameter after comma, and skip the default values
 										if(countparam<parametervar.length){
 											signature+=", "
 											methodarguments+=", ";
@@ -8476,24 +8483,31 @@ connection.onRequest("intersystems/refactor/addMethod",
 										countparam++;
 										// Check Prefix
 										if(parsed[previoustknln][previoustkn].l===ld.cls_langindex && parsed[previoustknln][previoustkn].s===ld.cls_keyword_attrindex){
-											// There is a "Output" or "ByRef" prefix -> add keyword "ByRef" to the signature and "." in argument
-											signature+="ByRef "; // 
-											methodarguments+="."
+											// There is a "Output" or "ByRef" prefix -> add keyword "ByRef" to the signature and "." in argument (Ignore ByVal)
+											const keywordtext:string=doc.getText(Range.create(Position.create(previoustknln,parsed[previoustknln][previoustkn].p),Position.create(previoustknln,parsed[previoustknln][previoustkn].p+parsed[previoustknln][previoustkn].c))).toLowerCase();
+											if(keywordtext==="output" || keywordtext==="byref"){
+												signature+="ByRef ";  
+												methodarguments+=".";
+											}
 										}
 										signature+=param;
 										methodarguments+=param;
 										foundparam=true;
 									} 
-								}else if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex ){ // add types and default values to the signature
-									if(doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+1)))!=="."){
-										signature+=" "
+								}else if(foundparam && parsed[methodln][tkn].l===ld.cls_langindex ){ // add types and some default values (not all) to the signature
+									const tkntext:string=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)))
+									if(tkntext.charAt(0)==="." || tkntext===")" ||(countparenthesis>1)){
+										signature+=tkntext;
 									}
-									signature+=doc.getText(Range.create(Position.create(methodln,parsed[methodln][tkn].p),Position.create(methodln,parsed[methodln][tkn].p+parsed[methodln][tkn].c)));
+									else{
+										signature+=" "+tkntext;
+									}
 								}
+								
 								previoustkn=tkn	
 								previoustknln=methodln
 							}
-							if(foundclosedparen){break;}
+							if(foundlastclosedparen){break;}
 						}
 					}
 
