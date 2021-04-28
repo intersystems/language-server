@@ -3,6 +3,7 @@
 ## [1.1.5] - 2021-XX-XX
 - Fix issue [#150](https://github.com/intersystems/language-server/issues/150): Hovering over blank last line of file causes error
 - Fix issue [#151](https://github.com/intersystems/language-server/issues/151): Typing "(" on a blank line causes an error
+- Fix issue [#153](https://github.com/intersystems/language-server/issues/153): LS DocumentSelector should confine itself to schemes it can handle
 - Fix issue [#155](https://github.com/intersystems/language-server/issues/155): class parameter marked with warning about type mismatch
 
 ## [1.1.4] - 2021-04-09
