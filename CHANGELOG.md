@@ -5,6 +5,8 @@
 - Fix issue [#151](https://github.com/intersystems/language-server/issues/151): Typing "(" on a blank line causes an error
 - Fix issue [#153](https://github.com/intersystems/language-server/issues/153): LS DocumentSelector should confine itself to schemes it can handle
 - Fix issue [#155](https://github.com/intersystems/language-server/issues/155): class parameter marked with warning about type mismatch
+- Fix issue [#156](https://github.com/intersystems/language-server/issues/156): SignatureHelp not showing for methods without a description or return type
+- Fix issue [#157](https://github.com/intersystems/language-server/issues/157): SignatureHelp parameter underlining doesn't work when class name parameter values are present
 
 ## [1.1.4] - 2021-04-09
 - Fix issue [#74](https://github.com/intersystems/language-server/issues/74): Be an EvaluatableExpressionProvider

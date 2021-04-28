@@ -2588,6 +2588,16 @@ async function determineDeclaredLocalVarClass(doc: TextDocument, parsed: compres
 	return result;
 }
 
+/**
+ * Expand a minified FormalSpec returned by a query to be more user friendly.
+ * 
+ * @param FormalSpec The value of the FormalSpec column in %Dictionary.CompiledMethod.
+ */
+function beautifyFormalSpec(FormalSpec: string): string {
+	// Split the FormalSpec by commas not enclosed in parenthesis, then rejoin with added space before doing regex replaces
+	return "(" + FormalSpec.split(/,(?![^(]*\))/).join(", ").replace(/:/g," As ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = ") + ")";
+}
+
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries
 	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL");
@@ -2936,9 +2946,9 @@ connection.onSignatureHelp(
 						}
 					}
 
-					if (memobj.Description !== "" && memobj.FormalSpec !== "" && memobj.ReturnType !== "") {
+					if (memobj.FormalSpec !== "") {
 						var sig: SignatureInformation = {
-							label: "(".concat(memobj.FormalSpec.replace(/:/g," As ").replace(/,/g,", ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = "),")"),
+							label: beautifyFormalSpec(memobj.FormalSpec),
 							parameters: []
 						};
 						if (settings.signaturehelp.documentation) {
@@ -3180,9 +3190,9 @@ connection.onSignatureHelp(
 							}
 						}
 	
-						if (memobj.Description !== "" && memobj.FormalSpec !== "" && memobj.ReturnType !== "") {
+						if (memobj.FormalSpec !== "") {
 							var sig: SignatureInformation = {
-								label: "(".concat(memobj.FormalSpec.replace(/:/g," As ").replace(/,/g,", ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = "),")"),
+								label: beautifyFormalSpec(memobj.FormalSpec),
 								parameters: []
 							};
 							if (settings.signaturehelp.documentation) {
@@ -4883,7 +4893,7 @@ connection.onHover(
 									if (stubrespdata !== undefined && "content" in stubrespdata.data.result && stubrespdata.data.result.content.length > 0) {
 										// We got data back
 										if (nextchar === "(") {
-											header = header.concat("(",stubrespdata.data.result.content[0].FormalSpec.replace(/:/g," As ").replace(/,/g,", ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = "),")");
+											header = header + beautifyFormalSpec(stubrespdata.data.result.content[0].FormalSpec);
 											if (stubrespdata.data.result.content[0].ReturnType !== "") {
 												header = header.concat(" As ",stubrespdata.data.result.content[0].ReturnType);
 											}
@@ -4899,7 +4909,7 @@ connection.onHover(
 								// This is a regular member
 
 								if (nextchar === "(") {
-									header = header.concat("(",respdata.data.result.content[0].FormalSpec.replace(/:/g," As ").replace(/,/g,", ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = "),")");
+									header = header + beautifyFormalSpec(respdata.data.result.content[0].FormalSpec);
 									if (respdata.data.result.content[0].ReturnType !== "") {
 										header = header.concat(" As ",respdata.data.result.content[0].ReturnType);
 									}
@@ -5157,7 +5167,7 @@ connection.onHover(
 								var header = normalizedname.concat("::",procname);
 								const nextchar = doc.getText(Range.create(Position.create(params.position.line,idenrange.end.character),Position.create(params.position.line,idenrange.end.character+1)));
 								if (nextchar === "(") {
-									header = header.concat("(",respdata.data.result.content[0].FormalSpec.replace(/:/g," As ").replace(/,/g,", ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = "),")");
+									header = header + beautifyFormalSpec(respdata.data.result.content[0].FormalSpec);
 									if (respdata.data.result.content[0].ReturnType !== "") {
 										header = header.concat(" As ",respdata.data.result.content[0].ReturnType);
 									}
