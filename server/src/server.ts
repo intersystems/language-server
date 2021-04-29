@@ -8893,7 +8893,7 @@ connection.onCodeActionResolve(
 			const insertposend=Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)
 			edits.push({ // close try block and add catch block
 				range: Range.create(insertposend,insertposend), 
-				newText: "\n"+whitespace+"}\n"+whitespace+ catchcommandtext +" "+exname+"{\n"+whitespace+""+tab+"\n"+whitespace+"} "
+				newText: "\n"+whitespace+"} "+ catchcommandtext +" "+exname+" {\n"+whitespace+""+tab+"\n"+whitespace+"} "
 			});	
 
 
