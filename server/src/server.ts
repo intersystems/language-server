@@ -8879,7 +8879,7 @@ connection.onCodeActionResolve(
 			
 			edits.push({ //Open try block
 				range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
-				newText: dimline+ trycommandtext +"{\n" + whitespace
+				newText: dimline+ trycommandtext +" {\n" + whitespace
 			});
 			for (let ln = lnstart; ln <= lnend; ln++) {// Indent the selection block
 				if (parsed[ln].length === 0) {
@@ -8893,7 +8893,7 @@ connection.onCodeActionResolve(
 			const insertposend=Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)
 			edits.push({ // close try block and add catch block
 				range: Range.create(insertposend,insertposend), 
-				newText: "\n"+whitespace+"}"+ catchcommandtext +" "+exname+"{\n"+whitespace+""+tab+"\n"+whitespace+"} "
+				newText: "\n"+whitespace+"}\n"+whitespace+ catchcommandtext +" "+exname+"{\n"+whitespace+""+tab+"\n"+whitespace+"} "
 			});	
 
 
