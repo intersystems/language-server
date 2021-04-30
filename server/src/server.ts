@@ -1468,6 +1468,45 @@ function parseDimLine(doc: TextDocument, parsed: compressedline[], line: number,
 };
 
 /**
+ * Parse lines of ObjectScript code that starts with Set and look to see if it contains selector.
+ * 
+ * @param doc The TextDocument that the line is in.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line to parse.
+ * @param token The starting token to parse.
+ * @param selector The variable that we're looking for.
+ */
+ function parseSet(doc: TextDocument, parsed: compressedline[], line: number, token: number,selector: string): boolean {
+	for(let ln=line;ln<parsed.length;ln++){
+		if (parsed[ln].length === 0) { // Empty line
+			continue;
+		}
+		for(let tkn=0;tkn< parsed[ln].length;tkn++){ 
+			if(ln===line && tkn<=token){ // Skip all tokens before or equal to SET
+				continue 
+			}
+			if (
+				parsed[ln][tkn].s === ld.cos_localvar_attrindex ||	// public variable
+				parsed[ln][tkn].s === ld.cos_param_attrindex 	||	// parameter variable
+				parsed[ln][tkn].s === ld.cos_localdec_attrindex ||	// local declared
+				parsed[ln][tkn].s === ld.cos_localundec_attrindex	// local undeclared
+				){ 
+				// this is a variable that can be SET
+				var thisvar = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+				if(thisvar === selector) {
+					// This is the SET for the selector
+					return true;
+				}
+			}else if(parsed[ln][tkn].s === ld.cos_command_attrindex){
+				// This is a command, we have reached the end of the SET command
+				return false;
+			}
+		}
+	}
+	return false;
+};
+
+/**
  * Get the list of all imported packages at this line of a document.
  * 
  * @param doc The TextDocument of the class to examine.
@@ -8340,17 +8379,21 @@ connection.onRequest("intersystems/refactor/addMethod",
 		if (parsed === undefined) {return null;}
 		const doc = documents.get(params.uri);
 		if (doc === undefined) {return null;}
-		const lnstart=params.lnstart // First non-empty line of the selection
-		const lnend=params.lnend	 // Last non-empty line of the selection
+		const lnstart=params.lnstart	// First non-empty line of the selection
+		const lnend=params.lnend		// Last non-empty line of the selection
 
 		var signature:string="" 
 		var methodarguments:string=""
 		
-		var publicvar:string[]=[];	    // list of public variable 
-		var parametervar:string[]=[];   // list of cos parameters (arguments of the donor method)
+		var publicvar:string[]=[];		// list of public variable 
+		var parametervar:string[]=[];	// list of cos parameters (arguments of the donor method)
 		
-		var dimvar:string[]=[];         // list of variables that can be declared by a #dim, local declared variables + public variable
-		var linedimvar:number[]=[];     // list of line number of the lines with a #dim in the code selection
+		var dimvar:string[]=[];			// list of variables that can be declared by a #dim, local declared variables + public variable
+		var linedimvar:number[]=[];		// list of line number of the lines with a #dim in the code selection
+
+		var undeclaredvar:string[]=[];			// list of undeclared variable
+		var undeclaredlocation:number[][]=[];	// list of location (line, token) of the undeclared variable
+		var setlocation:number[][]=[];			// list of location (line, token) of the SET commands
 
 		for (let ln = lnstart; ln <= lnend; ln++) {
 			if (parsed[ln].length === 0) {// Empty line
@@ -8380,8 +8423,19 @@ connection.onRequest("intersystems/refactor/addMethod",
 					} 
 				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localundec_attrindex){
 					// This is local undeclared variable 
+					const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+					if(!undeclaredvar.includes(thisvar)){  // first call of the variable
+						undeclaredvar.push(thisvar);
+						undeclaredlocation.push([ln,tkn]);
+					} 
 				}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_otw_attrindex){
 					// This is an unset local variable (OptionTrackWarning)
+				}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_command_attrindex){
+					const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
+					if(thisvar==="set"){
+						// This is a SET command
+						setlocation.push([ln,tkn]); // save location
+					}
 				}
 			}
 
@@ -8395,6 +8449,42 @@ connection.onRequest("intersystems/refactor/addMethod",
 			}
 		}
 		
+		// Check if the undeclared variable has been set in the selection block
+		var foundsetundeclaredvar:string[]=[];		// list of undeclared variables that have been SET in the selection block (before the undeclared variable)
+		if(undeclaredvar.length>0 && setlocation.length>0){ 		 
+			for (let ivar=0;ivar<undeclaredvar.length;ivar++){
+				var ln=undeclaredlocation[ivar][0];
+				var tkn=undeclaredlocation[ivar][1];
+				for (let iloc=0;iloc<setlocation.length;iloc++){
+					if(
+						setlocation[iloc][0]<ln ||								// line of SET is above the undeclared variable
+						(setlocation[iloc][0]==ln && setlocation[iloc][1]<tkn)	// SET and the undeclared variable are on the same line, but SET is before
+					){ 
+						// The set is before the variable
+						var foundset:boolean=parseSet(doc, parsed, setlocation[iloc][0], setlocation[iloc][1],undeclaredvar[ivar])
+						if(foundset){
+							// The undeclared variable is SET in the code selection
+							foundsetundeclaredvar.push(undeclaredvar[ivar]);
+							break
+						}
+					}
+				}
+			}
+			// Update "undeclaredvar" array: delete the variables that already have been set before variable and within code selection
+			undeclaredvar=undeclaredvar.filter(undeclared=>!foundsetundeclaredvar.includes(undeclared))
+		}
+		
+		// Add the undeclared variable (not set in the selection) to the signature
+		var signatureundeclared:string="" 
+		if(undeclaredvar.length>0){ 
+			signatureundeclared+=undeclaredvar[0]
+			if(undeclaredvar.length>1){
+				for (let ivar=1;ivar<undeclaredvar.length;ivar++){
+					signatureundeclared+=", "+undeclaredvar[ivar]
+				}
+			}
+		}
+
 		// Check if the public variable or the local declared variable is declared in the selection block
 		var founddimvar:string[]=[]; // list of variables that have been declared in the selection block
 		if( dimvar.length>0 && linedimvar.length>0){ 
@@ -8579,6 +8669,17 @@ connection.onRequest("intersystems/refactor/addMethod",
 			docommandtext=docommandtext.toUpperCase()
 		}
 
+		// Signature and Method arguments
+		if(signatureundeclared!==""){
+			if(signature===""){
+				signature=signatureundeclared;
+				methodarguments=signatureundeclared
+			}else{
+				signature+=", "+signatureundeclared;
+				methodarguments+=", "+signatureundeclared
+			}
+		}
+
 		edits.push({ // Open the method
 			range: Range.create(insertpos,insertpos),
 			newText: "\n/// \n"+newmethodtype+" "+params.newmethodname+"("+signature+")"+ publiclist +"\n{\n"
@@ -8623,7 +8724,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 			newText:  "}\n"
 		});
 		edits.push({ // replace code selection with do.. command
-			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),//Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
+			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),
 			newText: docommandtext+" .."+params.newmethodname+"("+methodarguments+")"
 		});
 
