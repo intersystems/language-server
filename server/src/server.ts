@@ -8393,7 +8393,8 @@ connection.onRequest("intersystems/refactor/addMethod",
 
 		var undeclaredvar:string[]=[];			// list of undeclared variable
 		var undeclaredlocation:number[][]=[];	// list of location (line, token) of the undeclared variable
-		var setlocation:number[][]=[];			// list of location (line, token) of the SET commands
+		var setlocation:number[][]=[];			// list of location (line, token) of the SET or READ commands
+		var undeclaredbyrefvar:string[]=[];			// list of undeclared variable
 
 		for (let ln = lnstart; ln <= lnend; ln++) {
 			if (parsed[ln].length === 0) {// Empty line
@@ -8427,12 +8428,22 @@ connection.onRequest("intersystems/refactor/addMethod",
 					if(!undeclaredvar.includes(thisvar)){  // first call of the variable
 						undeclaredvar.push(thisvar);
 						undeclaredlocation.push([ln,tkn]);
+						
+						if(tkn>0){
+							if(
+								parsed[ln][tkn-1].s === ld.cos_oper_attrindex &&
+								doc.getText(Range.create(Position.create(ln,parsed[ln][tkn-1].p),Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)))==="."
+							){
+								// The undeclared variable is ByRef or Output of a method
+								undeclaredbyrefvar.push(thisvar);
+							}
+						}
 					} 
 				}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_otw_attrindex){
 					// This is an unset local variable (OptionTrackWarning)
 				}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_command_attrindex){
 					const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
-					if(thisvar==="set"){
+					if(thisvar==="set" || thisvar==="read"){
 						// This is a SET command
 						setlocation.push([ln,tkn]); // save location
 					}
@@ -8449,6 +8460,22 @@ connection.onRequest("intersystems/refactor/addMethod",
 			}
 		}
 		
+		// Update "undeclaredvar" array: delete the variables that Byref/Output argument of a method (.variable)
+		undeclaredvar=undeclaredvar.filter(undeclared=>!undeclaredbyrefvar.includes(undeclared))
+		var signatureundeclaredbyref:string="";
+		var methodargumentsundeclaredbyref:string="";
+		if(undeclaredbyrefvar.length>0){ 
+			signatureundeclaredbyref+="ByRef "+undeclaredbyrefvar[0];
+			methodargumentsundeclaredbyref+="."+undeclaredbyrefvar[0];
+			if(undeclaredbyrefvar.length>1){
+				for (let ivar=1;ivar<undeclaredbyrefvar.length;ivar++){
+					signatureundeclaredbyref+=", ByRef "+undeclaredbyrefvar[ivar]
+					methodargumentsundeclaredbyref+=", ."+undeclaredbyrefvar[ivar]
+				}
+			}
+		}
+
+
 		// Check if the undeclared variable has been set in the selection block
 		var foundsetundeclaredvar:string[]=[];		// list of undeclared variables that have been SET in the selection block (before the undeclared variable)
 		if(undeclaredvar.length>0 && setlocation.length>0){ 		 
@@ -8669,7 +8696,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 			docommandtext=docommandtext.toUpperCase()
 		}
 
-		// Signature and Method arguments
+		// Update Signature and Method arguments
 		if(signatureundeclared!==""){
 			if(signature===""){
 				signature=signatureundeclared;
@@ -8679,6 +8706,16 @@ connection.onRequest("intersystems/refactor/addMethod",
 				methodarguments+=", "+signatureundeclared
 			}
 		}
+		if(signatureundeclaredbyref!==""){
+			if(signature===""){
+				signature=signatureundeclaredbyref;
+				methodarguments=methodargumentsundeclaredbyref
+			}else{
+				signature+=", "+signatureundeclaredbyref;
+				methodarguments+=", "+methodargumentsundeclaredbyref
+			}
+		}
+		
 
 		edits.push({ // Open the method
 			range: Range.create(insertpos,insertpos),
