@@ -8394,8 +8394,14 @@ connection.onRequest("intersystems/refactor/addMethod",
 		var undeclaredvar:string[]=[];			// list of undeclared variable
 		var undeclaredlocation:number[][]=[];	// list of location (line, token) of the undeclared variable
 		var setlocation:number[][]=[];			// list of location (line, token) of the SET or READ commands
-		var undeclaredbyrefvar:string[]=[];			// list of undeclared variable
+		var undeclaredbyrefvar:string[]=[];		// list of undeclared variable ByRef or Output
 
+		var declaredvar:string[]=[];			// list of declared variable
+		var declaredlocation:number[][]=[];		// list of location (line, token) of the declared variable
+		var declaredbyrefvar:string[]=[];		// list of declared variable ByRef or Output
+		var setdim:string[]=[];					// list of declared variable that are SET by default by #DIM
+		
+		// Scan through selection, look for variables, #dim, and set/read
 		for (let ln = lnstart; ln <= lnend; ln++) {
 			if (parsed[ln].length === 0) {// Empty line
 				continue;
@@ -8422,29 +8428,70 @@ connection.onRequest("intersystems/refactor/addMethod",
 					if(!dimvar.includes(thisvar)){ // Add the local declared variables to the list of variables that can be declared by #dim
 						dimvar.push(thisvar)
 					} 
+					if(
+						tkn>0 &&
+						parsed[ln][tkn-1].s === ld.cos_oper_attrindex &&
+						doc.getText(Range.create(Position.create(ln,parsed[ln][tkn-1].p),Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)))==="."
+					){
+						// The declared variable is ByRef or Output of a method
+						if(!declaredbyrefvar.includes(thisvar)){
+							declaredbyrefvar.push(thisvar);
+						}
+					}
+					if(!declaredvar.includes(thisvar)){  // first call of the variable
+						// if first call is a #dim -> skip
+						var skip:boolean=false;
+						if(parsed[ln].length > 1 ){
+							if(parsed[ln][0].l===ld.cos_langindex && parsed[ln][0].s===ld.cos_ppc_attrindex && parsed[ln][1].l===ld.cos_langindex && parsed[ln][1].s===ld.cos_ppc_attrindex){
+								// This is 2 preprocessor command
+								const thisdim:string=doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)))
+								if(thisdim.toLowerCase()==="#dim" ){
+									// Check whether declared variable is SET by #dim's default value
+									for(let k=parsed[ln].length-1;k>=0;k--){
+										if(parsed[ln][k].s === ld.cos_command_attrindex){
+											// This is "As" command
+											break
+										}else if(parsed[ln][k].s === ld.cos_oper_attrindex){
+											// This is "=" operator -> there is a default value
+											setdim.push(thisvar)
+											break
+										}
+									}
+									skip=true
+								}		
+							}
+						}
+						if(!skip){
+							// First call of the variable is not a #Dim
+							declaredvar.push(thisvar);
+							declaredlocation.push([ln,tkn]);
+						}
+						
+					} 
+					
 				}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localundec_attrindex){
 					// This is local undeclared variable 
 					const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
 					if(!undeclaredvar.includes(thisvar)){  // first call of the variable
 						undeclaredvar.push(thisvar);
 						undeclaredlocation.push([ln,tkn]);
-						
-						if(tkn>0){
-							if(
-								parsed[ln][tkn-1].s === ld.cos_oper_attrindex &&
-								doc.getText(Range.create(Position.create(ln,parsed[ln][tkn-1].p),Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)))==="."
-							){
-								// The undeclared variable is ByRef or Output of a method
-								undeclaredbyrefvar.push(thisvar);
-							}
-						}
 					} 
+					if(
+						tkn>0 &&
+						parsed[ln][tkn-1].s === ld.cos_oper_attrindex &&
+						doc.getText(Range.create(Position.create(ln,parsed[ln][tkn-1].p),Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)))==="."
+					){
+						// The undeclared variable is ByRef or Output of a method
+						if(!undeclaredbyrefvar.includes(thisvar)){
+							undeclaredbyrefvar.push(thisvar);
+						}
+					}
 				}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_otw_attrindex){
 					// This is an unset local variable (OptionTrackWarning)
 				}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_command_attrindex){
 					const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
 					if(thisvar==="set" || thisvar==="read"){
-						// This is a SET command
+						// This is a SET or READ command
 						setlocation.push([ln,tkn]); // save location
 					}
 				}
@@ -8459,9 +8506,11 @@ connection.onRequest("intersystems/refactor/addMethod",
 				}		
 			}
 		}
-		
+
 		// Update "undeclaredvar" array: delete the variables that Byref/Output argument of a method (.variable)
 		undeclaredvar=undeclaredvar.filter(undeclared=>!undeclaredbyrefvar.includes(undeclared))
+
+		// Add the undeclared variable BYREF to the signature
 		var signatureundeclaredbyref:string="";
 		var methodargumentsundeclaredbyref:string="";
 		if(undeclaredbyrefvar.length>0){ 
@@ -8474,8 +8523,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 				}
 			}
 		}
-
-
+		
 		// Check if the undeclared variable has been set in the selection block
 		var foundsetundeclaredvar:string[]=[];		// list of undeclared variables that have been SET in the selection block (before the undeclared variable)
 		if(undeclaredvar.length>0 && setlocation.length>0){ 		 
@@ -8512,14 +8560,71 @@ connection.onRequest("intersystems/refactor/addMethod",
 			}
 		}
 
+		// Check if the declared variable has been set in the selection block
+		var foundsetdeclaredvar:string[]=[];		// list of declared variables that have been SET in the selection block (before the declared variable)
+		if(declaredvar.length>0 && setlocation.length>0){ 		 
+			for (let ivar=0;ivar<declaredvar.length;ivar++){
+				var ln=declaredlocation[ivar][0];
+				var tkn=declaredlocation[ivar][1];
+				for (let iloc=0;iloc<setlocation.length;iloc++){
+					if(
+						setlocation[iloc][0]<ln ||								// line of SET is above the ueclared variable
+						(setlocation[iloc][0]==ln && setlocation[iloc][1]<tkn)	// SET and the declared variable are on the same line, but SET is before
+					){ 
+						// The set is before the variable
+						var foundset:boolean=parseSet(doc, parsed, setlocation[iloc][0], setlocation[iloc][1],declaredvar[ivar])
+						if(foundset){
+							// The declared variable is SET in the code selection
+							foundsetdeclaredvar.push(declaredvar[ivar]);
+							break
+						}
+					}
+				}
+			}
+			// Update "declaredvar" array: delete the variables that already have been set before variable and within code selection
+			declaredvar=declaredvar.filter(declared=>!foundsetdeclaredvar.includes(declared))
+		}
+		if(declaredvar.length>0 && setdim.length>0){ 
+			// Update "declaredvar" array: delete the variables that already have been set as default value in the #dim of the selection 
+			declaredvar=declaredvar.filter(declared=>!setdim.includes(declared))
+		}
+
+		// Variables that are ByRef or Output of a method (within the selectio) are Byref of the extracted method, in the signature.
+		declaredvar=declaredvar.concat(declaredbyrefvar)
+		
 		// Check if the public variable or the local declared variable is declared in the selection block
 		var founddimvar:string[]=[]; // list of variables that have been declared in the selection block
+		var signaturedeclared:string="" 
+		var methodargumentsdeclared=""
+		var todelvar:string[]=[];		// Variables to remove from the #dim declaration
+		var todellinevar:number[]=[];	// #Dim lines where variables will need to be removed
 		if( dimvar.length>0 && linedimvar.length>0){ 
 			for (let idimvar = 0; idimvar< dimvar.length; idimvar++){
 				for (let ln = linedimvar[0]; ln<= linedimvar[linedimvar.length-1]; ln++){ 
 					const dimresult = parseDimLine(doc,parsed,ln,dimvar[idimvar]);
 					if (dimresult.founddim) { // The variable has been declared by a dim in the selection block
 						founddimvar.push(dimvar[idimvar]);
+						
+						if(declaredvar.includes(dimvar[idimvar])){ 
+							// There is a #Dim in the selection and the declared variable is ByRef/Output or is not set in the selection 
+							
+							// Add variable and type to the signature
+							if(signaturedeclared!==""){
+								signaturedeclared+=", "
+								methodargumentsdeclared+=", "
+							}
+							if(declaredbyrefvar.includes(dimvar[idimvar])){
+								signaturedeclared+="ByRef "
+								methodargumentsdeclared+="."
+							}
+							signaturedeclared+=dimvar[idimvar] + " As "+dimresult.class
+							methodargumentsdeclared+=dimvar[idimvar]
+
+							// Record the variables to be removed from the #dim declarations
+							todelvar.push(dimvar[idimvar]) // Variable to remove from the #dim declaration
+							todellinevar.push(ln); // Line of the #dim
+							
+						}
 						break 
 					}
 				}
@@ -8646,7 +8751,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 
 			// Scan for #dim above selection block
 			if(dimvar.length>0){
-				var todel:string[]=[]; // list of varibles that have been declared at line ln
+				var todel:string[]=[]; // list of variables that have been declared at line ln
 				if(parsed[ln][0].l===ld.cos_langindex && parsed[ln][0].s===ld.cos_ppc_attrindex && parsed[ln][1].l===ld.cos_langindex && parsed[ln][1].s===ld.cos_ppc_attrindex){
 					// This is 2 preprocessor command
 					const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)))
@@ -8659,10 +8764,28 @@ connection.onRequest("intersystems/refactor/addMethod",
 							if (dimresult.founddim) { // The variable has been declared by a dim. 
 								dimtype=dimresult.class;
 								todel.push(dimvar[idimvar]); 
-								if(dimaddtext===""){
-									dimaddtext+="#Dim "+dimvar[idimvar]
+
+								if(declaredvar.includes(dimvar[idimvar])){
+									// There is a #Dim above the selection and the declared variable is ByRef/Output or is not set in the selection 
+
+									// Add variable and type to the signature
+									if(signaturedeclared!==""){
+										signaturedeclared+=", "
+										methodargumentsdeclared+=", "
+									}
+									if(declaredbyrefvar.includes(dimvar[idimvar])){
+										signaturedeclared+="ByRef "
+										methodargumentsdeclared+="."
+									}
+									signaturedeclared+=dimvar[idimvar] + " As "+dimtype
+									methodargumentsdeclared+=dimvar[idimvar]
 								}else{
-									dimaddtext+=", "+dimvar[idimvar]
+									// There is a #Dim above the selection and [public variable OR the declared variable has been set in the selection]
+									if(dimaddtext===""){
+										dimaddtext+="#Dim "+dimvar[idimvar]
+									}else{
+										dimaddtext+=", "+dimvar[idimvar]
+									}
 								}
 							}
 						}
@@ -8715,6 +8838,15 @@ connection.onRequest("intersystems/refactor/addMethod",
 				methodarguments+=", "+methodargumentsundeclaredbyref
 			}
 		}
+		if(signaturedeclared!==""){
+			if(signature===""){
+				signature=signaturedeclared;
+				methodarguments=methodargumentsdeclared
+			}else{
+				signature+=", "+signaturedeclared;
+				methodarguments+=", "+methodargumentsdeclared
+			}
+		}
 		
 
 		edits.push({ // Open the method
@@ -8745,15 +8877,56 @@ connection.onRequest("intersystems/refactor/addMethod",
 				});
 			}
 			else{ 
+				
 				var whitespace=doc.getText(Range.create(Position.create(ln,0),Position.create(ln,parsed[ln][0].p))).replace(/\t/g, " ".repeat(tabSize))
 				var gapspace=" ".repeat(Math.max(whitespace.length-firstwhitespace.length,0))
 				if(!insertSpaces){
 					gapspace=gapspace.replace("/ {"+tabSize+"}/g", "\t")
 				}
-				edits.push({ 
-					range: Range.create(insertpos,insertpos),
-					newText:tab+gapspace+doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)))+"\n"
-				});
+
+				if(todellinevar.includes(ln)){
+					// This a #Dim line with a declared variable that is already declard in the signature
+					var dimtext=""
+					var dimtype=""				
+					for (let tkn=2;tkn<parsed[ln].length;tkn++){
+						if (parsed[ln][tkn].s === ld.cos_localdec_attrindex || parsed[ln][tkn].s === ld.cos_localvar_attrindex ) {
+							// This is a declared variable or a public variable
+							const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+							if(todelvar.includes(thisvar)){
+								// This is a declared variable that has been declard in the signature, it needs to be removed
+								if(doc.getText(Range.create(Position.create(ln,parsed[ln][3].p),Position.create(ln,parsed[ln][3].p+parsed[ln][3].c))).toLowerCase()==="as"){
+									// Only the variable that needs to be removed is declared in the #Dim line -> delete the entire line
+									dimtext=""
+									break
+								}
+							}else{
+								if(dimtext!==""){
+									dimtext+=", "
+								}
+								dimtext+=thisvar
+							}
+						}else if(parsed[ln][tkn].s === ld.cos_command_attrindex){
+							// This is the "As" keyword
+							// Add the type and default values
+							dimtype=" As "+doc.getText(Range.create(Position.create(ln,parsed[ln][tkn+1].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)))
+							break
+						}
+					}
+					if(dimtext!==""){
+						// Replace the #Dim line with the correct #Dim line
+						dimtext="#Dim "+dimtext+dimtype;
+						edits.push({ 
+							range: Range.create(insertpos,insertpos),
+							newText:tab+gapspace+dimtext+"\n"
+						})
+					}
+				}
+				else{
+					edits.push({ 
+						range: Range.create(insertpos,insertpos),
+						newText:tab+gapspace+doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)))+"\n"
+					});
+				}
 			}
 		}
 		edits.push({ // close method
@@ -8764,7 +8937,6 @@ connection.onRequest("intersystems/refactor/addMethod",
 			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),
 			newText: docommandtext+" .."+params.newmethodname+"("+methodarguments+")"
 		});
-
 
 		return {
 			changes: {
