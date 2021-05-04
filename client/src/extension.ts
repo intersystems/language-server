@@ -348,7 +348,7 @@ export async function activate(context: ExtensionContext) {
 
 	// Register the Extract Method command
 	let extractMethodDisposable = commands.registerCommand("intersystems.language-server.extractMethod",
-		async (uri:string,lnstart:number,lnend:number) => {
+		async (uri:string,lnstart:number,lnend:number,lnmethod:number,newmethodtype:string) => {
 			// Get the list of class member names
 			const symbols =  await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
 			var clsmembers:string[]=[]
@@ -396,6 +396,9 @@ export async function activate(context: ExtensionContext) {
 				newmethodname: newmethodname,
 				lnstart:lnstart,
 				lnend:lnend,
+				lnmethod:lnmethod,
+				newmethodtype:newmethodtype
+				
 			});
 			// Apply the workspace edit
 			workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
