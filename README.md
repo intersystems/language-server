@@ -264,12 +264,14 @@ To customize the colors for one or more of these semantic tokens, add the [edito
 
 ```json
 "editor.semanticTokenColorCustomizations": {
-    "enabled": true, // enable for all themes
+    "enabled": true, // enable for all themes, but see note below
     "rules": {
         "ISC_Error":{"foreground":"#F44747","fontStyle":"bold"}
     }
 }
 ```
+
+Note that setting `"enabled": false` in the object shown above does not merely disable the rules within the object. Instead it disables semantic token coloring in all themes and languages, unless you have also changed `"editor.semanticHighlighting.enabled"` from its default value of `"configuredByTheme"`.
 
 ### Custom Themes
 
@@ -306,4 +308,4 @@ This extension requires that the [vscode-objectscript](https://marketplace.visua
 
 ## Compatibility
 
-All InterSystems products that include the Atelier APIs (Caché/Ensemble from 2016.2 onward, all versions of IRIS) are supported.
+All InterSystems products that include the Atelier APIs (Caché/Ensemble from 2016.2 onward, all versions of InterSystems IRIS) are supported.
