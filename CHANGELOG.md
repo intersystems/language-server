@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.1.6] - 2021-XX-XX
+- Fix issue [#158](https://github.com/intersystems/language-server/issues/158): Support Intellisense when method arguments appear on multiple lines
+
 ## [1.1.5] - 2021-05-04
 - Fix issue [#150](https://github.com/intersystems/language-server/issues/150): Hovering over blank last line of file causes error
 - Fix issue [#151](https://github.com/intersystems/language-server/issues/151): Typing "(" on a blank line causes an error

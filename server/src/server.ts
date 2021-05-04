@@ -1922,8 +1922,9 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
  * @param server The server to send the request to.
  * @param data Optional request data. Usually passed for POST requests.
  * @param checksum Optional checksum. Only passed for SASchema requests.
+ * @param params Optional URL parameters. Only passed for GET /doc/ requests.
  */
-export async function makeRESTRequest(method: "GET"|"POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string): Promise<AxiosResponse | undefined> {
+export async function makeRESTRequest(method: "GET"|"POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse | undefined> {
 	if (api > server.apiVersion) {
 		// The server doesn't support the Atelier API version required to make this request
 		return undefined;
@@ -2064,7 +2065,8 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 						method: method,
 						url: url,
 						withCredentials: true,
-						jar: cookieJar
+						jar: cookieJar,
+						params: params
 					}
 				);
 				if (respdata.status === 401) {
@@ -2079,7 +2081,8 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 								password: server.password
 							},
 							withCredentials: true,
-							jar: cookieJar
+							jar: cookieJar,
+							params: params
 						}
 					);
 				}
@@ -2596,6 +2599,21 @@ async function determineDeclaredLocalVarClass(doc: TextDocument, parsed: compres
 function beautifyFormalSpec(FormalSpec: string): string {
 	// Split the FormalSpec by commas not enclosed in parenthesis, then rejoin with added space before doing regex replaces
 	return "(" + FormalSpec.split(/,(?![^(]*\))/).join(", ").replace(/:/g," As ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = ") + ")";
+}
+
+/**
+ * Generate the Atelier API GET /doc/ format parameter using the 
+ * `objectscript.multilineMethodArgs` setting for this document.
+ * 
+ * @param uri The URI of the document that we will scope the setting to.
+ * @param apiVersion The Atelier API version of the server that document `uri` is associated with.
+ */
+async function getGetDocFormatParam(uri: string, apiVersion: number): Promise<any> {
+	const settingArr = await connection.workspace.getConfiguration([{
+		scopeUri: uri,
+		section: "objectscript.multilineMethodArgs"
+	}]);
+	return (((settingArr[0] === null ? false : settingArr[0]) && apiVersion >= 4 ? true : false) ? {format: "udl-multiline"} : undefined);
 }
 
 connection.onInitialize((params: InitializeParams) => {
@@ -3850,8 +3868,7 @@ connection.onCompletion(
 		}
 		else if (
 			(prevline.slice(-2) === "[ " || (prevline.slice(-2) === ", " &&
-			openparencount === closeparencount)) && triggerlang === ld.cls_langindex &&
-			parsed[params.position.line][0].l == ld.cls_langindex && parsed[params.position.line][0].s == ld.cls_keyword_attrindex
+			openparencount <= closeparencount)) && triggerlang === ld.cls_langindex
 		) {
 			var foundopenbrace = false;
 			var foundclosingbrace = false;
@@ -3876,11 +3893,28 @@ connection.onCompletion(
 			}
 			if (foundopenbrace && !foundclosingbrace) {
 				// This is a UDL keyword
-				
-				const keywordtype = doc.getText(Range.create(
+
+				// Find the type of this member
+				var keywordtype = doc.getText(Range.create(
 					Position.create(params.position.line,parsed[params.position.line][0].p),
 					Position.create(params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c)
 				)).toLowerCase();
+				if (parsed[params.position.line][0].l !== ld.cls_langindex || parsed[params.position.line][0].s !== ld.cls_keyword_attrindex) {
+					// This member definition spans multiple lines
+					for (let k = params.position.line-1; k >= 0; k--) {
+						if (parsed[k].length === 0) {
+							continue;
+						}
+						if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
+							keywordtype = doc.getText(Range.create(
+								Position.create(k,parsed[k][0].p),
+								Position.create(k,parsed[k][0].p+parsed[k][0].c)
+							)).toLowerCase();
+							break;
+						}
+					}
+				}
+
 				var keywordsarr: KeywordDoc[] =[];
 				if (keywordtype === "class") {
 					keywordsarr = classKeywords.slice();
@@ -3942,7 +3976,7 @@ connection.onCompletion(
 			}
 		}
 		else if (
-			parsed[params.position.line][0].l == ld.cls_langindex && parsed[params.position.line][0].s == ld.cls_keyword_attrindex && triggerlang === ld.cls_langindex &&
+			triggerlang === ld.cls_langindex &&
 			(prevline.slice(-2) === "= " || (prevline.slice(-2) === ", " && openparencount > closeparencount) || prevline.slice(-3) === "= (")
 		) {
 			var foundopenbrace = false;
@@ -3968,10 +4002,27 @@ connection.onCompletion(
 			if (foundopenbrace && !foundclosingbrace) {
 				// This is a value for a UDL keyword
 
-				const keywordtype = doc.getText(Range.create(
+				// Find the type of this member
+				var keywordtype = doc.getText(Range.create(
 					Position.create(params.position.line,parsed[params.position.line][0].p),
 					Position.create(params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c)
 				)).toLowerCase();
+				if (parsed[params.position.line][0].l !== ld.cls_langindex || parsed[params.position.line][0].s !== ld.cls_keyword_attrindex) {
+					// This member definition spans multiple lines
+					for (let k = params.position.line-1; k >= 0; k--) {
+						if (parsed[k].length === 0) {
+							continue;
+						}
+						if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
+							keywordtype = doc.getText(Range.create(
+								Position.create(k,parsed[k][0].p),
+								Position.create(k,parsed[k][0].p+parsed[k][0].c)
+							)).toLowerCase();
+							break;
+						}
+					}
+				}
+
 				var keywordsarr: KeywordDoc[] =[];
 				if (keywordtype === "class") {
 					keywordsarr = classKeywords.slice();
@@ -4951,12 +5002,28 @@ connection.onHover(
 						// This is a trailing keyword
 						const thiskeyrange = Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend));
 						const thiskeytext = doc.getText(thiskeyrange).toLowerCase();
-						const firstkey = doc.getText(
-							Range.create(
-								Position.create(params.position.line,parsed[params.position.line][0].p),
-								Position.create(params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c)
-							)
-						).toLowerCase();
+
+						// Find the type of this member
+						var firstkey = doc.getText(Range.create(
+							Position.create(params.position.line,parsed[params.position.line][0].p),
+							Position.create(params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c)
+						)).toLowerCase();
+						if (parsed[params.position.line][0].l !== ld.cls_langindex || parsed[params.position.line][0].s !== ld.cls_keyword_attrindex) {
+							// This member definition spans multiple lines
+							for (let k = params.position.line-1; k >= 0; k--) {
+								if (parsed[k].length === 0) {
+									continue;
+								}
+								if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
+									firstkey = doc.getText(Range.create(
+										Position.create(k,parsed[k][0].p),
+										Position.create(k,parsed[k][0].p+parsed[k][0].c)
+									)).toLowerCase();
+									break;
+								}
+							}
+						}
+						
 						var thiskeydoc: KeywordDoc | undefined;
 						if (firstkey === "class") {
 							// This is a class keyword
@@ -5241,6 +5308,7 @@ connection.onDefinition(
 		const doc = documents.get(params.textDocument.uri);
 		if (doc === undefined) {return null;}
 		const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+		const getDocParams = await getGetDocFormatParam(params.textDocument.uri,server.apiVersion);
 
 		if (parsed[params.position.line] === undefined) {
 			// This is the blank last line of the file
@@ -5284,7 +5352,7 @@ connection.onDefinition(
 					let normalizedname = await normalizeClassname(doc,parsed,word,server,params.position.line);
 
 					// Get the full text of this class
-					const respdata = await makeRESTRequest("GET",1,"/doc/".concat(normalizedname,".cls"),server);
+					const respdata = await makeRESTRequest("GET",1,"/doc/".concat(normalizedname,".cls"),server,undefined,undefined,getDocParams);
 					if (respdata !== undefined && respdata.data.result.status === "") {
 						// The class was found
 
@@ -5583,7 +5651,7 @@ connection.onDefinition(
 							}
 							if (originclass !== "") {
 								// Get the full text of the origin class
-								const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server);
+								const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
 								if (docrespdata !== undefined && docrespdata.data.result.status === "") {
 									// The class was found
 		
@@ -5784,7 +5852,7 @@ connection.onDefinition(
 							}
 
 							// Get the full text of the other routine
-							const respdata = await makeRESTRequest("GET",1,"/doc/".concat(routine,ext),server);
+							const respdata = await makeRESTRequest("GET",1,"/doc/".concat(routine,ext),server,undefined,undefined,getDocParams);
 							if (respdata !== undefined && respdata.data.result.status === "") {
 								// The routine was found
 
@@ -5965,7 +6033,7 @@ connection.onDefinition(
 
 										// Get the full text of the origin class
 										const originclass = queryrespdata.data.result.content[0].Origin;
-										const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server);
+										const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
 										if (docrespdata !== undefined && docrespdata.data.result.status === "") {
 											// The class was found
 				
@@ -6046,7 +6114,7 @@ connection.onDefinition(
 							const normalizedname = await normalizeClassname(doc,parsed,iden.replace(/_/g,"."),server,params.position.line);
 							if (normalizedname !== "") {
 								// Get the full text of this class
-								const respdata = await makeRESTRequest("GET",1,"/doc/".concat(normalizedname,".cls"),server);
+								const respdata = await makeRESTRequest("GET",1,"/doc/".concat(normalizedname,".cls"),server,undefined,undefined,getDocParams);
 								if (respdata !== undefined && respdata.data.result.status === "") {
 									// The class was found
 
@@ -6097,7 +6165,7 @@ connection.onDefinition(
 
 								// Get the full text of the origin class
 								const originclass = queryrespdata.data.result.content[0].Origin;
-								const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server);
+								const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
 								if (docrespdata !== undefined && docrespdata.data.result.status === "") {
 									// The class was found
 		
@@ -6195,7 +6263,7 @@ connection.onDefinition(
 
 											// Get the full text of the origin class
 											const originclass = queryrespdata.data.result.content[0].Origin;
-											const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server);
+											const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
 											if (docrespdata !== undefined && docrespdata.data.result.status === "") {
 												// The class was found
 					
@@ -7195,7 +7263,7 @@ connection.onFoldingRanges(
 						}
 					}
 				}
-				// Done with special processing, so loop again to find all ObjectScript braces
+				// Done with special processing, so loop again to find all ObjectScript braces and UDL parentheses
 				for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 					if (parsed[line][tkn].l === ld.cos_langindex && parsed[line][tkn].s === ld.cos_brace_attrindex) {
 						const bracetext = doc.getText(Range.create(Position.create(line,parsed[line][tkn].p),Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)));
@@ -7212,6 +7280,32 @@ connection.onFoldingRanges(
 							var prevrange = openranges.length-1;
 							for (let rge = openranges.length-1; rge >= 0; rge--) {
 								if (openranges[rge].kind === "isc-cosblock") {
+									prevrange = rge;
+									break;
+								}
+							}
+							if (prevrange >= 0 && openranges[prevrange].startLine < line-1) {
+								openranges[prevrange].endLine = line-1;
+								result.push(openranges[prevrange]);
+							}
+							openranges.splice(prevrange,1);
+						}
+					}
+					else if (parsed[line][tkn].l === ld.cls_langindex && parsed[line][tkn].s === ld.cls_delim_attrindex) {
+						const delimtext = doc.getText(Range.create(Position.create(line,parsed[line][tkn].p),Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)));
+						if (delimtext === "(") {
+							// Open a new UDL parentheses range
+							openranges.push({
+								startLine: line,
+								endLine: line,
+								kind: "isc-udlparen"
+							});
+						}
+						else if (delimtext === ")") {
+							// Close the most recent UDL parentheses range
+							var prevrange = openranges.length-1;
+							for (let rge = openranges.length-1; rge >= 0; rge--) {
+								if (openranges[rge].kind === "isc-udlparen") {
 									prevrange = rge;
 									break;
 								}
@@ -7597,6 +7691,7 @@ connection.onTypeDefinition(
 		const doc = documents.get(params.textDocument.uri);
 		if (doc === undefined) {return null;}
 		const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+		const getDocParams = await getGetDocFormatParam(params.textDocument.uri,server.apiVersion);
 
 		if (parsed[params.position.line] === undefined) {
 			// This is the blank last line of the file
@@ -7617,7 +7712,7 @@ connection.onTypeDefinition(
 						// The parameter has a class
 
 						// Get the full text of this class
-						const respdata = await makeRESTRequest("GET",1,"/doc/".concat(paramcon.baseclass,".cls"),server);
+						const respdata = await makeRESTRequest("GET",1,"/doc/".concat(paramcon.baseclass,".cls"),server,undefined,undefined,getDocParams);
 						if (respdata !== undefined && respdata.data.result.status === "") {
 							// The class was found
 
@@ -7652,7 +7747,7 @@ connection.onTypeDefinition(
 						// The declared local variable has a class
 
 						// Get the full text of this class
-						const respdata = await makeRESTRequest("GET",1,"/doc/".concat(localdeccon.baseclass,".cls"),server);
+						const respdata = await makeRESTRequest("GET",1,"/doc/".concat(localdeccon.baseclass,".cls"),server,undefined,undefined,getDocParams);
 						if (respdata !== undefined && respdata.data.result.status === "") {
 							// The class was found
 
@@ -7841,24 +7936,41 @@ connection.onDeclaration(
 							)).toLowerCase();
 							if (keytext.indexOf("method") !== -1) {
 								// This public variable is in a method so see if it's in the PublicList
-								var prevkey: string = "";
-								for (let tkn = 1; tkn < parsed[j].length; tkn++) {
-									if (parsed[j][tkn].l == ld.cls_langindex && parsed[j][tkn].s == ld.cls_keyword_attrindex) {
-										// This token is a keyword
-										prevkey = doc.getText(Range.create(
-											Position.create(j,parsed[j][tkn].p),
-											Position.create(j,parsed[j][tkn].p+parsed[j][tkn].c)
-										)).toLowerCase();
+
+								// The keyword list might be on a following line
+								for (let k = j; k < parsed.length; k++) {
+									if (parsed[k].length === 0) {
+										continue;
 									}
-									else if (prevkey === "publiclist" && parsed[j][tkn].l == ld.cls_langindex && parsed[j][tkn].s == ld.cls_iden_attrindex) {
-										// This is an identifier in the PublicList
-										const idenrange = Range.create(Position.create(j,parsed[j][tkn].p),Position.create(j,parsed[j][tkn].p+parsed[j][tkn].c));
-										const identext = doc.getText(idenrange);
-										if (identext === thisvar) {
-											// This identifier is the variable that we're looking for
-											decrange = idenrange;
-											break;
+									var prevkey: string = "";
+									for (let tkn = 1; tkn < parsed[k].length; tkn++) {
+										if (parsed[k][tkn].l == ld.cls_langindex && parsed[k][tkn].s == ld.cls_keyword_attrindex) {
+											// This token is a keyword
+											prevkey = doc.getText(Range.create(
+												Position.create(k,parsed[k][tkn].p),
+												Position.create(k,parsed[k][tkn].p+parsed[k][tkn].c)
+											)).toLowerCase();
 										}
+										else if (prevkey === "publiclist" && parsed[k][tkn].l == ld.cls_langindex && parsed[k][tkn].s == ld.cls_iden_attrindex) {
+											// This is an identifier in the PublicList
+											const idenrange = Range.create(Position.create(k,parsed[k][tkn].p),Position.create(k,parsed[k][tkn].p+parsed[k][tkn].c));
+											const identext = doc.getText(idenrange);
+											if (identext === thisvar) {
+												// This identifier is the variable that we're looking for
+												decrange = idenrange;
+												break;
+											}
+										}
+									}
+									if (
+										parsed[k][parsed[k].length-1].l == ld.cls_langindex && parsed[k][parsed[k].length-1].s == ld.cls_delim_attrindex &&
+										doc.getText(Range.create(
+											Position.create(k,parsed[k][parsed[k].length-1].p),
+											Position.create(k,parsed[k][parsed[k].length-1].p+parsed[k][parsed[k].length-1].c)
+										)) === "{"
+									) {
+										// The last token on this line is an open curly, so this is the end of the method definition
+										break;
 									}
 								}
 							}
