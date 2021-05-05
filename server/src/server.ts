@@ -8516,7 +8516,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 
 			var undeclaredvar:string[]=[];			// list of undeclared variable
 			var undeclaredlocation:number[][]=[];	// list of location (line, token) of the undeclared variable
-			var setlocation:number[][]=[];			// list of location (line, token) of the SET or READ commands
+			var setlocation:number[][]=[];			// list of location (line, token) of the SET command
 			var undeclaredbyrefvar:string[]=[];		// list of undeclared variable ByRef or Output
 
 			var declaredvar:string[]=[];			// list of declared variable
@@ -8524,7 +8524,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 			var declaredbyrefvar:string[]=[];		// list of declared variable ByRef or Output
 			var setdim:string[]=[];					// list of declared variable that are SET by default by #DIM
 			
-			// Scan through selection, look for variables, #dim, and set/read
+			// Scan through selection, look for variables, #dim, and set
 			for (let ln = lnstart; ln <= lnend; ln++) {
 				if (parsed[ln].length === 0) {// Empty line
 					continue;
@@ -8613,8 +8613,8 @@ connection.onRequest("intersystems/refactor/addMethod",
 						// This is an unset local variable (OptionTrackWarning)
 					}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_command_attrindex){
 						const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
-						if(thisvar==="set" || thisvar==="read"){
-							// This is a SET or READ command
+						if(thisvar==="set" ){
+							// This is a SET command
 							setlocation.push([ln,tkn]); // save location
 						}
 					}
