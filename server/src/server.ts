@@ -8613,7 +8613,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 						// This is an unset local variable (OptionTrackWarning)
 					}else if(parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_command_attrindex){
 						const thisvar:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
-						if(thisvar==="set" ){
+						if(thisvar==="set" ||  thisvar==="s"){
 							// This is a SET command
 							setlocation.push([ln,tkn]); // save location
 						}
@@ -8954,6 +8954,9 @@ connection.onRequest("intersystems/refactor/addMethod",
 		// Adpapt to InterSystems Language Server Settings
 		const settings =   await getLanguageServerSettings();
 		var docommandtext:string="Do"
+		if(settings.formatting.commands.length==="short"){
+			docommandtext="D"
+		}
 		if (settings.formatting.commands.case === "lower") {
 			docommandtext=docommandtext.toLowerCase()
 		}
