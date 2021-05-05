@@ -8783,8 +8783,8 @@ connection.onRequest("intersystems/refactor/addMethod",
 				var foundlastclosedparen:boolean=false;
 				var foundparam:boolean=false;
 				var countparam:number=0;
-				var ln=params.lnmethod
-				var tkn=0
+				var previoustknln=params.lnmethod
+				var previoustkn=0
 				var countparenthesis:number=1
 
 				for (let ln = params.lnmethod; ln<lnstart; ln++){// scan through definition of the method
@@ -8819,9 +8819,9 @@ connection.onRequest("intersystems/refactor/addMethod",
 							if(parametervar.includes(param)){ 
 								countparam++;
 								// Check Prefix
-								if(parsed[ln][tkn].l===ld.cls_langindex && parsed[ln][tkn].s===ld.cls_keyword_attrindex){
+								if(parsed[previoustknln][previoustkn].l===ld.cls_langindex && parsed[previoustknln][previoustkn].s===ld.cls_keyword_attrindex){
 									// There is a "Output" or "ByRef" prefix -> add keyword "ByRef" to the signature and "." in argument (Ignore ByVal)
-									const keywordtext:string=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
+									const keywordtext:string=doc.getText(Range.create(Position.create(previoustknln,parsed[previoustknln][previoustkn].p),Position.create(previoustknln,parsed[previoustknln][previoustkn].p+parsed[previoustknln][previoustkn].c))).toLowerCase();
 									if(keywordtext==="output" || keywordtext==="byref"){
 										signature+="ByRef ";  
 										methodarguments+=".";
@@ -8841,8 +8841,8 @@ connection.onRequest("intersystems/refactor/addMethod",
 							}
 						}
 						
-						tkn=tkn	
-						ln=ln
+						previoustkn=tkn	
+						previoustknln=ln
 					}
 					if(foundlastclosedparen){break;}
 				}
