@@ -13,6 +13,7 @@ import {
 } from 'vscode';
 
 import {
+	DocumentSelector,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
@@ -49,16 +50,36 @@ export async function activate(context: ExtensionContext) {
 		}
 	};
 
-	const documentSelector = [
-		{language: 'objectscript'},
-		{language: 'objectscript-class'},
-		{language: 'objectscript-csp'},
-		{language: 'objectscript-macros'}
+	// The languages we handle
+	const targetLanguages = [
+		'objectscript',
+		'objectscript-class',
+		'objectscript-csp',
+		'objectscript-macros',
 	];
+
+	// The uri schemes we handle those languages for
+	const targetSchemes = [
+		'isfs',
+		'isfs-readonly',
+		'objectscript',
+		'objectscriptxml',
+		'file',
+		'vscode-remote',
+		'vscode-notebook-cell'
+	]
+
+	// A document selector to target the right {language, scheme} tuples
+	const documentSelector: DocumentSelector = [];
+	targetLanguages.forEach(language => {
+		targetSchemes.forEach(scheme => {
+			documentSelector.push({ language, scheme });
+		});
+	});
 
 	// Options to control the language client
 	let clientOptions: LanguageClientOptions = {
-		// Register the server for InterSystems files
+		// Register the server for InterSystems files handled by vscode-objectscript extension
 		documentSelector: documentSelector
 	};
 

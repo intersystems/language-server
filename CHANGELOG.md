@@ -1,5 +1,18 @@
 # Changelog
 
+## [1.1.6] - 2021-XX-XX
+- Fix issue [#158](https://github.com/intersystems/language-server/issues/158): Support Intellisense when method arguments appear on multiple lines
+
+## [1.1.5] - 2021-05-04
+- Fix issue [#150](https://github.com/intersystems/language-server/issues/150): Hovering over blank last line of file causes error
+- Fix issue [#151](https://github.com/intersystems/language-server/issues/151): Typing "(" on a blank line causes an error
+- Fix issue [#152](https://github.com/intersystems/language-server/issues/152): Language Server is crashing on startup in Insiders
+- Fix issue [#153](https://github.com/intersystems/language-server/issues/153): LS DocumentSelector should confine itself to schemes it can handle
+- Fix issue [#155](https://github.com/intersystems/language-server/issues/155): class parameter marked with warning about type mismatch
+- Fix issue [#156](https://github.com/intersystems/language-server/issues/156): SignatureHelp not showing for methods without a description or return type
+- Fix issue [#157](https://github.com/intersystems/language-server/issues/157): SignatureHelp parameter underlining doesn't work when class name parameter values are present
+- Fix issue [#159](https://github.com/intersystems/language-server/issues/159): Improve README to explain consequences of setting `"enabled": false` on `editor.semanticTokenColorCustomizations` object
+
 ## [1.1.4] - 2021-04-09
 - Fix issue [#74](https://github.com/intersystems/language-server/issues/74): Be an EvaluatableExpressionProvider
 - Fix issue [#146](https://github.com/intersystems/language-server/issues/146): Values for keywords "Owner" and "Aliases" are not tokenized correctly
