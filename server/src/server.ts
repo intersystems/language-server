@@ -8560,6 +8560,25 @@ connection.onRequest("intersystems/refactor/addMethod",
 		const lnstart=params.lnstart	// First non-empty line of the selection
 		const lnend=params.lnend		// Last non-empty line of the selection
 
+
+		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
+		const vscodesettings= await connection.workspace.getConfiguration([
+			{scopeUri:params.uri,section:"editor.tabSize"},
+			{scopeUri:params.uri,section:"editor.insertSpaces"},
+			{scopeUri:params.uri,section: "objectscript.multilineMethodArgs"}])
+		const tabSize = vscodesettings[0];
+		const insertSpaces = vscodesettings[1];
+		const multilinearg = vscodesettings[2];
+		var tab:string="\t"
+		var comma:string=", "
+		if(insertSpaces===true){
+			tab=" ".repeat(tabSize)
+		}
+		if(multilinearg===true){
+			comma=", \n"+tab
+		}
+		var countarg:number=0;
+
 		// Find the location of the method insertion - above donor method
 		var insertpos:Position=Position.create(0,0)
 		for (let ln = params.lnmethod-1; ln>0; ln--){
@@ -8572,7 +8591,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 				insertpos=Position.create(ln, parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c);
 				break;
 			}
-		}
+		} 
 
 		// Scan for ProcedureBlock Method Keyword 
 		var countbrace:number=0;
@@ -8813,11 +8832,13 @@ connection.onRequest("intersystems/refactor/addMethod",
 			var signatureundeclaredbyref:string="";
 			var methodargumentsundeclaredbyref:string="";
 			if(undeclaredbyrefvar.length>0){ 
+				countarg++;
 				signatureundeclaredbyref+="ByRef "+undeclaredbyrefvar[0];
 				methodargumentsundeclaredbyref+="."+undeclaredbyrefvar[0];
 				if(undeclaredbyrefvar.length>1){
 					for (let ivar=1;ivar<undeclaredbyrefvar.length;ivar++){
-						signatureundeclaredbyref+=", ByRef "+undeclaredbyrefvar[ivar]
+						countarg++;
+						signatureundeclaredbyref+=comma+"ByRef "+undeclaredbyrefvar[ivar]
 						methodargumentsundeclaredbyref+=", ."+undeclaredbyrefvar[ivar]
 					}
 				}
@@ -8851,10 +8872,12 @@ connection.onRequest("intersystems/refactor/addMethod",
 			// Add the undeclared variable (not set in the selection) to the signature
 			var signatureundeclared:string="" 
 			if(undeclaredvar.length>0){ 
+				countarg++;
 				signatureundeclared+=undeclaredvar[0]
 				if(undeclaredvar.length>1){
+					countarg++;
 					for (let ivar=1;ivar<undeclaredvar.length;ivar++){
-						signatureundeclared+=", "+undeclaredvar[ivar]
+						signatureundeclared+=comma+undeclaredvar[ivar]
 					}
 				}
 			}
@@ -8907,13 +8930,14 @@ connection.onRequest("intersystems/refactor/addMethod",
 								
 								// Add variable and type to the signature
 								if(signaturedeclared!==""){
-									signaturedeclared+=", "
+									signaturedeclared+=comma
 									methodargumentsdeclared+=", "
 								}
 								if(declaredbyrefvar.includes(dimvar[idimvar])){
 									signaturedeclared+="ByRef "
 									methodargumentsdeclared+="."
 								}
+								countarg++;
 								signaturedeclared+=dimvar[idimvar] + " As "+dimresult.class
 								methodargumentsdeclared+=dimvar[idimvar]
 
@@ -8983,7 +9007,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 							}else if((delimtext === "," || delimtext === "=" )&& countparenthesis===1){ 
 								// Move to the next parameter after comma, and skip the default values
 								if(countparam<parametervar.length){
-									signature+=", "
+									signature+=comma
 									methodarguments+=", ";
 								}
 								foundparam=false; // look for the next parameter
@@ -9003,6 +9027,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 										methodarguments+=".";
 									}
 								}
+								countarg++;
 								signature+=param;
 								methodarguments+=param;
 								foundparam=true;
@@ -9050,13 +9075,14 @@ connection.onRequest("intersystems/refactor/addMethod",
 
 										// Add variable and type to the signature
 										if(signaturedeclared!==""){
-											signaturedeclared+=", "
+											signaturedeclared+=comma
 											methodargumentsdeclared+=", "
 										}
 										if(declaredbyrefvar.includes(dimvar[idimvar])){
 											signaturedeclared+="ByRef "
 											methodargumentsdeclared+="."
 										}
+										countarg++;
 										signaturedeclared+=dimvar[idimvar] + " As "+dimtype
 										methodargumentsdeclared+=dimvar[idimvar]
 									}else{
@@ -9088,7 +9114,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 					signature=signatureundeclared;
 					methodarguments=signatureundeclared
 				}else{
-					signature+=", "+signatureundeclared;
+					signature+=comma+signatureundeclared;
 					methodarguments+=", "+signatureundeclared
 				}
 			}
@@ -9106,9 +9132,12 @@ connection.onRequest("intersystems/refactor/addMethod",
 					signature=signaturedeclared;
 					methodarguments=methodargumentsdeclared
 				}else{
-					signature+=", "+signaturedeclared;
+					signature+=comma+signaturedeclared;
 					methodarguments+=", "+methodargumentsdeclared
 				}
+			}
+			if(multilinearg && countarg>1 ){
+				signature="\n"+tab+signature;
 			}
 
 		}else{
@@ -9117,16 +9146,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 				methodkeywords="[ "+procedurekeyword+" ]";
 			}
 		}
-
-		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
-		const vscodesettings= await connection.workspace.getConfiguration([{scopeUri:params.uri,section:"editor.tabSize"},{scopeUri:params.uri,section:"editor.insertSpaces"}])
-		const tabSize = vscodesettings[0];
-		const insertSpaces = vscodesettings[1];
-		var tab:string="\t"
-		if(insertSpaces===true){
-			tab=" ".repeat(tabSize)
-		}
-
+		
 		// Adpapt to InterSystems Language Server Settings
 		const settings =   await getLanguageServerSettings();
 		var docommandtext:string="Do"
