@@ -8578,7 +8578,8 @@ connection.onRequest("intersystems/refactor/addMethod",
 			comma=", \n"+tab
 		}
 		var countarg:number=0;
-
+		var countlines:number=0 // Total Number of Lines added
+		
 		// Find the location of the method insertion - above donor method
 		var insertpos:Position=Position.create(0,0)
 		for (let ln = params.lnmethod-1; ln>0; ln--){
@@ -9138,6 +9139,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 			}
 			if(multilinearg && countarg>1 ){
 				signature="\n"+tab+signature;
+				countlines+=countarg // Add the lines from the multiline setting
 			}
 
 		}else{
@@ -9159,11 +9161,14 @@ connection.onRequest("intersystems/refactor/addMethod",
 		else if (settings.formatting.commands.case === "upper"){
 			docommandtext=docommandtext.toUpperCase()
 		}
-
+		
+		
+		countlines+=4 // (4 = Description line + Method Open line + Open Brace line + Close Brace line)
 		edits.push({ // Open the method
 			range: Range.create(insertpos,insertpos),
 			newText: "\n/// \n"+params.newmethodtype+" "+params.newmethodname+"("+signature+") "+ methodkeywords +"\n{\n"
 		});
+
 
 		// Add #Dim variable declaration for local declared variables and public variables
 		if(dimadd.length>0){
@@ -9172,11 +9177,13 @@ connection.onRequest("intersystems/refactor/addMethod",
 					range: Range.create(insertpos,insertpos),
 					newText:tab+dimadd[dimln]+"\n"
 				});
+				countlines++
 			}
 			edits.push({ 
 				range: Range.create(insertpos,insertpos),
 				newText:"\n"
 			});
+			countlines++
 		}
 
 		const firstwhitespace:string=doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p))).replace(/\t/g, " ".repeat(tabSize)); 
@@ -9186,6 +9193,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 				    range: Range.create(insertpos,insertpos),
 					newText: "\n"
 				});
+				countlines++
 			}
 			else{ 
 				
@@ -9230,6 +9238,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 							range: Range.create(insertpos,insertpos),
 							newText:tab+gapspace+dimtext+"\n"
 						})
+						countlines++
 					}
 				}
 				else{
@@ -9237,6 +9246,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 						range: Range.create(insertpos,insertpos),
 						newText:tab+gapspace+doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)))+"\n"
 					});
+					countlines++
 				}
 			}
 		}
@@ -9247,6 +9257,12 @@ connection.onRequest("intersystems/refactor/addMethod",
 		edits.push({ // replace code selection with do.. command
 			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),
 			newText: docommandtext+" .."+params.newmethodname+"("+methodarguments+")"
+		});
+
+		const endinsertpos:Position=Position.create(insertpos.line+countlines,1)
+		edits.push({ // Fake workspace edit to record end of range
+			range: Range.create(endinsertpos,endinsertpos),
+			newText: ""
 		});
 
 		return {

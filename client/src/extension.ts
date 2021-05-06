@@ -10,6 +10,8 @@ import {
 	QuickPickItem,
 	languages,
 	Range,
+	Selection,
+	Position,
 } from 'vscode';
 
 import {
@@ -422,7 +424,16 @@ export async function activate(context: ExtensionContext) {
 				
 			});
 			// Apply the workspace edit
-			workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
+			await workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
+
+			// Highlight and scroll to new extracted method
+			const activeEditor=window.activeTextEditor
+			if(activeEditor.document.uri.toString()===uri){
+				const anchor=lspWorkspaceEdit.changes[uri][0].range.start
+				const active=lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].range.end
+				activeEditor.selection=new Selection(anchor.line+1,0,active.line,active.character)
+				activeEditor.revealRange(new Range(new Position(anchor.line+1,0),new Position(active.line,active.character)))
+			}
 		}
 	);
 	// Add the commands to the subscriptions array
