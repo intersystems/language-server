@@ -429,11 +429,31 @@ export async function activate(context: ExtensionContext) {
 			// Highlight and scroll to new extracted method
 			const activeEditor=window.activeTextEditor
 			if(activeEditor.document.uri.toString()===uri){
+				var select:Selection[]=[]
+
+				// Selection of the extracted method
 				const anchor=lspWorkspaceEdit.changes[uri][0].range.start
-				const active=lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].range.end
-				activeEditor.selection=new Selection(anchor.line+1,0,active.line,active.character)
-				activeEditor.revealRange(new Range(new Position(anchor.line+1,0),new Position(active.line,active.character)))
+				var methodstring:string=""
+				for(let edit=0;edit<lspWorkspaceEdit.changes[uri].length-2;edit++){
+					methodstring+=lspWorkspaceEdit.changes[uri][edit].newText
+				}
+				const methodsize= methodstring.split("\n").length - 1;
+				select.push(new Selection(anchor.line+1,0,anchor.line+methodsize,1))				
+				
+				// Selection of the do command line
+				const anchor2=lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].range.start
+				const linesize=lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].newText.length;
+				select.push(new Selection(anchor2.line+methodsize+1,anchor2.character,anchor2.line+methodsize+1,anchor2.character+linesize+1))
+
+				// Show the 2 selections in the editor
+				activeEditor.selections=select
+				
+				// Scroll to the extracted method
+				var range:Range=new Range(new Position(anchor.line+1,0),new Position(anchor.line+methodsize,1))
+				activeEditor.revealRange(range)
+
 			}
+			
 		}
 	);
 	// Add the commands to the subscriptions array
