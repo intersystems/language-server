@@ -8557,74 +8557,74 @@ connection.onRequest("intersystems/refactor/addMethod",
 		if (parsed === undefined) {return null;}
 		const doc = documents.get(params.uri);
 		if (doc === undefined) {return null;}
-		const lnstart=params.lnstart	// First non-empty line of the selection
-		const lnend=params.lnend		// Last non-empty line of the selection
+		const lnstart  = params.lnstart;	// First non-empty line of the selection
+		const lnend = params.lnend;			// Last non-empty line of the selection
 
 
 		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
-		const vscodesettings= await connection.workspace.getConfiguration([
-			{scopeUri:params.uri,section:"editor.tabSize"},
-			{scopeUri:params.uri,section:"editor.insertSpaces"},
+		const vscodesettings = await connection.workspace.getConfiguration([
+			{scopeUri:params.uri,section: "editor.tabSize"},
+			{scopeUri:params.uri,section: "editor.insertSpaces"},
 			{scopeUri:params.uri,section: "objectscript.multilineMethodArgs"}])
 		const tabSize = vscodesettings[0];
 		const insertSpaces = vscodesettings[1];
 		const multilinearg = vscodesettings[2];
-		var tab:string="\t"
-		var comma:string=", "
-		if(insertSpaces===true){
-			tab=" ".repeat(tabSize)
+		var tab: string = "\t";
+		var comma: string = ", ";
+		if (insertSpaces === true) {
+			tab = " ".repeat(tabSize);
 		}
 		const server: ServerSpec = await getServerSpec(params.uri);
-		if(multilinearg===true && server.apiVersion>=4){
-			comma=", \n"+tab
+		if (multilinearg === true && server.apiVersion >= 4) {
+			comma = ", \n"+tab;
 		}
-		var countarg:number=0;
+		var countarg: number=0;
 		
 		// Find the location of the method insertion - above donor method
-		var insertpos:Position=Position.create(0,0)
-		for (let ln = params.lnmethod-1; ln>0; ln--){
-			if(parsed[ln].length === 0) {// Empty line
-				insertpos=Position.create(ln, 0);
+		var insertpos: Position = Position.create(0,0);
+		for (let ln = params.lnmethod-1; ln > 0; ln--) {
+			if ( parsed[ln].length === 0) { // Empty line
+				insertpos = Position.create(ln, 0);
 				break;
-			}else if(parsed[ln][0].l===ld.cls_langindex && parsed[ln][0].s===ld.cls_desc_attrindex){
+			} else if (parsed[ln][0].l === ld.cls_langindex && parsed[ln][0].s === ld.cls_desc_attrindex) {
 				continue;
-			}else{
-				insertpos=Position.create(ln, parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c);
+			} else {
+				insertpos = Position.create(ln, parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c);
 				break;
 			}
 		} 
 
 		// Scan for ProcedureBlock Method Keyword 
-		var countbrace:number=0;
-		var countparen:number=0;
-		var foundprocedureblock:boolean=false;
-		var endprocedureblocksearch:boolean=false;
-		var nexttkn:number=0;
+		var countbrace: number = 0;
+		var countparen: number = 0;
+		var foundprocedureblock: boolean = false;
+		var endprocedureblocksearch: boolean = false;
+		var nexttkn: number = 0;
 		var methodprocedureblock: boolean | undefined = undefined;
-		for (let ln = params.lnmethod; ln<lnstart; ln++){
+		for (let ln = params.lnmethod; ln < lnstart; ln++) {
 			if (parsed[ln].length === 0) {// Empty line
 				continue;
 			}
-			for (let tkn =0;tkn< parsed[ln].length; tkn++){
-				if(foundprocedureblock){
-					nexttkn++
-					if(nexttkn===2 && parsed[ln][tkn].l===ld.cls_langindex && parsed[ln][tkn].s===ld.cls_num_attrindex){
+			for (let tkn = 0; tkn < parsed[ln].length; tkn++){
+				if (foundprocedureblock) {
+					nexttkn++;
+					if (nexttkn === 2 && parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_num_attrindex) {
 						// This is the value of the procedureblock (0 or 1)
 						const procedureblockvalue = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
-						if(procedureblockvalue==="0"){
-							methodprocedureblock=false;	
-						}else if(procedureblockvalue==="1"){
-							methodprocedureblock=true;
+						if (procedureblockvalue === "0") {
+							methodprocedureblock = false;	
+						} else if (procedureblockvalue === "1") {
+							methodprocedureblock = true;
 						}
-						endprocedureblocksearch=true;
+						endprocedureblocksearch = true;
 						break;
 					}
 				}
-				if(parsed[ln][tkn].l===ld.cls_langindex && parsed[ln][tkn].s===ld.cls_delim_attrindex){
-					const delimtext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the parenthesis
-					if (delimtext === "]"){
+				if (parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_delim_attrindex) {
+					const delimtext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); 
+					if (delimtext === "]") {
 						// This is the bracket ending the method keyword - break
-						endprocedureblocksearch=true;
+						endprocedureblocksearch = true;
 						break
 					}else if(delimtext === "("){
 						countparen++
