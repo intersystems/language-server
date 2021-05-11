@@ -1395,6 +1395,73 @@ function getMacroContext(doc: TextDocument, parsed: compressedline[], line: numb
 		}
 		result.docname = result.docname.concat(".cls");
 	}
+	else if (doc.languageId == "objectscript-csp") {
+		// This is a CSP file
+
+		// The docname doesn't matter as long as it's valid,
+		// so use the URI path for convenience
+		result.docname = URI.parse(doc.uri).path;
+
+		// Loop through the file until we hit 'line', 
+		// looking for CSP:CLASS HTML tags
+		var inclasstag: boolean = false;
+		var searchname: string = "";
+		for (let i = 0; i < line; i++) {
+			for (let j = 0; j < parsed[i].length; j++) {
+				if (
+					parsed[i][j].l == ld.html_langindex &&
+					parsed[i][j].s == ld.html_tag_attrindex &&
+					doc.getText(Range.create(
+						Position.create(i,parsed[i][j].p),
+						Position.create(i,parsed[i][j].p+parsed[i][j].c)
+					)).toLowerCase() === "csp:class"
+				) {
+					// This is the start of a CSP:CLASS HTML element
+					inclasstag = true;
+				}
+				else if (
+					inclasstag &&
+					parsed[i][j].l == ld.html_langindex &&
+					parsed[i][j].s == ld.html_delim_attrindex &&
+					doc.getText(Range.create(
+						Position.create(i,parsed[i][j].p),
+						Position.create(i,parsed[i][j].p+parsed[i][j].c)
+					)) === ">"
+				) {
+					// This is a tag close delimiter
+					inclasstag = false;
+					searchname = "";
+				}
+				else if (inclasstag && parsed[i][j].l == ld.html_langindex && parsed[i][j].s == ld.html_name_attrindex) {
+					// This is an attribute of a CSP:CLASS HTML element
+					const nametext: string = doc.getText(Range.create(
+						Position.create(i,parsed[i][j].p),
+						Position.create(i,parsed[i][j].p+parsed[i][j].c)
+					)).toLowerCase();
+					if (nametext === "super" || nametext === "import" || nametext === "includes") {
+						searchname = nametext;
+					}
+				}
+				else if (searchname !== "" && parsed[i][j].l == ld.html_langindex && parsed[i][j].s == ld.html_str_attrindex) {
+					// This is the value of the last attribute that we saw
+					const valuearr: string[] = doc.getText(Range.create(
+						Position.create(i,parsed[i][j].p),
+						Position.create(i,parsed[i][j].p+parsed[i][j].c)
+					)).slice(1,-1).split(",");
+					if (searchname === "super") {
+						result.superclasses = valuearr;
+					}
+					else if (searchname === "import") {
+						result.imports = valuearr;
+					}
+					else {
+						result.includes = valuearr;
+					}
+					searchname = "";
+				}
+			}
+		}
+	}
 	else {
 		// This is a routine
 		var foundinc = false;
