@@ -303,7 +303,7 @@ export async function activate(context: ExtensionContext) {
 
 	// Register the select parameter type
 	let selectParameterTypeCommandDisposable = commands.registerCommand("intersystems.language-server.selectParameterType",
-		async (uri:string,parameterRange:Range) => {
+		async (uri: string, parameterRange: Range) => {
 			// Ask for all parameter types
 			const allparametertypes: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listParameterTypes");
 
@@ -312,20 +312,20 @@ export async function activate(context: ExtensionContext) {
 				placeHolder: "Select the parameter type",
 				canPickMany: false
 			});
-			if (!selectedParameter ) {
+			if (!selectedParameter) {
 				// No parameter was selected
 				return;
 			}
 			// Compute the workspace edit on the client side
-			const change:TextEdit={
-				range:parameterRange,
-				newText:selectedParameter.label
-			}
-			const edit:WorkspaceEdit={
+			const change: TextEdit = {
+				range: parameterRange,
+				newText: selectedParameter.label
+			};
+			const edit: WorkspaceEdit = {
 				changes: {
 					[uri]: [change]
 				}
-			}
+			};
 			// Apply the workspace edit
 			workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));	
 		}
@@ -333,27 +333,27 @@ export async function activate(context: ExtensionContext) {
 
 	// Register the select import package
 	let selectImportPackageDisposable = commands.registerCommand("intersystems.language-server.selectImportPackage",
-		async (uri:string,classname:string) => {
+		async (uri: string, classname: string) => {
 			// Ask for all import packages
 			const allimportpackages: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listImportPackages",{
-				uri:uri,
-				classmame:classname
+				uri: uri,
+				classmame: classname
 			});
 
-			if(allimportpackages.length===0){
+			if (allimportpackages.length === 0) {
 				// There are no packages of this class, so tell the user and exit
-				window.showInformationMessage("There are no packages for \'"+classname+"\'","Dismiss");
+				window.showInformationMessage("There are no packages for \'" + classname + "\'","Dismiss");
 				return;
-			}else if(allimportpackages.length===1){
+			} else if (allimportpackages.length === 1) {
 				// There is only one package, the user does not need to choose
-				var selectedPackage=allimportpackages[0]
-			}else{
+				var selectedPackage = allimportpackages[0];
+			} else {
 				// Ask the user to select an import package
 				var selectedPackage = await window.showQuickPick(allimportpackages,{
 					placeHolder: "Select the package to import",
 					canPickMany: false 
 				});
-				if (!selectedPackage ) {
+				if (!selectedPackage) {
 					// No package was selected
 					return;
 				}
@@ -371,19 +371,19 @@ export async function activate(context: ExtensionContext) {
 
 	// Register the Extract Method command
 	let extractMethodDisposable = commands.registerCommand("intersystems.language-server.extractMethod",
-		async (uri:string,lnstart:number,lnend:number,lnmethod:number,newmethodtype:string) => {
+		async (uri: string, lnstart: number, lnend: number, lnmethod: number, newmethodtype: string) => {
 			// Get the list of class member names
 			const symbols =  await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
-			var clsmembers:string[]=[]
-			for(let clsmember =0; clsmember < symbols[0].children.length; clsmember++){
-				clsmembers.push(symbols[0].children[clsmember].name)
+			var clsmembers: string[] = [];
+			for (let clsmember = 0; clsmember < symbols[0].children.length; clsmember++) {
+				clsmembers.push(symbols[0].children[clsmember].name);
 			}
 			var newmethodname = await window.showInputBox({
 				placeHolder: "Choose the name of the new Method",
 				value:"newmethod",
-				validateInput:(newmethodname:string)=>{
-					if(newmethodname===""){
-						return "Empty method name"
+				validateInput: (newmethodname:string) => {
+					if (newmethodname === "") {
+						return "Empty method name";
 					}
 					var testname: string = newmethodname;
 					if (
@@ -393,23 +393,22 @@ export async function activate(context: ExtensionContext) {
 						// Input contains forbidden characters so double exisiting " and add leading and trailing "
 						testname = '"' + newmethodname.replace(/\"/g,'""') + '"';
 					}
-
-					if(testname.length>220){
+					if (testname.length > 220) {
 						return "Not a valid name (too many characters)";
 					}
-					if(clsmembers.includes(testname)){
+					if (clsmembers.includes(testname)) {
 						return "Name already in use";
 					}
 				}
 			});
 
-			if (!newmethodname ) {
+			if (!newmethodname) {
 				// No name
 				return;
 			}
 			// Format name 
-			if(newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g)===null){
-				// add quotes if the name does not start with letter or %, then followed by letter/number/ascii>128
+			if (newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g) === null) {
+				// Add quotes if the name does not start with a letter or %, then followed by letter/number/ascii>128
 				newmethodname = '"' + newmethodname.replace(/\"/g,'""') + '"';
 			}
 
@@ -417,44 +416,42 @@ export async function activate(context: ExtensionContext) {
 			const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addMethod",{
 				uri: uri,
 				newmethodname: newmethodname,
-				lnstart:lnstart,
-				lnend:lnend,
-				lnmethod:lnmethod,
-				newmethodtype:newmethodtype
-				
+				lnstart: lnstart,
+				lnend: lnend,
+				lnmethod: lnmethod,
+				newmethodtype: newmethodtype
 			});
 			// Apply the workspace edit
 			await workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
 
 			// Highlight and scroll to new extracted method
-			const activeEditor=window.activeTextEditor
-			if(activeEditor.document.uri.toString()===uri){
+			const activeEditor = window.activeTextEditor;
+			if (activeEditor.document.uri.toString() === uri) {
 				// Selection of the extracted method
-				const anchor=lspWorkspaceEdit.changes[uri][0].range.start
-				var methodstring:string=""
-				for(let edit=0;edit<lspWorkspaceEdit.changes[uri].length-2;edit++){
-					methodstring+=lspWorkspaceEdit.changes[uri][edit].newText
+				const anchor = lspWorkspaceEdit.changes[uri][0].range.start;
+				var methodstring: string = "";
+				for (let edit = 0; edit < lspWorkspaceEdit.changes[uri].length-2; edit++) {
+					methodstring += lspWorkspaceEdit.changes[uri][edit].newText;
 				}
-				const methodsize= methodstring.split("\n").length - 1;
-				const range:Range=new Range(new Position(anchor.line+1,0),new Position(anchor.line+methodsize,1))
+				const methodsize = methodstring.split("\n").length - 1;
+				const range: Range = new Range(new Position(anchor.line+1,0),new Position(anchor.line+methodsize,1));
 				
-				// Selection of the do command line
-				const anchor2=lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].range.start
-				const linesize=lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].newText.length;
-				const range2:Range = new Range(new Position(anchor2.line+methodsize+1,anchor2.character),new Position(anchor2.line+methodsize+1,anchor2.character+linesize+1))
+				// Selection of the method call
+				const anchor2 = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].range.start;
+				const linesize = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].newText.length;
+				const range2: Range = new Range(new Position(anchor2.line+methodsize+1,anchor2.character),new Position(anchor2.line+methodsize+1,anchor2.character+linesize+1));
 
 				// Scroll to the extracted method
-				activeEditor.revealRange(range)
+				activeEditor.revealRange(range);
 				
 				// Highlight extracted method and method call
-				const color:string="#ffff0020"// transparent yellow 
+				const color: string = "#ffff0020";	// Transparent yellow 
 				const decoration = window.createTextEditorDecorationType({
-					backgroundColor: color, 
+					backgroundColor: color
 				});
-				activeEditor.setDecorations(decoration,[range,range2])
-				await new Promise(r => setTimeout(r, 3000)); // Highlight disapear after 3 seconds
+				activeEditor.setDecorations(decoration,[range,range2]);
+				await new Promise(r => setTimeout(r, 3000)); // Highlight disapears after 3 seconds
 				setTimeout(function(){decoration.dispose();}, 0); 
-
 			}
 			
 		}
