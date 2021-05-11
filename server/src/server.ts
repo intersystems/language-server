@@ -2133,19 +2133,37 @@ async function getServerSpec(uri: string): Promise<ServerSpec> {
  * @param ext The extension of the file that contains the definition.
  */
 async function createDefinitionUri(paramsUri: string, filename: string, ext: string): Promise<string> {
-	var thisdocuri: string = paramsUri;
-	if (paramsUri.slice(0,4) === "file") {
-		try {
-			thisdocuri = await connection.sendRequest("intersystems/uri/localToVirtual",paramsUri);
+	try {
+		var newuri: string = await connection.sendRequest("intersystems/uri/forDocument",filename+ext);
+		if (newuri === "") {
+			// The active version of the main extension doesn't expose DocumentContentProvider.getUri().
+			// Therefore, we need to use the old functionality.
+			
+			var thisdocuri: string = paramsUri;
+			if (paramsUri.slice(0,4) === "file") {
+				thisdocuri = await connection.sendRequest("intersystems/uri/localToVirtual",paramsUri);
+			}
+			var urijson = URI.parse(thisdocuri).toJSON();
+			urijson.path = "/" + filename.replace(/\./g,"/") + ext;
+			
+			// Remove the "csp" query parameter if it's present
+			if (urijson.query !== undefined) {
+				var queryparams: string[] = urijson.query.split("&");
+				const cspidx: number = Math.max(queryparams.indexOf("csp"),queryparams.indexOf("csp=1"));
+				if (cspidx >= 0) {
+					queryparams.splice(cspidx,1);
+				}
+				urijson.query = queryparams.join("&");
+			}
+
+			newuri = URI.from(urijson).toString();
 		}
-		catch (error) {
-			console.log(error);
-			return "";
-		}
+		return newuri;
 	}
-	var urijson = URI.parse(thisdocuri).toJSON();
-	urijson.path = "/" + filename.replace(/\./g,"/") + ext;
-	return URI.from(urijson).toString();
+	catch (error) {
+		console.log(error);
+		return "";
+	}
 };
 
 /**
