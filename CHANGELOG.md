@@ -4,6 +4,7 @@
 - Fix issue [#45](https://github.com/intersystems/language-server/issues/45): When using client side source control, go to definition should use the local file and not open the server version
 - Fix issue [#158](https://github.com/intersystems/language-server/issues/158): Support Intellisense when method arguments appear on multiple lines
 - Fix issue [#161](https://github.com/intersystems/language-server/issues/161): Hovering over macro in CSP file throws an error
+- Fix issue [#162](https://github.com/intersystems/language-server/issues/162): Add DocumentSymbols and FoldingRanges for CSP script tags
 
 ## [1.1.5] - 2021-05-04
 - Fix issue [#150](https://github.com/intersystems/language-server/issues/150): Hovering over blank last line of file causes error

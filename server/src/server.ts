@@ -6757,6 +6757,114 @@ connection.onDocumentSymbol(
 				}
 			}
 		}
+		else if (doc.languageId === "objectscript-csp") {
+			// Loop through the file and look for HTML script tags
+
+			var symbolopen: boolean = false;
+			for (let line = 0; line < parsed.length; line++) {
+				if (parsed[line].length === 0) {
+					continue;
+				}
+				for (let tkn = 0; tkn < parsed[line].length; tkn++) {
+					if (
+						tkn < parsed[line].length - 1 &&
+						parsed[line][tkn].l == ld.html_langindex && parsed[line][tkn].s == ld.html_delim_attrindex &&
+						parsed[line][tkn+1].l == ld.html_langindex && parsed[line][tkn+1].s == ld.html_tag_attrindex &&
+						doc.getText(Range.create(
+							Position.create(line,parsed[line][tkn].p),
+							Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)
+						)) === "<" &&
+						doc.getText(Range.create(
+							Position.create(line,parsed[line][tkn+1].p),
+							Position.create(line,parsed[line][tkn+1].p+parsed[line][tkn+1].c)
+						)).toLowerCase() === "script" && !symbolopen
+					) {
+						// This line contains an HTML open script tag so create a new symbol if we can
+
+						// Scan the rest of the line for the following attributes:
+						// language, method, name
+						var lang: string = "";
+						var method: string = "";
+						var name: string = "";
+						var methodrange: Range = Range.create(0,0,0,0);
+						var namerange: Range = Range.create(0,0,0,0);
+						for (let stkn = tkn+2; stkn < parsed[line].length; stkn++) {
+							if (parsed[line][stkn].l == ld.html_langindex && parsed[line][stkn].s == ld.html_name_attrindex) {
+								// This is an attribute
+
+								const attrtext: string = doc.getText(Range.create(
+									Position.create(line,parsed[line][stkn].p),
+									Position.create(line,parsed[line][stkn].p+parsed[line][stkn].c)
+								)).toLowerCase();
+								if (parsed[line].length > stkn + 2) {
+									const valrange: Range = Range.create(
+										Position.create(line,parsed[line][stkn+2].p),
+										Position.create(line,parsed[line][stkn+2].p+parsed[line][stkn+2].c)
+									);
+									var valtext: string = doc.getText(valrange);
+									if (valtext.startsWith('"') && valtext.endsWith('"')) {
+										// Strip leading and trailing quotes
+										valtext = valtext.slice(1,-1);
+									}
+
+									if (attrtext === "language") {
+										lang = valtext;
+									}
+									else if (attrtext === "method") {
+										method = valtext;
+										methodrange = valrange;
+									}
+									else if (attrtext === "name") {
+										name = valtext;
+										namerange = valrange;
+									}
+								}
+							}
+						}
+
+						if (
+							((lang.toLowerCase() === "cache" || lang.toLowerCase() === "basic") && method !== "") ||
+							((lang.toLowerCase() === "sql" || lang.toLowerCase() === "esql") && name !== "")
+						) {
+							// This script has enough attributes to open
+							
+							const startpos: Position = Position.create(line,parsed[line][tkn].p);
+							var detail: string = "ObjectScript";
+							if (lang.toLowerCase() === "basic") {
+								detail = "Basic";
+							}
+							else if (lang.toLowerCase() === "sql" || lang.toLowerCase() === "esql") {
+								detail = "SQL";
+							}
+							result.push({
+								name: (method !== "" ? method : name),
+								kind: SymbolKind.Method,
+								detail: detail,
+								selectionRange: (method !== "" ? methodrange : namerange),
+								// We will update range.end later
+								range: Range.create(startpos,startpos)
+							});
+							symbolopen = true;
+						}
+					}
+					if (
+						tkn < parsed[line].length - 3 &&
+						parsed[line][tkn].l == ld.html_langindex && parsed[line][tkn].s == ld.html_delim_attrindex &&
+						parsed[line][tkn+1].l == ld.html_langindex && parsed[line][tkn+1].s == ld.html_delim_attrindex &&
+						parsed[line][tkn+2].l == ld.html_langindex && parsed[line][tkn+2].s == ld.html_tag_attrindex &&
+						doc.getText(Range.create(
+							Position.create(line,parsed[line][tkn+2].p),
+							Position.create(line,parsed[line][tkn+2].p+parsed[line][tkn+2].c)
+						)).toLowerCase() === "script" && symbolopen
+					) {
+						// This line starts with a HTML close script tag so close the open symbol
+	
+						result[result.length-1].range.end = Position.create(line,parsed[line][tkn+3].p+parsed[line][tkn+3].c);
+						symbolopen = false;
+					}
+				}	
+			}
+		}
 
 		return result;
 	}
@@ -7348,7 +7456,7 @@ connection.onFoldingRanges(
 						}
 					}
 				}
-				// Done with special processing, so loop again to find all ObjectScript braces and UDL parentheses
+				// Done with special processing, so loop again to find all ObjectScript braces, UDL parentheses and HTML script tags
 				for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 					if (parsed[line][tkn].l === ld.cos_langindex && parsed[line][tkn].s === ld.cos_brace_attrindex) {
 						const bracetext = doc.getText(Range.create(Position.create(line,parsed[line][tkn].p),Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)));
@@ -7401,6 +7509,50 @@ connection.onFoldingRanges(
 							}
 							openranges.splice(prevrange,1);
 						}
+					}
+					else if (
+						tkn < parsed[line].length - 1 &&
+						parsed[line][tkn].l == ld.html_langindex && parsed[line][tkn].s == ld.html_delim_attrindex &&
+						parsed[line][tkn+1].l == ld.html_langindex && parsed[line][tkn+1].s == ld.html_tag_attrindex &&
+						doc.getText(Range.create(
+							Position.create(line,parsed[line][tkn].p),
+							Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)
+						)) === "<" &&
+						doc.getText(Range.create(
+							Position.create(line,parsed[line][tkn+1].p),
+							Position.create(line,parsed[line][tkn+1].p+parsed[line][tkn+1].c)
+						)).toLowerCase() === "script"
+					) {
+						// Open a new HTML script tag range
+						openranges.push({
+							startLine: line,
+							endLine: line,
+							kind: "isc-htmlscript"
+						});
+					}
+					else if (
+						tkn < parsed[line].length - 3 &&
+						parsed[line][tkn].l == ld.html_langindex && parsed[line][tkn].s == ld.html_delim_attrindex &&
+						parsed[line][tkn+1].l == ld.html_langindex && parsed[line][tkn+1].s == ld.html_delim_attrindex &&
+						parsed[line][tkn+2].l == ld.html_langindex && parsed[line][tkn+2].s == ld.html_tag_attrindex &&
+						doc.getText(Range.create(
+							Position.create(line,parsed[line][tkn+2].p),
+							Position.create(line,parsed[line][tkn+2].p+parsed[line][tkn+2].c)
+						)).toLowerCase() === "script"
+					) {
+						// Close the most recent HTML script tag range
+						var prevrange = openranges.length-1;
+						for (let rge = openranges.length-1; rge >= 0; rge--) {
+							if (openranges[rge].kind === "isc-htmlscript") {
+								prevrange = rge;
+								break;
+							}
+						}
+						if (prevrange >= 0 && openranges[prevrange].startLine < line-1) {
+							openranges[prevrange].endLine = line-1;
+							result.push(openranges[prevrange]);
+						}
+						openranges.splice(prevrange,1);
 					}
 				}
 			}
