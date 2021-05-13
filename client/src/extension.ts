@@ -380,8 +380,8 @@ export async function activate(context: ExtensionContext) {
 			}
 			var newmethodname = await window.showInputBox({
 				placeHolder: "Choose the name of the new Method",
-				value:"newmethod",
-				validateInput: (newmethodname:string) => {
+				value: "newmethod",
+				validateInput: (newmethodname: string) => {
 					if (newmethodname === "") {
 						return "Empty method name";
 					}
@@ -439,23 +439,27 @@ export async function activate(context: ExtensionContext) {
 				// Selection of the method call
 				const anchor2 = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].range.start;
 				const linesize = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].newText.length;
-				const range2: Range = new Range(new Position(anchor2.line+methodsize+1,anchor2.character),new Position(anchor2.line+methodsize+1,anchor2.character+linesize+1));
+				const range2: Range = new Range(
+					new Position(anchor2.line+methodsize+1,anchor2.character),
+					new Position(anchor2.line+methodsize+1,anchor2.character+linesize+1)
+				);
 
 				// Scroll to the extracted method
 				activeEditor.revealRange(range);
 				
 				// Highlight extracted method and method call
 				const color: string = "#ffff0020";	// Transparent yellow 
+				const timeout: number = 3000; // Highlight disapears after 3 seconds
 				const decoration = window.createTextEditorDecorationType({
 					backgroundColor: color
 				});
 				activeEditor.setDecorations(decoration,[range,range2]);
-				await new Promise(r => setTimeout(r, 3000)); // Highlight disapears after 3 seconds
+				await new Promise(r => setTimeout(r, timeout)); 
 				setTimeout(function(){decoration.dispose();}, 0); 
 			}
-			
 		}
 	);
+
 	// Add the commands to the subscriptions array
 	context.subscriptions.push(overrideCommandDisposable,selectParameterTypeCommandDisposable,selectImportPackageDisposable,extractMethodDisposable);
 

@@ -1511,7 +1511,7 @@ function parseDimLine(doc: TextDocument, parsed: compressedline[], line: number,
 };
 
 /**
- * Parse lines of ObjectScript code that starts with Set and look to see if it contains selector.
+ * Parse lines of ObjectScript code that contains Set and look to see if it contains selector.
  * 
  * @param doc The TextDocument that the line is in.
  * @param parsed The tokenized representation of doc.
@@ -1520,29 +1520,87 @@ function parseDimLine(doc: TextDocument, parsed: compressedline[], line: number,
  * @param selector The variable that we're looking for.
  */
  function parseSet(doc: TextDocument, parsed: compressedline[], line: number, token: number,selector: string): boolean {
+	var ispostconditional: boolean = false;
+	var countparen: number = 0;
 	for (let ln = line; ln < parsed.length; ln++) {
 		if (parsed[ln].length === 0) { // Empty line
 			continue;
 		}
 		for (let tkn = 0; tkn < parsed[ln].length;tkn++) { 
-			if (ln === line && tkn <= token) { // Skip all tokens before or equal to SET
+			if (ln === line && tkn < token) { // Skip all tokens before Set token
 				continue ;
 			}
-			if (
-				parsed[ln][tkn].s === ld.cos_localvar_attrindex ||	// public variable
-				parsed[ln][tkn].s === ld.cos_param_attrindex 	||	// parameter variable
-				parsed[ln][tkn].s === ld.cos_localdec_attrindex ||	// local declared
-				parsed[ln][tkn].s === ld.cos_localundec_attrindex	// local undeclared
-			) { 
-				// this is a variable that can be Set
-				var thisvar = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
-				if(thisvar === selector) {
-					// This is the Swr for the selector
-					return true;
+			if (ln === line && tkn === token) { // This is the Set token
+				const nexttkntext: string = doc.getText(Range.create(
+					Position.create(ln, parsed[ln][tkn+1].p),
+					Position.create(ln, parsed[ln][tkn+1].p+parsed[ln][tkn+1].c)
+				));
+				if (nexttkntext === ":") {
+					// This is a postconditional
+					ispostconditional = true;
 				}
-			}else if(parsed[ln][tkn].s === ld.cos_command_attrindex){
-				// This is a command, we have reached the end of the SET command
-				return false;
+				continue;
+			}
+
+			if (!ispostconditional) {
+				// This is the setting part of the Set command 
+				if (
+					parsed[ln][tkn].s === ld.cos_localvar_attrindex ||	// Public variable
+					parsed[ln][tkn].s === ld.cos_param_attrindex 	||	// Parameter variable
+					parsed[ln][tkn].s === ld.cos_localdec_attrindex ||	// Local declared
+					parsed[ln][tkn].s === ld.cos_localundec_attrindex	// Local undeclared
+				) { 
+					// This is a variable that can be Set
+					const thisvar = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][tkn].p),
+						Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+					));
+					if (thisvar === selector) {
+						// This is the Set for the selector
+						return true;
+					}
+				} else if (parsed[ln][tkn].s === ld.cos_command_attrindex) {
+					// This is a command, we have reached the end of the Set command
+					return false;
+				}
+			} else {
+				// This is the conditional part of the Set command
+				if (parsed[ln][tkn].s === ld.cos_delim_attrindex) {
+					const delimtext: string = doc.getText(Range.create(
+						Position.create(ln, parsed[ln][tkn].p),
+						Position.create(ln, parsed[ln][tkn].p+parsed[ln][tkn].c)
+					));
+					if (delimtext === "(") {
+						countparen++;
+					} else if (delimtext === ")") {
+						countparen--;
+					}
+				} else if (
+					parsed[ln][tkn].s === ld.cos_localvar_attrindex ||	// Public variable
+					parsed[ln][tkn].s === ld.cos_param_attrindex 	||	// Parameter variable
+					parsed[ln][tkn].s === ld.cos_localdec_attrindex ||	// Local declared
+					parsed[ln][tkn].s === ld.cos_localundec_attrindex	// Local undeclared
+				) { 
+					// This variable is in the condition
+					const thisvar = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][tkn].p),
+						Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+					));
+					if (thisvar === selector) {
+						// The selector is used in the condition first, it is not set
+						return false;
+					}
+				}
+
+				// First charater after the current token
+				const btwtkntext: string = doc.getText(Range.create(
+					Position.create(ln, parsed[ln][tkn].p+parsed[ln][tkn].c),
+					Position.create(ln, parsed[ln][tkn].p+parsed[ln][tkn].c+1)
+				));
+
+				if (countparen === 0 && btwtkntext === " ") {
+					ispostconditional = false;
+				}
 			}
 		}
 	}
@@ -2690,6 +2748,30 @@ async function getGetDocFormatParam(uri: string, apiVersion: number): Promise<an
 	return (((settingArr[0] === null ? false : settingArr[0]) && apiVersion >= 4 ? true : false) ? {format: "udl-multiline"} : undefined);
 }
 
+/**
+ * Add an argument to the signature (method definition) and the method arguments (method call)
+ * 
+ * @param argName Argument name to add to the signature and method arguments
+ * @param isByRef Determine whether the argument is a ByRef argument
+ * @param argType Argument type to add to the signature and method arguments
+ * @param signature Method signature
+ * @param methodArguments Method arguments
+ * @param comma Delimiter between arguments
+ */
+function prepareExtractMethodSignature(argName: string, isByRef: boolean, argType: string, signature: string, methodArguments: string, comma: string): string[] {
+	if (signature !== "") {
+		signature += comma;
+		methodArguments += ", ";
+	}
+	if (isByRef) {
+		signature += "ByRef ";
+		methodArguments += ".";
+	}
+	signature += argName + argType;
+	methodArguments += argName;
+
+	return [signature,methodArguments];
+}
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries
 	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL");
@@ -8456,7 +8538,7 @@ connection.onRequest("intersystems/refactor/listParameterTypes",
 			detail: ""
 			});
 		}
-		return result
+		return result;
 	}
 );
 
@@ -8481,7 +8563,7 @@ connection.onRequest("intersystems/refactor/listImportPackages",
 				});
 			}
 		}
-		return result
+		return result;
 	 }
 );
 
@@ -8510,14 +8592,21 @@ connection.onRequest("intersystems/refactor/addImportPackages",
 				continue;
 			}
 			if (parsed[ln][0].l === ld.cls_langindex && parsed[ln][0].s === ld.cls_keyword_attrindex) { 
-				const keyword: string = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase()
+				const keyword: string = doc.getText(Range.create(
+					Position.create(ln,parsed[ln][0].p),
+					Position.create(ln,parsed[ln][0].p+parsed[ln][0].c)
+				)).toLowerCase();
 				if (keyword==="import") {
-					if (parsed[ln][1].l === ld.cls_langindex && parsed[ln][1].s === ld.cls_delim_attrindex && doc.getText(Range.create(Position.create(ln,parsed[ln][1].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)))==="(") {
+					if (
+						parsed[ln][1].l === ld.cls_langindex && 
+						parsed[ln][1].s === ld.cls_delim_attrindex && 
+						doc.getText(Range.create(Position.create(ln,parsed[ln][1].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c))) === "("
+					) {
 						// There are several imported packages already
 						const lastparentkn = parsed[ln][parsed[ln].length-1];
 						edits.push({
 							range: Range.create(Position.create(ln,lastparentkn.p),Position.create(ln,lastparentkn.p)),
-							newText: ", "+params.packagename
+							newText: ", " + params.packagename
 						});
 					} else { 
 						// There is only one imported package 
@@ -8528,8 +8617,11 @@ connection.onRequest("intersystems/refactor/addImportPackages",
 							newText: "("
 						});
 						edits.push({
-							range: Range.create(Position.create(ln,endcurrentpackagetkn.p+endcurrentpackagetkn.c),Position.create(ln,endcurrentpackagetkn.p+endcurrentpackagetkn.c)),
-							newText: ", "+params.packagename+")"
+							range: Range.create(
+								Position.create(ln,endcurrentpackagetkn.p+endcurrentpackagetkn.c),
+								Position.create(ln,endcurrentpackagetkn.p+endcurrentpackagetkn.c)
+							),
+							newText: ", " + params.packagename + ")"
 						});
 					}
 					break;
@@ -8537,7 +8629,7 @@ connection.onRequest("intersystems/refactor/addImportPackages",
 					// There is no "Import" keyword
 					edits.push({
 						range: Range.create(Position.create(0,0),Position.create(0,0)),
-						newText: "Import " + params.packagename +"\n"
+						newText: "Import " + params.packagename + "\n"
 					});
 					break;
 				}
@@ -8567,7 +8659,8 @@ connection.onRequest("intersystems/refactor/addMethod",
 		const vscodesettings = await connection.workspace.getConfiguration([
 			{scopeUri:params.uri,section: "editor.tabSize"},
 			{scopeUri:params.uri,section: "editor.insertSpaces"},
-			{scopeUri:params.uri,section: "objectscript.multilineMethodArgs"}])
+			{scopeUri:params.uri,section: "objectscript.multilineMethodArgs"}
+		]);
 		const tabSize = vscodesettings[0];
 		const insertSpaces = vscodesettings[1];
 		const multilinearg = vscodesettings[2];
@@ -8596,15 +8689,19 @@ connection.onRequest("intersystems/refactor/addMethod",
 			}
 		} 
 
-		// Scan for ProcedureBlock Method Keyword 
+		// Scan for ProcedureBlock method keyword and Record method arguments
 		var countbrace: number = 0;
 		var countparen: number = 0;
 		var foundprocedureblock: boolean = false;
 		var endprocedureblocksearch: boolean = false;
 		var nexttkn: number = 0;
 		var methodprocedureblock: boolean | undefined = undefined;
+		var donorargs: [string,boolean,string][] = []; 				// List of arguments of the donor method
+		var donorarg: [string,boolean,string] = ["", false, ""]; 	// Argument properties: Name, ByRef/Output, Type/Parameters) 
+		var previoustknln = params.lnmethod;
+		var previoustkn = 0;
 		for (let ln = params.lnmethod; ln < lnstart; ln++) {
-			if (parsed[ln].length === 0) {// Empty line
+			if (parsed[ln].length === 0) { // Empty line
 				continue;
 			}
 			for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
@@ -8612,7 +8709,10 @@ connection.onRequest("intersystems/refactor/addMethod",
 					nexttkn++;
 					if (nexttkn === 2 && parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_num_attrindex) {
 						// This is the value of the procedureblock (0 or 1)
-						const procedureblockvalue = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+						const procedureblockvalue = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][tkn].p),
+							Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))
+						);
 						if (procedureblockvalue === "0") {
 							methodprocedureblock = false;	
 						} else if (procedureblockvalue === "1") {
@@ -8623,15 +8723,19 @@ connection.onRequest("intersystems/refactor/addMethod",
 					}
 				}
 				if (parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_delim_attrindex) {
-					const delimtext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); 
-					if (delimtext === "]") {
-						// This is the bracket ending the method keyword
-						endprocedureblocksearch = true;
-						break
-					} else if (delimtext === "(") {
+					const delimtext = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][tkn].p),
+						Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))
+					); 
+					if (delimtext === "(") {
 						countparen++;
 					} else if (delimtext === ")") {
 						countparen--;
+						if (donorarg[0] !== ""  && countparen === 0) {
+							// This is the end of the last method argument 
+							donorargs.push(donorarg);	// Record Name, ByRef/Output, and Type/Parameters of the argument 
+							donorarg = ["", false, ""];	// Re-initialize the argument information array
+						}
 					} else if (delimtext === "{") {
 						countbrace++;
 						if (countbrace === 1 && countparen === 0) {
@@ -8641,36 +8745,89 @@ connection.onRequest("intersystems/refactor/addMethod",
 						}
 					} else if (delimtext === "}") {
 						countbrace--;
+					} else if (donorarg[0] !== ""  && (delimtext === "," || delimtext === "=" ) && countparen === 1) { 
+						// This is the end of the argument or the start of the default value (to skip)
+						donorargs.push(donorarg);	// Record Name, ByRef/Output, and Type/Parameters of the argument 
+						donorarg = ["", false, ""];	// Re-initialize the argument information array
 					}
 				} else if (parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_keyword_attrindex) {
-					const keywordtext: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
+					const keywordtext: string = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][tkn].p),
+						Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+					)).toLowerCase();
 					if (keywordtext === "procedureblock") {
 						foundprocedureblock = true;
 					}
 				}
+				if (donorarg[0] === "" && parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_param_attrindex) {
+					// This is a cls parameter 
+
+					// Record parameter variable name
+					donorarg[0] = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][tkn].p),
+						Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+					));
+
+					// Check Prefix
+					if (parsed[previoustknln][previoustkn].l === ld.cls_langindex && 
+						parsed[previoustknln][previoustkn].s === ld.cls_keyword_attrindex
+					) {
+						// There is a "Output" or "ByRef" prefix -> add keyword "ByRef" to the signature and "." in argument (Ignore ByVal)
+						const keywordtext: string = doc.getText(Range.create(
+							Position.create(previoustknln,parsed[previoustknln][previoustkn].p),
+							Position.create(previoustknln,parsed[previoustknln][previoustkn].p+parsed[previoustknln][previoustkn].c)
+						)).toLowerCase();
+						if (keywordtext === "output" || keywordtext === "byref") {
+							donorarg[1] = true;
+						}
+					}
+				} else if (donorarg[0] !== ""  && parsed[ln][tkn].l === ld.cls_langindex) {
+					// This is the text after the cls parameter
+					const tkntext: string = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][tkn].p),
+						Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))
+					);
+					if (tkntext.charAt(0) === "." || tkntext === ")" || countparen>1) {
+						// This is a class type or parameter text (in parenthesis) - no space
+						donorarg[2] += tkntext;
+					} else {
+						donorarg[2] += " " + tkntext;
+					}
+				}
+				previoustkn = tkn;	
+				previoustknln = ln;
 			}
 			if (endprocedureblocksearch) {
 				break;
 			}
 		}
-		
+
 		var procedurekeyword: string = "";	// This is the ProcedureBlock keyword to add to methodkeywords
 		var isprocedureblock: boolean = true;
 		if (methodprocedureblock === undefined) { 
 			// Scan for ProcedureBlock Class Keyword 
 			for (let ln = 0; ln < params.lnmethod; ln++) {
-				if (parsed[ln].length === 0) {// Empty line
+				if (parsed[ln].length === 0) { // Empty line
 					continue;
 				}
 				if (parsed[ln][0].l === ld.cls_langindex && parsed[ln][0].s === ld.cls_keyword_attrindex) {
-					const keywordtext: string = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
+					const keywordtext: string = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][0].p),
+						Position.create(ln,parsed[ln][0].p+parsed[ln][0].c)
+					)).toLowerCase();
 					if (keywordtext === "class") {
 						// This is the line of Class definition
 						for (let tkn = 1; tkn < parsed[ln].length; tkn++) {
 							if (parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_keyword_attrindex) {
-								const keywordtext: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
+								const keywordtext: string = doc.getText(Range.create(
+									Position.create(ln,parsed[ln][tkn].p),
+									Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+								)).toLowerCase();
 								if (keywordtext === "procedureblock") {
-									const previoustkn=doc.getText(Range.create(Position.create(ln,parsed[ln][tkn-1].p),Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c))).toLowerCase();
+									const previoustkn=doc.getText(Range.create(
+										Position.create(ln,parsed[ln][tkn-1].p),
+										Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)
+									)).toLowerCase();
 									if (previoustkn === "not") {
 										isprocedureblock = false;
 									}
@@ -8699,35 +8856,38 @@ connection.onRequest("intersystems/refactor/addMethod",
 		// #Dim manipulation variables
 		var dimadd: string[] = [];			// List of #Dim to add in the extracted method
 		var todellinevar: number[] = [];	// #Dim lines where variables will need to be removed
-		var todelvar: string[] = [];		// Variables to remove from the #dim declaration
+		var todelvar: string[] = [];		// Variables to remove from the #Dim declaration
 		
 		if (isprocedureblock) {
 			// The method is a procedure block 
 			var publicvar: string[] = [];		// List of public variables 
 			var parametervar: string[]  =[];	// List of cos parameters (arguments of the donor method)
 			
-			var dimvar: string[] = [];			// List of variables that can be declared by a #dim, local declared variables and public variable
-			var linedimvar: number[] = [];		// List of line number of the lines with a #dim in the code selection
+			var dimvar: string[] = [];			// List of variables that can be declared by a #Dim: local declared variables and public variables
+			var dimlocation: number[] = [];		// List of locations (line) of the #Dim in the code selection
 
 			var undeclaredvar: string[] = [];			// List of undeclared variables
-			var undeclaredlocation: number[][] = [];	// List of locations (line, token) of the undeclared variable
-			var setlocation: number[][] = [];			// List of locations (line, token) of the Set command
+			var undeclaredlocation: number[][] = [];	// List of locations (line, token) of the undeclared variable in the code selection
+			var setlocation: number[][] = [];			// List of locations (line, token) of the Set command in the code selection
 			var undeclaredbyrefvar: string[] = [];		// List of undeclared variables ByRef or Output
 
 			var declaredvar: string[] = [];				// List of declared variables
-			var declaredlocation: number[][] = [];		// List of locations (line, token) of the declared variable
+			var declaredlocation: number[][] = [];		// List of locations (line, token) of the declared variable in the code selection
 			var declaredbyrefvar: string[] = [];		// List of declared variables ByRef or Output
 			var setdim: string[] = [];					// List of declared variables that are Set by default by #Dim
 			
-			// Scan through the selection, look for variables, #dim, and set
+			// Scan through the selection: look for variables, #Dim, and Set
 			for (let ln = lnstart; ln <= lnend; ln++) {
-				if (parsed[ln].length === 0) {// Empty line
+				if (parsed[ln].length === 0) { // Empty line
 					continue;
 				}
 				for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
 					if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_localvar_attrindex) {
 						// This is a public variable 
-						const localvar: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+						const localvar: string = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][tkn].p),
+							Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+						));
 						if (!publicvar.includes(localvar) && localvar.charAt(0) !== "%") { 
 							// Only add public variables that do not start with %
 							publicvar.push(localvar);
@@ -8738,13 +8898,19 @@ connection.onRequest("intersystems/refactor/addMethod",
 						}
 					} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_param_attrindex) {
 						// This is parameter variable 
-						const param: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+						const param: string = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][tkn].p),
+							Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+						));
 						if(!parametervar.includes(param)){
 							parametervar.push(param);
 						} 
-					}else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localdec_attrindex){
+					} else if (parsed[ln][tkn].l===ld.cos_langindex && parsed[ln][tkn].s===ld.cos_localdec_attrindex){
 						// This is local declared variable 
-						const thisvar: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+						const thisvar: string = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][tkn].p),
+							Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+						));
 						if (!dimvar.includes(thisvar)) { 
 							// Add the local declared variables to the list of variables that can be declared by #Dim
 							dimvar.push(thisvar);
@@ -8752,7 +8918,10 @@ connection.onRequest("intersystems/refactor/addMethod",
 						if (
 							tkn>0 &&
 							parsed[ln][tkn-1].s === ld.cos_oper_attrindex &&
-							doc.getText(Range.create(Position.create(ln,parsed[ln][tkn-1].p),Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c))) === "."
+							doc.getText(Range.create(
+								Position.create(ln,parsed[ln][tkn-1].p),
+								Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)
+							)) === "."
 						) {
 							// The declared variable is ByRef or Output of a method
 							if (!declaredbyrefvar.includes(thisvar)) {
@@ -8760,14 +8929,18 @@ connection.onRequest("intersystems/refactor/addMethod",
 							}
 						}
 						if (!declaredvar.includes(thisvar)) {  
-							
 							var skip: boolean = false;
-							if (parsed[ln].length > 1 ) {
-								if (parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex && parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex) {
+							if (parsed[ln].length > 1) {
+								if (parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex && 
+									parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex
+								) {
 									// This is 2 preprocessor command
-									const thisdim: string = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)))
+									const thisdim: string = doc.getText(Range.create(
+										Position.create(ln,parsed[ln][0].p),
+										Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
+									));
 									if (thisdim.toLowerCase() === "#dim") {
-										// The first call is a #Dim -> skip
+										// The first call of the variable is a #Dim -> skip
 										skip = true; 
 
 										// Check whether declared variable is Set by #Dim's default value
@@ -8792,7 +8965,10 @@ connection.onRequest("intersystems/refactor/addMethod",
 						} 
 					} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_localundec_attrindex) {
 						// This is local undeclared variable 
-						const thisvar: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+						const thisvar: string = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][tkn].p),
+							Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+						));
 						if (!undeclaredvar.includes(thisvar)) { 
 							undeclaredvar.push(thisvar);
 							undeclaredlocation.push([ln,tkn]);
@@ -8800,17 +8976,21 @@ connection.onRequest("intersystems/refactor/addMethod",
 						if (
 							tkn>0 &&
 							parsed[ln][tkn-1].s === ld.cos_oper_attrindex &&
-							doc.getText(Range.create(Position.create(ln,parsed[ln][tkn-1].p),Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c))) === "."
+							doc.getText(Range.create(
+								Position.create(ln,parsed[ln][tkn-1].p),
+								Position.create(ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)
+							)) === "."
 						) {
 							// The undeclared variable is ByRef or Output of a method
 							if (!undeclaredbyrefvar.includes(thisvar)) {
 								undeclaredbyrefvar.push(thisvar);
 							}
 						}
-					} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_otw_attrindex) {
-						// This is an unset local variable (OptionTrackWarning)
 					} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_command_attrindex) {
-						const thisvar: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))).toLowerCase();
+						const thisvar: string = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][tkn].p),
+							Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+						)).toLowerCase();
 						if (thisvar === "set" || thisvar === "s") {
 							// This is a set command
 							setlocation.push([ln,tkn]); // save location
@@ -8819,146 +8999,23 @@ connection.onRequest("intersystems/refactor/addMethod",
 				}
 
 				// Save the line number if the line contains a #Dim
-				if (parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex && parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex) {
+				if (
+					parsed[ln].length > 1 &&
+					parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex && 
+					parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex
+				) {
 					// This is 2 preprocessor command
-					const thisvar: string = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)));
+					const thisvar: string = doc.getText(Range.create(
+						Position.create(ln,parsed[ln][0].p),
+						Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
+					));
 					if (thisvar.toLowerCase() === "#dim") {
-						linedimvar.push(ln);
+						dimlocation.push(ln);
 					}		
 				}
 			}
 
-			// Update "undeclaredvar" array: delete the variables that Byref/Output argument of a method (.variable)
-			undeclaredvar = undeclaredvar.filter(undeclared => !undeclaredbyrefvar.includes(undeclared));
-
-			// Add the undeclared variable BYREF to the signature
-			var signatureundeclaredbyref: string = "";
-			var methodargumentsundeclaredbyref: string = "";
-			if (undeclaredbyrefvar.length > 0) { 
-				countarg++;
-				signatureundeclaredbyref += "ByRef " + undeclaredbyrefvar[0];
-				methodargumentsundeclaredbyref += "." + undeclaredbyrefvar[0];
-				if (undeclaredbyrefvar.length > 1) {
-					for (let ivar = 1; ivar < undeclaredbyrefvar.length; ivar++) {
-						countarg++;
-						signatureundeclaredbyref += comma + "ByRef " + undeclaredbyrefvar[ivar];
-						methodargumentsundeclaredbyref += ", ." + undeclaredbyrefvar[ivar];
-					}
-				}
-			}
-			
-			// Check if the undeclared variable has been set in the selection block
-			var foundsetundeclaredvar: string[] = [];	// list of undeclared variables that have been SET in the selection block (before the undeclared variable)
-			if (undeclaredvar.length > 0 && setlocation.length > 0) { 		 
-				for (let ivar = 0; ivar < undeclaredvar.length; ivar++) {
-					var ln = undeclaredlocation[ivar][0];
-					var tkn = undeclaredlocation[ivar][1];
-					for (let iloc = 0; iloc < setlocation.length; iloc++) {
-						if (
-							setlocation[iloc][0] < ln ||								// line of Set is above the undeclared variable
-							(setlocation[iloc][0] == ln && setlocation[iloc][1] < tkn)	// Set and the undeclared variable are on the same line, but SET is before
-						){ 
-							// The Set is before the variable
-							var foundset: boolean = parseSet(doc,parsed,setlocation[iloc][0],setlocation[iloc][1],undeclaredvar[ivar]);
-							if (foundset) {
-								// The undeclared variable is Set in the code selection
-								foundsetundeclaredvar.push(undeclaredvar[ivar]);
-								break;
-							}
-						}
-					}
-				}
-				// Update "undeclaredvar" array: delete the variables that already have been set before variable and within code selection
-				undeclaredvar = undeclaredvar.filter(undeclared => !foundsetundeclaredvar.includes(undeclared));
-			}
-			
-			// Add the undeclared variable (not set in the selection) to the signature
-			var signatureundeclared: string = "";
-			var methodargumentundeclared: string = "";
-			if (undeclaredvar.length > 0) { 
-				countarg++;
-				signatureundeclared += undeclaredvar[0];
-				methodargumentundeclared += undeclaredvar[0];
-				if (undeclaredvar.length > 1) {
-					countarg++;
-					for (let ivar = 1; ivar < undeclaredvar.length; ivar++) {
-						signatureundeclared += comma + undeclaredvar[ivar];
-						methodargumentundeclared += ", " + undeclaredvar[ivar];
-					}
-				}
-			}
-
-			// Check if the declared variable has been set in the selection block
-			var foundsetdeclaredvar: string[] = [];		// List of declared variables that have been SET in the selection block (before the declared variable)
-			if (declaredvar.length > 0 && setlocation.length > 0) { 		 
-				for (let ivar = 0;ivar < declaredvar.length; ivar++) {
-					var ln = declaredlocation[ivar][0];
-					var tkn = declaredlocation[ivar][1];
-					for (let iloc = 0; iloc < setlocation.length; iloc++) {
-						if(
-							setlocation[iloc][0] < ln ||								// line of Set is above the ueclared variable
-							(setlocation[iloc][0] == ln && setlocation[iloc][1] < tkn)	// Set and the declared variable are on the same line, but SET is before
-						) { 
-							// The set is before the variable
-							var foundset: boolean = parseSet(doc,parsed,setlocation[iloc][0],setlocation[iloc][1],declaredvar[ivar]);
-							if (foundset) {
-								// The declared variable is Set in the code selection
-								foundsetdeclaredvar.push(declaredvar[ivar]);
-								break;
-							}
-						}
-					}
-				}
-				// Update "declaredvar" array: delete the variables that already have been set before variable and within code selection
-				declaredvar = declaredvar.filter(declared => !foundsetdeclaredvar.includes(declared));
-			}
-			if (declaredvar.length > 0 && setdim.length > 0) { 
-				// Update "declaredvar" array: delete the variables that already have been set as default value in the #dim of the selection 
-				declaredvar = declaredvar.filter(declared => !setdim.includes(declared));
-			}
-
-			// Variables that are ByRef or Output of a method (within the selectio) are Byref of the extracted method, in the signature.
-			declaredvar = declaredvar.concat(declaredbyrefvar);
-			
-			// Check if the public variable or the local declared variable is declared in the selection block
-			var founddimvar: string[] = []; // list of variables that have been declared in the selection block
-			var signaturedeclared: string = ""; 
-			var methodargumentsdeclared = "";
-			if (dimvar.length > 0 && linedimvar.length > 0) { 
-				for (let idimvar = 0; idimvar < dimvar.length; idimvar++) {
-					for (let ln = linedimvar[0]; ln <= linedimvar[linedimvar.length-1]; ln++) { 
-						const dimresult = parseDimLine(doc,parsed,ln,dimvar[idimvar]);
-						if (dimresult.founddim) { // The variable has been declared by a dim in the selection block
-							founddimvar.push(dimvar[idimvar]);
-							if (declaredvar.includes(dimvar[idimvar])) { 
-								// There is a #Dim in the selection and the declared variable is ByRef/Output or is not set in the selection 
-								
-								// Add variable and type to the signature
-								if (signaturedeclared !== "") {
-									signaturedeclared += comma;
-									methodargumentsdeclared += ", ";
-								}
-								if (declaredbyrefvar.includes(dimvar[idimvar])) {
-									signaturedeclared += "ByRef ";
-									methodargumentsdeclared += ".";
-								}
-								countarg++;
-								signaturedeclared += dimvar[idimvar] + " As " + dimresult.class;
-								methodargumentsdeclared += dimvar[idimvar];
-
-								// Record the variables to be removed from the #dim declarations
-								todelvar.push(dimvar[idimvar]); // Variable to remove from the #dim declaration
-								todellinevar.push(ln); // Line of the #dim
-							}
-							break;
-						}
-					}
-				}
-				// Update "dimvar" array: delete the variables that already have been declared in the code selection
-				dimvar = dimvar.filter(dim => !founddimvar.includes(dim));
-			}
-
-			// Add public list
+			// Prepare method keywords : add public list and procedure keywords
 			if (publicvar.length > 0) {
 				var publiclist: string = "";
 				publiclist = "PublicList = ";
@@ -8982,112 +9039,162 @@ connection.onRequest("intersystems/refactor/addMethod",
 				}
 			}
 			
-			// Scan donor method definition 
-			if (parametervar.length > 0) {
-				var foundlastclosedparen: boolean = false;
-				var foundparam: boolean = false;
-				var countparam: number = 0;
-				var previoustknln = params.lnmethod;
-				var previoustkn = 0;
-				var countparenthesis: number = 1
-
-				for (let ln = params.lnmethod; ln<lnstart; ln++) {// scan through definition of the method
-					if (parsed[ln].length === 0) {// Empty line
-						continue;
+			// Add cos parameters to method signature and method arguments
+			if (parametervar.length > 0 && donorargs.length > 0) { 
+				for (let arg = 0; arg < donorargs.length; arg++) {
+					if (parametervar.includes(donorargs[arg][0])) {
+						[signature,methodarguments] = prepareExtractMethodSignature(donorargs[arg][0], donorargs[arg][1], donorargs[arg][2], signature, methodarguments, comma);
+						countarg++;
 					}
-					for (let tkn = 0; tkn < parsed[ln].length; tkn++) { 
-						if (foundparam && parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_delim_attrindex) {
-							// This is a cls delimiter 
-							const delimtext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the parenthesis
-							if (delimtext === ")") {
-								countparenthesis--;
-								if (countparenthesis === 0) {
-									// we found the closed parenthesis of the donor method signature - break
-									foundlastclosedparen = true;
-									break;
-								}
-							} else if (delimtext === "(") {
-								countparenthesis++
-							} else if ((delimtext === "," || delimtext === "=" ) && countparenthesis === 1) { 
-								// Move to the next parameter after comma, and skip the default values
-								if (countparam < parametervar.length) {
-									signature += comma;
-									methodarguments += ", ";
-								}
-								foundparam = false; // look for the next parameter
-							}
-						}
-						if (!foundparam && parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_param_attrindex) {
-							// This is a cls parameter 
-							const param: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
-							if (parametervar.includes(param)) { 
-								countparam++;
-								// Check Prefix
-								if (parsed[previoustknln][previoustkn].l === ld.cls_langindex && parsed[previoustknln][previoustkn].s === ld.cls_keyword_attrindex) {
-									// There is a "Output" or "ByRef" prefix -> add keyword "ByRef" to the signature and "." in argument (Ignore ByVal)
-									const keywordtext: string = doc.getText(Range.create(Position.create(previoustknln,parsed[previoustknln][previoustkn].p),Position.create(previoustknln,parsed[previoustknln][previoustkn].p+parsed[previoustknln][previoustkn].c))).toLowerCase();
-									if (keywordtext === "output" || keywordtext === "byref") {
-										signature += "ByRef ";  
-										methodarguments += ".";
-									}
-								}
-								countarg++;
-								signature += param;
-								methodarguments += param;
-								foundparam = true;
-							} 
-						} else if (foundparam && parsed[ln][tkn].l === ld.cls_langindex ) { // add types and some default values (not all) to the signature
-							const tkntext: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
-							if (tkntext.charAt(0) === "." || tkntext === ")" || countparenthesis>1) {
-								signature += tkntext;
-							} else {
-								signature += " " + tkntext;
-							}
-						}
-						previoustkn = tkn;	
-						previoustknln = ln;
-					}
-					if (foundlastclosedparen) {break;}
 				}
 			}
 
-			// Scan for #dim above selection block 
+			// Update "undeclaredvar" array: delete the variables that are ByRef/Output of a method 
+			undeclaredvar = undeclaredvar.filter(undeclared => !undeclaredbyrefvar.includes(undeclared));
+
+			// Add the undeclared variable ByRef to the signature
+			if (undeclaredbyrefvar.length > 0) { 
+				for (let ivar = 0; ivar < undeclaredbyrefvar.length; ivar++) {
+					[signature,methodarguments] = prepareExtractMethodSignature(undeclaredbyrefvar[ivar], true, "", signature, methodarguments, comma);
+					countarg++;
+				}
+			}
+
+			// Check if the undeclared variable has been set in the selection block
+			var foundsetundeclaredvar: string[] = [];	// List of undeclared variables that have been Set in the selection block 
+														// (before the undeclared variable)
+			if (undeclaredvar.length > 0 && setlocation.length > 0) { 		 
+				for (let ivar = 0; ivar < undeclaredvar.length; ivar++) {
+					const ln = undeclaredlocation[ivar][0];
+					const tkn = undeclaredlocation[ivar][1];
+					for (let iloc = 0; iloc < setlocation.length; iloc++) {
+						if (
+							setlocation[iloc][0] < ln ||								// Line of Set is above the undeclared variable
+							(setlocation[iloc][0] == ln && setlocation[iloc][1] < tkn)	// Set and the undeclared variable are on the same line, but Set is before
+						){ 
+							// The Set is before the variable
+							var foundset: boolean = parseSet(doc,parsed,setlocation[iloc][0],setlocation[iloc][1],undeclaredvar[ivar]);
+							if (foundset) {
+								// The undeclared variable is Set in the code selection
+								foundsetundeclaredvar.push(undeclaredvar[ivar]);
+								break;
+							}
+						}
+					}
+				}
+				// Update "undeclaredvar" array: delete the variables that already have been Set before the variable and within the code selection
+				undeclaredvar = undeclaredvar.filter(undeclared => !foundsetundeclaredvar.includes(undeclared));
+			}
+
+			// Add the undeclared variable (not Set in the selection) to the signature
+			if (undeclaredvar.length > 0) { 
+				for (let ivar = 0; ivar < undeclaredvar.length; ivar++) {
+					[signature,methodarguments] = prepareExtractMethodSignature(undeclaredvar[ivar], false, "", signature, methodarguments, comma);
+					countarg++;
+				}
+			}
+
+			// Check if the declared variable has been set in the selection block (by Set command or #Dim default value)
+			var foundsetdeclaredvar: string[] = [];	// List of declared variables that have been Set in the selection block 
+													// (before the declared variable)
+			if (declaredvar.length > 0 && setlocation.length > 0) { 		 
+				for (let ivar = 0;ivar < declaredvar.length; ivar++) {
+					const ln = declaredlocation[ivar][0];
+					const tkn = declaredlocation[ivar][1];
+					for (let iloc = 0; iloc < setlocation.length; iloc++) {
+						if(
+							setlocation[iloc][0] < ln ||								// Line of Set is above the ueclared variable
+							(setlocation[iloc][0] == ln && setlocation[iloc][1] < tkn)	// Set and the declared variable are on the same line, but Set is before
+						) { 
+							// The Set is before the variable
+							const foundset: boolean = parseSet(doc,parsed,setlocation[iloc][0],setlocation[iloc][1],declaredvar[ivar]);
+							if (foundset) {
+								// The declared variable is Set in the code selection
+								foundsetdeclaredvar.push(declaredvar[ivar]);
+								break;
+							}
+						}
+					}
+				}
+				// Update "declaredvar" array: delete the variables that already have been set before the variable and within code selection
+				declaredvar = declaredvar.filter(declared => !foundsetdeclaredvar.includes(declared));
+			}
+			if (declaredvar.length > 0 && setdim.length > 0) { 
+				// Update "declaredvar" array: delete the variables that already have been Set as a default value in the #Dim of the selection 
+				declaredvar = declaredvar.filter(declared => !setdim.includes(declared));
+			}
+			
+			// Check if the public variable or the local declared variable (dimvar) is declared (dimlocation) in the selection block
+			var founddimvar: string[] = []; // List of variables that have been declared (#Dim) in the selection block
+			if (dimvar.length > 0 && dimlocation.length > 0) {
+				for (let idimvar = 0; idimvar < dimvar.length; idimvar++) {
+					for (var ln of dimlocation) {
+						const dimresult = parseDimLine(doc,parsed,ln,dimvar[idimvar]);
+						if (dimresult.founddim) { 
+							// The variable has been declared by a #Dim in the selection block
+							founddimvar.push(dimvar[idimvar]);
+							if (declaredvar.includes(dimvar[idimvar]) || declaredbyrefvar.includes(dimvar[idimvar])) { 
+								// This is a variable that is not Set or a variable that is ByRef/Output
+								
+								// Add variable and type to the signature
+								var isByRef: boolean = false;
+								if (declaredbyrefvar.includes(dimvar[idimvar])) {
+									isByRef = true;
+								}
+								[signature,methodarguments] = prepareExtractMethodSignature(dimvar[idimvar], isByRef, " As " + dimresult.class, signature, methodarguments, comma);
+								countarg++;
+
+								// Record the variables to be removed from the #Dim declarations
+								todelvar.push(dimvar[idimvar]); // Variable to remove from the #dim declaration
+								todellinevar.push(ln); // Line of the #Dim
+							}
+							break;
+						}
+					}
+				}
+				// Update "dimvar" array: delete the variables that already have been declared in the code selection
+				dimvar = dimvar.filter(dim => !founddimvar.includes(dim));
+			}
+
+			// Scan for #Dim above selection block 
 			for (let ln = lnstart-1; ln > params.lnmethod; ln--) { 
 				if (parsed[ln].length === 0) {// Empty line
 					continue;
 				}
-				// Scan for #dim above selection block
 				if (dimvar.length > 0) {
 					var todel: string[] = []; // List of variables that have been declared at line ln
-					if (parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex && parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex) {
+					if (
+						parsed[ln].length > 1 && 
+						parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex && 
+						parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex
+					) {
 						// This is 2 preprocessor command
-						const thisvar: string = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)));
-						if (thisvar.toLowerCase() === "#dim") { // this is a dim
+						const thisvar: string = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][0].p),
+							Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
+						));
+						if (thisvar.toLowerCase() === "#dim") { // This is a #Dim declaration
 							var dimaddtext: string = ""; 
 							var dimtype: string = "";
-							// Check whether the variables have been declared by this dim
+							// Check whether the variables have been declared by this #Dim
 							for (let idimvar = 0; idimvar < dimvar.length; idimvar++) {
 								const dimresult = parseDimLine(doc,parsed,ln,dimvar[idimvar]);
-								if (dimresult.founddim) { // The variable has been declared by a dim. 
+								if (dimresult.founddim) { // The variable has been declared by a #Dim. 
 									dimtype = dimresult.class;
 									todel.push(dimvar[idimvar]); 
-									if (declaredvar.includes(dimvar[idimvar])) {
-										// There is a #Dim above the selection and the declared variable is ByRef/Output or is not set in the selection 
+									if (declaredvar.includes(dimvar[idimvar]) || declaredbyrefvar.includes(dimvar[idimvar])) {
+										// This is a variable that is not Set or a variable that is ByRef/Output
 
 										// Add variable and type to the signature
-										if (signaturedeclared !== "") {
-											signaturedeclared += comma;
-											methodargumentsdeclared += ", ";
-										}
+										var isByRef: boolean = false;
 										if (declaredbyrefvar.includes(dimvar[idimvar])) {
-											signaturedeclared += "ByRef ";
-											methodargumentsdeclared += ".";
+											isByRef = true;
 										}
+										[signature,methodarguments] = prepareExtractMethodSignature(dimvar[idimvar], isByRef, " As " + dimtype, signature, methodarguments, comma);
 										countarg++;
-										signaturedeclared += dimvar[idimvar] + " As " + dimtype;
-										methodargumentsdeclared += dimvar[idimvar];
 									} else {
-										// There is a #Dim above the selection and [public variable OR the declared variable has been set in the selection]
+										// There is a #Dim above the selection and 
+										// the public variable or the declared variable has been set in the selection
 										if (dimaddtext === "") {
 											dimaddtext += "#Dim " + dimvar[idimvar];
 										}else{
@@ -9104,39 +9211,13 @@ connection.onRequest("intersystems/refactor/addMethod",
 					}
 					// Update "dimvar" array: delete the variables that already have been declared above code selection, at line ln
 					dimvar = dimvar.filter(dim => !todel.includes(dim));
-				}else{
+				} else {
+					// All the #Dim have been found
 					break;
 				}
 			}
 
-			// Update Signature and Method arguments
-			if(signatureundeclared !== "") {
-				if (signature === "") {
-					signature = signatureundeclared;
-					methodarguments = methodargumentundeclared;
-				}else{
-					signature += comma + signatureundeclared;
-					methodarguments += ", " + methodargumentundeclared;
-				}
-			}
-			if (signatureundeclaredbyref !== "") {
-				if (signature === "") {
-					signature = signatureundeclaredbyref;
-					methodarguments = methodargumentsundeclaredbyref;
-				} else {
-					signature += comma + signatureundeclaredbyref;
-					methodarguments += ", " + methodargumentsundeclaredbyref;
-				}
-			}
-			if (signaturedeclared !== "") {
-				if (signature === "") {
-					signature = signaturedeclared;
-					methodarguments = methodargumentsdeclared;
-				} else {
-					signature += comma + signaturedeclared;
-					methodarguments += ", " + methodargumentsdeclared;
-				}
-			}
+			// Update Signature Format
 			if (multilinearg === true && server.apiVersion >= 4 && countarg > 1 ) {
 				signature = "\n" + tab + signature;
 			}
@@ -9148,7 +9229,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 			}
 		}
 		
-		// Adpapt to InterSystems Language Server Settings
+		// Adapt to InterSystems Language Server Settings
 		const settings = await getLanguageServerSettings();
 		var docommandtext: string = "Do";
 		if (settings.formatting.commands.length === "short") {
@@ -9166,7 +9247,6 @@ connection.onRequest("intersystems/refactor/addMethod",
 			newText: "\n/// \n" + params.newmethodtype + " " + params.newmethodname + "(" + signature + ") " + methodkeywords + "\n{\n"
 		});
 
-
 		// Add #Dim variable declaration for local declared variables and public variables
 		if (dimadd.length > 0) {
 			for (let dimln = dimadd.length-1; dimln >= 0; dimln--) {
@@ -9181,30 +9261,44 @@ connection.onRequest("intersystems/refactor/addMethod",
 			});
 		}
 
-		const firstwhitespace: string = doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p))).replace(/\t/g, " ".repeat(tabSize)); 
-		for (let ln = lnstart; ln <= lnend; ln++) {// Add the selection block in the method
+		const firstwhitespace: string = doc.getText(Range.create(
+			Position.create(lnstart,0),
+			Position.create(lnstart,parsed[lnstart][0].p)
+		)).replace(/\t/g, " ".repeat(tabSize)); 
+		for (let ln = lnstart; ln <= lnend; ln++) { // Add the selection block in the method
 			if (parsed[ln].length === 0) {
 				edits.push({ 
 				    range: Range.create(insertpos,insertpos),
 					newText: "\n"
 				});
 			} else { 
-				var whitespace = doc.getText(Range.create(Position.create(ln,0),Position.create(ln,parsed[ln][0].p))).replace(/\t/g, " ".repeat(tabSize));
-				var gapspace = " ".repeat(Math.max(whitespace.length-firstwhitespace.length,0));
+				var whitespace = doc.getText(Range.create(
+					Position.create(ln,0),
+					Position.create(ln,parsed[ln][0].p)
+				)).replace(/\t/g, " ".repeat(tabSize));
+				var gapspace = " ".repeat(Math.max(whitespace.length - firstwhitespace.length,0));
 				if (!insertSpaces) {
-					gapspace = gapspace.replace("/ {"+tabSize+"}/g", "\t");
+					gapspace = gapspace.replace("/ {" + tabSize + "}/g", "\t");
 				}
 				if (todellinevar.includes(ln)) {
-					// This a #Dim line with a declared variable that is already declard in the signature
+					// This a #Dim line with a declared variable that is already declared in the signature
 					var dimtext = "";
 					var dimtype = "";				
 					for (let tkn = 2; tkn < parsed[ln].length; tkn++) {
 						if (parsed[ln][tkn].s === ld.cos_localdec_attrindex || parsed[ln][tkn].s === ld.cos_localvar_attrindex) {
 							// This is a declared variable or a public variable
-							const thisvar: string = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+							const thisvar: string = doc.getText(Range.create(
+								Position.create(ln,parsed[ln][tkn].p),
+								Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+							));
 							if (todelvar.includes(thisvar)) {
 								// This is a declared variable that has been declard in the signature, it needs to be removed
-								if (doc.getText(Range.create(Position.create(ln,parsed[ln][3].p),Position.create(ln,parsed[ln][3].p+parsed[ln][3].c))).toLowerCase() === "as") {
+								if (
+									doc.getText(Range.create(
+										Position.create(ln,parsed[ln][3].p),
+										Position.create(ln,parsed[ln][3].p+parsed[ln][3].c)
+									)).toLowerCase() === "as"
+								) {
 									// Only the variable that needs to be removed is declared in the #Dim line -> delete the entire line
 									dimtext = "";
 									break;
@@ -9218,7 +9312,10 @@ connection.onRequest("intersystems/refactor/addMethod",
 						} else if (parsed[ln][tkn].s === ld.cos_command_attrindex) {
 							// This is the "As" keyword
 							// Add the type and default values
-							dimtype =" As " + doc.getText(Range.create(Position.create(ln,parsed[ln][tkn+1].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)));
+							dimtype =" As " + doc.getText(Range.create(
+								Position.create(ln,parsed[ln][tkn+1].p),
+								Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+							));
 							break;
 						}
 					}
@@ -9227,24 +9324,29 @@ connection.onRequest("intersystems/refactor/addMethod",
 						dimtext = "#Dim " + dimtext + dimtype;
 						edits.push({ 
 							range: Range.create(insertpos,insertpos),
-							newText: tab + gapspace+dimtext + "\n"
+							newText: tab + gapspace + dimtext + "\n"
 						});
 					}
 				} else {
 					edits.push({ 
 						range: Range.create(insertpos,insertpos),
-						newText: tab + gapspace + doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c))) + "\n"
+						newText: tab + gapspace + doc.getText(Range.create(
+							Position.create(ln,parsed[ln][0].p),
+							Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+						)) + "\n"
 					});
 				}
 			}
 		}
-		edits.push({ // close method
+		edits.push({ // Close method
 			range: Range.create(insertpos,insertpos),
 			newText: "}\n"
 		});
-		edits.push({ // replace code selection with do.. command
-			range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),
-			newText: docommandtext + " .." + params.newmethodname + "("+methodarguments + ")"
+		edits.push({ // Replace code selection with do.. command
+			range: Range.create(
+				Position.create(lnstart,parsed[lnstart][0].p),
+				Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),
+			newText: docommandtext + " .." + params.newmethodname + "(" + methodarguments + ")"
 		});
 		return {
 			changes: {
@@ -9263,7 +9365,6 @@ connection.onCodeAction(
 
 		var result: CodeAction[] = [];
 		if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.Refactor)) {
-			// The only refactor CodeAction that we currently support is 'Wrap in Try/Catch'
 			result.push({
 				title: 'Wrap in Try/Catch',
 				kind: CodeActionKind.Refactor
@@ -9293,15 +9394,15 @@ connection.onCodeAction(
 			var firstbraceisopen: boolean = true;
 			var countopenbraces: number = 0;
 	
-			var lnstart: number = 0 // first non-empty line
-			var lnend: number = 0	  // last non-empty line
+			var lnstart: number = 0	// First non-empty line
+			var lnend: number = 0	// Last non-empty line
 	
-			for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {// Loop through each line of the selection
+			for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {	// Loop through each line of the selection
 				try {
-					if (parsed[ln].length === 0) {// Empty line
+					if (parsed[ln].length === 0) {	// Empty line
 						continue;
 					}
-				} catch { // parsed[ln] is undefined
+				} catch {
 					// Return disabled CodeAction
 					result[0].disabled = {
 						reason: "Must select full code block -- Last empty line"
@@ -9321,11 +9422,11 @@ connection.onCodeAction(
 					break;
 				}
 				for (let tkn = 0; tkn < parsed[ln].length; tkn++) { // Loop through each token on the line
-					if (parsed[ln][tkn].l == ld.cls_langindex) { // break if token is cls
+					if (parsed[ln][tkn].l == ld.cls_langindex) { // Break if token is cls
 						foundcls = true;
 						break;
 					}
-					if (tkn === parsed[ln].length - 1) { // check that last token of the selection is objectscript
+					if (tkn === parsed[ln].length - 1) { // Check that last token of the selection is objectscript
 						if (parsed[ln][tkn].l == ld.cos_langindex) { 
 							endiscos = true;
 						} else {
@@ -9333,15 +9434,17 @@ connection.onCodeAction(
 						}
 					}
 	
-	
 					// Check if token is a brace
 					if ( parsed[ln][tkn].s === ld.cos_brace_attrindex && parsed[ln][tkn].l === ld.cos_langindex) {
-						const bracetext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c))); // Get the brace
-						if (bracetext === "{") { // count number of open and close brackets
+						const bracetext = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][tkn].p),
+							Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+						)); 
+						if (bracetext === "{") { // Count number of open and close brackets
 							countopenbraces++;				
 						} else {
-							if ( countopenbraces === 0) { 
-								firstbraceisopen = false; // if the first brace is an closing brace "}" -- break
+							if (countopenbraces === 0) { 
+								firstbraceisopen = false; // The first brace is an closing brace "}" -> break
 								break;
 							}
 							countopenbraces--;
@@ -9360,8 +9463,8 @@ connection.onCodeAction(
 				result[1].disabled = result[0].disabled;
 				return result;
 			}
-			if (firstbraceisopen === false) {// the first brace is a close brace "}"
-				// Return disabled CodeAction
+			if (firstbraceisopen === false) {
+				// The first brace is a close brace "}", return disabled CodeAction
 				result[0].disabled = {
 					reason: "Must select full code block -- First brace not open"
 				};
@@ -9376,8 +9479,8 @@ connection.onCodeAction(
 				result[1].disabled = result[0].disabled;
 				return result;
 			}
-			if (countopenbraces !== 0) {// the braces are not paired
-				// Return disabled CodeAction
+			if (countopenbraces !== 0) {
+				// The braces are not paired, return disabled CodeAction
 				result[0].disabled = {
 					reason: "Must select full code block -- Brace mismatch"
 				};
@@ -9390,12 +9493,18 @@ connection.onCodeAction(
 				var newmethodtype: string = "";
 				var lnmethod : number = -1;
 				for (let ln = params.range.start.line-1; ln >= 0; ln--){ 
-					if (parsed[ln].length === 0) {// Empty line
+					if (parsed[ln].length === 0) { // Empty line
 						continue;
 					}
 					if (parsed[ln][0].l === ld.cls_langindex && parsed[ln][0].s === ld.cls_keyword_attrindex) {
-						const keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
-						if (keyword === "classmethod" || keyword === "method" || keyword === "query"|| keyword === "trigger"|| keyword === "clientmethod") { 
+						const keyword = doc.getText(Range.create(
+							Position.create(ln,parsed[ln][0].p),
+							Position.create(ln,parsed[ln][0].p+parsed[ln][0].c)
+						)).toLowerCase();
+						if (
+							keyword === "classmethod" || keyword === "method" || keyword === "query" || 
+							keyword === "trigger" || keyword === "clientmethod"
+						) { 
 							if (keyword === "method") {
 								newmethodtype = "Method";
 								lnmethod = ln;
@@ -9422,9 +9531,12 @@ connection.onCodeAction(
 			result[0].data = [doc.uri,lnstart,lnend];
 		} else if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.QuickFix)) {
 			const diagnostics = params.context.diagnostics; // Diagnostics array of the selection
-			if (diagnostics.length > 0 ) {
+			if (diagnostics.length > 0) {
 				for (let i = 0; i < diagnostics.length; i++) {
-					if (diagnostics[i].message === "Invalid parameter type." || diagnostics[i].message === "Parameter value and type do not match.") {
+					if (
+						diagnostics[i].message === "Invalid parameter type." || 
+						diagnostics[i].message === "Parameter value and type do not match."
+					) {
 						result.push({
 							title: 'Remove incorrect type',
 							kind: CodeActionKind.QuickFix,
@@ -9433,7 +9545,10 @@ connection.onCodeAction(
 						result[result.length-1].data = [doc.uri,params.range];
 
 						const ln = params.range.start.line;
-						const range: Range = Range.create(Position.create(ln,parsed[ln][3].p),Position.create(ln,parsed[ln][3].p+parsed[ln][3].c));
+						const range: Range = Range.create(
+							Position.create(ln,parsed[ln][3].p),
+							Position.create(ln,parsed[ln][3].p+parsed[ln][3].c)
+						);
 						result.push({
 							title: 'Select Parameter Type',
 							kind: CodeActionKind.QuickFix,
@@ -9441,7 +9556,7 @@ connection.onCodeAction(
 							diagnostics: [diagnostics[i]]
 						})
 						break;
-					}else if (diagnostics[i].message === "Class '" + diagnostics[i].message.split('\'')[1] + "' does not exist.") {
+					} else if (diagnostics[i].message === "Class '" + diagnostics[i].message.split('\'')[1] + "' does not exist.") {
 						const classname = diagnostics[i].message.split('\'')[1];
 						result.push({
 							title: 'Select Import Package',
@@ -9458,7 +9573,6 @@ connection.onCodeAction(
 					}
 				}
 			}
-
 		}
 
 		if (result.length > 0) {
@@ -9482,14 +9596,13 @@ connection.onCodeActionResolve(
 			const doc = documents.get(data[0]);
 			if (doc === undefined) {return codeAction;}
 
-
-			const lnstart = data[1];
-			const lnend = data[2];
-			const whitespace = doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)))
+			const lnstart = data[1];	// First non-empty line of the selection
+			const lnend = data[2];		// Last non-empty line of the selection
+			const whitespace = doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)));
 		
-			// Add #Dim ex As %Exception.AbstractException before Try/Catch block
+			// Add "#Dim ex As %Exception.AbstractException" before Try/Catch block
 			const settings = await getLanguageServerSettings();
-			const ext = data[0].substring(data[0].lastIndexOf(".")).toLowerCase();// file extension
+			const ext = data[0].substring(data[0].lastIndexOf(".")).toLowerCase(); // File extension
 			var dimline = "";
 			const exname = settings.refactor.exceptionVariable;
 			if (ext === ".cls" || ext === ".mac") {
@@ -9497,7 +9610,10 @@ connection.onCodeActionResolve(
 			}
 			
 			// Adapt to VSCode Workspace settings (tabsize/insertspaces)
-			const vscodesettings = await connection.workspace.getConfiguration([{scopeUri:data[0],section:"editor.tabSize"},{scopeUri:data[0],section:"editor.insertSpaces"}]);
+			const vscodesettings = await connection.workspace.getConfiguration([
+				{scopeUri:data[0],section:"editor.tabSize"},
+				{scopeUri:data[0],section:"editor.insertSpaces"}
+			]);
 			const tabSize = vscodesettings[0];
 			const insertSpaces = vscodesettings[1];
 			var tab: string = "\t";
@@ -9505,7 +9621,7 @@ connection.onCodeActionResolve(
 				tab = " ".repeat(tabSize);
 			}
 
-			// Adpapt to InterSystems Language Server Settings
+			// Adapt to InterSystems Language Server Settings
 			var trycommandtext: string = "Try";
 			var catchcommandtext: string = "Catch";
 			if (settings.formatting.commands.case === "lower") {
@@ -9515,11 +9631,11 @@ connection.onCodeActionResolve(
 				trycommandtext = trycommandtext.toUpperCase();
 				catchcommandtext = catchcommandtext.toUpperCase();
 			}
-			edits.push({ //Open try block
+			edits.push({ // Open try block
 				range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
 				newText: dimline + trycommandtext + " {\n" + whitespace
 			});
-			for (let ln = lnstart; ln <= lnend; ln++) {// Indent the selection block
+			for (let ln = lnstart; ln <= lnend; ln++) { // Indent the selection block
 				if (parsed[ln].length === 0) {
 					continue;
 				}
@@ -9529,7 +9645,7 @@ connection.onCodeActionResolve(
 				});
 			}
 			const insertposend = Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c);
-			edits.push({ // close try block and add catch block
+			edits.push({ // Close Try block and add Catch block
 				range: Range.create(insertposend,insertposend), 
 				newText: "\n" + whitespace + "} " + catchcommandtext + " " + exname + " {\n" + whitespace + "" + tab + "\n" + whitespace + "} "
 			});	
