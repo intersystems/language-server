@@ -8876,6 +8876,9 @@ connection.onRequest("intersystems/refactor/addMethod",
 			var declaredbyrefvar: string[] = [];		// List of declared variables ByRef or Output
 			var setdim: string[] = [];					// List of declared variables that are Set by default by #Dim
 			
+			var initializeddeclaredvar: string[] = []	// List of declared variables initialize by a for loop
+			var initializedundeclaredvar: string[] = []	// List of undeclared variables initialize by a for loop
+
 			// Scan through the selection: look for variables, #Dim, and Set
 			for (let ln = lnstart; ln <= lnend; ln++) {
 				if (parsed[ln].length === 0) { // Empty line
@@ -8930,38 +8933,59 @@ connection.onRequest("intersystems/refactor/addMethod",
 						}
 						if (!declaredvar.includes(thisvar)) {  
 							var skip: boolean = false;
-							if (parsed[ln].length > 1) {
-								if (parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex && 
-									parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex
-								) {
-									// This is 2 preprocessor command
-									const thisdim: string = doc.getText(Range.create(
-										Position.create(ln,parsed[ln][0].p),
-										Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
-									));
-									if (thisdim.toLowerCase() === "#dim") {
-										// The first call of the variable is a #Dim -> skip
-										skip = true; 
 
-										// Check whether declared variable is Set by #Dim's default value
-										for (let k = parsed[ln].length-1; k >= 0; k--) {
-											if (parsed[ln][k].s === ld.cos_command_attrindex) {
-												// This is "As" command
-												break;
-											} else if (parsed[ln][k].s === ld.cos_oper_attrindex) {
-												// This is "=" operator -> there is a default value
-												setdim.push(thisvar);
-												break;
-											}
+							// Check if the first call of the variable is a #Dim, and check if the variable is set by #Dim's default value
+							if (
+								parsed[ln].length > 1 &&
+								parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex && 
+								parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex
+							) {
+								// This is 2 preprocessor command
+								const thisdim: string = doc.getText(Range.create(
+									Position.create(ln,parsed[ln][0].p),
+									Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
+								));
+								if (thisdim.toLowerCase() === "#dim") {
+									// The first call of the variable is a #Dim -> skip
+									skip = true; 
+
+									// Check whether declared variable is Set by #Dim's default value
+									for (let k = parsed[ln].length-1; k >= 0; k--) {
+										if (parsed[ln][k].s === ld.cos_command_attrindex) {
+											// This is "As" command
+											break;
+										} else if (parsed[ln][k].s === ld.cos_oper_attrindex) {
+											// This is "=" operator -> there is a default value
+											setdim.push(thisvar);
+											break;
 										}
-									}		
-								}
-							}
+									}
+								}		
+							} 
+
 							if (!skip) {
 								// First call of the variable is not a #Dim
 								declaredvar.push(thisvar);
 								declaredlocation.push([ln,tkn]);
+
+								// Check if the first call of the variable has been initialized by a For loop
+								if (
+									tkn > 0 && 
+									parsed[ln][tkn-1].l === ld.cos_langindex &&
+									parsed[ln][tkn-1].s === ld.cos_command_attrindex 
+								) {
+									const commandtext: string = doc.getText(Range.create(
+										Position.create(ln, parsed[ln][tkn-1].p),
+										Position.create(ln, parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)
+									)).toLowerCase();
+									if (commandtext === "for" || commandtext === "f") {
+										// This variable has been initialized by a For loop
+										initializeddeclaredvar.push(thisvar);
+									}
+								}
 							}
+
+							
 						} 
 					} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_localundec_attrindex) {
 						// This is local undeclared variable 
@@ -8972,6 +8996,22 @@ connection.onRequest("intersystems/refactor/addMethod",
 						if (!undeclaredvar.includes(thisvar)) { 
 							undeclaredvar.push(thisvar);
 							undeclaredlocation.push([ln,tkn]);
+
+							// Check if the first call of the variable has been initialized by a For loop
+							if (
+								tkn > 0 && 
+								parsed[ln][tkn-1].l === ld.cos_langindex &&
+								parsed[ln][tkn-1].s === ld.cos_command_attrindex 
+							) {
+								const commandtext: string = doc.getText(Range.create(
+									Position.create(ln, parsed[ln][tkn-1].p),
+									Position.create(ln, parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)
+								)).toLowerCase();
+								if (commandtext === "for" || commandtext === "f") {
+									// This variable has been initialized by a For loop
+									initializedundeclaredvar.push(thisvar);
+								}
+							}
 						} 
 						if (
 							tkn>0 &&
@@ -8994,7 +9034,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 						if (thisvar === "set" || thisvar === "s") {
 							// This is a set command
 							setlocation.push([ln,tkn]); // save location
-						}
+						} 
 					}
 				}
 
@@ -9060,6 +9100,11 @@ connection.onRequest("intersystems/refactor/addMethod",
 				}
 			}
 
+			// Check if the undeclared variable has been initialized by a For loop in in the selection block
+			if (undeclaredvar.length > 0 && initializedundeclaredvar.length > 0) { 
+				// Update "undeclaredvar" array: delete the variables that already have been initialized by the For loop of the selection
+				undeclaredvar = undeclaredvar.filter(undeclared => !initializedundeclaredvar.includes(undeclared));
+			}
 			// Check if the undeclared variable has been set in the selection block
 			var foundsetundeclaredvar: string[] = [];	// List of undeclared variables that have been Set in the selection block 
 														// (before the undeclared variable)
@@ -9094,7 +9139,17 @@ connection.onRequest("intersystems/refactor/addMethod",
 				}
 			}
 
-			// Check if the declared variable has been set in the selection block (by Set command or #Dim default value)
+			// Check if the declared variable has been initialized by a For loop in in the selection block
+			if (declaredvar.length > 0 && initializeddeclaredvar.length > 0) { 
+				// Update "declaredvar" array: delete the variables that already have been initialized by the For loop of the selection
+				declaredvar = declaredvar.filter(declared => !initializeddeclaredvar.includes(declared));
+			}
+			// Check if the declared variable has been set by #Dim default value in in the selection block
+			if (declaredvar.length > 0 && setdim.length > 0) { 
+				// Update "declaredvar" array: delete the variables that already have been Set as a default value in the #Dim of the selection 
+				declaredvar = declaredvar.filter(declared => !setdim.includes(declared));
+			}
+			// Check if the declared variable has been set by Set in in the selection block
 			var foundsetdeclaredvar: string[] = [];	// List of declared variables that have been Set in the selection block 
 													// (before the declared variable)
 			if (declaredvar.length > 0 && setlocation.length > 0) { 		 
@@ -9118,10 +9173,6 @@ connection.onRequest("intersystems/refactor/addMethod",
 				}
 				// Update "declaredvar" array: delete the variables that already have been set before the variable and within code selection
 				declaredvar = declaredvar.filter(declared => !foundsetdeclaredvar.includes(declared));
-			}
-			if (declaredvar.length > 0 && setdim.length > 0) { 
-				// Update "declaredvar" array: delete the variables that already have been Set as a default value in the #Dim of the selection 
-				declaredvar = declaredvar.filter(declared => !setdim.includes(declared));
 			}
 			
 			// Check if the public variable or the local declared variable (dimvar) is declared (dimlocation) in the selection block
@@ -9237,8 +9288,7 @@ connection.onRequest("intersystems/refactor/addMethod",
 		}
 		if (settings.formatting.commands.case === "lower") {
 			docommandtext = docommandtext.toLowerCase();
-		}
-		else if (settings.formatting.commands.case === "upper") {
+		} else if (settings.formatting.commands.case === "upper") {
 			docommandtext = docommandtext.toUpperCase();
 		}
 		
@@ -9261,10 +9311,8 @@ connection.onRequest("intersystems/refactor/addMethod",
 			});
 		}
 
-		const firstwhitespace: string = doc.getText(Range.create(
-			Position.create(lnstart,0),
-			Position.create(lnstart,parsed[lnstart][0].p)
-		)).replace(/\t/g, " ".repeat(tabSize)); 
+		var foundfirstindent: boolean = false;
+		var firstwhitespace: string = ""; 
 		for (let ln = lnstart; ln <= lnend; ln++) { // Add the selection block in the method
 			if (parsed[ln].length === 0) {
 				edits.push({ 
@@ -9276,9 +9324,20 @@ connection.onRequest("intersystems/refactor/addMethod",
 					Position.create(ln,0),
 					Position.create(ln,parsed[ln][0].p)
 				)).replace(/\t/g, " ".repeat(tabSize));
+				if (!foundfirstindent) {
+					if (!(parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_label_attrindex)) {
+						// This is the first non-label line, record the indent
+						foundfirstindent = true;
+						firstwhitespace = whitespace;
+					}
+				}
 				var gapspace = " ".repeat(Math.max(whitespace.length - firstwhitespace.length,0));
 				if (!insertSpaces) {
 					gapspace = gapspace.replace("/ {" + tabSize + "}/g", "\t");
+				}
+				if (!(parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_label_attrindex)) {
+					// This is a non-label line - add tab to the indent
+					gapspace = tab + gapspace;
 				}
 				if (todellinevar.includes(ln)) {
 					// This a #Dim line with a declared variable that is already declared in the signature
@@ -9324,13 +9383,13 @@ connection.onRequest("intersystems/refactor/addMethod",
 						dimtext = "#Dim " + dimtext + dimtype;
 						edits.push({ 
 							range: Range.create(insertpos,insertpos),
-							newText: tab + gapspace + dimtext + "\n"
+							newText: gapspace + dimtext + "\n"
 						});
 					}
 				} else {
 					edits.push({ 
 						range: Range.create(insertpos,insertpos),
-						newText: tab + gapspace + doc.getText(Range.create(
+						newText: gapspace + doc.getText(Range.create(
 							Position.create(ln,parsed[ln][0].p),
 							Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
 						)) + "\n"
@@ -9342,11 +9401,14 @@ connection.onRequest("intersystems/refactor/addMethod",
 			range: Range.create(insertpos,insertpos),
 			newText: "}\n"
 		});
+		if (firstwhitespace === "") {
+			firstwhitespace = tab;
+		} 
 		edits.push({ // Replace code selection with do.. command
 			range: Range.create(
-				Position.create(lnstart,parsed[lnstart][0].p),
+				Position.create(lnstart,0),
 				Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c)),
-			newText: docommandtext + " .." + params.newmethodname + "(" + methodarguments + ")"
+			newText: firstwhitespace + docommandtext + " .." + params.newmethodname + "(" + methodarguments + ")"
 		});
 		return {
 			changes: {
@@ -9598,17 +9660,7 @@ connection.onCodeActionResolve(
 
 			const lnstart = data[1];	// First non-empty line of the selection
 			const lnend = data[2];		// Last non-empty line of the selection
-			const whitespace = doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)));
-		
-			// Add "#Dim ex As %Exception.AbstractException" before Try/Catch block
-			const settings = await getLanguageServerSettings();
-			const ext = data[0].substring(data[0].lastIndexOf(".")).toLowerCase(); // File extension
-			var dimline = "";
-			const exname = settings.refactor.exceptionVariable;
-			if (ext === ".cls" || ext === ".mac") {
-				dimline = "#Dim " + exname + " As %Exception.AbstractException\n" + whitespace;
-			}
-			
+
 			// Adapt to VSCode Workspace settings (tabsize/insertspaces)
 			const vscodesettings = await connection.workspace.getConfiguration([
 				{scopeUri:data[0],section:"editor.tabSize"},
@@ -9622,6 +9674,7 @@ connection.onCodeActionResolve(
 			}
 
 			// Adapt to InterSystems Language Server Settings
+			const settings = await getLanguageServerSettings();
 			var trycommandtext: string = "Try";
 			var catchcommandtext: string = "Catch";
 			if (settings.formatting.commands.case === "lower") {
@@ -9631,18 +9684,52 @@ connection.onCodeActionResolve(
 				trycommandtext = trycommandtext.toUpperCase();
 				catchcommandtext = catchcommandtext.toUpperCase();
 			}
+
+			// Prepare Indentation
+			var whitespace = doc.getText(Range.create(Position.create(lnstart,0),Position.create(lnstart,parsed[lnstart][0].p)));
+			var addtab: string = tab;
+			if (parsed[lnstart][0].l === ld.cos_langindex && parsed[lnstart][0].s === ld.cos_label_attrindex) {
+				// The first line is a label, record indent of the first non-label line
+				for (let ln = lnstart; ln <= lnend; ln++) {
+					if (parsed[ln].length === 0) {
+						continue;
+					}
+					if (!(parsed[lnstart][0].l === ld.cos_langindex && parsed[lnstart][0].s === ld.cos_label_attrindex)) {
+						// This is a not a label
+						whitespace = doc.getText(Range.create(Position.create(ln,0),Position.create(ln,parsed[ln][0].p)));
+						break;
+					}
+				}
+			}
+			if (whitespace === "") {
+				// The first non-label line is not indented. Shift whitespace and tab by 1 tab
+				whitespace += tab;
+				addtab += tab;
+			}
+		
+			// Add "#Dim ex As %Exception.AbstractException" before Try/Catch block
+			const ext = data[0].substring(data[0].lastIndexOf(".")).toLowerCase(); // File extension
+			var dimline = "";
+			const exname = settings.refactor.exceptionVariable;
+			if (ext === ".cls" || ext === ".mac") {
+				dimline = "#Dim " + exname + " As %Exception.AbstractException\n" + whitespace;
+			}
+			
 			edits.push({ // Open try block
-				range: Range.create(Position.create(lnstart,parsed[lnstart][0].p),Position.create(lnstart,parsed[lnstart][0].p)),
-				newText: dimline + trycommandtext + " {\n" + whitespace
+				range: Range.create(Position.create(lnstart,0),Position.create(lnstart,0)),
+				newText: whitespace + dimline + trycommandtext + " {\n" 
 			});
 			for (let ln = lnstart; ln <= lnend; ln++) { // Indent the selection block
 				if (parsed[ln].length === 0) {
 					continue;
 				}
-				edits.push({
-					range: Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p)),
-					newText: tab
-				});
+				if (!(parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_label_attrindex)) {
+					// This is not a line with a label
+					edits.push({
+						range: Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p)),
+						newText: addtab 
+					});
+				}
 			}
 			const insertposend = Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c);
 			edits.push({ // Close Try block and add Catch block
