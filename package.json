@@ -156,6 +156,12 @@
 					"default": true,
 					"description": "Controls whether error diagnostics are provided when a class that is being referred to doesn't exist in the database."
 				},
+				"intersystems.language-server.diagnostics.classMembers": {
+					"scope": "application",
+					"type": "boolean",
+					"default": true,
+					"description": "Controls whether strikethrough warning diagnostics are provided when a class member that is being referred to is deprecated."
+				},
 				"intersystems.language-server.signaturehelp.documentation": {
 					"scope": "application",
 					"type": "boolean",

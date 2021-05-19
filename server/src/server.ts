@@ -31,7 +31,8 @@ import {
 	SemanticTokensBuilder,
 	SemanticTokensParams,
 	SemanticTokensDeltaParams,
-	WorkspaceEdit
+	WorkspaceEdit,
+	DiagnosticTag
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -96,7 +97,8 @@ type LanguageServerConfiguration = {
 	diagnostics: {
 		routines: boolean,
 		parameters: boolean,
-		classes: boolean
+		classes: boolean,
+		classMembers: boolean
 	},
 	signaturehelp: {
 		documentation: boolean
@@ -327,7 +329,7 @@ const definitionTargetRangeMaxLines: number = 10;
 const classMemberTypes: string[] = ["Parameter","Property","Relationship","ForeignKey","Index","Query","Storage","Trigger","XData","Projection","Method","ClassMethod","ClientMethod"];
 
 /**
- * Compute diagnositcs for this document and sent them to the client.
+ * Compute diagnostics for this document and sent them to the client.
  * 
  * @param doc The TextDocument to compute diagnostic for.
  */
@@ -342,15 +344,15 @@ async function computeDiagnostics(doc: TextDocument) {
 		var files: StudioOpenDialogFile[] = [];
 		var inheritedpackages: string[] | undefined = undefined;
 		var querydata: QueryData;
-		if (settings.diagnostics.routines || settings.diagnostics.classes) {
-			if (settings.diagnostics.routines && settings.diagnostics.classes) {
+		if (settings.diagnostics.routines || settings.diagnostics.classes || settings.diagnostics.classMembers) {
+			if (settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.classMembers)) {
 				// Get all classes and routines
 				querydata = {
 					query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition UNION ALL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
 					parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0]
 				};
 			}
-			else if (!settings.diagnostics.routines && settings.diagnostics.classes) {
+			else if (!settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.classMembers)) {
 				// Get all classes
 				querydata = {
 					query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition",
@@ -369,7 +371,7 @@ async function computeDiagnostics(doc: TextDocument) {
 				files = respdata.data.result.content;
 			}
 		}
-		if (doc.languageId === "objectscript-class" && settings.diagnostics.classes) {
+		if (doc.languageId === "objectscript-class" && (settings.diagnostics.classes || settings.diagnostics.classMembers)) {
 			var clsname = "";
 			var hassupers = false;
 
@@ -431,6 +433,12 @@ async function computeDiagnostics(doc: TextDocument) {
 			doc.getText(Range.create(Position.create(0,parsed[0][0].p),Position.create(0,parsed[0][0].p+parsed[0][0].c))).toLowerCase() === "routine";
 
 		const startline: number = (firstlineisroutine) ? 1 : 0;
+
+		// Store the name, class and ranges for all class members that we see if settings.diagnostics.classMembers is true
+		// Map keys are of the form "class:::member"
+		const methods: Map<string, Range[]> = new Map();
+		const parameters: Map<string, Range[]> = new Map();
+		const properties: Map<string, Range[]> = new Map();
 
 		// Loop through the parsed document to find errors and warnings
 		for (let i = startline; i < parsed.length; i++) {
@@ -600,137 +608,248 @@ async function computeDiagnostics(doc: TextDocument) {
 						// Don't validate import packages
 						break;
 					}
-					else if (files.length > 0) {
-						// Check that all classes, routines and include files in this document exist in the database
-						if (
-							((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
-							(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
-							settings.diagnostics.classes
-						) {
-							// This is a class name
+					else if (
+						files.length > 0 &&
+						((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
+						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
+						settings.diagnostics.classes
+					) {
+						// This is a class name
 
-							// Don't validate a class name that follows the "Class" keyword
-							if (j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex) {
-								// The previous token is a UDL keyword
-								const prevkeytext = doc.getText(Range.create(
-									Position.create(i,parsed[i][j-1].p),
-									Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
-								)).toLowerCase();
-								if (prevkeytext === "class") {
-									continue;
-								}
-							}
-
-							// Get the full text of the selection
-							let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
-							let word = doc.getText(wordrange);
-							if (word.charAt(0) === ".") {
-								// This might be $SYSTEM.ClassName
-								const prevseven = doc.getText(Range.create(
-									Position.create(i,wordrange.start.character-7),
-									Position.create(i,wordrange.start.character)
-								));
-								if (prevseven.toUpperCase() !== "$SYSTEM") {
-									// This classname is invalid
-									let diagnostic: Diagnostic = {
-										severity: DiagnosticSeverity.Error,
-										range: wordrange,
-										message: "Invalid class name.",
-										source: 'InterSystems Language Server'
-									};
-									diagnostics.push(diagnostic);
-								}
+						// Don't validate a class name that follows the "Class" keyword
+						if (j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex) {
+							// The previous token is a UDL keyword
+							const prevkeytext = doc.getText(Range.create(
+								Position.create(i,parsed[i][j-1].p),
+								Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
+							)).toLowerCase();
+							if (prevkeytext === "class") {
 								continue;
 							}
-							if (word.charAt(0) === '"') {
-								// This classname is delimited with ", so strip them
-								word = word.slice(1,-1);
-							}
+						}
 
-							// Normalize the class name if there are imports
-							var possiblecls = {num: 0};
-							let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls,inheritedpackages);
-							
-							if (normalizedname === "" && possiblecls.num > 0) {
-								// The class couldn't be resolved with the imports
+						// Get the full text of the selection
+						let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
+						let word = doc.getText(wordrange);
+						if (word.charAt(0) === ".") {
+							// This might be $SYSTEM.ClassName
+							const prevseven = doc.getText(Range.create(
+								Position.create(i,wordrange.start.character-7),
+								Position.create(i,wordrange.start.character)
+							));
+							if (prevseven.toUpperCase() !== "$SYSTEM") {
+								// This classname is invalid
 								let diagnostic: Diagnostic = {
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
-									message: "Class name '"+word+"' is ambiguous.",
+									message: "Invalid class name.",
 									source: 'InterSystems Language Server'
 								};
 								diagnostics.push(diagnostic);
 							}
-							else {
-								// Check if class exists
-								const filtered = files.filter(file => file.Name === normalizedname+".cls");
-								if (filtered.length !== 1) {
-									let diagnostic: Diagnostic = {
-										severity: DiagnosticSeverity.Error,
-										range: wordrange,
-										message: "Class '"+word+"' does not exist.",
-										source: 'InterSystems Language Server'
-									};
-									diagnostics.push(diagnostic);
+							continue;
+						}
+						if (word.charAt(0) === '"') {
+							// This classname is delimited with ", so strip them
+							word = word.slice(1,-1);
+						}
+
+						// Normalize the class name if there are imports
+						var possiblecls = {num: 0};
+						let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls,inheritedpackages);
+						
+						if (normalizedname === "" && possiblecls.num > 0) {
+							// The class couldn't be resolved with the imports
+							let diagnostic: Diagnostic = {
+								severity: DiagnosticSeverity.Error,
+								range: wordrange,
+								message: "Class name '"+word+"' is ambiguous.",
+								source: 'InterSystems Language Server'
+							};
+							diagnostics.push(diagnostic);
+						}
+						else {
+							// Check if class exists
+							const filtered = files.filter(file => file.Name === normalizedname+".cls");
+							if (filtered.length !== 1) {
+								let diagnostic: Diagnostic = {
+									severity: DiagnosticSeverity.Error,
+									range: wordrange,
+									message: "Class '"+word+"' does not exist.",
+									source: 'InterSystems Language Server'
+								};
+								diagnostics.push(diagnostic);
+							}
+						}
+					}
+					else if (
+						files.length > 0 &&
+						((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) ||
+						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_rtnname_attrindex)) &&
+						settings.diagnostics.routines
+					) {
+						// This is a routine name
+
+						// Get the full text of the selection
+						let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
+						let word = doc.getText(wordrange);
+
+						// Determine if this is an include file
+						var isinc = false;
+						if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) {
+							isinc = true;
+						}
+						else {
+							if (
+								parsed[i][j-1].l == ld.cos_langindex &&
+								parsed[i][j-1].s == ld.cos_ppc_attrindex &&
+								doc.getText(
+									Range.create(
+										Position.create(i,parsed[i][j-1].p),
+										Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
+									)
+								).toLowerCase() === "include"
+							) {
+								isinc = true;
+							}
+						}
+
+						// Check if the routine exists
+						if (isinc) {
+							if (!files.some(file => file.Name === (word+".inc"))) {
+								let diagnostic: Diagnostic = {
+									severity: DiagnosticSeverity.Error,
+									range: wordrange,
+									message: "Include file '"+word+"' does not exist.",
+									source: 'InterSystems Language Server'
+								};
+								diagnostics.push(diagnostic);
+							}
+						}
+						else {
+							const macexists = files.some(file => file.Name === (word+".mac"));
+							const intexists = files.some(file => file.Name === (word+".int"));
+							if (!macexists && !intexists) {
+								let diagnostic: Diagnostic = {
+									severity: DiagnosticSeverity.Error,
+									range: wordrange,
+									message: "Routine '"+word+"' does not exist.",
+									source: 'InterSystems Language Server'
+								};
+								diagnostics.push(diagnostic);
+							}
+						}
+					}
+					else if (
+						files.length > 0 &&
+						parsed[i][j].l == ld.cos_langindex && (
+						parsed[i][j].s == ld.cos_prop_attrindex || parsed[i][j].s == ld.cos_method_attrindex ||
+						parsed[i][j].s == ld.cos_attr_attrindex || parsed[i][j].s == ld.cos_mem_attrindex) &&
+						settings.diagnostics.classMembers
+					) {
+						// This is a class member (property/parameter/method)
+
+						// Get the full text of the member
+						const memberrange = findFullRange(i,parsed,j,symbolstart,symbolend);
+						var member = doc.getText(memberrange);
+						if (member.charAt(0) === "#") {
+							member = member.slice(1);
+						}
+						const unquotedname = quoteUDLIdentifier(member,0);
+
+						// Find the dot token
+						var dottkn = 0;
+						for (let tkn = 0; tkn < parsed[i].length; tkn++) {
+							if (parsed[i][tkn].p >= memberrange.start.character) {
+								break;
+							}
+							dottkn = tkn;
+						}
+
+						// Get the base class that this member is in
+						const membercontext = await getClassMemberContext(doc,parsed,dottkn,i,server,files,inheritedpackages);
+						if (membercontext.baseclass !== "") {
+							// We could determine the class, so add the member to the correct map
+
+							const memberstr: string = membercontext.baseclass + ":::" + unquotedname;
+							if (parsed[i][j].s == ld.cos_prop_attrindex) {
+								// This is a parameter
+								addRangeToMapVal(parameters,memberstr,memberrange);
+							}
+							else if (parsed[i][j].s == ld.cos_method_attrindex) {
+								// This is a method
+								addRangeToMapVal(methods,memberstr,memberrange);
+							}
+							else if (
+								parsed[i][j].s == ld.cos_attr_attrindex &&
+								membercontext.baseclass !== "%Library.DynamicArray" &&
+								membercontext.baseclass !== "%Library.DynamicObject"
+							) {
+								// This is a non-JSON property
+								addRangeToMapVal(properties,memberstr,memberrange);
+							}
+							else if (parsed[i][j].s == ld.cos_mem_attrindex) {
+								// This is a generic member
+
+								if (membercontext.baseclass.substr(0,7) === "%SYSTEM") {
+									// This is always a method
+									addRangeToMapVal(methods,memberstr,memberrange);
+								}
+								else {
+									// This can be a method or property
+									addRangeToMapVal(methods,memberstr,memberrange);
+									addRangeToMapVal(properties,memberstr,memberrange);
 								}
 							}
 						}
-						else if (
-							((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) ||
-							(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_rtnname_attrindex)) &&
-							settings.diagnostics.routines
-						) {
-							// This is a routine name
+					}
+				}
+			}
+		}
 
-							// Get the full text of the selection
-							let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
-							let word = doc.getText(wordrange);
+		if (settings.diagnostics.classMembers && (methods.size > 0 || parameters.size > 0 || properties.size > 0)) {
+			// Query the database for all Deprecated members of classes that we're referencing
 
-							// Determine if this is an include file
-							var isinc = false;
-							if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) {
-								isinc = true;
-							}
-							else {
-								if (
-									parsed[i][j-1].l == ld.cos_langindex &&
-									parsed[i][j-1].s == ld.cos_ppc_attrindex &&
-									doc.getText(
-										Range.create(
-											Position.create(i,parsed[i][j-1].p),
-											Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
-										)
-									).toLowerCase() === "include"
-								) {
-									isinc = true;
-								}
-							}
+			// Build the query
+			const querydata: QueryData = {
+				query: "SELECT Name, Parent->ID AS Class, 'method' AS MemberType FROM %Dictionary.CompiledMethod WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?) UNION ALL " +
+					"SELECT Name, Parent->ID AS Class, 'parameter' AS MemberType FROM %Dictionary.CompiledParameter WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?) UNION ALL " +
+					"SELECT Name, Parent->ID AS Class, 'property' AS MemberType FROM %Dictionary.CompiledProperty WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?)",
+				parameters: [
+					[...new Set([...methods.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),
+					[...new Set([...parameters.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),
+					[...new Set([...properties.keys()].map(elem => {return elem.split(":::")[0]}))].join(",")
+				]
+			};
 
-							// Check if the routine exists
-							if (isinc) {
-								if (!files.some(file => file.Name === (word+".inc"))) {
-									let diagnostic: Diagnostic = {
-										severity: DiagnosticSeverity.Error,
-										range: wordrange,
-										message: "Include file '"+word+"' does not exist.",
-										source: 'InterSystems Language Server'
-									};
-									diagnostics.push(diagnostic);
-								}
-							}
-							else {
-								const macexists = files.some(file => file.Name === (word+".mac"));
-								const intexists = files.some(file => file.Name === (word+".int"));
-								if (!macexists && !intexists) {
-									let diagnostic: Diagnostic = {
-										severity: DiagnosticSeverity.Error,
-										range: wordrange,
-										message: "Routine '"+word+"' does not exist.",
-										source: 'InterSystems Language Server'
-									};
-									diagnostics.push(diagnostic);
-								}
-							}
+			// Make the request
+			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+			if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+				// We got data back
+
+				for (const row of respdata.data.result.content) {
+					// Create a Diagnostic for each Range that this member appears in the document
+
+					const memberstr: string = row.Class + ":::" + row.Name;
+					let ranges: Range[] | undefined = undefined;
+					if (row.MemberType === "method") {
+						ranges = methods.get(memberstr);
+					}
+					else if (row.MemberType === "parameter") {
+						ranges = parameters.get(memberstr);
+					}
+					else {
+						ranges = properties.get(memberstr);
+					}
+					if (ranges !== undefined) {
+						for (const range of ranges) {
+							diagnostics.push({
+								range: range,
+								severity: DiagnosticSeverity.Warning,
+								source: 'InterSystems Language Server',
+								tags: [DiagnosticTag.Deprecated],
+								message: "Deprecated " + row.MemberType + "."
+							});
 						}
 					}
 				}
@@ -1828,8 +1947,15 @@ async function normalizeClassname(
  * @param dot The token number of the ".".
  * @param line The line that the class member is in.
  * @param server The server that doc is associated with.
+ * 
+ * The following optional parameters are only provided when called via computeDiagnostics():
+ * @param allfiles An array of all files in a database.
+ * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-async function getClassMemberContext(doc: TextDocument, parsed: compressedline[], dot: number, line: number, server: ServerSpec): Promise<ClassMemberContext> {
+async function getClassMemberContext(
+	doc: TextDocument, parsed: compressedline[], dot: number, line: number,
+	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
+): Promise<ClassMemberContext> {
 	var result: ClassMemberContext = {
 		baseclass: "",
 		context: ""
@@ -1893,7 +2019,11 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
 			// This is the end of a ##class
 
 			result = {
-				baseclass: await normalizeClassname(doc,parsed,doc.getText(findFullRange(line,parsed,dot-2,parsed[line][dot-2].p,parsed[line][dot-2].p+parsed[line][dot-2].c)),server,line),
+				baseclass: await normalizeClassname(
+					doc, parsed,
+					doc.getText(findFullRange(line,parsed,dot-2,parsed[line][dot-2].p,parsed[line][dot-2].p+parsed[line][dot-2].c)),
+					server, line, allfiles, undefined, inheritedpackages
+				),
 				context: "class"
 			};
 		}
@@ -1917,7 +2047,7 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
 	else if (parsed[line][dot-1].l == ld.cos_langindex && (parsed[line][dot-1].s == ld.cos_localdec_attrindex || parsed[line][dot-1].s == ld.cos_localvar_attrindex)) {
 		// The token before the dot is a declared local variable or public variable 
 
-		const localdeccon = await determineDeclaredLocalVarClass(doc,parsed,line,dot-1,server);
+		const localdeccon = await determineDeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
 		if (localdeccon !== undefined) {
 			result = localdeccon;
 		}
@@ -1957,9 +2087,10 @@ async function getClassMemberContext(doc: TextDocument, parsed: compressedline[]
 		// The token before the dot is an object attribute
 
 		// This is a nested reference, so get the base class of the previous token
-		const prevtokenctxt = await getClassMemberContext(doc,parsed,dot-2,line,server);
-		if (prevtokenctxt.baseclass !== "") {
+		const prevtokenctxt = await getClassMemberContext(doc,parsed,dot-2,line,server,allfiles,inheritedpackages);
+		if (prevtokenctxt.baseclass !== "" && prevtokenctxt.baseclass !== "%Library.DynamicArray" && prevtokenctxt.baseclass !== "%Library.DynamicObject") {
 			// We got a base class for the previous token
+			// Skip JSON base classes because they don't have any UDL Properties
 			const attrtxt = doc.getText(Range.create(Position.create(line,parsed[line][dot-1].p),Position.create(line,parsed[line][dot-1].p+parsed[line][dot-1].c)));
 
 			// Query the database to find the type of this attribute, if it has one
@@ -2342,8 +2473,15 @@ function isMacroDefinedAbove(doc: TextDocument, parsed: compressedline[], line: 
  * @param line The line that the method definition is in.
  * @param server The server that doc is associated with.
  * @param thisparam The parameter that we're looking for.
+ * 
+ * The following optional parameters are only provided when called via computeDiagnostics():
+ * @param allfiles An array of all files in a database.
+ * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-async function findMethodParameterClass(doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec, thisparam: string): Promise<ClassMemberContext | undefined> {
+async function findMethodParameterClass(
+	doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec,
+	thisparam: string, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
+): Promise<ClassMemberContext | undefined> {
 	var result: ClassMemberContext | undefined = undefined;
 	for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 		if (parsed[line][tkn].l == ld.cls_langindex && parsed[line][tkn].s == ld.cls_param_attrindex) {
@@ -2358,7 +2496,7 @@ async function findMethodParameterClass(doc: TextDocument, parsed: compressedlin
 					// The token following the parameter name is "as", so this parameter has a type
 					const clsname = doc.getText(findFullRange(line,parsed,tkn+2,parsed[line][tkn+2].p,parsed[line][tkn+2].p+parsed[line][tkn+2].c));
 					result = {
-						baseclass: await normalizeClassname(doc,parsed,clsname,server,line),
+						baseclass: await normalizeClassname(doc,parsed,clsname,server,line,allfiles,undefined,inheritedpackages),
 						context: "instance"
 					};
 				}
@@ -2374,7 +2512,7 @@ async function findMethodParameterClass(doc: TextDocument, parsed: compressedlin
 						// The token following the "..." is "as", so this parameter has a type
 						const clsname = doc.getText(findFullRange(line,parsed,tkn+3,parsed[line][tkn+3].p,parsed[line][tkn+3].p+parsed[line][tkn+3].c));
 						result = {
-							baseclass: await normalizeClassname(doc,parsed,clsname,server,line),
+							baseclass: await normalizeClassname(doc,parsed,clsname,server,line,allfiles,undefined,inheritedpackages),
 							context: "instance"
 						};
 					}
@@ -2570,8 +2708,15 @@ function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string {
  * @param line The line that the parameter is in.
  * @param tkn The token of the parameter in the line.
  * @param server The server that doc is associated with.
+ * 
+ * The following optional parameters are only provided when called via computeDiagnostics():
+ * @param allfiles An array of all files in a database.
+ * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-async function determineParameterClass(doc: TextDocument, parsed: compressedline[], line: number, tkn: number, server: ServerSpec): Promise<ClassMemberContext | undefined> {
+async function determineParameterClass(
+	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
+	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
+): Promise<ClassMemberContext | undefined> {
 	var result: ClassMemberContext | undefined = undefined;
 	if (doc.languageId === "objectscript-class") {
 		// Parameters can only have a type if they're in a UDL method
@@ -2595,7 +2740,7 @@ async function determineParameterClass(doc: TextDocument, parsed: compressedline
 					for (let mline = j+1; mline < parsed.length; mline++) {
 						// Loop through the line and look for this parameter
 
-						const paramcon = await findMethodParameterClass(doc,parsed,mline,server,thisparam);
+						const paramcon = await findMethodParameterClass(doc,parsed,mline,server,thisparam,allfiles,inheritedpackages);
 						if (paramcon !== undefined) {
 							// We found the parameter
 							result = paramcon;
@@ -2636,8 +2781,15 @@ async function determineParameterClass(doc: TextDocument, parsed: compressedline
  * @param line The line that the declared local variable is in.
  * @param tkn The token of the declared local variable in the line.
  * @param server The server that doc is associated with.
+ * 
+ * The following optional parameters are only provided when called via computeDiagnostics():
+ * @param allfiles An array of all files in a database.
+ * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-async function determineDeclaredLocalVarClass(doc: TextDocument, parsed: compressedline[], line: number, tkn: number, server: ServerSpec): Promise<ClassMemberContext | undefined> {
+async function determineDeclaredLocalVarClass(
+	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
+	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
+): Promise<ClassMemberContext | undefined> {
 	var result: ClassMemberContext | undefined = undefined;
 	var founddim = false;
 	const thisvar = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
@@ -2663,7 +2815,7 @@ async function determineDeclaredLocalVarClass(doc: TextDocument, parsed: compres
 				founddim = dimresult.founddim;
 				if (founddim) {
 					result = {
-						baseclass: await normalizeClassname(doc,parsed,dimresult.class,server,j),
+						baseclass: await normalizeClassname(doc,parsed,dimresult.class,server,j,allfiles,undefined,inheritedpackages),
 						context: "instance"
 					};
 				}
@@ -2700,6 +2852,25 @@ async function getGetDocFormatParam(uri: string, apiVersion: number): Promise<an
 	}]);
 	return (((settingArr[0] === null ? false : settingArr[0]) && apiVersion >= 4 ? true : false) ? {format: "udl-multiline"} : undefined);
 }
+
+/**
+ * Helper method for `computeDiagnostics()` that appends `range` to value of `key` in `map`
+ * if it exists, or creates a new entry for `key` in `map` if it doesn't.
+ * 
+ * @param map Map between ClassMember objects and Ranges in a document.
+ * @param key The key in `map`.
+ * @param range The Range to add to `map`.get(`key`).
+ */
+function addRangeToMapVal(map: Map<string, Range[]>, key: string, range: Range) {
+	let ranges = map.get(key);
+	if (ranges === undefined) {
+		ranges = [range];
+	}
+	else {
+		ranges.push(range);
+	}
+	map.set(key,ranges);
+};
 
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries

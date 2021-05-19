@@ -5,6 +5,7 @@
 - Fix issue [#158](https://github.com/intersystems/language-server/issues/158): Support Intellisense when method arguments appear on multiple lines
 - Fix issue [#161](https://github.com/intersystems/language-server/issues/161): Hovering over macro in CSP file throws an error
 - Fix issue [#162](https://github.com/intersystems/language-server/issues/162): Add DocumentSymbols and FoldingRanges for CSP script tags
+- Fix issue [#163](https://github.com/intersystems/language-server/issues/163): Add Diagnostics for Deprecated class members
 
 ## [1.1.5] - 2021-05-04
 - Fix issue [#150](https://github.com/intersystems/language-server/issues/150): Hovering over blank last line of file causes error
