@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.1.6] - 2021-XX-XX
+## [1.1.6] - 2021-05-24
 - Fix issue [#45](https://github.com/intersystems/language-server/issues/45): When using client side source control, go to definition should use the local file and not open the server version
 - Fix issue [#158](https://github.com/intersystems/language-server/issues/158): Support Intellisense when method arguments appear on multiple lines
 - Fix issue [#161](https://github.com/intersystems/language-server/issues/161): Hovering over macro in CSP file throws an error
