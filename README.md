@@ -20,6 +20,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Classes and routines that don't exist in the database.
   - Invalid UDL Parameter types.
   - Mismatches between declared UDL Parameter types and the assigned value.
+  - Methods, Parameters and Properties that are [Deprecated](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_deprecated).
 - [Folding Ranges](https://code.visualstudio.com/docs/editor/codebasics#_folding) for the following:
   - ObjectScript code blocks (If/ElseIf/Else, Try/Catch, For, While, etc.)
   - UDL class members
@@ -148,6 +149,12 @@ This extension provides the following configuration parameters:
   "type": "boolean",
   "default": true,
   "description": "Controls whether error diagnostics are provided when a class that is being referred to doesn't exist in the database."
+},
+"intersystems.language-server.diagnostics.classMembers": {
+  "scope": "application",
+  "type": "boolean",
+  "default": true,
+  "description": "Controls whether strikethrough warning diagnostics are provided when a class member that is being referred to is deprecated."
 },
 "intersystems.language-server.signaturehelp.documentation": {
   "scope": "application",

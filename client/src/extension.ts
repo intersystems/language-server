@@ -24,6 +24,8 @@ import {
 	TextEdit,
 } from 'vscode-languageclient/node';
 
+import { lte } from "semver";
+
 import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
 
 let client: LanguageClient;
@@ -100,6 +102,15 @@ export async function activate(context: ExtensionContext) {
 		client.onRequest("intersystems/uri/localToVirtual", (uri: string): string => {
 			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
 			return newuri.toString();
+		});
+		client.onRequest("intersystems/uri/forDocument", (document: string): string => {
+			if (lte(objectScriptExt.packageJSON.version,"1.0.10")) {
+				// If the active version of vscode-objectscript doesn't expose
+				// DocumentContentProvider.getUri(), just return the empty string.
+				return "";
+			}
+			const uri: Uri = objectScriptApi.getUriForDocument(document);
+			return uri.toString();
 		});
 		objectScriptApi.onDidChangeConnection()(() => {
 			client.sendNotification("intersystems/server/connectionChange");
