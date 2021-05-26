@@ -267,15 +267,15 @@ type EvaluatableExpressionParams = {
 /**
  * The parameter literal for the `intersystems/refactor/listImportPackages` request.
  */
- type ListImportPackagesParams = {
+type ListImportPackagesParams = {
 	uri: string,
 	classmame: string
 };
 
 /**
- * The parameter literal for the `intersystems/refactor/listImportPackages` request.
+ * The parameter literal for the `intersystems/refactor/listImportPackage` request.
  */
- type AddImportPackagesParams = {
+type AddImportPackageParams = {
 	uri: string,
 	packagename: string
 };
@@ -283,7 +283,7 @@ type EvaluatableExpressionParams = {
 /**
  * The parameter literal for the `intersystems/refactor/addMethod` request.
  */
- type addMethodParams = {
+type addMethodParams = {
 	uri: string,
 	newmethodname: string,
 	lnstart: number,
@@ -8976,8 +8976,8 @@ connection.onRequest("intersystems/refactor/listImportPackages",
 	 }
 );
 
-connection.onRequest("intersystems/refactor/addImportPackages",
-	(params: AddImportPackagesParams): WorkspaceEdit => {
+connection.onRequest("intersystems/refactor/addImportPackage",
+	(params: AddImportPackageParams): WorkspaceEdit => {
 		const parsed = parsedDocuments.get(params.uri);
 		if (parsed === undefined) {
 			return {
@@ -10171,8 +10171,6 @@ connection.onCodeActionResolve(
 		return codeAction;
 	}
 );
-	
-		
 
 // Make the text document manager listen on the connection for open, change and close text document events
 documents.listen(connection);
