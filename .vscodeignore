@@ -10,3 +10,4 @@ server/node_modules/ffi-napi/node_modules/ref-napi/build/**
 server/node_modules/ref-array-napi/node_modules/ref-napi/build/**
 server/node_modules/ref-struct-napi/node_modules/ref-napi/build/**
 testfiles/**
+images/*.gif

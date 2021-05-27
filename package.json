@@ -13,7 +13,7 @@
 	"bugs": {
 		"url": "https://github.com/intersystems/language-server/issues"
 	},
-	"icon": "logo.png",
+	"icon": "images/logo.png",
 	"categories": [
 		"Programming Languages",
 		"Formatters",
