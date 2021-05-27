@@ -47,6 +47,17 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Private variables
   - Public variables
   - [System variables](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_VARIABLES)
+- [QuickFix CodeActions](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) that resolve the following Diagnostics:
+  - [Unqualified class references](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GOBJ_packages#GOBJ_packages_in_classname) in a class definition that don't exist in the database:
+    - Select a package containing the unqualified class name to import.
+  - Invalid UDL Parameter types and mismatches between declared UDL Parameter types and the assigned value:
+    - Remove the invalid UDL Parameter type.
+    - Select a correct UDL Parameter type to replace the invalid one.
+- [Code refactoring CodeActions](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) for the following:
+  - Wrapping a block of ObjectScript code in a [Try/Catch block](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=ATRYCATCHFAQ).
+  ![](images/TryCatch.gif)
+  - Extracting a block of ObjectScript code from an existing method to a new method.
+  ![](images/ExtractMethod.gif)
 
 ## Setup Notes
 
@@ -167,6 +178,12 @@ This extension provides the following configuration parameters:
   "type": "boolean",
   "default": true,
   "description": "Controls whether the extension will suggest that one of the InterSystems default themes be used if neither one is active upon extension activation."
+},
+"intersystems.language-server.refactor.exceptionVariable": {
+  "scope": "application",
+  "type": "string",
+  "default": "ex",
+  "description": "The name of the exception variable inserted in a 'Wrap in Try/Catch' refactor."
 }
 ```
 

@@ -13,7 +13,7 @@
 	"bugs": {
 		"url": "https://github.com/intersystems/language-server/issues"
 	},
-	"icon": "logo.png",
+	"icon": "images/logo.png",
 	"categories": [
 		"Programming Languages",
 		"Formatters",
@@ -46,12 +46,39 @@
 				"command": "intersystems.language-server.overrideClassMembers",
 				"title": "Override Class Members",
 				"category": "InterSystems Language Server"
+			},
+			{
+				"command": "intersystems.language-server.selectParameterType",
+				"title": "Select Parameter Type",
+				"category": "InterSystems Language Server"
+			},
+			{
+				"command": "intersystems.language-server.selectImportPackage",
+				"title": "Select Import Package",
+				"category": "InterSystems Language Server"
+			},
+			{
+				"command": "intersystems.language-server.extractMethodDisposable",
+				"title": "Extract Method",
+				"category": "InterSystems Language Server"
 			}
 		],
 		"menus": {
 			"commandPalette": [
 				{
 					"command": "intersystems.language-server.overrideClassMembers",
+					"when": "false"
+				},
+				{
+					"command": "intersystems.language-server.selectParameterType",
+					"when": "false"
+				},
+				{
+					"command": "intersystems.language-server.selectImportPackage",
+					"when": "false"
+				},
+				{
+					"command": "intersystems.language-server.extractMethodDisposable",
 					"when": "false"
 				}
 			],
@@ -173,6 +200,12 @@
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether the extension will suggest that one of the InterSystems default themes be used if neither one is active upon extension activation."
+				},
+				"intersystems.language-server.refactor.exceptionVariable": {
+					"scope": "application",
+					"type": "string",
+					"default": "ex",
+					"description": "The name of the exception variable inserted in a 'Wrap in Try/Catch' refactor."
 				}
 			}
 		},

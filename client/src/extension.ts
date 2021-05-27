@@ -7,8 +7,7 @@ import {
 	ColorThemeKind,
 	workspace,
 	commands,
-	QuickPickItem,
-	languages
+	languages,
 } from 'vscode';
 
 import {
@@ -17,14 +16,19 @@ import {
 	LanguageClientOptions,
 	ServerOptions,
 	TransportKind,
-	WorkspaceEdit
 } from 'vscode-languageclient/node';
 
 import { lte } from "semver";
 
 import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
+import {
+	extractMethod,
+	overrideClassMembers,
+	selectImportPackage,
+	selectParameterType
+} from './commands';
 
-let client: LanguageClient;
+export let client: LanguageClient;
 
 let serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
 let objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript");
@@ -67,7 +71,7 @@ export async function activate(context: ExtensionContext) {
 		'file',
 		'vscode-remote',
 		'vscode-notebook-cell'
-	]
+	];
 
 	// A document selector to target the right {language, scheme} tuples
 	const documentSelector: DocumentSelector = [];
@@ -206,117 +210,19 @@ export async function activate(context: ExtensionContext) {
 		}
 	}
 
-	// Register the override class member command
-	let overrideCommandDisposable = commands.registerCommand("intersystems.language-server.overrideClassMembers",
-		async () => {
-
-			// Get the open document and check that it's an ObjectScript class
-			const openDoc = window.activeTextEditor.document;
-			if (openDoc.languageId !== "objectscript-class") {
-				// Can only override members in a class
-				return;
-			}
-
-			// Check that this class has a superclass
-			var seenextends = false;
-			for (let linenum = 0; linenum < openDoc.lineCount; linenum++) {
-				const linetxt = openDoc.lineAt(linenum).text;
-				if (linetxt.slice(0,5).toLowerCase() === "class") {
-					// This is the class definition line
-					const linewords = linetxt.replace(/\s{2,}/g," ").split(" ");
-					if (linewords.length > 2 && linewords[2].toLowerCase() === "extends") {
-						seenextends = true;
-					}
-					break;
-				}
-			}
-			if (!seenextends) {
-				// This class has no superclasses, so tell the user and exit
-				window.showInformationMessage("The current class has no superclasses.","Dismiss");
-				return;
-			}
-
-			// Check that we can insert new class members at the cursor position
-			const selection = window.activeTextEditor.selection;
-			var cursorvalid = false;
-			var docposvalid = false;
-			if (openDoc.lineAt(selection.active.line).isEmptyOrWhitespace && selection.isEmpty) {
-				cursorvalid = true;
-			}
-			if (cursorvalid) {
-				docposvalid = await client.sendRequest("intersystems/refactor/validateOverrideCursor",{
-					uri: openDoc.uri.toString(),
-					line: selection.active.line
-				});
-			}
-			if (!cursorvalid || !docposvalid) {
-				// We can't insert new class members at the cursor position, so tell the user and exit
-				window.showInformationMessage("Cursor must be in the class definition body and with nothing selected.","Dismiss");
-				return;
-			}
-
-			// Ask the user to select the type of member that they want to override
-			const selectedType = await window.showQuickPick(["Method","Parameter","Property","Query","Trigger","XData"],{
-				placeHolder: "Select the class member type to override"
-			});
-			if (!selectedType) {
-				// No member type was selected, so exit
-				return;
-			}
-
-			var plural = selectedType+"s";
-			if (selectedType === "Query") {
-				plural = "Queries";
-			}
-			else if (selectedType === "XData") {
-				plural = "XData blocks";
-			}
-			else if (selectedType === "Property") {
-				plural = "Properties";
-			}
-
-			// Ask the server for all overridable members of the selected type
-			const overridableMembers: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listOverridableMembers",{
-				uri: openDoc.uri.toString(),
-				memberType: selectedType
-			});
-			if (overridableMembers.length === 0) {
-				// There are no members of this type to override, so tell the user and exit
-				window.showInformationMessage("There are no inherited "+plural+" that are overridable.","Dismiss");
-				return;
-			}
-
-			// Ask the user to select which members they want to override
-			const selectedMembers = await window.showQuickPick(overridableMembers,{
-				placeHolder: "Select the "+plural+" to override",
-				canPickMany: true
-			});
-			if (!selectedMembers || selectedMembers.length === 0) {
-				// No members were selected, so exit
-				return;
-			}
-
-			// Ask the server to compute the workspace edit that the client should apply
-			const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addOverridableMembers",{
-				uri: openDoc.uri.toString(),
-				members: selectedMembers,
-				cursor: selection.active
-			});
-
-			// Apply the workspace edit
-			workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));
-		}
-	);
-
-	// Add the override class member command to the subscriptions array
-	context.subscriptions.push(overrideCommandDisposable);
-
 	// Initialize the EvaluatableExpressionProvider
-	const evaluatableExpressionProvider = new ObjectScriptEvaluatableExpressionProvider(client);
-	let evaluatableExpressionDisposable = languages.registerEvaluatableExpressionProvider(documentSelector,evaluatableExpressionProvider);
+	const evaluatableExpressionProvider = new ObjectScriptEvaluatableExpressionProvider();
 
-	// Add the EvaluatableExpressionProvider to the subscriptions array
-	context.subscriptions.push(evaluatableExpressionDisposable);
+	context.subscriptions.push(
+		// Register commands
+		commands.registerCommand("intersystems.language-server.overrideClassMembers",overrideClassMembers),
+		commands.registerCommand("intersystems.language-server.selectParameterType",selectParameterType),
+		commands.registerCommand("intersystems.language-server.selectImportPackage",selectImportPackage),
+		commands.registerCommand("intersystems.language-server.extractMethod",extractMethod),
+
+		// Register EvaluatableExpressionProvider
+		languages.registerEvaluatableExpressionProvider(documentSelector,evaluatableExpressionProvider)
+	);
 
 	// Start the client. This will also launch the server
 	client.start();

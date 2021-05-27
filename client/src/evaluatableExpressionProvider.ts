@@ -5,19 +5,15 @@ import {
 	EvaluatableExpression
 } from 'vscode';
 
-import { LanguageClient } from 'vscode-languageclient/node';
+import { client } from './extension';
 
 export class ObjectScriptEvaluatableExpressionProvider implements EvaluatableExpressionProvider {
 
-	private client: LanguageClient;
-
-	constructor(client: LanguageClient) {
-		this.client = client;
-	}
+	constructor() {}
 	
 	provideEvaluatableExpression(document: TextDocument, position: Position): Promise<EvaluatableExpression> {
 		// Have the server do the work
-		return this.client.sendRequest("intersystems/debugger/evaluatableExpression",{
+		return client.sendRequest("intersystems/debugger/evaluatableExpression",{
 			uri: document.uri.toString(),
 			position: position
 		});
