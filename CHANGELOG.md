@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.0] - 2021-XX-XX
+## [1.2.0] - 2021-06-09
 - PR [#165](https://github.com/intersystems/language-server/issues/165): Introduce QuickFixes and code refactoring functionality
 - Allow extension in untrusted workspaces
 
