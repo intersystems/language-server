@@ -40,6 +40,11 @@
 		"onFileSystem:objectscript"
 	],
 	"main": "./client/out/extension",
+	"capabilities": {
+		"untrustedWorkspaces": {
+			"supported": true
+		}
+	},
 	"contributes": {
 		"commands": [
 			{

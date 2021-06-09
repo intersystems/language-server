@@ -1,7 +1,8 @@
 # Changelog
 
 ## [1.2.0] - 2021-XX-XX
-- Introduce QuickFixes and code refactoring functionality.
+- PR [#165](https://github.com/intersystems/language-server/issues/165): Introduce QuickFixes and code refactoring functionality
+- Allow extension in untrusted workspaces
 
 ## [1.1.6] - 2021-05-24
 - Fix issue [#45](https://github.com/intersystems/language-server/issues/45): When using client side source control, go to definition should use the local file and not open the server version
