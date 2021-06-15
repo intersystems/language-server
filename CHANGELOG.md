@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.2.1] - 2021-XX-XX
+- Fix issue [#168](https://github.com/intersystems/language-server/issues/168): Go to definition opens wrong routine when two labels are separated by a comma
+
 ## [1.2.0] - 2021-06-09
 - PR [#165](https://github.com/intersystems/language-server/issues/165): Introduce QuickFixes and code refactoring functionality
 - Allow extension in untrusted workspaces

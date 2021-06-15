@@ -5623,7 +5623,7 @@ connection.onDefinition(
                         }
 					}
 				}
-				else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex ) {
+				else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex) {
 					// This is a macro
 
 					// Get the details of this class
@@ -6062,18 +6062,33 @@ connection.onDefinition(
 						labelrange.start.character = labelrange.start.character-2;
 					}
 
-					// Get the text of the routine name
+					// Get the text of the routine name, if it's present
 					var routine = "";
-					for (let j = i+1; j < parsed[params.position.line].length; j++) {
-						if (parsed[params.position.line][j].l == ld.cos_langindex && parsed[params.position.line][j].s == ld.cos_rtnname_attrindex) {
-							// This is the routine name
-							routine = doc.getText(
-								Range.create(
-									Position.create(params.position.line,parsed[params.position.line][j].p),
-									Position.create(params.position.line,parsed[params.position.line][j].p+parsed[params.position.line][j].c)
-								)
-							);
-							break;
+					var labelidx = i;
+					if (parsed[params.position.line][i].s == ld.cos_extrfn_attrindex) {
+						labelidx = i+1;
+					}
+					if (
+						labelidx+2 < parsed[params.position.line].length &&
+						parsed[params.position.line][labelidx+1].s == ld.cos_delim_attrindex &&
+						doc.getText(Range.create(
+							Position.create(params.position.line,parsed[params.position.line][labelidx+1].p),
+							Position.create(params.position.line,parsed[params.position.line][labelidx+1].p+parsed[params.position.line][labelidx+1].c)
+						)) === "^"
+					) {
+						// The token following the label is a caret, so this label has a routine name
+
+						for (let j = labelidx+2; j < parsed[params.position.line].length; j++) {
+							if (parsed[params.position.line][j].l == ld.cos_langindex && parsed[params.position.line][j].s == ld.cos_rtnname_attrindex) {
+								// This is the routine name
+								routine = doc.getText(
+									Range.create(
+										Position.create(params.position.line,parsed[params.position.line][j].p),
+										Position.create(params.position.line,parsed[params.position.line][j].p+parsed[params.position.line][j].c)
+									)
+								);
+								break;
+							}
 						}
 					}
 
@@ -6122,7 +6137,11 @@ connection.onDefinition(
 											break;
 										}
 									}
-									else if (respdata.data.result.content[k].substr(0,label.length).toLowerCase() === label.toLowerCase()) {
+									else if (
+										respdata.data.result.content[k].substr(0,label.length) === label &&
+										(respdata.data.result.content[k].trim().length === label.length || // The label is the whole line
+										respdata.data.result.content[k].charAt(label.length) === "(") // The label is followed by (
+									) {
 										// This is the label definition
 										targetselrange = Range.create(Position.create(k,0),Position.create(k,label.length));
 										targetrange.start = Position.create(k,0);
