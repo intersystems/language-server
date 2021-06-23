@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.2.2] - 2021-XX-XX
+- Fix issue [#169](https://github.com/intersystems/language-server/issues/169): Syntax error Diagnostics are not calculated for Parameter definitions
+
 ## [1.2.1] - 2021-06-16
 - Fix issue [#29](https://github.com/intersystems/language-server/issues/29): Semantic token coloring messes up upon deletion
 - Fix issue [#168](https://github.com/intersystems/language-server/issues/168): Go to definition opens wrong routine when two labels are separated by a comma

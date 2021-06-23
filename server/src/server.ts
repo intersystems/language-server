@@ -583,6 +583,34 @@ async function computeDiagnostics(doc: TextDocument) {
 								}
 							}
 						}
+
+						// Loop through the line to capture any syntax errors
+						for (let ptkn = 1; ptkn < parsed[i].length; ptkn++) {
+							if (parsed[i][ptkn].s == ld.error_attrindex) {
+								if (
+									parsed[i][ptkn-1].s == ld.error_attrindex && doc.getText(Range.create(
+										Position.create(i,parsed[i][ptkn].p-1),
+										Position.create(i,parsed[i][ptkn].p)
+									)) !== " "
+								) {
+									// The previous token is an error without a space in between, so extend the existing syntax error Diagnostic to cover this token
+									diagnostics[diagnostics.length-1].range.end = Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c);
+								}
+								else {
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: {
+											start: Position.create(i,parsed[i][ptkn].p),
+											end: Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c)
+										},
+										message: "Syntax error.",
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
+							}
+						}
+
 						break;
 					}
 					else if (j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex && doc.getText(Range.create(Position.create(i,0),Position.create(i,6))).toLowerCase() === "import") {
