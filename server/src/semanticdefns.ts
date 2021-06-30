@@ -9,14 +9,14 @@ export const ERRORFOREGROUND = "#E21111";
 
 
 // the JSON for this should be pasted into settings
-export function colorsettings(): semanticrules {
+export function colorsettings(monikerlist: string[]): semanticrules {
     
     let sr: semanticrules = {};
 
-    for (let monikerindex in selectedmonikerlist) {
+    for (let monikerindex in monikerlist) {
 
         let srforlang: semanticrulesforlang = {};
-        const moniker: string = selectedmonikerlist[monikerindex];
+        const moniker: string = monikerlist[monikerindex];
         const monikerattrinfo: attrinfo[] = (<attrinforesult><unknown>(GETLANGUAGEATTRINFO(moniker))).attrinfo;
     
         for (let attrindex in monikerattrinfo) {
@@ -26,7 +26,7 @@ export function colorsettings(): semanticrules {
                 srforlang[attrname] = {'foreground': ERRORFOREGROUND, 'fontStyle': "underline bold"};
             }
             else {
-                srforlang[attrname] = {'foreground': '#' + fliprgb(cai.foreground)};
+                srforlang[attrname] = {'foreground': '#' + torgb(cai.foreground)};
             }
         }
 
@@ -83,6 +83,44 @@ function toSettingsKey(moniker: string, attrdescription: string): string {
 	return moniker + '_' + attrdescription.replace(/[^a-z0-9+]+/gi,'');
 }
 
-export function fliprgb(studiorgb: string): string {
-    return studiorgb.substr(4,2) + studiorgb.substr(2,2) + studiorgb.substr(0,2);
+export function torgb(studiocolor: string): string {
+	
+	if (studiocolor.length != 8) {
+		throw Error('INTERNAL ERROR: color should be 8 hex digits');
+	}
+
+	if (!studiocolor.match(/[A-Fa-f0-9]{8}/)) {
+		console.log('');
+		console.log('MISMATCH: ' + studiocolor);
+		throw Error('stopped');
+	}
+
+	const flag: string = studiocolor.substr(0,2);
+	const index: string = studiocolor.substr(2,6);
+
+	// Windows system color ..
+	if (flag === '80') {
+
+		switch (index) {
+
+			// WINDOW color
+			case '000005':
+				return 'FFFFFF'; // white
+
+			// WINDOWTEXT color
+			case '000008':
+				return '000000'; // black
+
+			// ?? - render as black
+			default:
+				return '000000'; // black
+		}
+	}
+
+	// .. BGR color ..
+	else {
+
+		// convert BGR to RGB
+		return index.substr(4,2) + index.substr(2,2) + index.substr(0,2);
+	}
 }

@@ -10,7 +10,7 @@ export const LANGUAGES: languageinfo[] = [
     {'moniker': 'BAS', 'description': 'Basic'},         // 0x04
     {'moniker': 'HTML', 'description': 'HTML'},         // 0x05
     {'moniker': 'NULL', 'description': 'Null'},         // 0x06
-    {'moniker': 'xSPP', 'description': 'was SPP'},      // 0x07 - will be Python
+    {'moniker': 'PYTHON', 'description': 'Python'},     // 0x07
     {'moniker': 'OSQL', 'description': 'OSQL'},         // 0x08
     {'moniker': 'XML', 'description': '(none)'},        // 0x09
     {'moniker': 'ISQL', 'description': '(none)'},       // 0x0A

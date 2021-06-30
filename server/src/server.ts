@@ -2883,7 +2883,7 @@ function addRangeToMapVal(map: Map<string, Range[]>, key: string, range: Range) 
 
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries
-	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL");
+	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL,PYTHON");
 
 	return {
 		capabilities: {

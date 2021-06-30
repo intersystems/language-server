@@ -5,8 +5,6 @@ export const dumplangattrinfo = false;
 
 export const dumpstudiolegend = false;
 
-export const dumpcolorsettings = false;
-
 export const dumplanguages = false;
 
 export const parserlogcompressedresult = false;

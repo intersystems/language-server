@@ -21,7 +21,21 @@
 			"port": 6009,
 			"restart": true,
 			"outFiles": ["${workspaceRoot}/server/out/**/*.js"]
-		}
+		},
+		{
+            "type": "node",
+            "name": "makeattributearray",
+            "program": "${workspaceRoot}/server/out/makeattributearray.js",
+            "cwd": "${workspaceFolder}/server/out",
+            "request": "launch"
+        },
+        {
+            "type": "node",
+            "name": "makecolorsettings",
+            "program": "${workspaceRoot}/server/out/makecolorsettings.js",
+            "cwd": "${workspaceFolder}/server/out",
+            "request": "launch"
+        }
 	],
 	"compounds": [
 		{

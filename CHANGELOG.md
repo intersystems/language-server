@@ -1,7 +1,9 @@
 # Changelog
 
-## [1.2.2] - 2021-XX-XX
+## [1.2.2] - 2021-06-30
 - Fix issue [#169](https://github.com/intersystems/language-server/issues/169): Syntax error Diagnostics are not calculated for Parameter definitions
+- Fix issue [#172](https://github.com/intersystems/language-server/issues/172): Internally reported parser bugs
+- Fix issue [#173](https://github.com/intersystems/language-server/issues/173): Embedded Python support
 
 ## [1.2.1] - 2021-06-16
 - Fix issue [#29](https://github.com/intersystems/language-server/issues/29): Semantic token coloring messes up upon deletion

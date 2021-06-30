@@ -4,7 +4,7 @@
 	"description": "A language server for InterSystems ObjectScript.",
 	"author": "InterSystems Corporation",
 	"license": "SEE LICENSE IN LICENSE.txt",
-	"version": "1.2.1",
+	"version": "1.2.2",
 	"publisher": "intersystems",
 	"repository": {
 		"type": "github",
@@ -1592,6 +1592,81 @@
 				"id": "CLS_KeywordTextValue",
 				"superType": "ISC_StringLiteral",
 				"description": "UDL keyword text value token."
+			},
+			{
+				"id": "PYTHON_Error",
+				"superType": "ISC_Error",
+				"description": "Python error token."
+			},
+			{
+				"id": "PYTHON_Comment",
+				"superType": "ISC_Comment",
+				"description": "Python comment token."
+			},
+			{
+				"id": "PYTHON_String",
+				"superType": "ISC_StringLiteral",
+				"description": "Python string token."
+			},
+			{
+				"id": "PYTHON_Delimiter",
+				"superType": "ISC_Delimiter",
+				"description": "Python delimiter token."
+			},
+			{
+				"id": "PYTHON_Number",
+				"superType": "ISC_NumericLiteral",
+				"description": "Python integer number token."
+			},
+			{
+				"id": "PYTHON_FloatingPoint",
+				"superType": "ISC_NumericLiteral",
+				"description": "Python floating point number token."
+			},
+			{
+				"id": "PYTHON_Name",
+				"superType": "ISC_LocalVariable",
+				"description": "Python name."
+			},
+			{
+				"id": "PYTHON_LineContinuation",
+				"superType": "ISC_Delimiter",
+				"description": "Python line continuation."
+			},
+			{
+				"id": "PYTHON_Keyword",
+				"superType": "ISC_Keyword",
+				"description": "Python keyword."
+			},
+			{
+				"id": "PYTHON_DefinitionKeyword",
+				"superType": "ISC_Keyword",
+				"description": "Python definition keyword."
+			},
+			{
+				"id": "PYTHON_ExpressionKeyword",
+				"superType": "ISC_Keyword",
+				"description": "Python expression keyword"
+			},
+			{
+				"id": "PYTHON_StatementKeyword",
+				"superType": "ISC_Keyword",
+				"description": "Python statement keyword"
+			},
+			{
+				"id": "PYTHON_Neutral",
+				"superType": "ISC_Neutral",
+				"description": "Python error recovery"
+			},
+			{
+				"id": "PYTHON_Operator",
+				"superType": "ISC_Operator",
+				"description": "Python operator"
+			},
+			{
+				"id": "PYTHON_AssignmentOperator",
+				"superType": "ISC_Operator",
+				"description": "Python assignment operator"
 			}
 		],
 		"semanticTokenScopes": [
