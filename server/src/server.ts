@@ -2800,40 +2800,104 @@ async function determineDeclaredLocalVarClass(
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext | undefined> {
 	var result: ClassMemberContext | undefined = undefined;
-	var founddim = false;
 	const thisvar = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
-	// Scan to the top of the method to find the #Dim
-	for (let j = line; j >= 0; j--) {
-		if (parsed[j].length === 0) {
-			continue;
-		}
-		else if (doc.languageId === "objectscript-class" && parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
-			// This is the definition for the class member that the variable is in
-			break;
-		}
-		else if (doc.languageId === "objectscript" && parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex) {
-			// This is the label for the code block that the variable is in
-			break;
-		}
-		else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
-			// This is a preprocessor command
-			const command = doc.getText(Range.create(Position.create(j,parsed[j][0].p),Position.create(j,parsed[j][1].p+parsed[j][1].c)));
-			if (command.toLowerCase() === "#dim") {
-				// This is a #Dim
-				const dimresult = parseDimLine(doc,parsed,j,thisvar);
-				founddim = dimresult.founddim;
-				if (founddim) {
-					result = {
-						baseclass: await normalizeClassname(doc,parsed,dimresult.class,server,j,allfiles,undefined,inheritedpackages),
-						context: "instance"
-					};
-				}
+
+	if (thisvar === "%request") {
+		result = {
+			baseclass: "%CSP.Request",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%response") {
+		result = {
+			baseclass: "%CSP.Response",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%session") {
+		result = {
+			baseclass: "%CSP.Session",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%code") {
+		result = {
+			baseclass: "%Stream.MethodGenerator",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%class") {
+		result = {
+			baseclass: "%Dictionary.ClassDefinition",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%method") {
+		result = {
+			baseclass: "%Dictionary.MethodDefinition",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%compiledclass") {
+		result = {
+			baseclass: "%Dictionary.CompiledClass",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%compiledmethod" || thisvar === "%objcompiledmethod") {
+		result = {
+			baseclass: "%Dictionary.CompiledMethod",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%trigger") {
+		result = {
+			baseclass: "%Dictionary.TriggerDefinition",
+			context: "instance"
+		};
+	}
+	else if (thisvar === "%compiledtrigger") {
+		result = {
+			baseclass: "%Dictionary.CompiledTrigger",
+			context: "instance"
+		};
+	}
+	else {
+		// Scan to the top of the method to find the #Dim
+		var founddim = false;
+		for (let j = line; j >= 0; j--) {
+			if (parsed[j].length === 0) {
+				continue;
 			}
-			if (founddim) {
+			else if (doc.languageId === "objectscript-class" && parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+				// This is the definition for the class member that the variable is in
 				break;
+			}
+			else if (doc.languageId === "objectscript" && parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex) {
+				// This is the label for the code block that the variable is in
+				break;
+			}
+			else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
+				// This is a preprocessor command
+				const command = doc.getText(Range.create(Position.create(j,parsed[j][0].p),Position.create(j,parsed[j][1].p+parsed[j][1].c)));
+				if (command.toLowerCase() === "#dim") {
+					// This is a #Dim
+					const dimresult = parseDimLine(doc,parsed,j,thisvar);
+					founddim = dimresult.founddim;
+					if (founddim) {
+						result = {
+							baseclass: await normalizeClassname(doc,parsed,dimresult.class,server,j,allfiles,undefined,inheritedpackages),
+							context: "instance"
+						};
+					}
+				}
+				if (founddim) {
+					break;
+				}
 			}
 		}
 	}
+
 	return result;
 }
 
