@@ -6293,7 +6293,7 @@ connection.onDefinition(
 								else {
 									const firstwordrange = Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c));
 									const firstwordtext = doc.getText(firstwordrange);
-									if (firstwordtext.toLowerCase() === label.toLowerCase()) {
+									if (firstwordtext === label) {
 										// This is the correct label
 										targetselrange = firstwordrange;
 										targetrange.start = Position.create(line,0);

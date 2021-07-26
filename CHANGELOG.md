@@ -2,6 +2,7 @@
 
 ## [1.2.3] - 2021-XX-XX
 - Fix issue [#170](https://github.com/intersystems/language-server/issues/170): Automatically provide intellisense for certain % variables
+- Fix issue [#178](https://github.com/intersystems/language-server/issues/178): Go to definition (F12) on Labels Case-Sensitive issue
 
 ## [1.2.2] - 2021-06-30
 - Fix issue [#169](https://github.com/intersystems/language-server/issues/169): Syntax error Diagnostics are not calculated for Parameter definitions
