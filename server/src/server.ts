@@ -6230,9 +6230,16 @@ connection.onDefinition(
 										}
 									}
 									else if (
-										respdata.data.result.content[k].substr(0,label.length) === label &&
-										(respdata.data.result.content[k].trim().length === label.length || // The label is the whole line
-										respdata.data.result.content[k].charAt(label.length) === "(") // The label is followed by (
+										respdata.data.result.content[k].slice(0,label.length) === label &&
+										(
+											respdata.data.result.content[k].trim().length === label.length || // The label is the whole line
+											/ |\t|\(/.test(respdata.data.result.content[k].charAt(label.length)) || // The label is followed by space, tab or (
+											// The label is followed by a comment
+											respdata.data.result.content[k].slice(label.length).startsWith(";") ||
+											respdata.data.result.content[k].slice(label.length).startsWith("##;") ||
+											respdata.data.result.content[k].slice(label.length).startsWith("//") ||
+											respdata.data.result.content[k].slice(label.length).startsWith("/*")
+										)
 									) {
 										// This is the label definition
 										targetselrange = Range.create(Position.create(k,0),Position.create(k,label.length));
