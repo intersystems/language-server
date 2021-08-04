@@ -4,6 +4,7 @@
 - Fix issue [#170](https://github.com/intersystems/language-server/issues/170): Automatically provide intellisense for certain % variables
 - Fix issue [#178](https://github.com/intersystems/language-server/issues/178): Go to definition (F12) on Labels Case-Sensitive issue
 - Fix issue [#180](https://github.com/intersystems/language-server/issues/180): Go to definition on routine label in another routine doesn't take you to the label
+- Fix issue [#181](https://github.com/intersystems/language-server/issues/181): Else command incorrectly shortened to "e" during formatting
 
 ## [1.2.2] - 2021-06-30
 - Fix issue [#169](https://github.com/intersystems/language-server/issues/169): Syntax error Diagnostics are not calculated for Parameter definitions
