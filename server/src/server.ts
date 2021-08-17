@@ -32,7 +32,9 @@ import {
 	SemanticTokensParams,
 	SemanticTokensDeltaParams,
 	CodeActionKind,
-	DiagnosticTag
+	DiagnosticTag,
+	DocumentLinkParams,
+	DocumentLink
 } from 'vscode-languageserver/node';
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -2337,7 +2339,7 @@ export async function getServerSpec(uri: string): Promise<ServerSpec> {
  * 
  * @param paramsUri The URI of the document that the definition request was made on.
  * @param filename The name of the file that contains the definition.
- * @param ext The extension of the file that contains the definition.
+ * @param ext The extension of the file that contains the definition, including the leading dot.
  */
 async function createDefinitionUri(paramsUri: string, filename: string, ext: string): Promise<string> {
 	try {
@@ -2982,6 +2984,9 @@ connection.onInitialize((params: InitializeParams) => {
 					CodeActionKind.Refactor,
 					CodeActionKind.QuickFix
 				],
+				resolveProvider: true
+			},
+			documentLinkProvider: {
 				resolveProvider: true
 			}
 		}
@@ -6831,6 +6836,15 @@ connection.onDocumentSymbol(
 		if (doc.languageId === "objectscript-class") {
 			// Loop through the file and look for the class definition and class members
 
+			const isValidKeyword = (keyword: string): boolean => {
+				return (
+					keyword !== "import" &&
+					keyword.indexOf("include") === -1 &&
+					keyword !== "byref" &&
+					keyword !== "byval" &&
+					keyword !== "output"
+				);
+			};
 			var cls: DocumentSymbol = {
 				name: "",
 				kind: SymbolKind.Class,
@@ -6846,7 +6860,8 @@ connection.onDocumentSymbol(
 					// This line starts with a UDL keyword
 					
 					const keywordtext = doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c)));
-					if (keywordtext.toLowerCase() === "class") {
+					const keywordtextlower = keywordtext.toLowerCase();
+					if (keywordtextlower === "class") {
 						// This is the class definition
 						
 						// Find the last non-empty line
@@ -6864,7 +6879,7 @@ connection.onDocumentSymbol(
 						cls.name = doc.getText(cls.selectionRange);
 						cls.range = Range.create(Position.create(line,0),Position.create(lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c));
 					}
-					else if (keywordtext.toLowerCase() !== "import" && keywordtext.toLowerCase().indexOf("include") === -1) {
+					else if (isValidKeyword(keywordtextlower)) {
 						// This is a class member definition
 
 						// Loop through the file from this line to find the next class member
@@ -6873,8 +6888,16 @@ connection.onDocumentSymbol(
 							if (parsed[nl].length === 0) {
 								continue;
 							}
-							if (parsed[nl][0].l === ld.cls_langindex && (parsed[nl][0].s === ld.cls_keyword_attrindex || parsed[nl][0].s === ld.cls_desc_attrindex)) {
-								break;
+							if (parsed[nl][0].l === ld.cls_langindex) {
+								if (parsed[nl][0].s === ld.cls_desc_attrindex) {
+									break;
+								}
+								if (parsed[nl][0].s === ld.cls_keyword_attrindex) {
+									const nextkeytext = doc.getText(Range.create(nl,parsed[nl][0].p,nl,parsed[nl][0].p+parsed[nl][0].c)).toLowerCase();
+									if (isValidKeyword(nextkeytext)) {
+										break;
+									}
+								}
 							}
 							lastnonempty = nl;
 						}
@@ -6903,16 +6926,16 @@ connection.onDocumentSymbol(
 						}
 
 						var kind: SymbolKind = SymbolKind.Property;
-						if (keywordtext.toLowerCase().indexOf("method") !== -1 || keywordtext.toLowerCase() === "query") {
+						if (keywordtextlower.indexOf("method") !== -1 || keywordtextlower === "query") {
 							kind = SymbolKind.Method;
 						}
-						else if (keywordtext.toLowerCase() === "parameter") {
+						else if (keywordtextlower === "parameter") {
 							kind = SymbolKind.Constant;
 						}
-						else if (keywordtext.toLowerCase() === "index") {
+						else if (keywordtextlower === "index") {
 							kind = SymbolKind.Key;
 						}
-						else if (keywordtext.toLowerCase() === "xdata" || keywordtext.toLowerCase() === "storage") {
+						else if (keywordtextlower === "xdata" || keywordtextlower === "storage") {
 							kind = SymbolKind.Struct;
 						}
 
@@ -8571,6 +8594,91 @@ connection.onRequest("intersystems/refactor/addMethod",addMethod);
 connection.onCodeAction(onCodeAction);
 
 connection.onCodeActionResolve(onCodeActionResolve);
+
+connection.onDocumentLinks(
+	(params: DocumentLinkParams): DocumentLink[] | null => {
+		const parsed = parsedDocuments.get(params.textDocument.uri);
+		if (parsed === undefined) {return null;}
+		const doc = documents.get(params.textDocument.uri);
+		if (doc === undefined) {return null;}
+		if (doc.languageId !== "objectscript-class") {return null;}
+		let result: DocumentLink[] = [];
+
+		// Loop through the class and look for documentation comments
+		const classregex = new RegExp("<class>([^<>\/]*)<\/class>","gi");
+		const memberregex = new RegExp("(?:<method>([^<>\/]*)<\/method>)|(?:<property>([^<>\/]*)<\/property>)|(?:<query>([^<>\/]*)<\/query>)","gi");
+		for (let line = 0; line < parsed.length; line++) {
+			if (
+				parsed[line].length > 0 &&
+				parsed[line][0].l === ld.cls_langindex &&
+				parsed[line][0].s === ld.cls_desc_attrindex
+			) {
+				// This is a UDL documentation line
+				const linetext = doc.getText(Range.create(line,0,line+1,0));
+				let matcharr: any;
+				while ((matcharr = classregex.exec(linetext)) !== null) {
+					// This is a <CLASS> HTML tag
+					result.push({
+						range: Range.create(line,matcharr.index+7,line,matcharr.index+7+matcharr[1].length),
+						tooltip: "Open this class in a new editor tab",
+						data: {
+							uri: params.textDocument.uri,
+							clsName: matcharr[1]
+						}
+					});
+				}
+				while ((matcharr = memberregex.exec(linetext)) !== null) {
+					let linkRange = Range.create(0,0,0,0);
+					let commandArgs: string[] = [params.textDocument.uri];
+					if (matcharr[1] !== undefined) {
+						// This is a <METHOD> HTML tag
+						linkRange = Range.create(line,matcharr.index+8,line,matcharr.index+8+matcharr[1].length);
+						commandArgs[1] = "method";
+						commandArgs[2] = matcharr[1];
+					}
+					else if (matcharr[2] !== undefined) {
+						// This is a <PROPERTY> HTML tag
+						linkRange = Range.create(line,matcharr.index+10,line,matcharr.index+10+matcharr[2].length);
+						commandArgs[1] = "property";
+						commandArgs[2] = matcharr[2];
+					}
+					else {
+						// This is a <QUERY> HTML tag
+						linkRange = Range.create(line,matcharr.index+7,line,matcharr.index+7+matcharr[3].length);
+						commandArgs[1] = "query";
+						commandArgs[2] = matcharr[3];
+					}
+					result.push({
+						range: linkRange,
+						tooltip: `Go to this ${commandArgs[1]} definition`,
+						target: `command:intersystems.language-server.showSymbolInClass?${encodeURIComponent(JSON.stringify(commandArgs))}`
+					});
+				}
+			}
+		}
+
+		return result;
+	}
+);
+
+connection.onDocumentLinkResolve(
+	async (link: DocumentLink): Promise<DocumentLink> => {
+		const parsed = parsedDocuments.get(link.data.uri);
+		if (parsed === undefined) {return link;}
+		const doc = documents.get(link.data.uri);
+		if (doc === undefined) {return link;}
+		const server: ServerSpec = await getServerSpec(link.data.uri);
+
+		// Normalize the class name if there are imports
+		let normalizedname = await normalizeClassname(doc,parsed,link.data.clsName,server,link.range.start.line);
+		if (normalizedname !== "") {
+			// Get the uri for this class
+			link.target = await createDefinitionUri(link.data.uri,normalizedname,".cls");
+		}
+
+		return link;
+	}
+);
 
 // Make the text document manager listen on the connection for open, change and close text document events
 documents.listen(connection);

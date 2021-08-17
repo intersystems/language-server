@@ -23,6 +23,7 @@ import { lte } from "semver";
 import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
 import {
 	extractMethod,
+	showSymbolInClass,
 	overrideClassMembers,
 	selectImportPackage,
 	selectParameterType
@@ -219,6 +220,7 @@ export async function activate(context: ExtensionContext) {
 		commands.registerCommand("intersystems.language-server.selectParameterType",selectParameterType),
 		commands.registerCommand("intersystems.language-server.selectImportPackage",selectImportPackage),
 		commands.registerCommand("intersystems.language-server.extractMethod",extractMethod),
+		commands.registerCommand("intersystems.language-server.showSymbolInClass",showSymbolInClass),
 
 		// Register EvaluatableExpressionProvider
 		languages.registerEvaluatableExpressionProvider(documentSelector,evaluatableExpressionProvider)

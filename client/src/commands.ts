@@ -6,6 +6,9 @@ import {
 	QuickPickItem,
 	Range,
 	Position,
+	DocumentSymbol,
+	TextEditorRevealType,
+	Selection
 } from 'vscode';
 
 import { WorkspaceEdit, TextEdit } from 'vscode-languageclient/node';
@@ -275,5 +278,29 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 		activeEditor.setDecorations(decoration,[range,range2]);
 		await new Promise(r => setTimeout(r, timeout)); 
 		setTimeout(function(){decoration.dispose();}, 0); 
+	}
+}
+
+/**
+ * Callback function for the `intersystems.language-server.showSymbolInClass` command.
+ */
+export async function showSymbolInClass(uri: string, memberType: string, memberName: string) {
+	const uriObj = Uri.parse(uri);
+	if (!uriObj.path.toLowerCase().endsWith("cls")) {
+		return;
+	}
+	// Find the document symbol for this class member
+	const symbols: DocumentSymbol[] = await commands.executeCommand("vscode.executeDocumentSymbolProvider", uriObj);
+	if (!symbols) {
+		return;
+	}
+	const symbol = symbols[0].children.find(
+		(symbol) => symbol.detail.toLowerCase().includes(memberType.toLowerCase()) && symbol.name === memberName
+	);
+	if (symbol !== undefined) {
+		// Show the symbol in the editor
+		const editor = await window.showTextDocument(uriObj);
+		editor.selection = new Selection(symbol.selectionRange.start, symbol.selectionRange.end);
+    	editor.revealRange(symbol.selectionRange, TextEditorRevealType.InCenter);
 	}
 }

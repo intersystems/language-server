@@ -58,6 +58,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   ![](images/TryCatch.gif)
   - Extracting a block of ObjectScript code from an existing method to a new method.
   ![](images/ExtractMethod.gif)
+- [Document Links](https://code.visualstudio.com/api/references/vscode-api#DocumentLink) for [CLASS, METHOD, PROPERTY and QUERY HTML tags](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GOBJ_classes#GOBJ_classdoc_html) in UDL documentation comments.
 
 ## Setup Notes
 

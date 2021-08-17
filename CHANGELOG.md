@@ -5,6 +5,8 @@
 - Fix issue [#178](https://github.com/intersystems/language-server/issues/178): Go to definition (F12) on Labels Case-Sensitive issue
 - Fix issue [#180](https://github.com/intersystems/language-server/issues/180): Go to definition on routine label in another routine doesn't take you to the label
 - Fix issue [#181](https://github.com/intersystems/language-server/issues/181): Else command incorrectly shortened to "e" during formatting
+- Fix issue [#183](https://github.com/intersystems/language-server/issues/183): ByRef and Output variables are present in the "Outline" section of a file when multilineMethodArgs is true
+- Fix issue [#184](https://github.com/intersystems/language-server/issues/184): Provide DocumentLinks for HTML tags in class documentation blocks
 
 ## [1.2.2] - 2021-06-30
 - Fix issue [#169](https://github.com/intersystems/language-server/issues/169): Syntax error Diagnostics are not calculated for Parameter definitions
