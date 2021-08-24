@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.3] - 2021-XX-XX
+## [1.2.3] - 2021-08-24
 - Fix issue [#170](https://github.com/intersystems/language-server/issues/170): Automatically provide intellisense for certain % variables
 - Fix issue [#178](https://github.com/intersystems/language-server/issues/178): Go to definition (F12) on Labels Case-Sensitive issue
 - Fix issue [#180](https://github.com/intersystems/language-server/issues/180): Go to definition on routine label in another routine doesn't take you to the label
