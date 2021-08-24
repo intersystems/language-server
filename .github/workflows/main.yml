@@ -4,12 +4,6 @@ on:
   push:
     branches:
       - master
-    paths-ignore:
-      - "docs/**"
-      - ".vscode/**"
-      - ".github/**"
-      - "*.md"
-      - "**/*.md"
   pull_request:
     branches:
       - master
