@@ -112,7 +112,7 @@ type LanguageServerConfiguration = {
 		routines: boolean,
 		parameters: boolean,
 		classes: boolean,
-		classMembers: boolean
+		deprecation: boolean
 	},
 	signaturehelp: {
 		documentation: boolean
@@ -327,15 +327,15 @@ async function computeDiagnostics(doc: TextDocument) {
 		var files: StudioOpenDialogFile[] = [];
 		var inheritedpackages: string[] | undefined = undefined;
 		var querydata: QueryData;
-		if (settings.diagnostics.routines || settings.diagnostics.classes || settings.diagnostics.classMembers) {
-			if (settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.classMembers)) {
+		if (settings.diagnostics.routines || settings.diagnostics.classes || settings.diagnostics.deprecation) {
+			if (settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
 				// Get all classes and routines
 				querydata = {
 					query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition UNION ALL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
 					parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0]
 				};
 			}
-			else if (!settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.classMembers)) {
+			else if (!settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
 				// Get all classes
 				querydata = {
 					query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition",
@@ -354,7 +354,7 @@ async function computeDiagnostics(doc: TextDocument) {
 				files = respdata.data.result.content;
 			}
 		}
-		if (doc.languageId === "objectscript-class" && (settings.diagnostics.classes || settings.diagnostics.classMembers)) {
+		if (doc.languageId === "objectscript-class" && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
 			var clsname = "";
 			var hassupers = false;
 
@@ -417,11 +417,12 @@ async function computeDiagnostics(doc: TextDocument) {
 
 		const startline: number = (firstlineisroutine) ? 1 : 0;
 
-		// Store the name, class and ranges for all class members that we see if settings.diagnostics.classMembers is true
-		// Map keys are of the form "class:::member"
+		// Store the name, class and ranges for all class members that we see if settings.diagnostics.deprecation is true
+		// Map keys are of the form "class:::member", except for classes
 		const methods: Map<string, Range[]> = new Map();
 		const parameters: Map<string, Range[]> = new Map();
 		const properties: Map<string, Range[]> = new Map();
+		const classes: Map<string, Range[]> = new Map();
 
 		// Loop through the parsed document to find errors and warnings
 		for (let i = startline; i < parsed.length; i++) {
@@ -623,7 +624,7 @@ async function computeDiagnostics(doc: TextDocument) {
 						files.length > 0 &&
 						((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
 						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
-						settings.diagnostics.classes
+						(settings.diagnostics.classes || settings.diagnostics.deprecation)
 					) {
 						// This is a class name
 
@@ -642,6 +643,7 @@ async function computeDiagnostics(doc: TextDocument) {
 						// Get the full text of the selection
 						let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
 						let word = doc.getText(wordrange);
+						let dollarsystem = false;
 						if (word.charAt(0) === ".") {
 							// This might be $SYSTEM.ClassName
 							const prevseven = doc.getText(Range.create(
@@ -650,15 +652,20 @@ async function computeDiagnostics(doc: TextDocument) {
 							));
 							if (prevseven.toUpperCase() !== "$SYSTEM") {
 								// This classname is invalid
-								let diagnostic: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: wordrange,
-									message: "Invalid class name.",
-									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+								if (settings.diagnostics.classes) {
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: wordrange,
+										message: "Invalid class name.",
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
+								continue;
 							}
-							continue;
+							else {
+								dollarsystem = true;
+							}
 						}
 						if (word.charAt(0) === '"') {
 							// This classname is delimited with ", so strip them
@@ -671,25 +678,33 @@ async function computeDiagnostics(doc: TextDocument) {
 						
 						if (normalizedname === "" && possiblecls.num > 0) {
 							// The class couldn't be resolved with the imports
-							let diagnostic: Diagnostic = {
-								severity: DiagnosticSeverity.Error,
-								range: wordrange,
-								message: "Class name '"+word+"' is ambiguous.",
-								source: 'InterSystems Language Server'
-							};
-							diagnostics.push(diagnostic);
+							if (settings.diagnostics.classes) {
+								let diagnostic: Diagnostic = {
+									severity: DiagnosticSeverity.Error,
+									range: wordrange,
+									message: "Class name '"+word+"' is ambiguous.",
+									source: 'InterSystems Language Server'
+								};
+								diagnostics.push(diagnostic);
+							}
 						}
 						else {
 							// Check if class exists
 							const filtered = files.filter(file => file.Name === normalizedname+".cls");
 							if (filtered.length !== 1) {
-								let diagnostic: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: wordrange,
-									message: "Class '"+word+"' does not exist.",
-									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+								if (settings.diagnostics.classes && !dollarsystem) {
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: wordrange,
+										message: "Class '"+word+"' does not exist.",
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
+							}
+							else if (settings.diagnostics.deprecation) {
+								// The class exists, so add it to the map
+								addRangeToMapVal(classes,normalizedname,wordrange);
 							}
 						}
 					}
@@ -756,7 +771,7 @@ async function computeDiagnostics(doc: TextDocument) {
 						parsed[i][j].l == ld.cos_langindex && (
 						parsed[i][j].s == ld.cos_prop_attrindex || parsed[i][j].s == ld.cos_method_attrindex ||
 						parsed[i][j].s == ld.cos_attr_attrindex || parsed[i][j].s == ld.cos_mem_attrindex) &&
-						settings.diagnostics.classMembers
+						settings.diagnostics.deprecation
 					) {
 						// This is a class member (property/parameter/method)
 
@@ -818,18 +833,20 @@ async function computeDiagnostics(doc: TextDocument) {
 			}
 		}
 
-		if (settings.diagnostics.classMembers && (methods.size > 0 || parameters.size > 0 || properties.size > 0)) {
-			// Query the database for all Deprecated members of classes that we're referencing
+		if (settings.diagnostics.deprecation && (methods.size > 0 || parameters.size > 0 || properties.size > 0 || classes.size > 0)) {
+			// Query the database for all Deprecated members or classes that we're referencing
 
 			// Build the query
 			const querydata: QueryData = {
 				query: "SELECT Name, Parent->ID AS Class, 'method' AS MemberType FROM %Dictionary.CompiledMethod WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?) UNION ALL " +
 					"SELECT Name, Parent->ID AS Class, 'parameter' AS MemberType FROM %Dictionary.CompiledParameter WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?) UNION ALL " +
-					"SELECT Name, Parent->ID AS Class, 'property' AS MemberType FROM %Dictionary.CompiledProperty WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?)",
+					"SELECT Name, Parent->ID AS Class, 'property' AS MemberType FROM %Dictionary.CompiledProperty WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?) UNION ALL " +
+					"SELECT Name, NULL AS Class, 'class' AS MemberType FROM %Dictionary.CompiledClass WHERE Deprecated = 1 AND Name %INLIST $LISTFROMSTRING(?)",
 				parameters: [
 					[...new Set([...methods.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),
 					[...new Set([...parameters.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),
-					[...new Set([...properties.keys()].map(elem => {return elem.split(":::")[0]}))].join(",")
+					[...new Set([...properties.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),
+					[...classes.keys()].join(",")
 				]
 			};
 
@@ -839,7 +856,7 @@ async function computeDiagnostics(doc: TextDocument) {
 				// We got data back
 
 				for (const row of respdata.data.result.content) {
-					// Create a Diagnostic for each Range that this member appears in the document
+					// Create a Diagnostic for each Range that this class or member appears in the document
 
 					const memberstr: string = row.Class + ":::" + row.Name;
 					let ranges: Range[] | undefined = undefined;
@@ -848,6 +865,9 @@ async function computeDiagnostics(doc: TextDocument) {
 					}
 					else if (row.MemberType === "parameter") {
 						ranges = parameters.get(memberstr);
+					}
+					else if (row.MemberType === "class") {
+						ranges = classes.get(row.Name);
 					}
 					else {
 						ranges = properties.get(memberstr);
@@ -1237,13 +1257,14 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 
 	// Get all classes
 	const querydata = {
-		query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
+		query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = {fn CONCAT(dcd.Name,'.cls')}",
 		parameters: ["*.cls",1,1,1,1,0,0]
 	};
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (let clsobj of respdata.data.result.content) {
-			var displayname: string = clsobj.Name.slice(0,-4);
+			let displayname: string = clsobj.Name;
+			let compItem: CompletionItem;
 			if (imports.length > 0) {
 				// Resolve import
 				var sorttext: string = "";
@@ -1259,19 +1280,19 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 					displayname = "%" + displayname.slice(9);
 				}
 				if (sorttext !== "") {
-					result.push({
+					compItem = {
 						label: displayname,
 						kind: CompletionItemKind.Class,
 						data: ["class",clsobj.Name,doc.uri],
 						sortText: sorttext
-					});
+					};
 				}
 				else {
-					result.push({
+					compItem = {
 						label: displayname,
 						kind: CompletionItemKind.Class,
 						data: ["class",clsobj.Name,doc.uri]
-					});
+					};
 				}
 			}
 			else {
@@ -1279,12 +1300,16 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 					// Use short form for %Library classes
 					displayname = "%" + displayname.slice(9);
 				}
-				result.push({
+				compItem = {
 					label: displayname,
 					kind: CompletionItemKind.Class,
 					data: ["class",clsobj.Name,doc.uri]
-				});
+				};
 			}
+			if (clsobj.Deprecated) {
+				compItem.tags = [CompletionItemTag.Deprecated];
+			}
+			result.push(compItem);
 		}
 	}
 	return result;
@@ -4877,8 +4902,8 @@ connection.onCompletionResolve(
 			// Get the description for this class from the server
 			const server: ServerSpec = await getServerSpec(item.data[2]);
 			const querydata: QueryData = {
-				query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
-				parameters: [item.data[1].slice(0,-4)]
+				query: "SELECT Description FROM %Dictionary.ClassDefinition WHERE Name = ?",
+				parameters: [item.data[1]]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
