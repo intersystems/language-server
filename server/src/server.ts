@@ -5003,7 +5003,7 @@ connection.onHover(
 						parameters: [normalizedname]
 					};
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-					if (respdata !== undefined && respdata.data.result.content.length === 1) {
+					if (respdata !== undefined && respdata.data.result.content !== undefined && respdata.data.result.content.length === 1) {
 						// The class was found
 						return {
 							contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].Description)],
