@@ -47,6 +47,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Private variables
   - Public variables
   - [System variables](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_VARIABLES)
+- [Document Links](https://code.visualstudio.com/api/references/vscode-api#DocumentLink) for [CLASS, METHOD, PROPERTY and QUERY HTML tags](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GOBJ_classes#GOBJ_classdoc_html) in UDL documentation comments.
 - [QuickFix CodeActions](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) that resolve the following Diagnostics:
   - [Unqualified class references](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GOBJ_packages#GOBJ_packages_in_classname) in a class definition that don't exist in the database:
     - Select a package containing the unqualified class name to import.
@@ -58,7 +59,6 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   ![](images/TryCatch.gif)
   - Extracting a block of ObjectScript code from an existing method to a new method.
   ![](images/ExtractMethod.gif)
-- [Document Links](https://code.visualstudio.com/api/references/vscode-api#DocumentLink) for [CLASS, METHOD, PROPERTY and QUERY HTML tags](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GOBJ_classes#GOBJ_classdoc_html) in UDL documentation comments.
 
 ## Setup Notes
 

@@ -1,8 +1,9 @@
 # Changelog
 
-## [1.2.4] - 2021-XX-XX
+## [1.2.4] - 2021-09-13
 - Fix issue [#190](https://github.com/intersystems/language-server/issues/190): Add Diagnostics for Deprecated classes
 - Fix issue [#191](https://github.com/intersystems/language-server/issues/191): Error while hovering over non-existent class
+- Fix issue [#192](https://github.com/intersystems/language-server/issues/192): Internally reported parser bugs
 
 ## [1.2.3] - 2021-08-24
 - Fix issue [#170](https://github.com/intersystems/language-server/issues/170): Automatically provide intellisense for certain % variables
