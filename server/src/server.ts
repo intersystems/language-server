@@ -480,6 +480,29 @@ async function computeDiagnostics(doc: TextDocument) {
 						diagnostics.push(diagnostic);
 					}
 					else if (
+						parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex &&
+						j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex &&
+						doc.getText(Range.create(
+							Position.create(i,parsed[i][j-1].p),
+							Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
+						)).toLowerCase() === "class"
+					) {
+						// This is the class name in the class definition line
+
+						// Check if the class name has a package
+						const wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
+						const word = doc.getText(wordrange);
+						if (!word.includes(".")) {
+							// The class name doesn't have a package, so report an error diagnostic here
+							diagnostics.push({
+								severity: DiagnosticSeverity.Error,
+								range: wordrange,
+								message: "A package must be specified.",
+								source: 'InterSystems Language Server'
+							});
+						}
+					}
+					else if (
 						j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
 						doc.getText(Range.create(Position.create(i,0),Position.create(i,9))).toLowerCase() === "parameter" &&
 						settings.diagnostics.parameters
@@ -616,7 +639,10 @@ async function computeDiagnostics(doc: TextDocument) {
 
 						break;
 					}
-					else if (j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex && doc.getText(Range.create(Position.create(i,0),Position.create(i,6))).toLowerCase() === "import") {
+					else if (
+						j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
+						doc.getText(Range.create(Position.create(i,0),Position.create(i,6))).toLowerCase() === "import"
+					) {
 						// Don't validate import packages
 						break;
 					}
