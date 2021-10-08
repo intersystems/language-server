@@ -17,6 +17,7 @@ import {
 	ServerOptions,
 	TransportKind,
 } from 'vscode-languageclient/node';
+import { TypeHierarchyFeature } from 'vscode-languageclient/lib/common/proposed.typeHierarchy';
 
 import { lte } from "semver";
 
@@ -112,6 +113,16 @@ export async function activate(context: ExtensionContext) {
 			}
 			const uri: Uri = objectScriptApi.getUriForDocument(document);
 			return uri.toString();
+		});
+		client.onRequest("intersystems/uri/forTypeHierarchyClasses", (classes: string[]): string[] => {
+			// vscode-objectscript version 1.0.11+ has been available for long enough that
+			// it's safe to assume that users have upgraded to at least 1.0.11
+			return classes.map(
+				(cls: string) => {
+					const uri: Uri = objectScriptApi.getUriForDocument(`${cls}.cls`);
+					return uri.toString();
+				}
+			);
 		});
 		objectScriptApi.onDidChangeConnection()(() => {
 			client.sendNotification("intersystems/server/connectionChange");
@@ -225,6 +236,9 @@ export async function activate(context: ExtensionContext) {
 		// Register EvaluatableExpressionProvider
 		languages.registerEvaluatableExpressionProvider(documentSelector,evaluatableExpressionProvider)
 	);
+
+	// Register proposed TypeHierarchy feature
+	client.registerFeature(new TypeHierarchyFeature(client));
 
 	// Start the client. This will also launch the server
 	client.start();

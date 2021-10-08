@@ -7,16 +7,16 @@
 		"node": "*"
 	},
 	"dependencies": {
-		"axios": "^0.21.4",
-		"axios-cookiejar-support": "^1.0.1",
+		"axios": "^0.22.0",
+		"axios-cookiejar-support": "^2.0.2",
 		"ffi-napi": "^4.0.3",
 		"ref-array-di": "^1.2.2",
 		"ref-napi": "^3.0.2",
 		"ref-struct-di": "^1.1.1",
 		"tough-cookie": "^4.0.0",
 		"turndown": "^7.1.1",
-		"vscode-languageserver": "^7.1.0-next.5",
-		"vscode-languageserver-textdocument": "^1.0.1",
+		"vscode-languageserver": "^8.0.0-next.3",
+		"vscode-languageserver-textdocument": "^1.0.2",
 		"vscode-uri": "^3.0.2"
 	},
 	"devDependencies": {

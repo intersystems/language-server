@@ -42,9 +42,10 @@ import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 
 import axios, { AxiosResponse } from 'axios';
-import axiosCookieJarSupport from 'axios-cookiejar-support';
+import { wrapper } from 'axios-cookiejar-support';
 import tough = require('tough-cookie');
 
+import { onPrepare, onSubtypes, onSupertypes } from './typeHierarchy';
 import { EvaluatableExpression, findEvaluatableExpression } from './evaluatableExpression';
 import { compressedline, monikeropttype, monikerinfo } from './types';
 import { startcombridge, parsedocument } from './parse';
@@ -83,7 +84,7 @@ import queryKeywords = require("./documentation/keywords/Query.json");
 import triggerKeywords = require("./documentation/keywords/Trigger.json");
 import xdataKeywords = require("./documentation/keywords/XData.json");
 
-axiosCookieJarSupport(axios);
+wrapper(axios);
 
 var turndownService = require('turndown');
 var turndown = new turndownService();
@@ -1877,7 +1878,7 @@ async function getImports(doc: TextDocument, parsed: compressedline[], line: num
  * @param possiblecls The number of possible classes that this short class name could map to.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-async function normalizeClassname(
+export async function normalizeClassname(
 	doc: TextDocument, parsed: compressedline[], clsname: string, server: ServerSpec, line: number,
 	allfiles?: StudioOpenDialogFile[], possiblecls?: PossibleClasses, inheritedpackages?: string[]
 ): Promise<string> {
@@ -2280,7 +2281,7 @@ async function getClassMemberContext(
  * @param checksum Optional checksum. Only passed for SASchema requests.
  * @param params Optional URL parameters. Only passed for GET /doc/ requests.
  */
-export async function makeRESTRequest(method: "GET"|"POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse | undefined> {
+export async function makeRESTRequest(method: "GET"|"POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse<any> | undefined> {
 	if (api > server.apiVersion) {
 		// The server doesn't support the Atelier API version required to make this request
 		return undefined;
@@ -3178,7 +3179,8 @@ connection.onInitialize((params: InitializeParams) => {
 			},
 			documentLinkProvider: {
 				resolveProvider: true
-			}
+			},
+			typeHierarchyProvider: true
 		}
 	};
 });
@@ -8929,6 +8931,12 @@ connection.onDocumentLinkResolve(
 		return link;
 	}
 );
+
+connection.languages.typeHierarchy.onPrepare(onPrepare);
+
+connection.languages.typeHierarchy.onSubtypes(onSubtypes);
+
+connection.languages.typeHierarchy.onSupertypes(onSupertypes);
 
 // Make the text document manager listen on the connection for open, change and close text document events
 documents.listen(connection);

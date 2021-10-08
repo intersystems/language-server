@@ -2,6 +2,7 @@
 
 ## [1.2.5] - 2021-XX-XX
 - Fix issue [#193](https://github.com/intersystems/language-server/issues/193): Add error Diagnostic for missing package in class definition line
+- Fix issue [#194](https://github.com/intersystems/language-server/issues/194): Add `TypeHierarchy` support for classes
 
 ## [1.2.4] - 2021-09-13
 - Fix issue [#190](https://github.com/intersystems/language-server/issues/190): Add Diagnostics for Deprecated classes
