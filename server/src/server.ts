@@ -86,9 +86,59 @@ import xdataKeywords = require("./documentation/keywords/XData.json");
 
 wrapper(axios);
 
+// Initialize the turndown service and tune the conversions for Documatic HTML
 var turndownService = require('turndown');
-var turndown = new turndownService();
+var turndown = new turndownService({codeBlockStyle: "fenced"});
 turndown.remove("style");
+turndown.addRule("pre",{
+	filter: "pre",
+	replacement: function (content: string) {
+		let lang = "";
+		content = content.replace(/\\n|\\t/g," ").replace(/\\/g,"").replace(/\s+$/,"");
+		try {
+			let obj = JSON.parse(content);
+			if (obj && typeof obj === "object") {
+				lang = "json";
+			}
+		} catch {}
+		return "\n```" + lang + "\n" + content + "\n```\n";
+	}
+});
+turndown.addRule("example",{
+	filter: "example",
+	replacement: function (content: string, node: HTMLElement) {
+		let lang = "";
+		content = content.replace(/\\n|\\t/g," ").replace(/\\/g,"").replace(/\s+$/,"");
+		switch (node.getAttribute("LANGUAGE")) {
+			case null:
+			case "COS":
+				lang = "objectscript";
+				break;
+			case "SQL":
+				lang = "sql";
+				break;
+			case "HTML":
+				lang = "html";
+				break;
+			case "XML":
+				lang = "xml";
+				break;
+			case "JAVA":
+				lang = "java";
+				break;
+			case "JAVASCRIPT":
+				lang = "javascript";
+				break;
+			case "CSS":
+				lang = "css";
+				break;
+			case "PYTHON":
+				lang = "python";
+				break;
+		}
+		return "\n```" + lang + "\n" + content + "\n```\n";
+	}
+});
 
 /**
  * The configuration options exposed by the client.
