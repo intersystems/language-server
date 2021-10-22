@@ -4,7 +4,7 @@
 	"description": "A language server for InterSystems ObjectScript.",
 	"author": "InterSystems Corporation",
 	"license": "SEE LICENSE IN LICENSE.txt",
-	"version": "1.2.4",
+	"version": "1.2.5",
 	"publisher": "intersystems",
 	"repository": {
 		"type": "github",

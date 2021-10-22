@@ -139,6 +139,12 @@ turndown.addRule("example",{
 		return "\n```" + lang + "\n" + content + "\n```\n";
 	}
 });
+turndown.addRule("documaticLinks",{
+	filter: ["class","method","property","query","parameter"],
+	replacement: function (content: string) {
+		return `***${content}***`;
+	}
+});
 
 /**
  * The configuration options exposed by the client.

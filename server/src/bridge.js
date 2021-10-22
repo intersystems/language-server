@@ -360,13 +360,17 @@ function resetffitable() {
 
 // flags to pass to SyntaxColor*
 
-var IPARSE_UDL_EXPLICIT = 0x01; // require variable declaration (#dim)
+var IPARSE_UDL_EXPLICIT = 0x0001; // require variable declaration (#dim)
+
+var IPARSE_ALL_CSPEXTENSIONS = 0x0400; // all parsers: recognize CSP extensions like #(..)#
+
+var IPARSE_HTML_CSPMODE = 0x0800; // HTML parser: is in CSP mode
 
 var IPARSE_UDL_EXPERT = 0x4000; // this stops the SYSTEM class-keyword from being colored as a syntax-error
 
 var IPARSE_UDL_TRACK = 0x20000; // enable variable-tracking
 
-var STANDARDPARSEFLAGS = IPARSE_UDL_EXPLICIT + IPARSE_UDL_EXPERT + IPARSE_UDL_TRACK;
+var STANDARDPARSEFLAGS = IPARSE_UDL_EXPLICIT + IPARSE_ALL_CSPEXTENSIONS + IPARSE_HTML_CSPMODE + IPARSE_UDL_EXPERT + IPARSE_UDL_TRACK;
 
 
 

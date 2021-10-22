@@ -299,7 +299,10 @@ export async function showSymbolInClass(uri: string, memberType: string, memberN
 	);
 	if (symbol !== undefined) {
 		// Show the symbol in the editor
-		const editor = await window.showTextDocument(uriObj);
+		let editor = window.visibleTextEditors.find((e) => e.document.uri.toString() === uri);
+		if (editor === undefined) {
+			editor = await window.showTextDocument(uriObj);
+		}
 		editor.selection = new Selection(symbol.selectionRange.start, symbol.selectionRange.end);
     	editor.revealRange(symbol.selectionRange, TextEditorRevealType.InCenter);
 	}

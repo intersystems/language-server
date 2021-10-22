@@ -1,9 +1,11 @@
 # Changelog
 
-## [1.2.5] - 2021-XX-XX
+## [1.2.5] - 2021-10-22
 - Fix issue [#193](https://github.com/intersystems/language-server/issues/193): Add error Diagnostic for missing package in class definition line
 - Fix issue [#194](https://github.com/intersystems/language-server/issues/194): Add `TypeHierarchy` support for classes
+- Fix issue [#195](https://github.com/intersystems/language-server/issues/195): HTML parser doesn't recognize CSP `<server>` tag
 - Fix issue [#196](https://github.com/intersystems/language-server/issues/196): Improve handling of `<EXAMPLE>` HTML tags in Intellisense tooltips
+- Fix issue [#198](https://github.com/intersystems/language-server/issues/198): Internally reported parser bugs
 
 ## [1.2.4] - 2021-09-13
 - Fix issue [#190](https://github.com/intersystems/language-server/issues/190): Add Diagnostics for Deprecated classes
