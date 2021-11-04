@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.2.6] - 2021-XX-XX
+- Fix issue [#200](https://github.com/intersystems/language-server/issues/200): Update README to point to new `Settings Reference` documentation page
+
 ## [1.2.5] - 2021-10-22
 - Fix issue [#193](https://github.com/intersystems/language-server/issues/193): Add error Diagnostic for missing package in class definition line
 - Fix issue [#194](https://github.com/intersystems/language-server/issues/194): Add `TypeHierarchy` support for classes

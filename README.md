@@ -70,220 +70,13 @@ If the configured user "xxx" for connection to a server does NOT have the `%All`
 GRANT SELECT ON SCHEMA %Dictionary TO xxx
 ```
 
-## Language Feature Configuration
+## Configuration Settings
 
-This extension provides the following configuration parameters:
+Visit the [Settings Reference page](https://intersystems-community.github.io/vscode-objectscript/settings/#language-server) of the documentation for a list of all configuration settings provided by this extension. Changes to these settings can be made in the [Visual Studio Code user settings editor](https://code.visualstudio.com/docs/getstarted/settings#_edit-settings).
 
-```json
-"intersystems.language-server.trace.server": {
-  "scope": "application",
-  "type": "string",
-  "enum": [
-    "off",
-    "messages",
-    "verbose"
-  ],
-  "default": "off",
-  "description": "Traces the communication between VS Code and the language server."
-},
-"intersystems.language-server.formatting.commands.case": {
-  "scope": "application",
-  "type": "string",
-  "enum": [
-    "upper",
-    "lower",
-    "word"
-  ],
-  "default": "word",
-  "description": "Controls the case that ObjectScript commands will be changed to during a document formatting request."
-},
-"intersystems.language-server.formatting.commands.length": {
-  "scope": "application",
-  "type": "string",
-  "enum": [
-    "short",
-    "long"
-  ],
-  "default": "long",
-  "description": "Controls the length that ObjectScript commands will be changed to during a document formatting request."
-},
-"intersystems.language-server.formatting.system.case": {
-  "scope": "application",
-  "type": "string",
-  "enum": [
-    "upper",
-    "lower",
-    "word"
-  ],
-  "default": "upper",
-  "description": "Controls the case that ObjectScript system functions and variables will be changed to during a document formatting request."
-},
-"intersystems.language-server.formatting.system.length": {
-  "scope": "application",
-  "type": "string",
-  "enum": [
-    "short",
-    "long"
-  ],
-  "default": "long",
-  "description": "Controls the length that ObjectScript system functions and variables will be changed to during a document formatting request."
-},
-"intersystems.language-server.hover.commands": {
-  "scope": "application",
-  "type": "boolean",
-  "default": true,
-  "description": "Controls whether hover information is provided for ObjectScript commands."
-},
-"intersystems.language-server.hover.system": {
-  "scope": "application",
-  "type": "boolean",
-  "default": true,
-  "description": "Controls whether hover information is provided for ObjectScript system functions and variables."
-},
-"intersystems.language-server.hover.preprocessor": {
-  "scope": "application",
-  "type": "boolean",
-  "default": true,
-  "description": "Controls whether hover information is provided for ObjectScript preprocessor directives."
-},
-"intersystems.language-server.diagnostics.routines": {
-  "scope": "application",
-  "type": "boolean",
-  "default": false,
-  "description": "Controls whether error diagnostics are provided when a routine or include file that is being referred to doesn't exist in the database."
-},
-"intersystems.language-server.diagnostics.parameters": {
-  "scope": "application",
-  "type": "boolean",
-  "default": true,
-  "description": "Controls whether warning diagnostics are provided when a class Parameter has an invalid type or the assigned value of the Parameter doesn't match the declared type."
-},
-"intersystems.language-server.diagnostics.classes": {
-  "scope": "application",
-  "type": "boolean",
-  "default": true,
-  "description": "Controls whether error diagnostics are provided when a class that is being referred to doesn't exist in the database."
-},
-"intersystems.language-server.diagnostics.deprecation": {
-  "scope": "application",
-  "type": "boolean",
-  "default": true,
-  "description": "Controls whether strikethrough warning diagnostics are provided when a class or class member that is being referred to is deprecated."
-},
-"intersystems.language-server.signaturehelp.documentation": {
-  "scope": "application",
-  "type": "boolean",
-  "default": true,
-  "description": "Controls whether documentation for a method is shown when a SignatureHelp is active. NOTE: This setting does not affect documentation for macro SignatureHelp views, which is always shown."
-},
-"intersystems.language-server.suggestTheme": {
-  "scope": "application",
-  "type": "boolean",
-  "default": true,
-  "description": "Controls whether the extension will suggest that one of the InterSystems default themes be used if neither one is active upon extension activation."
-},
-"intersystems.language-server.refactor.exceptionVariable": {
-  "scope": "application",
-  "type": "string",
-  "default": "ex",
-  "description": "The name of the exception variable inserted in a 'Wrap in Try/Catch' refactor."
-}
-```
+## Syntax Color Customization
 
-Changes to these parameters can be made in the [Visual Studio Code user settings editor](https://code.visualstudio.com/docs/getstarted/settings#_edit-settings).
-
-## Coloring Configuration
-
-This extension is packaged with two [Web Content Accessibility Guidelines](https://www.w3.org/WAI/standards-guidelines/wcag/) (WCAG) 2.0 AAA compliant default themes (one light and one dark) maintained by InterSystems. They have been developed with usability and accessibility in mind and are recommened for all users. Users may also use any VSCode theme downloaded from the marketplace or included by default. While the coloring provided by those themes will be syntactically correct, not all themes provide support for advanced features, such as coloring method arguments differently than local variables. If you wish to customize the colors assigned to InterSystems semantic tokens, there are two approaches, which are detailed below.
-
-### Semantic Token Definitions
-
-This extension provides the following high-level semantic tokens for coloring similar features across all supported languages:
-
-```json
-"semanticTokenTypes": [
-  {
-    "id": "ISC_Error",
-    "description": "InterSystems-wide error token."
-  },
-  {
-    "id": "ISC_Comment",
-    "description": "InterSystems-wide comment token."
-  },
-  {
-    "id": "ISC_StringLiteral",
-    "description": "InterSystems-wide string literal token."
-  },
-  {
-    "id": "ISC_NumericLiteral",
-    "description": "InterSystems-wide numeric literal token."
-  },
-  {
-    "id": "ISC_ClassName",
-    "description": "InterSystems-wide class and routine name token."
-  },
-  {
-    "id": "ISC_DocComment",
-    "description": "InterSystems-wide documentation comment token."
-  },
-  {
-    "id": "ISC_Parameter",
-    "description": "InterSystems-wide parameter token."
-  },
-  {
-    "id": "ISC_System",
-    "description": "InterSystems-wide system function and variable token."
-  },
-  {
-    "id": "ISC_Command",
-    "description": "InterSystems-wide command token."
-  },
-  {
-    "id": "ISC_Keyword",
-    "description": "InterSystems-wide keyword token."
-  },
-  {
-    "id": "ISC_ClassMember",
-    "description": "InterSystems-wide class member token."
-  },
-  {
-    "id": "ISC_LocalVariable",
-    "description": "InterSystems-wide locl variable token."
-  },
-  {
-    "id": "ISC_LocalVariableUnset",
-    "description": "InterSystems-wide unset local variable token."
-  },
-  {
-    "id": "ISC_PublicVariable",
-    "description": "InterSystems-wide public variable and global token."
-  },
-  {
-    "id": "ISC_SQLKeyword",
-    "description": "InterSystems-wide SQL keyword and datatype token."
-  },
-  {
-    "id": "ISC_SQLFunction",
-    "description": "InterSystems-wide SQL function token."
-  },
-  {
-    "id": "ISC_Neutral",
-    "description": "InterSystems-wide neutral token."
-  },
-  {
-    "id": "ISC_Operator",
-    "description": "InterSystems-wide operator token."
-  },
-  {
-    "id": "ISC_Delimiter",
-    "description": "InterSystems-wide delimiter token."
-  },
-  {
-    "id": "ISC_MarkupText",
-    "description": "InterSystems-wide markup text token."
-  }
-]
-```
+This extension is packaged with two [Web Content Accessibility Guidelines](https://www.w3.org/WAI/standards-guidelines/wcag/) (WCAG) 2.0 AAA compliant default themes (one light and one dark) maintained by InterSystems. They have been developed with usability and accessibility in mind and are recommened for all users. Users may also use any VS Code theme downloaded from the marketplace or included by default. While the coloring provided by those themes will be syntactically correct, not all themes provide support for advanced features, such as coloring method arguments differently than local variables. If you wish to customize the colors assigned to InterSystems semantic tokens, there are two approaches, which are detailed below.
 
 ### Custom Styling Rules
 
@@ -323,11 +116,40 @@ To create your own custom color theme that provides coloring for InterSystems se
   "ISC_PublicVariable": "#64c9ff",
   "ISC_SQLKeyword": "#ffffff",
   "ISC_SQLFunction": "#85a6ff",
-  "ISC_Neutral": {"italic": true}
+  "ISC_Neutral": {"foreground": "#ffffff", "italic": true},
+  "XML_Grayout": "#aaaaaa",
+  "ISC_Operator": "#ffffff",
+  "ISC_Delimiter": "#ffffff",
+  "ISC_MarkupText": "#ffffff"
 }
 ```
 
-Any tokens that are not assigned a color by the custom theme will be assigned the default color (white for dark themes, black for light themes).
+### Semantic Token Reference
+
+This extension provides the following high-level semantic tokens for coloring similar features across all supported languages:
+
+| ID | Description |
+| -- | ----------- |
+| `"ISC_ClassMember"` | InterSystems-wide class member token. |
+| `"ISC_ClassName"` | InterSystems-wide class and routine name token. |
+| `"ISC_Command"` | InterSystems-wide command token. |
+| `"ISC_Comment"` | InterSystems-wide comment token. |
+| `"ISC_Delimiter"` | InterSystems-wide delimiter token. |
+| `"ISC_DocComment"` | InterSystems-wide documentation comment token. |
+| `"ISC_Error"` | InterSystems-wide error token. |
+| `"ISC_Keyword"` | InterSystems-wide keyword token. |
+| `"ISC_LocalVariable"` | InterSystems-wide local variable token. |
+| `"ISC_LocalVariableUnset"` | InterSystems-wide unset local variable token. |
+| `"ISC_MarkupText"` | InterSystems-wide markup text token. |
+| `"ISC_Neutral"` | InterSystems-wide neutral token. |
+| `"ISC_NumericLiteral"` | InterSystems-wide numeric literal token. |
+| `"ISC_Operator"` | InterSystems-wide operator token. |
+| `"ISC_Parameter"` | InterSystems-wide parameter token. |
+| `"ISC_PublicVariable"` | InterSystems-wide public variable and global token. |
+| `"ISC_SQLFunction"` | InterSystems-wide SQL function token. |
+| `"ISC_SQLKeyword"` | InterSystems-wide SQL keyword and datatype token. |
+| `"ISC_StringLiteral"` | InterSystems-wide string literal token. |
+| `"ISC_System"` | InterSystems-wide system function and variable token. |
 
 ## Dependencies
 

@@ -270,7 +270,7 @@
 			},
 			{
 				"id": "ISC_LocalVariable",
-				"description": "InterSystems-wide locl variable token."
+				"description": "InterSystems-wide local variable token."
 			},
 			{
 				"id": "ISC_LocalVariableUnset",
