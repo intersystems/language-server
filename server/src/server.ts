@@ -2344,11 +2344,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 	}
 
 	// Build the URL
-	var url = server.scheme + "://" + server.host + ":" + String(server.port);
-	if (server.pathPrefix !== "") {
-		url = url.concat("/",server.pathPrefix)
-	}
-	url = encodeURI(url + "/api/atelier/v" + String(server.apiVersion) + "/" + server.namespace + path);
+	let url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/v${server.apiVersion}/${server.namespace}${path}`);
 
 	// Make the request
 	try {
