@@ -44,6 +44,7 @@ import { URI } from 'vscode-uri';
 import axios, { AxiosResponse } from 'axios';
 import { wrapper } from 'axios-cookiejar-support';
 import tough = require('tough-cookie');
+import { parse } from 'node-html-parser';
 
 import { onPrepare, onSubtypes, onSupertypes } from './typeHierarchy';
 import { EvaluatableExpression, findEvaluatableExpression } from './evaluatableExpression';
@@ -92,50 +93,50 @@ var turndown = new turndownService({codeBlockStyle: "fenced"});
 turndown.remove("style");
 turndown.addRule("pre",{
 	filter: "pre",
-	replacement: function (content: string) {
-		let lang = "";
-		content = content.replace(/\\n|\\t/g," ").replace(/\\/g,"").replace(/\s+$/,"");
-		try {
-			let obj = JSON.parse(content);
-			if (obj && typeof obj === "object") {
-				lang = "json";
-			}
-		} catch {}
-		return "\n```" + lang + "\n" + content + "\n```\n";
-	}
-});
-turndown.addRule("example",{
-	filter: "example",
 	replacement: function (content: string, node: HTMLElement) {
 		let lang = "";
-		content = content.replace(/\\n|\\t/g," ").replace(/\\/g,"").replace(/\s+$/,"");
-		switch (node.getAttribute("LANGUAGE")) {
-			case null:
-			case "COS":
+		content = content.replace(/\\\\/g,"\\").replace(/\\\[/g,"[").replace(/\\\]/g,"]");
+		let attrVal = node.getAttribute("LANGUAGE");
+		if (attrVal === null) {
+			try {
+				let obj = JSON.parse(content);
+				if (obj && typeof obj === "object") {
+					lang = "json";
+				}
+			} catch {
 				lang = "objectscript";
-				break;
-			case "SQL":
-				lang = "sql";
-				break;
-			case "HTML":
-				lang = "html";
-				break;
-			case "XML":
-				lang = "xml";
-				break;
-			case "JAVA":
-				lang = "java";
-				break;
-			case "JAVASCRIPT":
-				lang = "javascript";
-				break;
-			case "CSS":
-				lang = "css";
-				break;
-			case "PYTHON":
-				lang = "python";
-				break;
+			}
 		}
+		else {
+			switch (attrVal.toUpperCase()) {
+				case "OBJECTSCRIPT":
+				case "COS":
+					lang = "objectscript";
+					break;
+				case "SQL":
+					lang = "sql";
+					break;
+				case "HTML":
+					lang = "html";
+					break;
+				case "XML":
+					lang = "xml";
+					break;
+				case "JAVA":
+					lang = "java";
+					break;
+				case "JAVASCRIPT":
+					lang = "javascript";
+					break;
+				case "CSS":
+					lang = "css";
+					break;
+				case "PYTHON":
+					lang = "python";
+					break;
+			}
+		}
+		
 		return "\n```" + lang + "\n" + content + "\n```\n";
 	}
 });
@@ -3190,6 +3191,29 @@ function findOpenParen(doc: TextDocument, parsed: compressedline[], line: number
 	return [openln,opentkn];
 }
 
+/**
+ * Convert a class documentation string as Markdown.
+ * 
+ * @param html The class documentation string to convert.
+ */
+function documaticHtmlToMarkdown(html: string): string {
+	let root = parse(html);
+	for (const elem of root.getElementsByTagName("example")) {
+		const newElem = parse("<pre></pre>").getElementsByTagName("pre")[0];
+		const lang = elem.getAttribute("language");
+		if (lang !== undefined) {
+			newElem.setAttribute("language",lang);
+		}
+		let text = elem.innerText;
+		if (lang?.toLowerCase() === "html") {
+			text = elem.innerHTML.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+		}
+		newElem.textContent = text;
+		elem.parentNode.exchangeChild(elem,newElem);
+	}
+	return turndown.turndown(root.toString());
+}
+
 connection.onInitialize((params: InitializeParams) => {
 	// set up COMBridge for communication with the Studio coloring libraries
 	startcombridge("CLS,COS,INT,XML,BAS,CSS,HTML,JAVA,JAVASCRIPT,MVBASIC,SQL,PYTHON");
@@ -3559,7 +3583,7 @@ connection.onSignatureHelp(
 								type: "method",
 								doc: {
 									kind: "markdown",
-									value: turndown.turndown(memobj.Description)
+									value: documaticHtmlToMarkdown(memobj.Description)
 								}
 							};
 							sig.documentation = signatureHelpDocumentationCache.doc;
@@ -3774,7 +3798,7 @@ connection.onSignatureHelp(
 									type: "method",
 									doc: {
 										kind: "markdown",
-										value: turndown.turndown(memobj.Description)
+										value: documaticHtmlToMarkdown(memobj.Description)
 									}
 								};
 								sig.documentation = signatureHelpDocumentationCache.doc;
@@ -4257,7 +4281,7 @@ connection.onCompletion(
 								data: "member",
 								documentation: {
 									kind: "markdown",
-									value: turndown.turndown(memobj.Description)
+									value: documaticHtmlToMarkdown(memobj.Description)
 								},
 								sortText: quotedname,
 								insertText: quotedname
@@ -4349,7 +4373,7 @@ connection.onCompletion(
 									data: "member",
 									documentation: {
 										kind: "markdown",
-										value: turndown.turndown(memobj.Description)
+										value: documaticHtmlToMarkdown(memobj.Description)
 									}
 								};
 								if (memobj.Type !== "") {
@@ -4367,7 +4391,7 @@ connection.onCompletion(
 									data: "member",
 									documentation: {
 										kind: "markdown",
-										value: turndown.turndown(memobj.Description)
+										value: documaticHtmlToMarkdown(memobj.Description)
 									},
 									sortText: quotedname
 								};
@@ -4382,7 +4406,7 @@ connection.onCompletion(
 									data: "member",
 									documentation: {
 										kind: "markdown",
-										value: turndown.turndown(memobj.Description)
+										value: documaticHtmlToMarkdown(memobj.Description)
 									}
 								};
 								if (memobj.Type !== "") {
@@ -4677,7 +4701,7 @@ connection.onCompletion(
 									data: "member",
 									documentation: {
 										kind: "markdown",
-										value: turndown.turndown(method.Description)
+										value: documaticHtmlToMarkdown(method.Description)
 									}
 								};
 								if (method.Origin === method.baseclass) {
@@ -4990,7 +5014,7 @@ connection.onCompletionResolve(
 				// The class was found
 				item.documentation = {
 					kind: "markdown",
-					value: turndown.turndown(respdata.data.result.content[0].Description)
+					value: documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
 				};
 			}
 		}
@@ -5086,7 +5110,7 @@ connection.onHover(
 					if (respdata !== undefined && respdata.data.result.content !== undefined && respdata.data.result.content.length === 1) {
 						// The class was found
 						return {
-							contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].Description)],
+							contents: [normalizedname,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 							range: wordrange
 						};
 					}
@@ -5506,7 +5530,7 @@ connection.onHover(
 											}
 										}
 										return {
-											contents: [header,turndown.turndown(stubrespdata.data.result.content[0].Description)],
+											contents: [header,documaticHtmlToMarkdown(stubrespdata.data.result.content[0].Description)],
 											range: memberrange
 										};
 									}
@@ -5522,7 +5546,7 @@ connection.onHover(
 									}
 								}
 								return {
-									contents: [header,turndown.turndown(respdata.data.result.content[0].Description)],
+									contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 									range: memberrange
 								};
 							}
@@ -5740,7 +5764,7 @@ connection.onHover(
 								if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 									// We got data back
 									return {
-										contents: [normalizedname.concat("::",propname),turndown.turndown(respdata.data.result.content[0].Description)],
+										contents: [normalizedname.concat("::",propname),documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 										range: idenrange
 									};
 								}
@@ -5761,7 +5785,7 @@ connection.onHover(
 								if (respdata !== undefined && respdata.data.result.content.length === 1) {
 									// The class was found
 									return {
-										contents: [normalizedname,turndown.turndown(respdata.data.result.content[0].Description)],
+										contents: [normalizedname,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 										range: idenrange
 									};
 								}
@@ -5796,7 +5820,7 @@ connection.onHover(
 									}
 								}
 								return {
-									contents: [header,turndown.turndown(respdata.data.result.content[0].Description)],
+									contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 									range: idenrange
 								};
 							}
@@ -5825,7 +5849,7 @@ connection.onHover(
 									if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 										// We got data back
 										return {
-											contents: [normalizedname.concat("::",propname),turndown.turndown(respdata.data.result.content[0].Description)],
+											contents: [normalizedname.concat("::",propname),documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 											range: idenrange
 										};
 									}

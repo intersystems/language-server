@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.2.7] - 2021-XX-XX
+- Fix issue [#201](https://github.com/intersystems/language-server/issues/201): Contents of `<EXAMPLE>` HTML tags shown on one line in Intellisense tooltips
+
 ## [1.2.6] - 2021-11-05
 - Fix issue [#199](https://github.com/intersystems/language-server/issues/199): Extra slash added before `pathPrefix` causes 404 errors
 - Fix issue [#200](https://github.com/intersystems/language-server/issues/200): Update README to point to new `Settings Reference` documentation page
