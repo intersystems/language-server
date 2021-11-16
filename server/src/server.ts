@@ -3266,6 +3266,10 @@ connection.onInitialized(() => {
 	connection.client.register(DidChangeConfigurationNotification.type, {section: ["intersystems.language-server","intersystems.servers","objectscript.conn"]});
 });
 
+connection.onExit(() => {
+	process.exit();
+});
+
 connection.onDidChangeConfiguration(change => {
 	// Clear our caches
 	languageServerSettings = undefined;
