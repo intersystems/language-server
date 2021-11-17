@@ -3,6 +3,7 @@
 ## [1.2.7] - 2021-XX-XX
 - Fix issue [#201](https://github.com/intersystems/language-server/issues/201): Contents of `<EXAMPLE>` HTML tags shown on one line in Intellisense tooltips
 - Fix issue [#202](https://github.com/intersystems/language-server/issues/202): Add handler for `exit` request
+- Fix issue [#203](https://github.com/intersystems/language-server/issues/203): Add `%PARALLEL` to applicable queries that contain `UNION ALL`
 
 ## [1.2.6] - 2021-11-05
 - Fix issue [#199](https://github.com/intersystems/language-server/issues/199): Extra slash added before `pathPrefix` causes 404 errors
