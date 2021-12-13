@@ -8,6 +8,7 @@ import {
 	workspace,
 	commands,
 	languages,
+	authentication
 } from 'vscode';
 
 import {
@@ -98,8 +99,23 @@ export async function activate(context: ExtensionContext) {
 	);
 
 	client.onReady().then(() => {
-		client.onRequest("intersystems/server/resolveFromUri", (uri: string) => {
-			return objectScriptApi.serverForUri(Uri.parse(uri));
+		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
+			let serverSpec = objectScriptApi.serverForUri(Uri.parse(uri));
+			if (typeof serverSpec.password === "undefined") {
+				// The main extension didn't provide a password, so we must 
+				// get it from the server manager's authentication provider.
+				const AUTHENTICATION_PROVIDER = "intersystems-server-credentials";
+				const scopes = [serverSpec.serverName, serverSpec.username || ""];
+				let session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { silent: true });
+				if (!session) {
+					session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { createIfNone: true });
+				}
+				if (session) {
+					serverSpec.username = session.scopes[1];
+					serverSpec.password = session.accessToken;
+				}
+			}
+			return serverSpec;
 		});
 		client.onRequest("intersystems/uri/localToVirtual", (uri: string): string => {
 			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
