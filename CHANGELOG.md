@@ -5,6 +5,7 @@
 - Fix issue [#202](https://github.com/intersystems/language-server/issues/202): Add handler for `exit` request
 - Fix issue [#203](https://github.com/intersystems/language-server/issues/203): Add `%PARALLEL` to applicable queries that contain `UNION ALL`
 - Fix issue [#207](https://github.com/intersystems/language-server/issues/207): Support InterSystems Server Manager 3.0's `AuthenticationProvider`
+- Fix issue [#208](https://github.com/intersystems/language-server/issues/208): Add support for new `<arg>`, `<args>` and `<return>` Documatic HTML tags
 
 ## [1.2.6] - 2021-11-05
 - Fix issue [#199](https://github.com/intersystems/language-server/issues/199): Extra slash added before `pathPrefix` causes 404 errors

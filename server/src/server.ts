@@ -146,6 +146,29 @@ turndown.addRule("documaticLinks",{
 		return `***${content}***`;
 	}
 });
+turndown.addRule("documaticArgs",{
+	filter: "args",
+	replacement: function (content: string, node: HTMLElement) {
+		if (node.children.length > 0) {
+			return `\n#### Arguments:\n${content}\n`;
+		}
+	}
+});
+turndown.addRule("documaticArg",{
+	filter: "arg",
+	replacement: function (content: string, node: HTMLElement) {
+		let attrVal = node.getAttribute("name");
+		if (attrVal !== null) {
+			return `\n- \`${attrVal}\` &#151; ${content}`;
+		}
+	}
+});
+turndown.addRule("documaticReturn",{
+	filter: "return",
+	replacement: function (content: string) {
+		return `\n#### Return Value:\n${content}\n`;
+	}
+});
 
 /**
  * The configuration options exposed by the client.
