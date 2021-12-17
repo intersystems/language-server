@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.7] - 2021-XX-XX
+## [1.2.7] - 2021-12-17
 - Fix issue [#201](https://github.com/intersystems/language-server/issues/201): Contents of `<EXAMPLE>` HTML tags shown on one line in Intellisense tooltips
 - Fix issue [#202](https://github.com/intersystems/language-server/issues/202): Add handler for `exit` request
 - Fix issue [#203](https://github.com/intersystems/language-server/issues/203): Add `%PARALLEL` to applicable queries that contain `UNION ALL`

@@ -10,7 +10,7 @@
 		"vscode-languageclient": "^8.0.0-next.4"
 	},
 	"devDependencies": {
-		"@types/semver": "^7.3.5",
+		"@types/semver": "^7.3.9",
 		"@types/vscode": "1.63.0"
 	}
 }

@@ -7,7 +7,7 @@
 		"node": "*"
 	},
 	"dependencies": {
-		"axios": "^0.23.0",
+		"axios": "^0.24.0",
 		"axios-cookiejar-support": "^2.0.3",
 		"ffi-napi": "^4.0.3",
 		"node-html-parser": "^5.1.0",
@@ -17,10 +17,10 @@
 		"tough-cookie": "^4.0.0",
 		"turndown": "^7.1.1",
 		"vscode-languageserver": "^8.0.0-next.3",
-		"vscode-languageserver-textdocument": "^1.0.2",
+		"vscode-languageserver-textdocument": "^1.0.3",
 		"vscode-uri": "^3.0.2"
 	},
 	"devDependencies": {
-		"@types/tough-cookie": "^4.0.0"
+		"@types/tough-cookie": "^4.0.1"
 	}
 }
