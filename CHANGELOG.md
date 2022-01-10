@@ -1,5 +1,8 @@
 # Changelog
 
+## [1.2.8] - 2022-XX-XX
+- Fix issue [#204](https://github.com/intersystems/language-server/issues/204): Class parser interprets modulo operator as a CSP extension
+
 ## [1.2.7] - 2021-12-17
 - Fix issue [#201](https://github.com/intersystems/language-server/issues/201): Contents of `<EXAMPLE>` HTML tags shown on one line in Intellisense tooltips
 - Fix issue [#202](https://github.com/intersystems/language-server/issues/202): Add handler for `exit` request

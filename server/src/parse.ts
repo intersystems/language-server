@@ -1,6 +1,6 @@
 
 import {colorinfotype, compressedcolors, compressedresult, legendtype, attrinforesult, semanticrules, attrinfo, monikeropttype, compressedline} from './types'
-import {START, RUNWITH, RUNWITH_COMPRESSED, GETLANGUAGEATTRINFO} from './bridge.js';
+import {START, RUNWITH, RUNWITH_COMPRESSED, GETLANGUAGEATTRINFO, IPARSE_ALL_CSPEXTENSIONS, IPARSE_HTML_CSPMODE} from './bridge.js';
 import { jsonline, tojson } from './tojson';
 import {setupfixedtables} from './semanticdefns';
 import { acceptroutineheaderline } from './config';
@@ -85,7 +85,8 @@ export function parsedocument(moniker: string, monikeropt: monikeropttype, docum
 function parseImpl(moniker: string, monikeropt: monikeropttype, documenttext: string, ): compressedline[] {
 	const usemoniker = actualMoniker(moniker,monikeropt);
 	try {
-		return (<compressedcolors>(RUNWITH_COMPRESSED(documenttext,usemoniker,0))).compressedcolors;
+		const extraflags = (moniker === 'HTML') ? (IPARSE_ALL_CSPEXTENSIONS + IPARSE_HTML_CSPMODE) : 0;
+		return (<compressedcolors>(RUNWITH_COMPRESSED(documenttext,usemoniker,extraflags))).compressedcolors;
 	}
 	catch (e) {
 		console.log('Exception parsing in COMBridge: ' + e);
