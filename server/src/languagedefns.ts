@@ -84,6 +84,7 @@ export const cls_num_attrindex = 0x09;
 export const cls_str_attrindex = 0x0A;
 export const cls_iden_attrindex = 0x0B;
 export const cls_rtnname_attrindex = 0x0D;
+export const cls_cparam_attrindex = 0x17;
 export const cls_param_attrindex = 0x18;
 
 export const html_delim_attrindex = 0x05;

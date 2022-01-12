@@ -393,6 +393,32 @@ const definitionTargetRangeMaxLines: number = 10;
 const classMemberTypes: string[] = ["Parameter","Property","Relationship","ForeignKey","Index","Query","Storage","Trigger","XData","Projection","Method","ClassMethod","ClientMethod"];
 
 /**
+ * An array containing the names and descriptions of all core Property data type parameters.
+ */
+const corePropertyParams = [
+	{
+		name: "CALCSELECTIVITY",
+		desc: `Controls whether the Tune Table facility calculates the *selectivity* for a property. Usually it is best to leave this parameter as the default (1).`
+	},
+	{
+		name: "CAPTION",
+		desc: `Caption to use for this property in client applications.`
+	},
+	{
+		name: "EXTERNALSQLNAME",
+		desc: `Used in linked tables, this parameter specifies the name of the field in the external table to which this property is linked.`
+	},
+	{
+		name: "EXTERNALSQLTYPE",
+		desc: `Used in linked tables, this parameter specifies the SQL type of the field in the external table to which this property is linked.`
+	},
+	{
+		name: "JAVATYPE",
+		desc: `The Java data type to which this property is projected.`
+	}
+];
+
+/**
  * Compute diagnostics for this document and sent them to the client.
  * 
  * @param doc The TextDocument to compute diagnostics for.
@@ -3178,7 +3204,7 @@ function addRangeToMapVal(map: Map<string, Range[]>, key: string, range: Range) 
  * @param parsed The tokenized representation of doc.
  * @param line The line that the close parenthesis is in.
  * @param token The offset of the close parenthesis in the line.
- * @returns A tuple conainign the line and token number of the open parenthesis, or -1 for both if it wasn't found.
+ * @returns A tuple containing the line and token number of the open parenthesis, or -1 for both if it wasn't found.
  */
 function findOpenParen(doc: TextDocument, parsed: compressedline[], line: number, token: number): [number, number] {
 	let numclosed = 0;
@@ -3235,6 +3261,28 @@ function documaticHtmlToMarkdown(html: string): string {
 		elem.parentNode.exchangeChild(elem,newElem);
 	}
 	return turndown.turndown(root.toString());
+}
+
+/**
+ * Determine the normalized class name of the Property definition starting on `line` of `doc`,
+ * or the empty string if it can't be determined.
+ * Used for Property data type parameter intellisense.
+ * 
+ * @param doc The TextDocument that the Property definition is in.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line that the Property definition starts on.
+ * @param server The server that doc is associated with.
+ */
+async function determineNormalizedPropertyClass(doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec): Promise<string> {
+	let firstclstkn = 3;
+	if (parsed[line][3].l == ld.cls_langindex && parsed[line][3].s == ld.cls_keyword_attrindex) {
+		// This is a collection Property
+		firstclstkn = 5;
+	}
+	const clsstart = parsed[line][firstclstkn].p;
+	const clsend = parsed[line][firstclstkn].p+parsed[line][firstclstkn].c;
+	const clsname = doc.getText(findFullRange(line,parsed,firstclstkn,clsstart,clsend));
+	return normalizeClassname(doc,parsed,clsname,server,line);
 }
 
 connection.onInitialize((params: InitializeParams) => {
@@ -4472,6 +4520,94 @@ connection.onCompletion(
 			// This is an import
 
 			result = await completionPackage(server);
+		}
+		else if (
+			triggerlang === ld.cls_langindex &&
+			firsttwotokens.toLowerCase().split(" ")[0] === "property" &&
+			openparencount > closeparencount &&
+			(prevline.slice(-2) === ", " || prevline.slice(-1) === "(") &&
+			prevline.slice(firsttwotokens.length).indexOf("[") === -1
+		) {
+			// This is a Property data type parameter
+
+			// Determine the normalized class name of this Property
+			const normalizedcls = await determineNormalizedPropertyClass(doc,parsed,params.position.line,server);
+			if (normalizedcls === "") {
+				// If we couldn't determine the class, don't return anything
+				return null;
+			}
+
+			// Find all parameters that are already used
+			const existingparams: string[] = [];
+			for (let i = 5; i < parsed[params.position.line].length; i++) {
+				const symbolstart: number = parsed[params.position.line][i].p;
+				const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
+				if (params.position.character <= symbolstart) {
+					break;
+				}
+				const symboltext = doc.getText(Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend)));
+				if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_cparam_attrindex) {
+					existingparams.push(symboltext);
+				}
+			}
+
+			// Add elements for core property parameters
+			const coreParams: CompletionItem[] = corePropertyParams.map(e => {
+				return {
+					label: e.name,
+					kind: CompletionItemKind.Property,
+					data: "member",
+					documentation: {
+						kind: "markdown",
+						value: e.desc
+					},
+					sortText: e.name,
+					insertText: `${e.name} = `
+				};
+			});
+			result = coreParams.filter(e => !existingparams.includes(e.label));
+
+			// Query the server to get the names and descriptions of all class-specific parameters
+			const data: QueryData = {
+				query: "SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?",
+				parameters: [normalizedcls]
+			};
+			const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
+			if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+				// We got data back
+
+				for (let memobj of respdata.data.result.content) {
+					if (existingparams.includes(memobj.Name)) {
+						// Don't suggest a parameter that's already present
+						continue;
+					}
+					var item: CompletionItem = {
+						label: ""
+					};
+					item = {
+						label: memobj.Name,
+						kind: CompletionItemKind.Property,
+						data: "member",
+						documentation: {
+							kind: "markdown",
+							value: documaticHtmlToMarkdown(memobj.Description)
+						},
+						sortText: memobj.Name,
+						insertText: `${memobj.Name} = `
+					};
+					if (memobj.Type !== "") {
+						item.detail = memobj.Type;
+					}
+					if (memobj.Origin === normalizedcls) {
+						// Members from the base class should appear first
+						item.sortText = "##" + memobj.Name;
+					}
+					if (memobj.Deprecated) {
+						item.tags = [CompletionItemTag.Deprecated];
+					}
+					result.push(item);
+				}
+			}
 		}
 		else if (
 			(prevline.slice(-2) === "[ " || (prevline.slice(-2) === ", " &&
@@ -5901,6 +6037,41 @@ connection.onHover(
 						};
 					}
 				}
+				else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_cparam_attrindex) {
+					// This is a Property data type parameter
+
+					// Get the full text of the selection
+					const paramrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+					const param = doc.getText(paramrange);
+
+					// If this is a core Property data type parameter, return the static description
+					const coreParam = corePropertyParams.find(e => e.name === param);
+					if (coreParam !== undefined) {
+						return {
+							contents: [coreParam.desc],
+							range: paramrange
+						};
+					}
+
+					// Determine the normalized class name of this Property
+					const normalizedcls = await determineNormalizedPropertyClass(doc,parsed,params.position.line,server);
+					if (normalizedcls !== "") {
+						const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
+							query: "SELECT Description FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?",
+							parameters: [normalizedcls,param]
+						});
+						if (respdata !== undefined) {
+							if ("content" in respdata.data.result && respdata.data.result.content.length > 0) {
+								// We got data back
+	
+								return {
+									contents: [`${normalizedcls}::${param}`,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+									range: paramrange
+								};
+							}
+						}
+					}
+				}
 				break;
 			}
 		}
@@ -6971,6 +7142,123 @@ connection.onDefinition(
 											// This likely means that the base class hasn't been compiled yet or the member had the wrong token type.
 											return null;
 										}
+									}
+								}
+							}
+						}
+					}
+				}
+				else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_cparam_attrindex) {
+					// This is a Property data type parameter
+
+					// Get the full text of the selection
+					const paramrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+					const param = doc.getText(paramrange);
+
+					// If this is a core Property data type parameter, don't return anything
+					const coreParam = corePropertyParams.find(e => e.name === param);
+					if (coreParam !== undefined) {
+						return null;
+					}
+
+					// Determine the normalized class name of this Property
+					const normalizedcls = await determineNormalizedPropertyClass(doc,parsed,params.position.line,server);
+					if (normalizedcls === "") {
+						// If we couldn't determine the class, don't return anything
+						return null;
+					}
+
+					// If this is a class file, determine what class we're in
+					var thisclass = "";
+					if (doc.languageId === "objectscript-class") {
+						for (let ln = 0; ln < parsed.length; ln++) {
+							if (parsed[ln].length === 0) {
+								continue;
+							}
+							else if (parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
+								// This line starts with a UDL keyword
+					
+								var keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
+								if (keyword === "class") {
+									thisclass = doc.getText(findFullRange(ln,parsed,1,parsed[ln][1].p,parsed[ln][1].p+parsed[ln][1].c));
+									break;
+								}
+							}
+						}
+					}
+
+					var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+					var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+					if (thisclass === normalizedcls) {
+						// The parameter may be defined in this class
+
+						// Loop through the file contents to find this parameter
+						for (let dln = 0; dln < parsed.length; dln++) {
+							if (parsed[dln].length > 0 && parsed[dln][0].l == ld.cls_langindex && parsed[dln][0].s == ld.cls_keyword_attrindex) {
+								// This line starts with a UDL keyword
+					
+								const keyword = doc.getText(Range.create(Position.create(dln,parsed[dln][0].p),Position.create(dln,parsed[dln][0].p+parsed[dln][0].c))).toLowerCase();
+								if (keyword === "parameter") {
+									const thismemberrange = findFullRange(dln,parsed,1,parsed[dln][1].p,parsed[dln][1].p+parsed[dln][1].c);
+									const thismember = doc.getText(thismemberrange);
+									if (thismember === param) {
+										// We found the parameter
+										targetselrange = thismemberrange;
+										targetrange = Range.create(dln,0,dln+1,0);
+										break;
+									}
+								}
+							}
+						}
+						if (targetrange.start.line !== 0) {
+							return [{
+								targetUri: params.textDocument.uri,
+								originSelectionRange: paramrange,
+								targetSelectionRange: targetselrange,
+								targetRange: targetrange
+							}];
+						}
+					}
+					// The parameter is defined in another class
+
+					const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
+						query: "SELECT Origin FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?",
+						parameters: [normalizedcls,param]
+					});
+					if (queryrespdata !== undefined) {
+						if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
+							// We got data back
+
+							var originclass = queryrespdata.data.result.content[0].Origin;
+							if (originclass !== "") {
+								// Get the full text of the origin class
+								const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
+								if (docrespdata !== undefined && docrespdata.data.result.status === "") {
+									// The class was found
+		
+									// Loop through the file contents to find this parameter
+									for (let j = 0; j < docrespdata.data.result.content.length; j++) {
+										if (docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase() === "parameter") {
+											// This is a parameter
+											const searchstr = docrespdata.data.result.content[j].slice(docrespdata.data.result.content[j].indexOf(" ")+1).trim();
+											if (searchstr.indexOf(param) === 0) {
+												// This is the right parameter
+												const memberlineidx = docrespdata.data.result.content[j].indexOf(searchstr);
+												if (memberlineidx !== -1) {
+													targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+param.length));
+													targetrange = Range.create(j,0,j+1,0);
+												}
+											}
+										}
+									}
+									const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
+									if (newuri !== "") {
+										return [{
+											targetUri: newuri,
+											targetRange: targetrange,
+											originSelectionRange: paramrange,
+											targetSelectionRange: targetselrange
+										}];
 									}
 								}
 							}
