@@ -2388,8 +2388,18 @@ async function getClassMemberContext(
  * @param params Optional URL parameters. Only passed for GET /doc/ requests.
  */
 export async function makeRESTRequest(method: "GET"|"POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse<any> | undefined> {
+	if (server.host === "") {
+		// No server connection is configured
+		connection.console.warn("Cannot make required REST request because no server connection is configured.");
+		return undefined;
+	}
 	if (api > server.apiVersion) {
 		// The server doesn't support the Atelier API version required to make this request
+		connection.console.warn(`
+			Cannot make required REST request to server 
+			${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} 
+			because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.
+		`);
 		return undefined;
 	}
 

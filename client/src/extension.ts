@@ -101,7 +101,7 @@ export async function activate(context: ExtensionContext) {
 	client.onReady().then(() => {
 		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
 			let serverSpec = objectScriptApi.serverForUri(Uri.parse(uri));
-			if (typeof serverSpec.password === "undefined") {
+			if (serverSpec.host !== "" && typeof serverSpec.password === "undefined") {
 				// The main extension didn't provide a password, so we must 
 				// get it from the server manager's authentication provider.
 				const AUTHENTICATION_PROVIDER = "intersystems-server-credentials";
