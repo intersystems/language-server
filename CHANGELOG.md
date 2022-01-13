@@ -1,6 +1,6 @@
 # Changelog
 
-## [1.2.8] - 2022-XX-XX
+## [1.2.8] - 2022-01-13
 - Fix issue [#204](https://github.com/intersystems/language-server/issues/204): Class parser interprets modulo operator as a CSP extension
 - Fix issue [#210](https://github.com/intersystems/language-server/issues/210): Add Intellisense for Property data type parameters
 - Fix issue [#211](https://github.com/intersystems/language-server/issues/211): Improve behavior in workspaces with no server connection
