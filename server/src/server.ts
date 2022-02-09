@@ -4404,13 +4404,13 @@ connection.onCompletion(
 					if (membercontext.context === "class") {
 						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
 							"SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?";
 						data.parameters = new Array(6).fill(membercontext.baseclass);
@@ -4418,13 +4418,13 @@ connection.onCompletion(
 					else if (membercontext.context === "instance") {
 						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL %PARALLEL " +
 							"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ?";
 						data.parameters = new Array(6).fill(membercontext.baseclass);
@@ -4432,13 +4432,13 @@ connection.onCompletion(
 					else {
 						data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->parent->id AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
 							"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND classmethod = 1";
 						data.parameters = new Array(5).fill(membercontext.baseclass);
 					}
