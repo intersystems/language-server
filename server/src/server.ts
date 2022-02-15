@@ -2402,6 +2402,11 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 		`);
 		return undefined;
 	}
+	if (!server.active) {
+		// Server connection is inactive
+		connection.console.warn("Cannot make required REST request because the configured server connection is inactive.");
+		return undefined;
+	}
 
 	// Build the URL
 	let url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/v${server.apiVersion}/${server.namespace}${path}`);
@@ -3374,7 +3379,7 @@ documents.onDidChangeContent(async change => {
 	if (change.document.languageId === "objectscript-class") {
 		parsedDocuments.set(change.document.uri,parsedocument("CLS",monikeropttype.NONE,change.document.getText()).compressedlinearray);
 	}
-	else if (change.document.languageId === "objectscript" || change.document.languageId === "objectscript-macros") {
+	else if (change.document.languageId === "objectscript" || change.document.languageId === "objectscript-int" || change.document.languageId === "objectscript-macros") {
 		parsedDocuments.set(change.document.uri,parsedocument("COS",monikeropttype.NONE,change.document.getText()).compressedlinearray);
 	}
 	else if (change.document.languageId === "objectscript-csp") {
@@ -6638,7 +6643,7 @@ connection.onDefinition(
 
 					// If the current file is a routine, get its name
 					var currentroutine = "";
-					if (doc.languageId === "objectscript") {
+					if (doc.languageId === "objectscript" || doc.languageId === "objectscript-int") {
 						currentroutine = doc.getText(Range.create(Position.create(0,parsed[0][1].p),Position.create(0,parsed[0][1].p+parsed[0][1].c)));
 					}
 
@@ -7293,7 +7298,7 @@ connection.languages.semanticTokens.on(
 			if (doc.languageId === "objectscript-class") {
 				moninfo = {'moniker': "CLS", 'monikeropt': monikeropttype.NONE};
 			}
-			else if (doc.languageId === "objectscript" || doc.languageId === "objectscript-macros") {
+			else if (doc.languageId === "objectscript" || doc.languageId === "objectscript-int" || doc.languageId === "objectscript-macros") {
 				moninfo = {'moniker': "COS", 'monikeropt': monikeropttype.NONE};
 			}
 			else if (doc.languageId === "objectscript-csp") {
@@ -7330,7 +7335,7 @@ connection.languages.semanticTokens.onDelta(
 			if (doc.languageId === "objectscript-class") {
 				moninfo = {'moniker': "CLS", 'monikeropt': monikeropttype.NONE};
 			}
-			else if (doc.languageId === "objectscript" || doc.languageId === "objectscript-macros") {
+			else if (doc.languageId === "objectscript" || doc.languageId === "objectscript-int" || doc.languageId === "objectscript-macros") {
 				moninfo = {'moniker': "COS", 'monikeropt': monikeropttype.NONE};
 			}
 			else if (doc.languageId === "objectscript-csp") {
@@ -7583,7 +7588,7 @@ connection.onDocumentSymbol(
 				}
 			}
 		}
-		else if (doc.languageId === "objectscript") {
+		else if (doc.languageId === "objectscript" || doc.languageId === "objectscript-int") {
 			// Loop through the file and look for labels
 
 			var routinename = "";
@@ -7886,7 +7891,7 @@ connection.onFoldingRanges(
 				}
 				if (
 					parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_label_attrindex &&
-					firsttokentext !== routinename && doc.languageId === "objectscript"
+					firsttokentext !== routinename && (doc.languageId === "objectscript" || doc.languageId === "objectscript-int")
 				) {
 					// This line starts with a routine label
 

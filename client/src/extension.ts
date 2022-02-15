@@ -60,6 +60,7 @@ export async function activate(context: ExtensionContext) {
 	// The languages we handle
 	const targetLanguages = [
 		'objectscript',
+		'objectscript-int',
 		'objectscript-class',
 		'objectscript-csp',
 		'objectscript-macros',

@@ -2,6 +2,8 @@
 
 ## [1.2.9] - 2022-XX-XX
 - Fix issue [#215](https://github.com/intersystems/language-server/issues/215): Fix sorting for generated methods for inherited propeties in completion lists
+- Fix issue [#216](https://github.com/intersystems/language-server/issues/216): Noisy failure when `"active": false` in `objectscript.conn`
+- Fix issue [#217](https://github.com/intersystems/language-server/issues/217): Recognize new `objectscript-int` language id
 
 ## [1.2.8] - 2022-01-13
 - Fix issue [#204](https://github.com/intersystems/language-server/issues/204): Class parser interprets modulo operator as a CSP extension
