@@ -30,12 +30,23 @@ import {
 	selectImportPackage,
 	selectParameterType
 } from './commands';
+import { makeRESTRequest, ServerSpec } from './makeRESTRequest';
 
 export let client: LanguageClient;
 
 let serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
 let objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript");
 const objectScriptApi = objectScriptExt.exports;
+
+type MakeRESTRequestParams = {
+	method: "GET"|"POST";
+	api: number;
+	path: string;
+	server: ServerSpec;
+	data?: any;
+	checksum?: string;
+	params?: any;
+};
 
 export async function activate(context: ExtensionContext) {
 	// The server is implemented in node
@@ -151,6 +162,13 @@ export async function activate(context: ExtensionContext) {
 				client.sendNotification("intersystems/server/passwordChange",serverName);
 			});
 		}
+		client.onRequest("intersystems/server/makeRESTRequest", async (args: MakeRESTRequestParams): Promise<any | undefined> => {
+			// As of version 2.0.0, REST requests are made on the client side
+			return makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params).then(respdata => {
+				// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
+				return { data: respdata.data };
+			});
+		});
 	});
 
 	if (

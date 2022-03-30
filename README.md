@@ -4,7 +4,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
 
 ## Features
 
-- [InterSystems Studio](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GSTD_Intro)-style semantic token coloring for InterSystems ObjectScript classes, routines and CSP files, with support for embedded languages like SQL, Python, Basic, MultiValue Basic, HTML, XML, Java, JavaScript and CSS.
+- [Semantic token](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)-based coloring for InterSystems ObjectScript classes, routines and CSP files, with support for embedded languages like SQL, Python, HTML, XML, Java, JavaScript and CSS.
 - Hover information for ObjectScript commands, system functions, system variables, classes, class members, macros, preprocessor directives, UDL keywords and Parameter types, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
 - [Go to definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-definition) for ObjectScript classes, class members, macros, routines, routine labels and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
 - Code completion for ObjectScript classes, class members, system functions, system variables, macros, include files, package imports, preprocessor directives, UDL keywords, UDL keyword values and UDL Parameter types.
@@ -61,6 +61,25 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   ![](images/ExtractMethod.gif)
 - [Type Hierarchy Provider](https://code.visualstudio.com/api/references/vscode-api#TypeHierarchyProvider) for ObjectScript classes to show subclasses and superclasses in a hierarchical tree view:
 ![](images/TypeHierarchy.gif)
+
+## Supported Platforms
+
+This extension can be installed on the following platforms:
+
+|              |                |
+| ------------ | -------------- |
+| `alpine-x64` | `alpine-arm64` |
+| `darwin-x64` | `darwin-arm64` |
+| `linux-x64`  | `linux-arm64`  |
+| `win32-x64`  |                |
+
+## Dependencies
+
+This extension requires that the [vscode-objectscript](https://marketplace.visualstudio.com/items?itemName=intersystems-community.vscode-objectscript) extension be downloaded and enabled.
+
+## InterSystems Product Compatibility
+
+All InterSystems products that include the Atelier APIs (Caché/Ensemble from 2016.2 onward, all versions of InterSystems IRIS) are supported.
 
 ## Setup Notes
 
@@ -150,11 +169,3 @@ This extension provides the following high-level semantic tokens for coloring si
 | `"ISC_SQLKeyword"` | InterSystems-wide SQL keyword and datatype token. |
 | `"ISC_StringLiteral"` | InterSystems-wide string literal token. |
 | `"ISC_System"` | InterSystems-wide system function and variable token. |
-
-## Dependencies
-
-This extension requires that the [vscode-objectscript](https://marketplace.visualstudio.com/items?itemName=intersystems-community.vscode-objectscript) extension be downloaded and enabled.
-
-## Compatibility
-
-All InterSystems products that include the Atelier APIs (Caché/Ensemble from 2016.2 onward, all versions of InterSystems IRIS) are supported.

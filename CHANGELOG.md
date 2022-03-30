@@ -1,5 +1,20 @@
 # Changelog
 
+## [2.0.0] - 2022-03-30
+- Add support for alpine-x64, alpine-arm64, darwin-arm64 and linux-arm64 platforms.
+- Build parsers as a [Node-API](https://nodejs.org/api/n-api.html) C++ addon.
+- Only parse a document once per content change to avoid unnecessary work.
+- Use [platform-specific vsixes](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#platformspecific-extensions) to reduce package size.
+- Webpack extension to reduce package size.
+- Fix issue [#209](https://github.com/intersystems/language-server/issues/209): Errors when parsing CSS custom properties embedded in an ObjectScript method
+- Fix issue [#213](https://github.com/intersystems/language-server/issues/213): `vh` and `vw` CSS units are marked as invalid
+- Fix issue [#219](https://github.com/intersystems/language-server/issues/219): Language Server REST requests do not use CA certs from OS cert store
+- Other parser changes:
+  - DP-409809: Coloring for CREATE/ALTER TABLE syntax extensions
+  - DP-410204: Coloring for SET OPTION extensions
+  - DP-410213: Coloring for CREATE OR REPLACE TRIGGER, FUNCTION, QUERY, and PROC[EDURE]
+  - DP-411463: Add parser support for all CSS units
+
 ## [1.2.9] - 2022-02-15
 - Fix issue [#215](https://github.com/intersystems/language-server/issues/215): Fix sorting for generated methods for inherited propeties in completion lists
 - Fix issue [#216](https://github.com/intersystems/language-server/issues/216): Noisy failure when `"active": false` in `objectscript.conn`
