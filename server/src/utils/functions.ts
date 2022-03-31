@@ -1687,7 +1687,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 		data,
 		checksum,
 		params
-	});
+	}).then((respdata) => respdata ?? undefined);
 }
 
 /**

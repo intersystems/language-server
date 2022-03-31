@@ -1,18 +1,9 @@
 import { workspace } from 'vscode';
-import * as https from 'https';
 
 import axios, { AxiosResponse } from 'axios';
-import tough = require('tough-cookie');
-import { wrapper } from 'axios-cookiejar-support';
+import * as https from 'https';
 
-import { client } from './extension';
-
-/**
- * Cookie jar for REST requests to InterSystems servers.
- */
-let cookieJar: tough.CookieJar = new tough.CookieJar();
-
-wrapper(axios);
+import { client, cookiesCache } from './extension';
 
 export type ServerSpec = {
 	scheme: string,
@@ -26,6 +17,26 @@ export type ServerSpec = {
 	password: string,
 	active: boolean
 };
+
+async function updateCookies(newCookies: string[], server: ServerSpec): Promise<string[]> {
+	const key = `${server.host}:${server.port}${server.pathPrefix}`;
+	const cookies = cookiesCache.get(key, []);
+    newCookies.forEach((cookie) => {
+      const [cookieName] = cookie.split("=");
+      const index = cookies.findIndex((el) => el.startsWith(cookieName));
+      if (index >= 0) {
+        cookies[index] = cookie;
+      } else {
+        cookies.push(cookie);
+      }
+    });
+    await cookiesCache.put(key, cookies);
+	return cookies;
+}
+
+function getCookies(server: ServerSpec): string[] {
+	return cookiesCache.get(`${server.host}:${server.port}${server.pathPrefix}`, []);
+}
 
 /**
  * Send a REST request to an InterSystems server.
@@ -44,27 +55,29 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 		client.warn("Cannot make required REST request because no server connection is configured.");
 		return undefined;
 	}
-	if (api > server.apiVersion) {
-		// The server doesn't support the Atelier API version required to make this request
-		client.warn(`
-			Cannot make required REST request to server 
-			${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} 
-			because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.
-		`);
-		return undefined;
-	}
 	if (!server.active) {
 		// Server connection is inactive
 		client.warn("Cannot make required REST request because the configured server connection is inactive.");
+		return undefined;
+	}
+	if (api > server.apiVersion) {
+		// The server doesn't support the Atelier API version required to make this request
+		client.warn(
+			"Cannot make required REST request to server " +
+			`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
+			`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`
+		);
 		return undefined;
 	}
 
 	// Build the URL
 	let url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/v${server.apiVersion}/${server.namespace}${path}`);
 
-	// Create the https Agent, if required
-	const httpsAgent: https.Agent | undefined = 
-		server.scheme == "https" ? new https.Agent({ rejectUnauthorized: workspace.getConfiguration("http").get("proxyStrictSSL") }) : undefined;
+	// Create the HTTPS agent
+	const httpsAgent = new https.Agent({ rejectUnauthorized: workspace.getConfiguration("http").get("proxyStrictSSL") });
+
+	// Get the cookies
+	let cookies: string[] = getCookies(server);
 
 	// Make the request
 	try {
@@ -78,16 +91,17 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 					method: "GET",
 					url: url,
 					headers: {
-						"if-none-match": checksum
+						"if-none-match": checksum,
+						"Cookie": cookies.join(" ")
 					},
 					withCredentials: true,
-					jar: cookieJar,
+  					httpsAgent,
 					validateStatus: function (status) {
 						return status < 500;
-					},
-					httpsAgent: httpsAgent
+					}
 				}
 			);
+			cookies = await updateCookies(respdata.headers['set-cookie'] || [], server);
 			if (respdata.status === 202) {
 				// The schema is being recalculated so we need to make another call to get it
 				respdata = await axios.request(
@@ -95,10 +109,13 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 						method: "GET",
 						url: url,
 						withCredentials: true,
-						jar: cookieJar,
-						httpsAgent: httpsAgent
+  						httpsAgent,
+						headers: {
+							"Cookie": cookies.join(" ")
+						}
 					},
 				);
+				await updateCookies(respdata.headers['set-cookie'] || [], server);
 				return respdata;
 			}
 			else if (respdata.status === 304) {
@@ -120,10 +137,10 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 							password: server.password
 						},
 						withCredentials: true,
-						jar: cookieJar,
-						httpsAgent: httpsAgent
+  						httpsAgent
 					}
 				);
+				cookies = await updateCookies(respdata.headers['set-cookie'] || [], server);
 				if (respdata.status === 202) {
 					// The schema is being recalculated so we need to make another call to get it
 					respdata = await axios.request(
@@ -131,10 +148,13 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 							method: "GET",
 							url: url,
 							withCredentials: true,
-							jar: cookieJar,
-							httpsAgent: httpsAgent
+  							httpsAgent,
+							headers: {
+								"Cookie": cookies.join(" ")
+							}
 						}
 					);
+					await updateCookies(respdata.headers['set-cookie'] || [], server);
 					return respdata;
 				}
 				else if (respdata.status === 304) {
@@ -162,14 +182,14 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 						url: url,
 						data: data,
 						headers: {
-							'Content-Type': 'application/json'
+							'Content-Type': 'application/json',
+							"Cookie": cookies.join(" ")
 						},
 						withCredentials: true,
-						jar: cookieJar,
+  						httpsAgent,
 						validateStatus: function (status) {
 							return status < 500;
-						},
-						httpsAgent: httpsAgent
+						}
 					}
 				);
 				if (respdata.status === 401) {
@@ -188,11 +208,11 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 								password: server.password
 							},
 							withCredentials: true,
-							jar: cookieJar,
-							httpsAgent: httpsAgent
+  							httpsAgent
 						}
 					);
 				}
+				await updateCookies(respdata.headers['set-cookie'] || [], server);
 			}
 			else {
 				respdata = await axios.request(
@@ -200,9 +220,14 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 						method: method,
 						url: url,
 						withCredentials: true,
-						jar: cookieJar,
+  						httpsAgent,
 						params: params,
-						httpsAgent: httpsAgent
+						headers: {
+							"Cookie": cookies.join(" ")
+						},
+						validateStatus: function (status) {
+							return status < 500;
+						}
 					}
 				);
 				if (respdata.status === 401) {
@@ -217,12 +242,12 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 								password: server.password
 							},
 							withCredentials: true,
-							jar: cookieJar,
-							params: params,
-							httpsAgent: httpsAgent
+  							httpsAgent,
+							params: params
 						}
 					);
 				}
+				await updateCookies(respdata.headers['set-cookie'] || [], server);
 			}
 			return respdata;
 		}

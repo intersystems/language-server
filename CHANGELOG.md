@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.0.1] - 2022-03-31
+- Fix issue [#219](https://github.com/intersystems/language-server/issues/219): Language Server REST requests do not use CA certs from OS cert store
+- Fix issue [#220](https://github.com/intersystems/language-server/issues/220): Extension reports noisy error message when REST request fails
+
 ## [2.0.0] - 2022-03-30
 - Add support for alpine-x64, alpine-arm64, darwin-arm64 and linux-arm64 platforms.
 - Build parsers as a [Node-API](https://nodejs.org/api/n-api.html) C++ addon.
@@ -8,7 +12,7 @@
 - Webpack extension to reduce package size.
 - Fix issue [#209](https://github.com/intersystems/language-server/issues/209): Errors when parsing CSS custom properties embedded in an ObjectScript method
 - Fix issue [#213](https://github.com/intersystems/language-server/issues/213): `vh` and `vw` CSS units are marked as invalid
-- Fix issue [#219](https://github.com/intersystems/language-server/issues/219): Language Server REST requests do not use CA certs from OS cert store
+- ~~Fix issue [#219](https://github.com/intersystems/language-server/issues/219): Language Server REST requests do not use CA certs from OS cert store~~
 - Other parser changes:
   - DP-409809: Coloring for CREATE/ALTER TABLE syntax extensions
   - DP-410204: Coloring for SET OPTION extensions

@@ -11,6 +11,7 @@ import {
 	authentication
 } from 'vscode';
 
+import * as Cache from 'vscode-cache';
 import {
 	DocumentSelector,
 	LanguageClient,
@@ -34,6 +35,11 @@ import { makeRESTRequest, ServerSpec } from './makeRESTRequest';
 
 export let client: LanguageClient;
 
+/**
+ * Cache for cookies from REST requests to InterSystems servers.
+ */
+export let cookiesCache: Cache;
+
 let serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
 let objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript");
 const objectScriptApi = objectScriptExt.exports;
@@ -49,6 +55,7 @@ type MakeRESTRequestParams = {
 };
 
 export async function activate(context: ExtensionContext) {
+	cookiesCache = new Cache(context, "cookies");
 	// The server is implemented in node
 	let serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
@@ -165,8 +172,12 @@ export async function activate(context: ExtensionContext) {
 		client.onRequest("intersystems/server/makeRESTRequest", async (args: MakeRESTRequestParams): Promise<any | undefined> => {
 			// As of version 2.0.0, REST requests are made on the client side
 			return makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params).then(respdata => {
-				// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
-				return { data: respdata.data };
+				if (respdata) {
+					// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
+					return { data: respdata.data };
+				} else {
+					return undefined;
+				}
 			});
 		});
 	});

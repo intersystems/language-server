@@ -8,13 +8,11 @@
 	},
 	"dependencies": {
 		"axios": "^0.26.1",
-		"axios-cookiejar-support": "^2.0.4",
-		"tough-cookie": "^4.0.0",
+		"vscode-cache": "^0.3.0",
 		"vscode-languageclient": "^8.0.0-next.4"
 	},
 	"devDependencies": {
 		"@types/semver": "^7.3.9",
-		"@types/tough-cookie": "^4.0.1",
 		"@types/vscode": "1.63.0"
 	}
 }
