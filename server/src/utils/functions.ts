@@ -898,15 +898,15 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 					}
 					break;
 				}
-				else if (keyword.toLowerCase() === "include") {
+				else if (keyword.toLowerCase() === "include" && parsed[i].length > 1) {
 					var codes = doc.getText(Range.create(Position.create(i,parsed[i][1].p),Position.create(i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)));
 					result.includes = codes.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
 				}
-				else if (keyword.toLowerCase() === "includegenerator") {
+				else if (keyword.toLowerCase() === "includegenerator" && parsed[i].length > 1) {
 					var codes = doc.getText(Range.create(Position.create(i,parsed[i][1].p),Position.create(i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)));
 					result.includegenerators = codes.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
 				}
-				else if (keyword.toLowerCase() === "import") {
+				else if (keyword.toLowerCase() === "import" && parsed[i].length > 1) {
 					var codes = doc.getText(Range.create(Position.create(i,parsed[i][1].p),Position.create(i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)));
 					result.imports = codes.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
 				}
@@ -1145,7 +1145,7 @@ export async function getImports(doc: TextDocument, parsed: compressedline[], li
 				// This line starts with a UDL keyword
 	
 				var keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c))).toLowerCase();
-				if (keyword === "import") {
+				if (keyword === "import" && parsed[i].length > 1) {
 					var codes = doc.getText(Range.create(Position.create(i,parsed[i][1].p),Position.create(i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)));
 					result = codes.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
 				}

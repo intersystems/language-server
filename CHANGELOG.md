@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.0.2] - 2022-XX-XX
+- Fix issue [#222](https://github.com/intersystems/language-server/issues/222): Language Server crashes when class `Import` keyword is present but empty
+
 ## [2.0.1] - 2022-03-31
 - Fix issue [#219](https://github.com/intersystems/language-server/issues/219): Language Server REST requests do not use CA certs from OS cert store
 - Fix issue [#220](https://github.com/intersystems/language-server/issues/220): Extension reports noisy error message when REST request fails
