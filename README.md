@@ -7,9 +7,9 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
 ## Features
 
 - [Semantic token](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)-based coloring for InterSystems ObjectScript classes, routines and CSP files, with support for embedded languages like SQL, Python, HTML, XML, Java, JavaScript and CSS.
-- Hover information for ObjectScript commands, system functions, system variables, classes, class members, macros, preprocessor directives, UDL keywords and Parameter types, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
+- Hover information for ObjectScript commands, system functions, system variables, classes, class members, macros, preprocessor directives, UDL keywords, Parameter types and Storage definition keywords, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
 - [Go to definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-definition) for ObjectScript classes, class members, macros, routines, routine labels and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
-- Code completion for ObjectScript classes, class members, system functions, system variables, macros, include files, package imports, preprocessor directives, UDL keywords, UDL keyword values and UDL Parameter types.
+- Code completion for ObjectScript classes, class members, system functions, system variables, macros, include files, package imports, preprocessor directives, UDL keywords, UDL keyword values, UDL Parameter types and UDL Storage definition keywords.
 - Code completion for XML Element names, Attribute names and Attribute values within XData blocks that have the XMLNamespace keyword set to a URL that corresponds to a Studio Assist Schema (SASchema).
 - Signature help for ObjectScript methods and macros that accept arguments.
 - Document symbols for ObjectScript classes, routines and include files.

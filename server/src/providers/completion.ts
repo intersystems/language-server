@@ -1,5 +1,5 @@
-import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, Position, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineNormalizedPropertyClass } from '../utils/functions';
+import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, Position, Range } from 'vscode-languageserver/node';
+import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineNormalizedPropertyClass, storageKeywordsKeyForToken } from '../utils/functions';
 import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline } from '../utils/types';
 import { parsedDocuments, documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -18,6 +18,7 @@ import parameterKeywords = require("../documentation/keywords/Parameter.json");
 import projectionKeywords = require("../documentation/keywords/Projection.json");
 import propertyKeywords = require("../documentation/keywords/Property.json");
 import queryKeywords = require("../documentation/keywords/Query.json");
+import storageKeywords = require("../documentation/keywords/Storage.json");
 import triggerKeywords = require("../documentation/keywords/Trigger.json");
 import xdataKeywords = require("../documentation/keywords/XData.json");
 import { TextDocument } from 'vscode-languageserver-textdocument';
@@ -1875,6 +1876,92 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						data: "Preprocessor"
 					});
 				}
+			}
+		}
+	}
+	else if (prevline.slice(-1) === "<" && triggerlang === ld.cls_langindex) {
+		// This is an angle bracket in UDL
+
+		const storageObjKey = storageKeywordsKeyForToken(doc, parsed, params.position.line, thistoken);
+		if (storageObjKey != "") {
+			// Get the list of all possible elements at this nesting level
+			const keywords: KeywordDoc[] = storageKeywords[storageObjKey];
+			if (keywords) {
+				if (storageObjKey != "STORAGE") {
+					// Add an entry for the closing tag of the parent
+
+					let longestStart = "";
+					for (const stgKey of Object.keys(storageKeywords)) {
+						if (stgKey == storageObjKey) {
+							break;
+						}
+						longestStart = stgKey;
+					}
+					if (longestStart.length) {
+						const parentKeyDoc = storageKeywords[longestStart].find(
+							(keydoc) => keydoc.name.toUpperCase() == storageObjKey.slice(longestStart.length)
+						);
+						if (parentKeyDoc) {
+							result.push({
+								label: `/${parentKeyDoc.name}`,
+								kind: CompletionItemKind.Keyword,
+								data: "storage",
+								insertText: `/${parentKeyDoc.name}>`,
+								sortText: "zzzz" // Make sure this entry is last in the list
+							});
+						}
+					}
+				}
+				result.push(...keywords.filter((keydoc) => keydoc.name != "Name").map((keydoc) => {
+					let doctext = keydoc.description;
+					if (doctext === undefined) {
+						doctext = "";
+					}
+					if ("constraint" in keydoc && keydoc.constraint instanceof Array) {
+						if (doctext !== "") {
+							doctext = doctext + "\n\n";
+						}
+						doctext = doctext.concat("Permitted Values: ",keydoc.constraint.join(", "));
+					}
+					const compitem: CompletionItem = {
+						label: keydoc.name,
+						kind: CompletionItemKind.Keyword,
+						data: "storage",
+						documentation: {
+							kind: "plaintext",
+							value: doctext
+						}
+					};
+					
+					const childKeys: KeywordDoc[] = storageKeywords[storageObjKey + keydoc.name.toUpperCase()];
+					if (childKeys && childKeys.findIndex((childkey) => childkey.name == "Name") != -1) {
+						// This element has a name, so it needs to be included as an attribute
+						if (keydoc.type == "KW_TYPE_SUBNODE") {
+							compitem.insertText = `${keydoc.name} name="$1">\n$2\n</${keydoc.name}>`;
+						}
+						else {
+							compitem.insertText = `${keydoc.name} name="$1">$2</${keydoc.name}>`;
+						}
+					}
+					else {
+						if (keydoc.type == "KW_TYPE_SUBNODE") {
+							compitem.insertText = `${keydoc.name}>\n$1\n</${keydoc.name}>`;
+						}
+						else {
+							if (keydoc.name == "IdFunction") {
+								compitem.insertText = `${keydoc.name}>` + "${1|increment,sequence|}" + `</${keydoc.name}>`;
+							}
+							else if (keydoc.name == "Final") {
+								compitem.insertText = `${keydoc.name}>1</${keydoc.name}>`;
+							}
+							else {
+								compitem.insertText = `${keydoc.name}>$1</${keydoc.name}>`;
+							}
+						}
+					}
+					compitem.insertTextFormat = InsertTextFormat.Snippet;
+					return compitem;
+				}));
 			}
 		}
 	}

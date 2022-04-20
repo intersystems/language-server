@@ -2405,3 +2405,104 @@ export async function determineNormalizedPropertyClass(doc: TextDocument, parsed
 	const clsname = doc.getText(findFullRange(line,parsed,firstclstkn,clsstart,clsend));
 	return normalizeClassname(doc,parsed,clsname,server,line);
 }
+
+/**
+ * Determine the nesting level for this token within a Storage definition.
+ * 
+ * @param doc The TextDocument.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line of this token is on.
+ * @param token The offset of this token in the line.
+ * @returns The key in the `storageKeywords` object for this nesting level,
+ * or the empty string if the token is not in a Storage definition.
+ */
+export function storageKeywordsKeyForToken(doc: TextDocument, parsed: compressedline[], line: number, token: number): string {
+	let result: string = "";
+	// Check that this token is in a Storage definition
+	let storageStart = -1;
+	for (let j = line; j >= 0; j--) {
+		if (parsed[j].length === 0) {
+			continue;
+		}
+		if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+			const keytext = doc.getText(Range.create(j,parsed[j][0].p,j,parsed[j][0].p+parsed[j][0].c));
+			if (keytext.toLowerCase() == "storage") {
+				if (doc.getText(Range.create(j,0,j+1,0)).trim().endsWith("{")) {
+					storageStart = j + 1;
+				}
+				else {
+					storageStart = j + 2;
+				}
+			}
+			break;
+		}
+	}
+	if (storageStart != -1) {
+		// Find all open XML elements
+		let ignoreLastOpen = false;
+		if (parsed[line][token].s == ld.cls_xmlelemname_attrindex) {
+			// This token is an XML element name, so adjust the search accordingly
+			const prevline = token == 0 ? line - 1 : line;
+			const prevtkn = token == 0 ? parsed[prevline].length - 1 : token - 1;
+			line = prevline;
+			token = prevtkn;
+			if (
+				doc.getText(Range.create(
+					prevline, parsed[prevline][prevtkn].p,
+					prevline, parsed[prevline][prevtkn].p + parsed[prevline][prevtkn].c
+				)) == "/"
+			) {
+				// This is a close element, so we need to ignore the last open element
+				ignoreLastOpen = true;
+			}
+		}
+		const open: string[] = [];
+		for (let xmlline = storageStart; xmlline <= line; xmlline++) {
+			var endtkn: number = parsed[xmlline].length - 1;
+			if (xmlline === line) {
+				// Don't parse past the completion position
+				endtkn = token - 1;
+			}
+			for (let xmltkn = 0; xmltkn <= endtkn; xmltkn++) {
+				if (parsed[xmlline][xmltkn].l == ld.cls_langindex && parsed[xmlline][xmltkn].s == ld.cls_delim_attrindex) {
+					// This is a UDL delimiter 
+					const tokentext = doc.getText(Range.create(
+						xmlline,parsed[xmlline][xmltkn].p,
+						xmlline,parsed[xmlline][xmltkn].p+parsed[xmlline][xmltkn].c
+					));
+					if (tokentext === "<" && xmltkn != endtkn && parsed[xmlline][xmltkn+1].s == ld.cls_xmlelemname_attrindex) {
+						open.push(doc.getText(Range.create(
+							xmlline,parsed[xmlline][xmltkn+1].p,
+							xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c
+						)));
+					}
+					else if (tokentext === "/") {
+						if (xmltkn != endtkn && parsed[xmlline][xmltkn+1].s == ld.cls_delim_attrindex) {
+							if (doc.getText(Range.create(
+								xmlline,parsed[xmlline][xmltkn+1].p,
+								xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c
+							)) === ">") {
+								// The previous element has been closed
+								open.pop();
+							}
+						}
+						else if (xmltkn != 0 && parsed[xmlline][xmltkn-1].s == ld.cls_delim_attrindex) {
+							if (xmltkn != endtkn && doc.getText(Range.create(
+								xmlline,parsed[xmlline][xmltkn-1].p,
+								xmlline,parsed[xmlline][xmltkn-1].p+parsed[xmlline][xmltkn-1].c
+							)) === "<") {
+								// The upcoming element is being closed
+								open.splice(open.lastIndexOf(doc.getText(Range.create(
+									xmlline,parsed[xmlline][xmltkn+1].p,
+									xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c
+								))),1);
+							}
+						}
+					}
+				}
+			}
+		}
+		result = "STORAGE" + (ignoreLastOpen ? open.slice(0,-1) : open).join("").toUpperCase();
+	}
+	return result;
+}

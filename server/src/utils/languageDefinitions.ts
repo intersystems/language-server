@@ -64,6 +64,8 @@ export const cls_iden_attrindex = 0x0B;
 export const cls_rtnname_attrindex = 0x0D;
 export const cls_cparam_attrindex = 0x17;
 export const cls_param_attrindex = 0x18;
+export const cls_xmlattrname_attrindex = 0x19;
+export const cls_xmlelemname_attrindex = 0x1a;
 
 export const html_delim_attrindex = 0x05;
 export const html_name_attrindex = 0x07;

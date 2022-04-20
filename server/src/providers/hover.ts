@@ -1,5 +1,5 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineNormalizedPropertyClass } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineNormalizedPropertyClass, storageKeywordsKeyForToken } from '../utils/functions';
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
 import { parsedDocuments, documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -20,6 +20,7 @@ import parameterKeywords = require("../documentation/keywords/Parameter.json");
 import projectionKeywords = require("../documentation/keywords/Projection.json");
 import propertyKeywords = require("../documentation/keywords/Property.json");
 import queryKeywords = require("../documentation/keywords/Query.json");
+import storageKeywords = require("../documentation/keywords/Storage.json");
 import triggerKeywords = require("../documentation/keywords/Trigger.json");
 import xdataKeywords = require("../documentation/keywords/XData.json");
 
@@ -575,73 +576,73 @@ export async function onHover(params: TextDocumentPositionParams) {
 						}
 					}
 					
-					var thiskeydoc: KeywordDoc | undefined;
+					var keydoc: KeywordDoc | undefined;
 					if (firstkey === "class") {
 						// This is a class keyword
-						thiskeydoc = <KeywordDoc>classKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>classKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "constraint") {
 						// This is a constraint keyword
-						thiskeydoc = <KeywordDoc>constraintKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>constraintKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "foreignkey") {
 						// This is a ForeignKey keyword
-						thiskeydoc = <KeywordDoc>foreignkeyKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>foreignkeyKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "index") {
 						// This is a index keyword
-						thiskeydoc = <KeywordDoc>indexKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>indexKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "method" || firstkey === "classmethod" || firstkey === "clientmethod") {
 						// This is a method keyword
-						thiskeydoc = <KeywordDoc>methodKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>methodKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "parameter") {
 						// This is a parameter keyword
-						thiskeydoc = <KeywordDoc>parameterKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>parameterKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "projection") {
 						// This is a projection keyword
-						thiskeydoc = <KeywordDoc>projectionKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>projectionKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "property" || firstkey === "relationship") {
 						// This is a property keyword
-						thiskeydoc = <KeywordDoc>propertyKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>propertyKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "query") {
 						// This is a query keyword
-						thiskeydoc = <KeywordDoc>queryKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>queryKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "trigger") {
 						// This is a trigger keyword
-						thiskeydoc = <KeywordDoc>triggerKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>triggerKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
 					else if (firstkey === "xdata") {
 						// This is an XData keyword
-						thiskeydoc = <KeywordDoc>xdataKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
+						keydoc = <KeywordDoc>xdataKeywords.find((keydoc) => keydoc.name.toLowerCase() === thiskeytext);
 					}
-					if (thiskeydoc !== undefined) {
-						var hoverdocstr = thiskeydoc.description;
+					if (keydoc !== undefined) {
+						var hoverdocstr = keydoc.description;
 						if (hoverdocstr === undefined) {
 							hoverdocstr = "";
 						}
-						if ("constraint" in thiskeydoc && thiskeydoc.constraint instanceof Array) {
+						if ("constraint" in keydoc && keydoc.constraint instanceof Array) {
 							if (hoverdocstr !== "") {
 								return {
-									contents: [thiskeydoc.description,"Permitted values: "+thiskeydoc.constraint.join(", ")],
+									contents: [keydoc.description,"Permitted values: "+keydoc.constraint.join(", ")],
 									range: thiskeyrange
 								};
 							}
 							else {
 								return {
-									contents: ["Permitted values: "+thiskeydoc.constraint.join(", ")],
+									contents: ["Permitted values: "+keydoc.constraint.join(", ")],
 									range: thiskeyrange
 								};
 							}
 						}
 						else {
 							return {
-								contents: thiskeydoc.description,
+								contents: keydoc.description,
 								range: thiskeyrange
 							};
 						}
@@ -876,6 +877,52 @@ export async function onHover(params: TextDocumentPositionParams) {
 								contents: [`${normalizedcls}::${param}`,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 								range: paramrange
 							};
+						}
+					}
+				}
+			}
+			else if (
+				parsed[params.position.line][i].l == ld.cls_langindex && (
+				parsed[params.position.line][i].s == ld.cls_xmlelemname_attrindex ||
+				parsed[params.position.line][i].s == ld.cls_xmlattrname_attrindex)
+			) {
+				// This is a Storage XML element or attribute name
+
+				// Get the full text of the selection
+				const elemrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const elem = doc.getText(elemrange);
+
+				const storageObjKey = storageKeywordsKeyForToken(doc, parsed, params.position.line, i);
+				if (storageObjKey != "") {
+					// Get the list of all possible elements at this nesting level
+					const keywords: KeywordDoc[] = storageKeywords[storageObjKey];
+					if (keywords) {
+						const keydoc = keywords.find((keyword) => keyword.name.toLowerCase() == elem.toLowerCase());
+						if (keydoc !== undefined) {
+							let hoverdocstr = keydoc.description;
+							if (hoverdocstr === undefined) {
+								hoverdocstr = "";
+							}
+							if ("constraint" in keydoc && keydoc.constraint instanceof Array) {
+								if (hoverdocstr !== "") {
+									return {
+										contents: [keydoc.description,"Permitted values: "+keydoc.constraint.join(", ")],
+										range: elemrange
+									};
+								}
+								else {
+									return {
+										contents: ["Permitted values: "+keydoc.constraint.join(", ")],
+										range: elemrange
+									};
+								}
+							}
+							else {
+								return {
+									contents: keydoc.description,
+									range: elemrange
+								};
+							}
 						}
 					}
 				}
