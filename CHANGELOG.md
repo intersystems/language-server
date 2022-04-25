@@ -4,6 +4,7 @@
 - Fix issue [#222](https://github.com/intersystems/language-server/issues/222): Language Server crashes when class `Import` keyword is present but empty
 - Fix issue [#224](https://github.com/intersystems/language-server/issues/224): XData parsing does not handle header comments in XML body
 - Fix issue [#225](https://github.com/intersystems/language-server/issues/225): Add hover and completion support for Storage definitions
+- Fix issue [#226](https://github.com/intersystems/language-server/issues/226): Language Server crashes on some Python methods
 
 ## [2.0.1] - 2022-03-31
 - Fix issue [#219](https://github.com/intersystems/language-server/issues/219): Language Server REST requests do not use CA certs from OS cert store
