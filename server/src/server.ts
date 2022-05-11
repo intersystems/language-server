@@ -1,4 +1,4 @@
-import { DidChangeConfigurationNotification, TextDocumentSyncKind, CodeActionKind} from 'vscode-languageserver/node';
+import { DidChangeConfigurationNotification, TextDocumentSyncKind, CodeActionKind } from 'vscode-languageserver/node';
 import { URI } from 'vscode-uri';
 
 import { onPrepare, onSubtypes, onSupertypes } from './providers/typeHierarchy';

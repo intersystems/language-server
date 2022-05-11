@@ -4,15 +4,15 @@
 	"version": "2.0.0",
 	"private": true,
 	"engines": {
-		"vscode": "^1.63.0"
+		"vscode": "^1.67.0"
 	},
 	"dependencies": {
-		"axios": "^0.26.1",
+		"axios": "^0.27.2",
 		"vscode-cache": "^0.3.0",
-		"vscode-languageclient": "^8.0.0-next.4"
+		"vscode-languageclient": "^8.0.0"
 	},
 	"devDependencies": {
 		"@types/semver": "^7.3.9",
-		"@types/vscode": "1.63.0"
+		"@types/vscode": "1.67.0"
 	}
 }

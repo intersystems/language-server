@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.0.3] - 2022-XX-XX
+- Fix issue [#227](https://github.com/intersystems/language-server/issues/227): Upgrade to vscode-languageclient/server version 8.0.0
+
 ## [2.0.2] - 2022-04-25
 - Fix issue [#222](https://github.com/intersystems/language-server/issues/222): Language Server crashes when class `Import` keyword is present but empty
 - Fix issue [#224](https://github.com/intersystems/language-server/issues/224): XData parsing does not handle header comments in XML body

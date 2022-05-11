@@ -17,9 +17,8 @@ import {
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
-	TransportKind,
+	TransportKind
 } from 'vscode-languageclient/node';
-import { TypeHierarchyFeature } from 'vscode-languageclient/lib/common/proposed.typeHierarchy';
 
 import { lte } from "semver";
 
@@ -117,71 +116,18 @@ export async function activate(context: ExtensionContext) {
 		clientOptions
 	);
 
-	client.onReady().then(() => {
-		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
-			let serverSpec = objectScriptApi.serverForUri(Uri.parse(uri));
-			if (serverSpec.host !== "" && typeof serverSpec.password === "undefined") {
-				// The main extension didn't provide a password, so we must 
-				// get it from the server manager's authentication provider.
-				const AUTHENTICATION_PROVIDER = "intersystems-server-credentials";
-				const scopes = [serverSpec.serverName, serverSpec.username || ""];
-				let session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { silent: true });
-				if (!session) {
-					session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { createIfNone: true });
-				}
-				if (session) {
-					serverSpec.username = session.scopes[1];
-					serverSpec.password = session.accessToken;
-				}
-			}
-			return serverSpec;
-		});
-		client.onRequest("intersystems/uri/localToVirtual", (uri: string): string => {
-			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
-			return newuri.toString();
-		});
-		client.onRequest("intersystems/uri/forDocument", (document: string): string => {
-			if (lte(objectScriptExt.packageJSON.version,"1.0.10")) {
-				// If the active version of vscode-objectscript doesn't expose
-				// DocumentContentProvider.getUri(), just return the empty string.
-				return "";
-			}
-			const uri: Uri = objectScriptApi.getUriForDocument(document);
-			return uri.toString();
-		});
-		client.onRequest("intersystems/uri/forTypeHierarchyClasses", (classes: string[]): string[] => {
-			// vscode-objectscript version 1.0.11+ has been available for long enough that
-			// it's safe to assume that users have upgraded to at least 1.0.11
-			return classes.map(
-				(cls: string) => {
-					const uri: Uri = objectScriptApi.getUriForDocument(`${cls}.cls`);
-					return uri.toString();
-				}
-			);
-		});
-		objectScriptApi.onDidChangeConnection()(() => {
-			client.sendNotification("intersystems/server/connectionChange");
-		});
-		if (serverManagerExt !== undefined) {
-			// The server manager extension is installed
-			const serverManagerApi = serverManagerExt.exports;
-			serverManagerApi.onDidChangePassword()((serverName: string) => {
-				client.sendNotification("intersystems/server/passwordChange",serverName);
-			});
-		}
-		client.onRequest("intersystems/server/makeRESTRequest", async (args: MakeRESTRequestParams): Promise<any | undefined> => {
-			// As of version 2.0.0, REST requests are made on the client side
-			return makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params).then(respdata => {
-				if (respdata) {
-					// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
-					return { data: respdata.data };
-				} else {
-					return undefined;
-				}
-			});
-		});
+	// Send custom notifications when the connection or password changes
+	objectScriptApi.onDidChangeConnection()(() => {
+		client.sendNotification("intersystems/server/connectionChange");
 	});
-
+	if (serverManagerExt !== undefined) {
+		// The server manager extension is installed
+		const serverManagerApi = serverManagerExt.exports;
+		serverManagerApi.onDidChangePassword()((serverName: string) => {
+			client.sendNotification("intersystems/server/passwordChange",serverName);
+		});
+	}
+	
 	if (
 		workspace.getConfiguration("intersystems.language-server").get("suggestTheme") === true &&
 		workspace.getConfiguration("workbench").get("colorTheme") !== "InterSystems Default Light" &&
@@ -268,10 +214,61 @@ export async function activate(context: ExtensionContext) {
 		}
 	}
 
-	// Initialize the EvaluatableExpressionProvider
-	const evaluatableExpressionProvider = new ObjectScriptEvaluatableExpressionProvider();
-
 	context.subscriptions.push(
+		// Register custom request handlers
+		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
+			let serverSpec = objectScriptApi.serverForUri(Uri.parse(uri));
+			if (serverSpec.host !== "" && typeof serverSpec.password === "undefined") {
+				// The main extension didn't provide a password, so we must 
+				// get it from the server manager's authentication provider.
+				const AUTHENTICATION_PROVIDER = "intersystems-server-credentials";
+				const scopes = [serverSpec.serverName, serverSpec.username || ""];
+				let session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { silent: true });
+				if (!session) {
+					session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { createIfNone: true });
+				}
+				if (session) {
+					serverSpec.username = session.scopes[1];
+					serverSpec.password = session.accessToken;
+				}
+			}
+			return serverSpec;
+		}),
+		client.onRequest("intersystems/uri/localToVirtual", (uri: string): string => {
+			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
+			return newuri.toString();
+		}),
+		client.onRequest("intersystems/uri/forDocument", (document: string): string => {
+			if (lte(objectScriptExt.packageJSON.version,"1.0.10")) {
+				// If the active version of vscode-objectscript doesn't expose
+				// DocumentContentProvider.getUri(), just return the empty string.
+				return "";
+			}
+			const uri: Uri = objectScriptApi.getUriForDocument(document);
+			return uri.toString();
+		}),
+		client.onRequest("intersystems/uri/forTypeHierarchyClasses", (classes: string[]): string[] => {
+			// vscode-objectscript version 1.0.11+ has been available for long enough that
+			// it's safe to assume that users have upgraded to at least 1.0.11
+			return classes.map(
+				(cls: string) => {
+					const uri: Uri = objectScriptApi.getUriForDocument(`${cls}.cls`);
+					return uri.toString();
+				}
+			);
+		}),
+		client.onRequest("intersystems/server/makeRESTRequest", async (args: MakeRESTRequestParams): Promise<any | undefined> => {
+			// As of version 2.0.0, REST requests are made on the client side
+			return makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params).then(respdata => {
+				if (respdata) {
+					// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
+					return { data: respdata.data };
+				} else {
+					return undefined;
+				}
+			});
+		}),
+
 		// Register commands
 		commands.registerCommand("intersystems.language-server.overrideClassMembers",overrideClassMembers),
 		commands.registerCommand("intersystems.language-server.selectParameterType",selectParameterType),
@@ -280,11 +277,8 @@ export async function activate(context: ExtensionContext) {
 		commands.registerCommand("intersystems.language-server.showSymbolInClass",showSymbolInClass),
 
 		// Register EvaluatableExpressionProvider
-		languages.registerEvaluatableExpressionProvider(documentSelector,evaluatableExpressionProvider)
+		languages.registerEvaluatableExpressionProvider(documentSelector,new ObjectScriptEvaluatableExpressionProvider())
 	);
-
-	// Register proposed TypeHierarchy feature
-	client.registerFeature(new TypeHierarchyFeature(client));
 
 	// Start the client. This will also launch the server
 	client.start();

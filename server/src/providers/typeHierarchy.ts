@@ -1,9 +1,11 @@
 import {
 	Range,
 	Position,
-	Proposed,
 	TypeHierarchyItem,
-	SymbolKind
+	SymbolKind,
+	TypeHierarchyPrepareParams,
+	TypeHierarchySubtypesParams,
+	TypeHierarchySupertypesParams
 } from 'vscode-languageserver/node';
 
 import {
@@ -18,7 +20,7 @@ import { parsedDocuments, documents, connection } from '../utils/variables';
 /**
  * Handler function for the `textDocument/prepareTypeHierarchy` request.
  */
-export async function onPrepare(params: Proposed.TypeHierarchyPrepareParams): Promise<TypeHierarchyItem[] | null> {
+export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<TypeHierarchyItem[] | null> {
 	const parsed = parsedDocuments.get(params.textDocument.uri);
 	if (parsed === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
@@ -125,7 +127,7 @@ async function classesToTHItems(item: TypeHierarchyItem, query: string): Promise
 /**
  * Handler function for the `typeHierarchy/subtypes` request.
  */
-export async function onSubtypes(params: Proposed.TypeHierarchySubtypesParams): Promise<TypeHierarchyItem[]> {
+export async function onSubtypes(params: TypeHierarchySubtypesParams): Promise<TypeHierarchyItem[]> {
 	return classesToTHItems(
 		params.item,
 		"SELECT Name FROM %Dictionary.CompiledClass WHERE ? %INLIST $LISTFROMSTRING(Super)"
@@ -135,7 +137,7 @@ export async function onSubtypes(params: Proposed.TypeHierarchySubtypesParams): 
 /**
  * Handler function for the `typeHierarchy/supertypes` request.
  */
-export async function onSupertypes(params: Proposed.TypeHierarchySupertypesParams): Promise<TypeHierarchyItem[]> {
+export async function onSupertypes(params: TypeHierarchySupertypesParams): Promise<TypeHierarchyItem[]> {
 	return classesToTHItems(
 		params.item,
 		"SELECT Name FROM %Dictionary.CompiledClass WHERE Name %INLIST (SELECT $LISTFROMSTRING(Super) FROM %Dictionary.CompiledClass WHERE Name = ?)"

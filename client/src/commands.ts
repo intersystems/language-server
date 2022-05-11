@@ -114,7 +114,7 @@ export async function overrideClassMembers() {
 	});
 
 	// Apply the workspace edit
-	workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));
+	workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));
 }
 
 /**
@@ -146,7 +146,7 @@ export async function selectParameterType(uri: string, parameterRange: Range) {
 	};
 
 	// Apply the workspace edit
-	workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(edit));	
+	workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(edit));	
 }
 
 /**
@@ -185,7 +185,7 @@ export async function selectImportPackage(uri: string, classname: string) {
 	});
 
 	// Apply the workspace edit
-	workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
+	workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
 }
 
 /**
@@ -244,7 +244,7 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 	});
 
 	// Apply the workspace edit
-	await workspace.applyEdit(client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
+	await workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
 
 	// Highlight and scroll to new extracted method
 	const activeEditor = window.activeTextEditor;
