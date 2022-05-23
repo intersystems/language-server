@@ -1,7 +1,10 @@
 # Changelog
 
-## [2.0.3] - 2022-XX-XX
+## [2.0.3] - 2022-05-23
 - Fix issue [#227](https://github.com/intersystems/language-server/issues/227): Upgrade to vscode-languageclient/server version 8.0.0
+- Parser changes:
+  - DP-409373: Support Python 3.10 syntax (structural pattern matching and parenthesized context managers)
+  - DP-414284: Support referencing quoted class parameters in ObjectScript parser
 
 ## [2.0.2] - 2022-04-25
 - Fix issue [#222](https://github.com/intersystems/language-server/issues/222): Language Server crashes when class `Import` keyword is present but empty
