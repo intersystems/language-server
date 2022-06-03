@@ -413,7 +413,7 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 						) {
 							// This line is the start of a class member definition
 							const searchstr = cls.content[ln].slice(cls.content[ln].indexOf(" ")+1).trim();
-							if (searchstr.indexOf(member) === 0) {
+							if (new RegExp(`^${member}[( ;]{1}.*`).test(searchstr)) {
 								// This is the right member
 								
 								// Add the description lines to the 'newtText' string if there are any

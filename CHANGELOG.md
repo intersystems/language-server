@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.0.4] - 2022-XX-XX
+- Fix issue [#229](https://github.com/intersystems/language-server/issues/229): `Override Class Members` command may override members that weren't selected
+
 ## [2.0.3] - 2022-05-23
 - Fix issue [#227](https://github.com/intersystems/language-server/issues/227): Upgrade to vscode-languageclient/server version 8.0.0
 - Parser changes:
