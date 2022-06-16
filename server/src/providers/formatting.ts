@@ -97,6 +97,7 @@ function formatToken(doc: TextDocument, parsed: compressedline[], settings: Lang
 				else if (idealsysftext === "$ISOBJECT") {idealsysftext = "$IsObject";}
 				else if (idealsysftext === "$ISVALIDNUM") {idealsysftext = "$IsValidNum";}
 				else if (idealsysftext === "$ISVALIDDOUBLE") {idealsysftext = "$IsValidDouble";}
+				else if (idealsysftext === "$ISVECTOR") {idealsysftext = "$IsVector";}
 				else if (idealsysftext === "$LISTBUILD") {idealsysftext = "$ListBuild";}
 				else if (idealsysftext === "$LISTDATA") {idealsysftext = "$ListData";}
 				else if (idealsysftext === "$LISTFIND") {idealsysftext = "$ListFind";}
@@ -116,6 +117,7 @@ function formatToken(doc: TextDocument, parsed: compressedline[], settings: Lang
 				else if (idealsysftext === "$SCONVERT") {idealsysftext = "$SConvert";}
 				else if (idealsysftext === "$SORTBEGIN") {idealsysftext = "$SortBegin";}
 				else if (idealsysftext === "$SORTEND") {idealsysftext = "$SortEnd";}
+				else if (idealsysftext === "$VECTORDEFINED") {idealsysftext = "$VectorDefined";}
 				else if (idealsysftext.charAt(1) === "W") {
 					idealsysftext = idealsysftext.slice(0,3) + idealsysftext.slice(3).toLowerCase();
 				}

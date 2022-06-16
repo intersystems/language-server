@@ -363,6 +363,14 @@
     "link":"/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_fisvalidnum"
   },
   {
+    "label":"$ISVECTOR",
+    "alias":[
+      "$ISVECTOR"
+    ],
+    "documentation":[
+    ]
+  },
+  {
     "label":"$JUSTIFY",
     "alias":[
       "$JUSTIFY",
@@ -1040,6 +1048,33 @@
       "`label` _Optional_ &#151; A line label in a routine. Must be a literal value; a variable cannot be used to specify `label`. Line labels are case-sensitive. If omitted, `+offset` is counted from the beginning of the routine.\n\n`+offset` _Optional_ &#151; An expression that resolves to a positive integer that identifies the line to be returned as an offset number of lines. If omitted, the line identified by `label` is returned.\n\n`^routine` _Optional_ &#151; The name of a routine that resides on disk. The system loads the routine from disk and begins execution at the first executable line of the routine. Must be a literal value; a variable cannot be used to specify `routine`. (Note that the ^ character is a separator character, not part of the routine name.) If the routine is not in the current namespace, you can specify the namespace that contains the routine using an _extended routine reference_, as follows: ^|&quot;namespace&quot;|routine. If omitted, defaults to the currently loaded routine.`@expr_atom`An expression atom that uses indirection to supply a location. Resolves to some form of label+offset^routine.\n"
     ],
     "link":"/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_ftext"
+  },
+  {
+    "label":"$VECTOR",
+    "alias":[
+      "$VECTOR",
+      "$VE"
+    ],
+    "documentation":[
+    ]
+  },
+  {
+    "label":"$VECTORDEFINED",
+    "alias":[
+      "$VECTORDEFINED",
+      "$VD"
+    ],
+    "documentation":[
+    ]
+  },
+  {
+    "label":"$VECTOROP",
+    "alias":[
+      "$VECTOROP",
+      "$VOP"
+    ],
+    "documentation":[
+    ]
   },
   {
     "label":"$TRANSLATE",
