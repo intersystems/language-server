@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.4] - 2022-XX-XX
+## [2.0.4] - 2022-06-22
 - Fix issue [#229](https://github.com/intersystems/language-server/issues/229): `Override Class Members` command may override members that weren't selected
 - Parser, completion and formatting support for columnar storage/vector features.
 

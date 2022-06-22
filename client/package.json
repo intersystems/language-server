@@ -9,10 +9,10 @@
 	"dependencies": {
 		"axios": "^0.27.2",
 		"vscode-cache": "^0.3.0",
-		"vscode-languageclient": "^8.0.1"
+		"vscode-languageclient": "^8.0.2-next.5"
 	},
 	"devDependencies": {
-		"@types/semver": "^7.3.9",
+		"@types/semver": "^7.3.10",
 		"@types/vscode": "1.67.0"
 	}
 }
