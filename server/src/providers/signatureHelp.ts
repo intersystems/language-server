@@ -19,6 +19,37 @@ var signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefin
  */
 var signatureHelpStartPosition: Position | undefined = undefined;
 
+/** Determine the active parameter number */
+function determineActiveParam(text: string): number {
+	let activeparam = 0;
+	let openparencount = 0;
+	let instring = false;
+	let incomment = false;
+	for (let i = 0; i < text.length; i++) {
+		const char = text.charAt(i);
+		if (char === "(") {
+			openparencount++;
+		}
+		else if (char === ")") {
+			openparencount--;
+		}
+		else if (char === '"') {
+			instring = !instring;
+		}
+		else if (char === "/" && (i < text.length - 1) && text.charAt(i + 1) == "*" && !incomment) {
+			incomment = true;
+		}
+		else if (char === "*" && (i < text.length - 1) && text.charAt(i + 1) == "/" && incomment) {
+			incomment = false;
+		}
+		else if (char === "," && openparencount === 0 && !instring && !incomment) {
+			// Only increment parameter number if comma isn't inside nested parentheses, a string literal or a multiline-style comment
+			activeparam++;
+		}
+	}
+	return activeparam;
+}
+
 export async function onSignatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null> {
 	const parsed = parsedDocuments.get(params.textDocument.uri);
 	if (parsed === undefined) {return null;}
@@ -39,24 +70,8 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			}
 
 			// Determine the active parameter
-			var activeparam = 0;
-			const text = doc.getText(Range.create(signatureHelpStartPosition,params.position));
-			var openparencount = 0;
-			for (let i = 0; i < text.length; i++) {
-				const char = text.charAt(i);
-				if (char === "(") {
-					openparencount++;
-				}
-				else if (char === ")") {
-					openparencount--;
-				}
-				else if (char === "," && openparencount === 0) {
-					// Only increment parameter number if comma isn't inside nested parentheses
-					activeparam++;
-				}
-			}
+			params.context.activeSignatureHelp.activeParameter = determineActiveParam(doc.getText(Range.create(signatureHelpStartPosition,params.position)));
 
-			params.context.activeSignatureHelp.activeParameter = activeparam;
 			if (signatureHelpDocumentationCache !== undefined) {
 				if (signatureHelpDocumentationCache.type === "macro" && params.context.activeSignatureHelp.activeParameter !== null) {
 					// This is a macro with active parameter
@@ -347,22 +362,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 					}
 
 					// Determine the active parameter
-					var activeparam = 0;
-					const text = doc.getText(Range.create(Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1),params.position));
-					var openparencount = 0;
-					for (let i = 0; i < text.length; i++) {
-						const char = text.charAt(i);
-						if (char === "(") {
-							openparencount++;
-						}
-						else if (char === ")") {
-							openparencount--;
-						}
-						else if (char === "," && openparencount === 0) {
-							// Only increment parameter number if comma isn't inside nested parentheses
-							activeparam++;
-						}
-					}
+					var activeparam = determineActiveParam(doc.getText(Range.create(Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1),params.position)));
 
 					// Get the macro expansion with the correct parameter emphasized
 					signatureHelpMacroCache = {
@@ -489,22 +489,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 						}
 						
 						// Determine the active parameter
-						var activeparam = 0;
-						const text = doc.getText(Range.create(Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1),params.position));
-						var openparencount = 0;
-						for (let i = 0; i < text.length; i++) {
-							const char = text.charAt(i);
-							if (char === "(") {
-								openparencount++;
-							}
-							else if (char === ")") {
-								openparencount--;
-							}
-							else if (char === "," && openparencount === 0) {
-								// Only increment parameter number if comma isn't inside nested parentheses
-								activeparam++;
-							}
-						}
+						var activeparam = determineActiveParam(doc.getText(Range.create(Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1),params.position)));
 
 						signatureHelpStartPosition = Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1);
 						return {
