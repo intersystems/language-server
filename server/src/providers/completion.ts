@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, Position, Range } from 'vscode-languageserver/node';
+import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, Position, Range, TextEdit } from 'vscode-languageserver/node';
 import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineNormalizedPropertyClass, storageKeywordsKeyForToken } from '../utils/functions';
 import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline } from '../utils/types';
 import { parsedDocuments, documents, corePropertyParams } from '../utils/variables';
@@ -541,7 +541,7 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 	// Get all classes
 	const querydata = {
 		query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = {fn CONCAT(dcd.Name,'.cls')}",
-		parameters: ["*.cls",1,1,1,1,0,0]
+		parameters: ["*.cls",1,1,1,1,0,1]
 	};
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -609,7 +609,7 @@ async function completionPackage(server: ServerSpec): Promise<CompletionItem[]> 
 	// Get all the packages
 	const querydata = {
 		query: "SELECT DISTINCT $PIECE(Name,'.',1,$LENGTH(Name,'.')-2) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
-		parameters: ["*.cls",1,1,1,1,0,0]
+		parameters: ["*.cls",1,1,1,1,0,1]
 	};
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -862,7 +862,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				result.push({
 					label: label,
 					kind: CompletionItemKind.Variable,
-					insertText: label.slice(2) + "(",
+					textEdit: TextEdit.insert(params.position,label.slice(2) + "("),
 					data: "ssv",
 					documentation: {
 						kind: "markdown",
@@ -878,7 +878,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				result.push({
 					label: label,
 					kind: CompletionItemKind.Variable,
-					insertText: label.slice(1),
+					textEdit: TextEdit.insert(params.position,label.slice(1)),
 					data: "sv",
 					documentation: {
 						kind: "markdown",
@@ -892,7 +892,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					result.push({
 						label: label,
 						kind: CompletionItemKind.Function,
-						insertText: label.slice(1) + "(",
+						textEdit: TextEdit.insert(params.position,label.slice(1) + "("),
 						data: "sf",
 						documentation: {
 							kind: "markdown",
@@ -1031,8 +1031,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 			// Get all classes that match the filter
 			const querydata = {
-				query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?)",
-				parameters: ["*.cls",1,1,1,1,0,0,"Name %STARTSWITH '"+filter+"'"]
+				query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = {fn CONCAT(dcd.Name,'.cls')}",
+				parameters: ["*.cls",1,1,1,1,0,1,`Name %STARTSWITH '${filter}'`]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -1040,9 +1040,10 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 				for (let clsobj of respdata.data.result.content) {
 					result.push({
-						label: clsobj.Name.replace(filter,"").slice(0,-4),
+						label: clsobj.Name.slice(filter.length),
 						kind: CompletionItemKind.Class,
-						data: ["class",clsobj.Name,doc.uri]
+						data: ["class",clsobj.Name,doc.uri],
+						tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined
 					});
 				}
 			}
