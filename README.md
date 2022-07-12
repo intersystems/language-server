@@ -37,7 +37,9 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Multi-line macro definitions
   - Dotted Do blocks
   - Embedded code blocks (SQL, HTML, JavaScript)
-  - Region markers (`#;#region` or `//#region` to start and `#;#endregion` or `//#endregion` to end)
+  - Region markers:
+    - In ObjectScript: `#;#region` or `//#region` to start and `#;#endregion` or `//#endregion` to end
+    - In UDL: `//#region` to start and `//#endregion` to end
 - [Symbol Renaming](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol) for ObjectScript local variables and method arguments within class definitions.
 - [Go to type definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-type-definition) for ObjectScript methods, properties, method arguments and variables declared with `#Dim`.
 - Go to declaration for ObjectScript method arguments, variables declared with `#Dim` and variables in the [PublicList](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_publiclist).

@@ -2,6 +2,9 @@ import { FoldingRange, FoldingRangeKind, FoldingRangeParams, Position, Range } f
 import { parsedDocuments, documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
+const cosRegionRegex = new RegExp("^(?:\/\/|#;) *#(?:end){0,1}region(?: +.*){0,1}$");
+const clsRegionRegex = new RegExp("^\/\/ *#(?:end){0,1}region(?: +.*){0,1}$");
+
 export function onFoldingRanges(params: FoldingRangeParams) {
 	const parsed = parsedDocuments.get(params.textDocument.uri);
 	if (parsed === undefined) {return null;}
@@ -34,7 +37,8 @@ export function onFoldingRanges(params: FoldingRangeParams) {
 			}
 			continue;
 		}
-		const firsttokentext = doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c)));
+		const firsttokentext = doc.getText(Range.create(line,parsed[line][0].p,line,parsed[line][0].p+parsed[line][0].c));
+		const lineFromFirstToken = doc.getText(Range.create(line,parsed[line][0].p,line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c));
 		if (
 			(parsed[line][0].l === ld.cls_langindex && parsed[line][0].s === ld.cls_desc_attrindex) ||
 			(parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_dcom_attrindex)
@@ -103,7 +107,7 @@ export function onFoldingRanges(params: FoldingRangeParams) {
 					doc.getText(Range.create(Position.create(line-1,parsed[line-1][0].p),Position.create(line-1,parsed[line-1][0].p+parsed[line-1][0].c))).toLowerCase() === "class")
 					||
 					(parsed[line].length > 1 && parsed[line][0].l == ld.cls_langindex && parsed[line][0].s == ld.cls_keyword_attrindex &&
-					doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c))).toLowerCase() === "class")
+					firsttokentext.toLowerCase() === "class")
 				) {
 					// This is the open curly for a class, so don't create a folding range for it
 					continue;
@@ -370,13 +374,21 @@ export function onFoldingRanges(params: FoldingRangeParams) {
 				}
 			}
 			else if (
-				parsed[line].length === 1 && parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_comment_attrindex &&
-				(firsttokentext.slice(0,2) === "//" || firsttokentext.slice(0,2) === "#;") &&
-				(firsttokentext.toLowerCase().slice(2).trim() === "#region" || firsttokentext.toLowerCase().slice(2).trim() === "#endregion")
+				(
+					// Region marker within ObjectScript
+					parsed[line].length === 1 && parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_comment_attrindex &&
+					cosRegionRegex.test(lineFromFirstToken)
+				)
+				||
+				(
+					// Region marker within UDL
+					parsed[line].length === 2 && parsed[line][0].l === ld.cls_langindex && parsed[line][0].s === ld.cls_comment_attrindex &&
+					clsRegionRegex.test(lineFromFirstToken)
+				)
 			) {
 				// This line contains a region marker
 
-				if (firsttokentext.toLowerCase().slice(2).trim() === "#region") {
+				if (lineFromFirstToken.includes("#region")) {
 					// Create a new Region range
 					openranges.push({
 						startLine: line,
@@ -403,7 +415,7 @@ export function onFoldingRanges(params: FoldingRangeParams) {
 			else if (parsed[line][0].l == ld.cls_langindex && parsed[line][0].s == ld.cls_keyword_attrindex) {
 				// This line starts with a UDL keyword
 
-				const keytext = doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c))).toLowerCase();
+				const keytext = firsttokentext.toLowerCase();
 				if (keytext === "xdata") {
 					// This line is that start of an XData block
 					for (let k = 3; k < parsed[line].length; k++) {
