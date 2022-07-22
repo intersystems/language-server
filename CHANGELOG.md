@@ -6,6 +6,7 @@
 - Fix issue [#234](https://github.com/intersystems/language-server/issues/234): Generated classes do not appear in intellisense for for class names
 - Fix issue [#235](https://github.com/intersystems/language-server/issues/235): When using autocomplete for a system function/variable, the dollar sign may get dropped
 - Fix issue [#237](https://github.com/intersystems/language-server/issues/237): Allow comments following a folding region marker
+- Fix issue [#239](https://github.com/intersystems/language-server/issues/239): Support nested routine labels in `DocumentSymbolProvider`
 
 ## [2.0.4] - 2022-06-22
 - Fix issue [#229](https://github.com/intersystems/language-server/issues/229): `Override Class Members` command may override members that weren't selected
