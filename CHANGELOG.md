@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.0.5] - 2022-XX-XX
+## [2.0.5] - 2022-07-25
 - Fix issue [#232](https://github.com/intersystems/language-server/issues/232): SignatureHelp intellisense highlights incorrect argument if preceding argument contains a comma
 - Fix issue [#233](https://github.com/intersystems/language-server/issues/233): Support for folding region markers at the class level
 - Fix issue [#234](https://github.com/intersystems/language-server/issues/234): Generated classes do not appear in intellisense for for class names
