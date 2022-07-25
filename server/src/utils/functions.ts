@@ -102,7 +102,7 @@ turndown.addRule("documaticReturn",{
 let languageServerSettings: LanguageServerConfiguration | undefined;
 
 /**
- * Compute diagnostics for this document and sent them to the client.
+ * Compute diagnostics for this document and send them to the client.
  * 
  * @param doc The TextDocument to compute diagnostics for.
  */

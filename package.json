@@ -225,6 +225,12 @@
 					"type": "string",
 					"default": "ex",
 					"description": "The name of the exception variable inserted in a 'Wrap in Try/Catch' refactor."
+				},
+				"intersystems.language-server.formatting.expandClassNames": {
+					"scope": "application",
+					"type": "boolean",
+					"default": false,
+					"description": "Controls whether short class names will be expanded to include a package during a document formatting request."
 				}
 			}
 		},

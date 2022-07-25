@@ -14,7 +14,8 @@ export type LanguageServerConfiguration = {
 		system: {
 			case: "upper" | "lower" | "word",
 			length: "short" | "long"
-		}
+		},
+		expandClassNames: boolean
 	},
 	hover: {
 		commands: boolean,

@@ -2,9 +2,10 @@
 
 ## [2.0.5] - 2022-XX-XX
 - Fix issue [#232](https://github.com/intersystems/language-server/issues/232): SignatureHelp intellisense highlights incorrect argument if preceding argument contains a comma
-- Fix issue [#233](https://github.com/intersystems/language-server/issues/233): Support for folding ranges at the class level
+- Fix issue [#233](https://github.com/intersystems/language-server/issues/233): Support for folding region markers at the class level
 - Fix issue [#234](https://github.com/intersystems/language-server/issues/234): Generated classes do not appear in intellisense for for class names
 - Fix issue [#235](https://github.com/intersystems/language-server/issues/235): When using autocomplete for a system function/variable, the dollar sign may get dropped
+- Fix issue [#236](https://github.com/intersystems/language-server/issues/236): Add formatting setting to expand abbreviated class names
 - Fix issue [#237](https://github.com/intersystems/language-server/issues/237): Allow comments following a folding region marker
 - Fix issue [#239](https://github.com/intersystems/language-server/issues/239): Support nested routine labels in `DocumentSymbolProvider`
 

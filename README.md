@@ -16,6 +16,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
 - Full document and range-based code formatting for the following:
   - Normalize the case of ObjectScript commands, system functions and system variables.
   - Normalize the usage of short or long versions of ObjectScript commands, system functions and system variables.
+  - Expand short class names to include packages (off by default)
 - Code linting for ObjectScript and UDL that checks for the following:
   - Syntax errors, including for embedded languages.
   - References to local variables that are undefined.
