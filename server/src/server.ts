@@ -31,6 +31,7 @@ import { onSemanticTokens, onSemanticTokensDelta } from './providers/semanticTok
 import { ServerSpec } from './utils/types';
 import { connection, documents, parsedDocuments, serverSpecs, tokenBuilders } from './utils/variables';
 import { parseDocument, getLegend } from './parse/parse';
+import { isolateEmbeddedLanguage, languageAtPosition } from './providers/requestForwarding';
 
 connection.onInitialize(() => {
 	return {
@@ -206,6 +207,10 @@ connection.languages.typeHierarchy.onPrepare(onPrepare);
 connection.languages.typeHierarchy.onSubtypes(onSubtypes);
 
 connection.languages.typeHierarchy.onSupertypes(onSupertypes);
+
+connection.onRequest("intersystems/embedded/languageAtPosition",languageAtPosition);
+
+connection.onRequest("intersystems/embedded/isolateEmbeddedLanguage",isolateEmbeddedLanguage);
 
 documents.listen(connection);
 

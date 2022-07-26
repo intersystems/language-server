@@ -59,6 +59,9 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Invalid UDL Parameter types and mismatches between declared UDL Parameter types and the assigned value:
     - Remove the invalid UDL Parameter type.
     - Select a correct UDL Parameter type to replace the invalid one.
+- Intellisense for the following embedded languages (provided by [request forwarding](https://code.visualstudio.com/api/language-extensions/embedded-languages#request-forwarding)):
+  - Hover and code completion for HTML tags and CSS embedded in CSP/CSR files, HTML embedded in ObjectScript using the `&html` directive and CSS embedded in XML XData blocks.
+  - Hover, code completion and signature help for JavaScript methods in ObjectScript classes and JavaScript embedded in CSP using `<script>` tags or embedded in ObjectScript using the `&js` directive.
 - [Code refactoring CodeActions](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) for the following:
   - Wrapping a block of ObjectScript code in a [Try/Catch block](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=ATRYCATCHFAQ).
   ![](images/TryCatch.gif)

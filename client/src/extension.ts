@@ -31,6 +31,7 @@ import {
 	selectParameterType
 } from './commands';
 import { makeRESTRequest, ServerSpec } from './makeRESTRequest';
+import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from './requestForwarding';
 
 export let client: LanguageClient;
 
@@ -105,7 +106,9 @@ export async function activate(context: ExtensionContext) {
 	// Options to control the language client
 	let clientOptions: LanguageClientOptions = {
 		// Register the server for InterSystems files handled by vscode-objectscript extension
-		documentSelector: documentSelector
+		documentSelector: documentSelector,
+		// Register middleware for embedded language request forwarding
+		middleware: requestForwardingMiddleware
 	};
 
 	// Create the language client and start the client.
@@ -277,7 +280,10 @@ export async function activate(context: ExtensionContext) {
 		commands.registerCommand("intersystems.language-server.showSymbolInClass",showSymbolInClass),
 
 		// Register EvaluatableExpressionProvider
-		languages.registerEvaluatableExpressionProvider(documentSelector,new ObjectScriptEvaluatableExpressionProvider())
+		languages.registerEvaluatableExpressionProvider(documentSelector,new ObjectScriptEvaluatableExpressionProvider()),
+
+		// Register embedded language request forwarding content provider
+		workspace.registerTextDocumentContentProvider("isc-embedded-content",new ISCEmbeddedContentProvider())
 	);
 
 	// Start the client. This will also launch the server
