@@ -1040,11 +1040,12 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 			}
 		}
 	}
-	else {
-		// This is a routine
+
+	if (doc.languageId != "objectscript-csp") {
+		// This is not a CSP file so look for #Include lines
 		var foundinc = false;
 		for (let i = 0; i < parsed.length; i++) {
-			if (i === 0) {
+			if (i === 0 && doc.languageId != "objectscript-class") {
 				// Get the routine name from the ROUTINE header line
 				const fullline = doc.getText(Range.create(Position.create(0,0),Position.create(0,parsed[0][parsed[0].length-1].p+parsed[0][parsed[0].length-1].c)));
 				result.docname = fullline.split(" ")[1] + ".mac";
@@ -1836,10 +1837,6 @@ export function isMacroDefinedAbove(doc: TextDocument, parsed: compressedline[],
 					break;
 				}
 			}
-		}
-		if (doc.languageId === "objectscript-class" && parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
-			// We've reached the top of the containing method 
-			break;
 		}
 	}
 

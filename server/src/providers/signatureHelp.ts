@@ -59,6 +59,10 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings();
 
+	if (params.context.triggerKind == SignatureHelpTriggerKind.Invoked) {
+		params.context.triggerCharacter = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
+	}
+
 	if (params.context.isRetrigger && (params.context.triggerCharacter !== "(")) {
 		if (params.context.activeSignatureHelp !== undefined && signatureHelpStartPosition !== undefined) {
 			const prevchar = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
@@ -115,7 +119,6 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	const triggerattr: number = parsed[params.position.line][thistoken].s;
 
 	if (
-		params.context.triggerKind === SignatureHelpTriggerKind.TriggerCharacter &&
 		params.context.triggerCharacter === "(" && triggerlang === ld.cos_langindex &&
 		triggerattr !== ld.cos_comment_attrindex && triggerattr !== ld.cos_dcom_attrindex &&
 		thistoken > 0
@@ -307,7 +310,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 		}
 	}
 	else if (
-		!params.context.isRetrigger && params.context.triggerKind === SignatureHelpTriggerKind.TriggerCharacter &&
+		!params.context.isRetrigger &&
 		params.context.triggerCharacter === "," && triggerlang === ld.cos_langindex &&
 		triggerattr !== ld.cos_comment_attrindex && triggerattr !== ld.cos_dcom_attrindex
 	) {

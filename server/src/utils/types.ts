@@ -71,7 +71,7 @@ export type MacroContext = {
 	includes: string[],
 	includegenerators: string[],
 	imports: string[],
-	mode: string,
+	mode: "" | "generator",
 	cursor?: string // Only needed for /action/getmacrolist
 };
 

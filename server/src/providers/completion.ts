@@ -717,16 +717,25 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			if (respdata !== undefined && respdata.data.result.content.macros.length > 0) {
 				// We got data back
 				for (let i = 0; i < respdata.data.result.content.macros.length; i++) {
-					if (respdata.data.result.content.macros[i].slice(respdata.data.result.content.macros[i].length-1) === "(") {
+					const macro = respdata.data.result.content.macros[i];
+					if (macro.slice(-1) === "(") {
 						result.push({
-							label: respdata.data.result.content.macros[i].slice(0,respdata.data.result.content.macros[i].length-1),
+							label: macro.slice(0,-1),
+							insertText: macro,
+							textEdit: TextEdit.insert(params.position, macro + "$0)"),
+							insertTextFormat: InsertTextFormat.Snippet,
 							kind: CompletionItemKind.Text,
-							data: ["macro",doc.uri]
+							data: ["macro",doc.uri],
+							// Automatically trigger SignatureHelp for macros that take arguments
+							command: {
+								title: "Show SignatureHelp",
+								command: "editor.action.triggerParameterHints"
+							}
 						});
 					}
 					else {
 						result.push({
-							label: respdata.data.result.content.macros[i],
+							label: macro,
 							kind: CompletionItemKind.Text,
 							data: ["macro",doc.uri]
 						});
@@ -847,10 +856,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					}
 					result.push(macrodef);
 				}
-			}
-			if (doc.languageId === "objectscript-class" && parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
-				// We've reached the top of the containing method 
-				break;
 			}
 		}
 	}
@@ -1180,6 +1185,16 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							if (memobj.FormalSpec === "") {
 								// Insert trailing parentheses because method takes no arguments
 								item.insertText = quotedname + "()";
+							}
+							else {
+								// Automatically trigger SignatureHelp for methods that take arguments
+								// Need to escape $ because it has a special meaning in snippets
+								item.textEdit = TextEdit.insert(params.position,quotedname.replace(/\$/g,"//$") + "($0)");
+								item.insertTextFormat = InsertTextFormat.Snippet;
+								item.command = {
+									title: "Show SignatureHelp",
+									command: "editor.action.triggerParameterHints"
+								};
 							}
 						}
 						else if (memobj.MemberType === "parameter") {
