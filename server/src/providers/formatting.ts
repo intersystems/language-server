@@ -21,7 +21,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 	if (parsed === undefined) {return null;}
 	const doc = documents.get(uri);
 	if (doc === undefined) {return null;}
-	const settings = await getLanguageServerSettings();
+	const settings = await getLanguageServerSettings(uri);
 	const server: ServerSpec = await getServerSpec(doc.uri);
 
 	if (range == undefined) {

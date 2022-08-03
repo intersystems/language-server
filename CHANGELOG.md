@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2.1.0] - 2022-XX-XX
+- Fix issue [#122](https://github.com/intersystems/language-server/issues/122): Extension settings cannot be set per workspace or per folder
 - Fix issue [#228](https://github.com/intersystems/language-server/issues/228): Add embedded language Request Forwarding for HTML, CSS and JavaScript
 - Fix issue [#240](https://github.com/intersystems/language-server/issues/240): Automatically trigger SignatureHelp when selecting a method or macro `CompletionItem` that takes arguments
 - Fix issue [#241](https://github.com/intersystems/language-server/issues/241): Language Server crashes with "Unhandled method intersystems/server/resolveFromUri" error

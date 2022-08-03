@@ -4,7 +4,7 @@ import { URI } from 'vscode-uri';
 import { parse } from 'node-html-parser';
 
 import { ServerSpec, StudioOpenDialogFile, QueryData, compressedline, CommandDoc, LanguageServerConfiguration, MacroContext, DimResult, PossibleClasses, ClassMemberContext } from './types';
-import { parsedDocuments, connection, serverSpecs } from './variables';
+import { parsedDocuments, connection, serverSpecs, languageServerSettings } from './variables';
 import * as ld from './languageDefinitions';
 
 import commands = require("../documentation/commands.json");
@@ -97,11 +97,6 @@ turndown.addRule("documaticReturn",{
 });
 
 /**
- * Cache of the language server configuration parameters received from the client.
- */
-let languageServerSettings: LanguageServerConfiguration | undefined;
-
-/**
  * Compute diagnostics for this document and send them to the client.
  * 
  * @param doc The TextDocument to compute diagnostics for.
@@ -111,7 +106,7 @@ export async function computeDiagnostics(doc: TextDocument) {
 	const parsed = parsedDocuments.get(doc.uri);
 	if (parsed !== undefined) {
 		const server: ServerSpec = await getServerSpec(doc.uri);
-		const settings = await getLanguageServerSettings();
+		const settings = await getLanguageServerSettings(doc.uri);
 		let diagnostics: Diagnostic[] = [];
 
 		var files: StudioOpenDialogFile[] = [];
@@ -774,21 +769,17 @@ export function haltOrHang(doc: TextDocument, parsed: compressedline[], line: nu
 /**
  * Get the configuration parameters from the cache or the client if the cache is empty.
  */
-export async function getLanguageServerSettings(): Promise<LanguageServerConfiguration> {
-	if (languageServerSettings !== undefined) {
-		return languageServerSettings;
+export async function getLanguageServerSettings(uri: string): Promise<LanguageServerConfiguration> {
+	const settings = languageServerSettings.get(uri);
+	if (settings == undefined) {
+		const newsettings: LanguageServerConfiguration = await connection.workspace.getConfiguration({ scopeUri: uri, section: "intersystems.language-server" });
+		languageServerSettings.set(uri, newsettings);
+		return newsettings;
 	}
-	const newsettings = await connection.workspace.getConfiguration("intersystems.language-server");
-	setLanguageServerSettings(newsettings);
-	return newsettings;
+	else {
+		return settings;
+	}
 };
-
-/**
- * Update the configuration parameters cache.
- */
-export function setLanguageServerSettings(newsettings: LanguageServerConfiguration | undefined) {
-	languageServerSettings = newsettings;
-}
 
 /**
  * Find the full range of this word.

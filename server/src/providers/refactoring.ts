@@ -1278,7 +1278,7 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 	}
 	
 	// Adapt to InterSystems Language Server Settings
-	const settings = await getLanguageServerSettings();
+	const settings = await getLanguageServerSettings(params.uri);
 	var docommandtext: string = "Do";
 	if (settings.formatting.commands.length === "short") {
 		docommandtext = "D";
@@ -1673,7 +1673,7 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 		}
 
 		// Adapt to InterSystems Language Server Settings
-		const settings = await getLanguageServerSettings();
+		const settings = await getLanguageServerSettings(data[0]);
 		var trycommandtext: string = "Try";
 		var catchcommandtext: string = "Catch";
 		if (settings.formatting.commands.case === "lower") {

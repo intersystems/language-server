@@ -206,7 +206,10 @@ export async function activate(context: ExtensionContext) {
 
 	const workbenchConfig = workspace.getConfiguration("workbench");
 	if (
-		workspace.getConfiguration("intersystems.language-server").get("suggestTheme") === true &&
+		workspace.getConfiguration(
+			"intersystems.language-server",
+			workspace.workspaceFolders != undefined ? workspace.workspaceFolders[0] : undefined
+		).get("suggestTheme") === true &&
 		!["InterSystems Default Dark", "InterSystems Default Light"].includes(
 			workbenchConfig.get("colorTheme")
 		)

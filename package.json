@@ -114,7 +114,7 @@
 			"title": "InterSystems Language Server",
 			"properties": {
 				"intersystems.language-server.trace.server": {
-					"scope": "application",
+					"scope": "window",
 					"type": "string",
 					"enum": [
 						"off",
@@ -125,7 +125,7 @@
 					"description": "Traces the communication between VS Code and the language server."
 				},
 				"intersystems.language-server.formatting.commands.case": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "string",
 					"enum": [
 						"upper",
@@ -136,7 +136,7 @@
 					"description": "Controls the case that ObjectScript commands will be changed to during a document formatting request."
 				},
 				"intersystems.language-server.formatting.commands.length": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "string",
 					"enum": [
 						"short",
@@ -146,7 +146,7 @@
 					"description": "Controls the length that ObjectScript commands will be changed to during a document formatting request."
 				},
 				"intersystems.language-server.formatting.system.case": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "string",
 					"enum": [
 						"upper",
@@ -157,7 +157,7 @@
 					"description": "Controls the case that ObjectScript system functions and variables will be changed to during a document formatting request."
 				},
 				"intersystems.language-server.formatting.system.length": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "string",
 					"enum": [
 						"short",
@@ -167,67 +167,67 @@
 					"description": "Controls the length that ObjectScript system functions and variables will be changed to during a document formatting request."
 				},
 				"intersystems.language-server.hover.commands": {
-					"scope": "application",
+					"scope": "window",
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether hover information is provided for ObjectScript commands."
 				},
 				"intersystems.language-server.hover.system": {
-					"scope": "application",
+					"scope": "window",
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether hover information is provided for ObjectScript system functions and variables."
 				},
 				"intersystems.language-server.hover.preprocessor": {
-					"scope": "application",
+					"scope": "window",
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether hover information is provided for ObjectScript preprocessor directives."
 				},
 				"intersystems.language-server.diagnostics.routines": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "boolean",
 					"default": false,
 					"description": "Controls whether error diagnostics are provided when a routine or include file that is being referred to doesn't exist in the database."
 				},
 				"intersystems.language-server.diagnostics.parameters": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether warning diagnostics are provided when a class Parameter has an invalid type or the assigned value of the Parameter doesn't match the declared type."
 				},
 				"intersystems.language-server.diagnostics.classes": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether error diagnostics are provided when a class that is being referred to doesn't exist in the database."
 				},
 				"intersystems.language-server.diagnostics.deprecation": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether strikethrough warning diagnostics are provided when a class or class member that is being referred to is deprecated."
 				},
 				"intersystems.language-server.signaturehelp.documentation": {
-					"scope": "application",
+					"scope": "window",
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether documentation for a method is shown when a SignatureHelp is active. NOTE: This setting does not affect documentation for macro SignatureHelp views, which is always shown."
 				},
 				"intersystems.language-server.suggestTheme": {
-					"scope": "application",
+					"scope": "window",
 					"type": "boolean",
 					"default": true,
 					"description": "Controls whether the extension will suggest that one of the InterSystems default themes be used if neither one is active upon extension activation."
 				},
 				"intersystems.language-server.refactor.exceptionVariable": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "string",
 					"default": "ex",
 					"description": "The name of the exception variable inserted in a 'Wrap in Try/Catch' refactor."
 				},
 				"intersystems.language-server.formatting.expandClassNames": {
-					"scope": "application",
+					"scope": "resource",
 					"type": "boolean",
 					"default": false,
 					"description": "Controls whether short class names will be expanded to include a package during a document formatting request."

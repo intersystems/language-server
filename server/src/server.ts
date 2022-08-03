@@ -25,11 +25,11 @@ import { onHover } from './providers/hover';
 import { onCompletion, onCompletionResolve, schemaCaches } from './providers/completion';
 import { onSignatureHelp } from './providers/signatureHelp';
 import { onDocumentFormatting, onDocumentRangeFormatting } from './providers/formatting';
-import { computeDiagnostics, setLanguageServerSettings } from './utils/functions';
+import { computeDiagnostics } from './utils/functions';
 import { onSemanticTokens, onSemanticTokensDelta } from './providers/semanticTokens';
 
-import { ServerSpec } from './utils/types';
-import { connection, documents, parsedDocuments, serverSpecs, tokenBuilders } from './utils/variables';
+import { LanguageServerConfiguration, ServerSpec } from './utils/types';
+import { connection, documents, languageServerSettings, parsedDocuments, serverSpecs, tokenBuilders } from './utils/variables';
 import { parseDocument, getLegend } from './parse/parse';
 import { isolateEmbeddedLanguage, languageAtPosition } from './providers/requestForwarding';
 
@@ -86,11 +86,19 @@ connection.onExit(() => {
 	process.exit();
 });
 
-connection.onDidChangeConfiguration(() => {
+connection.onDidChangeConfiguration(async () => {
 	// Clear our caches
-	setLanguageServerSettings(undefined);
+	languageServerSettings.clear();
 	serverSpecs.clear();
 	schemaCaches.clear();
+
+	// Refresh the cached configuration settings for all open documents
+	// This is done here because it's more efficient to pack everything into one request to the client
+	const uris: string[] = documents.keys();
+	const configs: LanguageServerConfiguration[] = await connection.workspace.getConfiguration(
+		uris.map((uri) => { return { scopeUri: uri, section: "intersystems.language-server" }; })
+	);
+	configs.forEach((config, index) => languageServerSettings.set(uris[index], config));
 
 	// Update diagnostics for all open documents
 	documents.all().forEach(computeDiagnostics);
@@ -100,6 +108,7 @@ documents.onDidClose(e => {
 	parsedDocuments.delete(e.document.uri);
 	tokenBuilders.delete(e.document.uri);
 	serverSpecs.delete(e.document.uri);
+	languageServerSettings.delete(e.document.uri);
 	connection.sendDiagnostics({uri: e.document.uri, diagnostics: []});
 });
 

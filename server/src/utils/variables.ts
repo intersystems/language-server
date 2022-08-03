@@ -1,6 +1,6 @@
 import { createConnection, SemanticTokensBuilder, TextDocuments } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { compressedline, ServerSpec } from './types';
+import { compressedline, LanguageServerConfiguration, ServerSpec } from './types';
 
 /**
  * TextDocument URI's mapped to the tokenized representation of the document.
@@ -52,3 +52,8 @@ export const corePropertyParams = [
 		desc: `The Java data type to which this property is projected.`
 	}
 ];
+
+/**
+ * Cache of the language server configuration parameters fetched from the client.
+ */
+export const languageServerSettings: Map<string, LanguageServerConfiguration> = new Map();

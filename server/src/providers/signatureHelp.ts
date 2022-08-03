@@ -57,7 +57,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	if (doc === undefined) {return null;}
 	if (params.context === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
-	const settings = await getLanguageServerSettings();
+	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
 	if (params.context.triggerKind == SignatureHelpTriggerKind.Invoked) {
 		params.context.triggerCharacter = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));

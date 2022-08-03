@@ -30,7 +30,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
-	const settings = await getLanguageServerSettings();
+	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file

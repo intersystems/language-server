@@ -701,7 +701,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			closeparencount++;
 		}
 	}
-	const settings = await getLanguageServerSettings();
+	const settings = await getLanguageServerSettings(params.textDocument.uri);
 	
 	if (prevline.slice(-3) === "$$$" && triggerlang === ld.cos_langindex) {
 		// This is a macro
