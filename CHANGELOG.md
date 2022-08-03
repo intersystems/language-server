@@ -3,6 +3,7 @@
 ## [2.1.0] - 2022-XX-XX
 - Fix issue [#228](https://github.com/intersystems/language-server/issues/228): Add embedded language Request Forwarding for HTML, CSS and JavaScript
 - Fix issue [#240](https://github.com/intersystems/language-server/issues/240): Automatically trigger SignatureHelp when selecting a method or macro `CompletionItem` that takes arguments
+- Fix issue [#241](https://github.com/intersystems/language-server/issues/241): Language Server crashes with "Unhandled method intersystems/server/resolveFromUri" error
 
 ## [2.0.5] - 2022-07-25
 - Fix issue [#232](https://github.com/intersystems/language-server/issues/232): SignatureHelp intellisense highlights incorrect argument if preceding argument contains a comma
