@@ -1,5 +1,12 @@
 # Changelog
 
+## [2.1.1] - 2022-09-19
+- Parser changes:
+  - DP-416413: Support for `/ENV` Open keyword parameter
+  - DP-416891: Support for `/COMPRESS` Open/Use keyword parameter
+  - DP-416928: Improve parsing of XData block when `MimeType` keyword is present
+  - DP-417035: Parser updates for vector features
+
 ## [2.1.0] - 2022-08-04
 - Fix issue [#122](https://github.com/intersystems/language-server/issues/122): Extension settings cannot be set per workspace or per folder
 - Fix issue [#228](https://github.com/intersystems/language-server/issues/228): Add embedded language Request Forwarding for HTML, CSS and JavaScript
