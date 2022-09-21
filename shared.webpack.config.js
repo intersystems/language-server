@@ -34,6 +34,10 @@ module.exports = function withDefaults(/**@type WebpackConfig*/extConfig) {
 							}
 						}
 					}]
+				},
+				{
+					test: /\.node$/,
+					loader: "node-loader",
 				}
 			]
 		},

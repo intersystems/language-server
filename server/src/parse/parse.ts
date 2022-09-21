@@ -1,7 +1,7 @@
 import { compressedresult, compressedline } from '../utils/types'
 import { colorRoutineLine, isRoutineHeader, routineheadertype } from './routineheader/parseroutineheader';
 import { SemanticTokensLegend } from 'vscode-languageserver';
-const isclexer = require("node-loader!../../lib/isclexer.node");
+import { GetLanguageAttributes, GetLanguages, Tokenize } from '../../lib/isclexer.node';
 
 // Set this to false if routines stop using the ROUTINE header line
 const acceptroutineheaderline = true;
@@ -41,7 +41,7 @@ export function parseDocument(languageId: string, fileExt: string, text: string)
 		const doctoparse = ' '.repeat(firstline.length) + text.slice(firstline.length);
 
 		// parse the rest of the document using Studio libraries
-		let restcolors: compressedline[] = isclexer.Tokenize(doctoparse,moniker,false,flags);
+		let restcolors: compressedline[] = Tokenize(doctoparse,moniker,false,flags);
 
 		// at this point the original restcolors[0] will be either an array with a single whitespace item or an empty array
 		// - either way, overwriting that array with the routine line coloring works
@@ -51,7 +51,7 @@ export function parseDocument(languageId: string, fileExt: string, text: string)
 	}
 	else {
 		flags += (moniker === "HTML") ? (IPARSE_ALL_CSPEXTENSIONS + IPARSE_HTML_CSPMODE) : 0;
-		return {compressedlinearray: isclexer.Tokenize(text,moniker,false,flags)};
+		return {compressedlinearray: Tokenize(text,moniker,false,flags)};
 	}
 
 }
@@ -76,10 +76,10 @@ let languageoffsets: {[index:number] : number} = {};
 export function getLegend(): SemanticTokensLegend {
 	const legend: string[] = [];
 	let legendoffset = 0;
-	const langs: { moniker: string; index: number; }[] = isclexer.GetLanguages().filter(l => l.moniker !== "INT");
+	const langs: { moniker: string; index: number; }[] = GetLanguages().filter(l => l.moniker !== "INT");
 	for (const lang of langs) {
 		languageoffsets[lang.index] = legendoffset;
-		const attrs: string[] = isclexer.GetLanguageAttributes(lang.moniker);
+		const attrs: string[] = GetLanguageAttributes(lang.moniker);
 		for (const attr of attrs) {
 			legend.push(`${lang.moniker}_${attr.replace(/[^a-z0-9+]+/gi,"")}`);
 		}
