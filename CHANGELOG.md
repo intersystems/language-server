@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.1.2] - 2022-XX-XX
+- Fix issue [#243](https://github.com/intersystems/language-server/issues/243): Scope cookies to a username on a server 
+
 ## [2.1.1] - 2022-09-19
 - Parser changes:
   - DP-416413: Support for `/ENV` Open keyword parameter

@@ -19,7 +19,7 @@ export type ServerSpec = {
 };
 
 async function updateCookies(newCookies: string[], server: ServerSpec): Promise<string[]> {
-	const key = `${server.host}:${server.port}${server.pathPrefix}`;
+	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
 	const cookies = cookiesCache.get(key, []);
     newCookies.forEach((cookie) => {
       const [cookieName] = cookie.split("=");
@@ -35,7 +35,7 @@ async function updateCookies(newCookies: string[], server: ServerSpec): Promise<
 }
 
 function getCookies(server: ServerSpec): string[] {
-	return cookiesCache.get(`${server.host}:${server.port}${server.pathPrefix}`, []);
+	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`, []);
 }
 
 /**
