@@ -433,7 +433,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 				};
 				if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 					// This is a parameter
-					data.query = "SELECT Description, NULL AS FormalSpec, NULL AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
+					data.query = "SELECT Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
@@ -443,7 +443,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
 					// This is a property
-					data.query = "SELECT Description, NULL AS FormalSpec, NULL AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
+					data.query = "SELECT Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else {
@@ -456,7 +456,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 					else {
 						// This can be a method or property
 						data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-						data.query = data.query.concat("SELECT Description, NULL AS FormalSpec, NULL AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
+						data.query = data.query.concat("SELECT Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
 						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
 					}
 				}
@@ -512,10 +512,10 @@ export async function onHover(params: TextDocumentPositionParams) {
 							// This is a regular member
 
 							if (nextchar === "(") {
-								header = header + beautifyFormalSpec(respdata.data.result.content[0].FormalSpec);
-								if (respdata.data.result.content[0].ReturnType !== "") {
-									header = header.concat(" As ",respdata.data.result.content[0].ReturnType);
-								}
+								header += beautifyFormalSpec(respdata.data.result.content[0].FormalSpec);
+							}
+							if (respdata.data.result.content[0].ReturnType !== "") {
+								header += ` As ${respdata.data.result.content[0].ReturnType}`;
 							}
 							return {
 								contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
@@ -729,14 +729,18 @@ export async function onHover(params: TextDocumentPositionParams) {
 						if (normalizedname !== "") {
 							// Query the server to get the description of this property
 							const data: QueryData = {
-								query: "SELECT Description FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
+								query: "SELECT Description, Type FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
 								parameters: [normalizedname,propname]
 							};
 							const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 							if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 								// We got data back
+
+								const header = `${normalizedname}::${propname}${
+									respdata.data.result.content[0].Type != "" ? ` As ${respdata.data.result.content[0].Type}` : ""
+								}`;
 								return {
-									contents: [normalizedname.concat("::",propname),documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+									contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 									range: idenrange
 								};
 							}
@@ -814,14 +818,18 @@ export async function onHover(params: TextDocumentPositionParams) {
 							if (normalizedname !== "") {
 								// Query the server to get the description of this property
 								const data: QueryData = {
-									query: "SELECT Description FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
+									query: "SELECT Description, Type FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
 									parameters: [normalizedname,propname]
 								};
 								const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 								if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
 									// We got data back
+
+									const header = `${normalizedname}::${propname}${
+										respdata.data.result.content[0].Type != "" ? ` As ${respdata.data.result.content[0].Type}` : ""
+									}`;
 									return {
-										contents: [normalizedname.concat("::",propname),documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+										contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 										range: idenrange
 									};
 								}
@@ -866,15 +874,18 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const normalizedcls = await determineNormalizedPropertyClass(doc,parsed,params.position.line,server);
 				if (normalizedcls !== "") {
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
-						query: "SELECT Description FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?",
+						query: "SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?",
 						parameters: [normalizedcls,param]
 					});
 					if (respdata !== undefined) {
 						if ("content" in respdata.data.result && respdata.data.result.content.length > 0) {
 							// We got data back
 
+							const header = `${normalizedcls}::${param}${
+								respdata.data.result.content[0].Type != "" ? ` As ${respdata.data.result.content[0].Type}` : ""
+							}`;
 							return {
-								contents: [`${normalizedcls}::${param}`,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+								contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
 								range: paramrange
 							};
 						}
