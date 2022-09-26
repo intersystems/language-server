@@ -316,6 +316,9 @@ export async function computeDiagnostics(doc: TextDocument) {
 								// The type is valid
 
 								// See if this Parameter has a value
+								if (parsed[i].length <= 4) {
+									continue;
+								}
 								var valuetkn = -1;
 								const delimtext = doc.getText(Range.create(Position.create(i,parsed[i][4].p),Position.create(i,parsed[i][4].p+parsed[i][4].c)));
 								if (delimtext === "[") {
