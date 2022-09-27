@@ -1,7 +1,7 @@
 import { Position, SignatureHelp, SignatureHelpParams, SignatureHelpTriggerKind, SignatureInformation, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, emphasizeArgument, makeRESTRequest, getMacroContext, findFullRange, getClassMemberContext, beautifyFormalSpec, documaticHtmlToMarkdown, findOpenParen } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, emphasizeArgument, makeRESTRequest, getMacroContext, findFullRange, getClassMemberContext, beautifyFormalSpec, documaticHtmlToMarkdown, findOpenParen, getParsedDocument } from '../utils/functions';
 import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from '../utils/types';
-import { parsedDocuments, documents } from '../utils/variables';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 /**
@@ -51,11 +51,11 @@ function determineActiveParam(text: string): number {
 }
 
 export async function onSignatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null> {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+	if (params.context === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
-	if (params.context === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 

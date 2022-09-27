@@ -1,15 +1,15 @@
 import { DocumentLink, DocumentLinkParams, Range } from 'vscode-languageserver/node';
-import { parsedDocuments, documents } from '../utils/variables';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
-import { createDefinitionUri, getServerSpec, normalizeClassname } from '../utils/functions';
+import { createDefinitionUri, getParsedDocument, getServerSpec, normalizeClassname } from '../utils/functions';
 import { ServerSpec } from '../utils/types';
 
-export function onDocumentLinks(params: DocumentLinkParams): DocumentLink[] | null {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+export async function onDocumentLinks(params: DocumentLinkParams): Promise<DocumentLink[] | null> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
 	if (doc.languageId !== "objectscript-class") {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	let result: DocumentLink[] = [];
 
 	// Loop through the class and look for documentation comments
@@ -69,10 +69,10 @@ export function onDocumentLinks(params: DocumentLinkParams): DocumentLink[] | nu
 }
 
 export async function onDocumentLinkResolve(link: DocumentLink): Promise<DocumentLink> {
-	const parsed = parsedDocuments.get(link.data.uri);
-	if (parsed === undefined) {return link;}
 	const doc = documents.get(link.data.uri);
 	if (doc === undefined) {return link;}
+	const parsed = await getParsedDocument(link.data.uri);
+	if (parsed === undefined) {return link;}
 	const server: ServerSpec = await getServerSpec(link.data.uri);
 
 	// Normalize the class name if there are imports

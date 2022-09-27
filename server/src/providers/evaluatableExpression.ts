@@ -2,7 +2,8 @@ import { Position, Range } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { compressedline } from '../utils/types';
 import * as ld from '../utils/languageDefinitions';
-import { parsedDocuments, documents } from '../utils/variables';
+import { documents } from '../utils/variables';
+import { getParsedDocument } from '../utils/functions';
 
 /**
  * An EvaluatableExpression represents an expression in a document that can be evaluated by an active debugger or runtime.
@@ -462,11 +463,11 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 	return result;
 }
 
-export function evaluatableExpression(params: EvaluatableExpressionParams): EvaluatableExpression | null {
-	const parsed = parsedDocuments.get(params.uri);
-	if (parsed === undefined) {return null;}
+export async function evaluatableExpression(params: EvaluatableExpressionParams): Promise<EvaluatableExpression | null> {
 	const doc = documents.get(params.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.uri);
+	if (parsed === undefined) {return null;}
 
 	var tkn: number = -1;
 	for (let i = 0; i < parsed[params.position.line].length; i++) {

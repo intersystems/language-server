@@ -1,7 +1,7 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getGetDocFormatParam, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineNormalizedPropertyClass } from '../utils/functions';
+import { getServerSpec, getGetDocFormatParam, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineNormalizedPropertyClass, getParsedDocument } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
-import { parsedDocuments, documents, corePropertyParams } from '../utils/variables';
+import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 /**
@@ -16,10 +16,10 @@ const definitionTargetRangeMaxLines: number = 10;
 const classMemberTypes: string[] = ["Parameter","Property","Relationship","ForeignKey","Index","Query","Storage","Trigger","XData","Projection","Method","ClassMethod","ClientMethod"];
 
 export async function onDefinition(params: TextDocumentPositionParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const getDocParams = await getGetDocFormatParam(params.textDocument.uri,server.apiVersion);
 

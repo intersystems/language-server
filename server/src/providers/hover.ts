@@ -1,7 +1,7 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineNormalizedPropertyClass, storageKeywordsKeyForToken } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineNormalizedPropertyClass, storageKeywordsKeyForToken, getParsedDocument } from '../utils/functions';
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
-import { parsedDocuments, documents, corePropertyParams } from '../utils/variables';
+import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 import commands = require("../documentation/commands.json");
@@ -25,10 +25,10 @@ import triggerKeywords = require("../documentation/keywords/Trigger.json");
 import xdataKeywords = require("../documentation/keywords/XData.json");
 
 export async function onHover(params: TextDocumentPositionParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 

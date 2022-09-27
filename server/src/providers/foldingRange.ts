@@ -1,15 +1,16 @@
 import { FoldingRange, FoldingRangeKind, FoldingRangeParams, Position, Range } from 'vscode-languageserver/node';
-import { parsedDocuments, documents } from '../utils/variables';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
+import { getParsedDocument } from '../utils/functions';
 
 const cosRegionRegex = new RegExp("^(?:\/\/|#;) *#(?:end){0,1}region(?: +.*){0,1}$");
 const clsRegionRegex = new RegExp("^\/\/ *#(?:end){0,1}region(?: +.*){0,1}$");
 
-export function onFoldingRanges(params: FoldingRangeParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+export async function onFoldingRanges(params: FoldingRangeParams) {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	var result: FoldingRange[] = [];
 
 	var openranges: FoldingRange[] = [];

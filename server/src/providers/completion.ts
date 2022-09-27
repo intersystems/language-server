@@ -1,7 +1,7 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, Position, Range, TextEdit } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineNormalizedPropertyClass, storageKeywordsKeyForToken } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineNormalizedPropertyClass, storageKeywordsKeyForToken, getParsedDocument } from '../utils/functions';
 import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline } from '../utils/types';
-import { parsedDocuments, documents, corePropertyParams } from '../utils/variables';
+import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 import structuredSystemVariables = require("../documentation/structuredSystemVariables.json");
@@ -652,10 +652,10 @@ async function completionInclude(server: ServerSpec): Promise<CompletionItem[]> 
 
 export async function onCompletion(params: CompletionParams): Promise<CompletionItem[] | null> {
 	var result: CompletionItem[] = [];
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	if (params.position.line === parsed.length) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const prevline = doc.getText(Range.create(Position.create(params.position.line,0),params.position));

@@ -14,17 +14,17 @@ import {
 } from '../utils/types';
 
 import * as ld from '../utils/languageDefinitions';
-import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest } from '../utils/functions';
-import { parsedDocuments, documents, connection } from '../utils/variables';
+import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, getParsedDocument } from '../utils/functions';
+import { documents, connection } from '../utils/variables';
 
 /**
  * Handler function for the `textDocument/prepareTypeHierarchy` request.
  */
 export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<TypeHierarchyItem[] | null> {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 
 	if (parsed[params.position.line] === undefined) {

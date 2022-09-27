@@ -4,6 +4,7 @@
 - Fix issue [#243](https://github.com/intersystems/language-server/issues/243): Scope cookies to a username on a server 
 - Fix issue [#244](https://github.com/intersystems/language-server/issues/244): Language Server crashes when editing Parameter that has a type
 - Fix issue [#245](https://github.com/intersystems/language-server/issues/245): Add types for Property and Parameter hover headers
+- Fix issue [#246](https://github.com/intersystems/language-server/issues/246): Semantic tokens occasionally disappear during typing
 
 ## [2.1.1] - 2022-09-19
 - Parser changes:

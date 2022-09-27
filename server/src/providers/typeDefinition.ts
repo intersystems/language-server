@@ -1,14 +1,14 @@
 import { TextDocumentPositionParams, Position, Range } from 'vscode-languageserver';
-import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, getGetDocFormatParam, determineDeclaredLocalVarClass, determineParameterClass, getClassMemberContext } from '../utils/functions';
+import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, getGetDocFormatParam, determineDeclaredLocalVarClass, determineParameterClass, getClassMemberContext, getParsedDocument } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
-import { documents, parsedDocuments } from '../utils/variables';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 export async function onTypeDefinition(params: TextDocumentPositionParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const getDocParams = await getGetDocFormatParam(params.textDocument.uri,server.apiVersion);
 

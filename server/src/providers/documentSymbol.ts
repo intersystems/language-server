@@ -1,13 +1,13 @@
 import { DocumentSymbol, DocumentSymbolParams, Position, SymbolKind, Range } from 'vscode-languageserver/node';
-import { findFullRange } from '../utils/functions';
-import { parsedDocuments, documents } from '../utils/variables';
+import { findFullRange, getParsedDocument } from '../utils/functions';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
-export function onDocumentSymbol(params: DocumentSymbolParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+export async function onDocumentSymbol(params: DocumentSymbolParams) {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 	var result: DocumentSymbol[] = [];
 
 	if (doc.languageId === "objectscript-class") {

@@ -1,14 +1,14 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
-import { findFullRange } from '../utils/functions';
-import { parsedDocuments, documents } from '../utils/variables';
+import { findFullRange, getParsedDocument } from '../utils/functions';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
-export function onDeclaration(params: TextDocumentPositionParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+export async function onDeclaration(params: TextDocumentPositionParams) {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
 	if (doc.languageId !== "objectscript-class") {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 
 	for (let i = 0; i < parsed[params.position.line].length; i++) {
 		const symbolstart: number = parsed[params.position.line][i].p;

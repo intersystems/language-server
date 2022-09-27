@@ -1,8 +1,8 @@
 import { DocumentUri } from 'vscode-languageserver-textdocument';
 import { DocumentFormattingParams, DocumentRangeFormattingParams, Position, TextEdit, Range } from 'vscode-languageserver/node';
-import { findFullRange, getLanguageServerSettings, getServerSpec, haltOrHang, makeRESTRequest, normalizeClassname } from '../utils/functions';
+import { findFullRange, getLanguageServerSettings, getParsedDocument, getServerSpec, haltOrHang, makeRESTRequest, normalizeClassname } from '../utils/functions';
 import { CommandDoc, StudioOpenDialogFile, ServerSpec } from '../utils/types';
-import { parsedDocuments, documents } from '../utils/variables';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 import commands = require("../documentation/commands.json");
 import structuredSystemVariables = require("../documentation/structuredSystemVariables.json");
@@ -17,10 +17,10 @@ import systemVariables = require("../documentation/systemVariables.json");
  */
 async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] | null> {
 	const result: TextEdit[] = [];
-	const parsed = parsedDocuments.get(uri);
-	if (parsed === undefined) {return null;}
 	const doc = documents.get(uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(uri);
+	if (parsed === undefined) {return null;}
 	const settings = await getLanguageServerSettings(uri);
 	const server: ServerSpec = await getServerSpec(doc.uri);
 

@@ -15,8 +15,8 @@ import parameterTypes = require("../documentation/parameterTypes.json");
 
 import * as ld from '../utils/languageDefinitions';
 import { compressedline, QueryData, ServerSpec } from '../utils/types';
-import { getServerSpec, findFullRange, makeRESTRequest, quoteUDLIdentifier, parseDimLine, getLanguageServerSettings } from '../utils/functions';
-import { parsedDocuments, documents, connection } from '../utils/variables';
+import { getServerSpec, findFullRange, makeRESTRequest, quoteUDLIdentifier, parseDimLine, getLanguageServerSettings, getParsedDocument } from '../utils/functions';
+import { documents, connection } from '../utils/variables';
 
 /**
  * Represents an item that can be selected from a list of items.
@@ -206,14 +206,14 @@ function prepareExtractMethodSignature(argName: string, isByRef: boolean, argTyp
  * Handler function for the `intersystems/refactor/listOverridableMembers` request.
  */
 export async function listOverridableMembers(params: ListOverridableMembersParams): Promise<QuickPickItem[]> {
-	const parsed = parsedDocuments.get(params.uri);
-	if (parsed === undefined) {return [];}
 	const doc = documents.get(params.uri);
 	if (doc === undefined) {return [];}
 	if (doc.languageId !== "objectscript-class") {
 		// Can't override class members if the document isn't a class
 		return [];
 	}
+	const parsed = await getParsedDocument(params.uri);
+	if (parsed === undefined) {return [];}
 	const server: ServerSpec = await getServerSpec(params.uri);
 	var result: QuickPickItem[] = [];
 
@@ -352,14 +352,14 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
  * Handler function for the `intersystems/refactor/addOverridableMembers` request.
  */
 export async function addOverridableMembers(params: AddOverridableMembersParams): Promise<WorkspaceEdit> {
-	const parsed = parsedDocuments.get(params.uri);
-	if (parsed === undefined) {return {};}
 	const doc = documents.get(params.uri);
 	if (doc === undefined) {return {};}
 	if (doc.languageId !== "objectscript-class") {
 		// Can't override class members if the document isn't a class
 		return {};
 	}
+	const parsed = await getParsedDocument(params.uri);
+	if (parsed === undefined) {return {};}
 	const server: ServerSpec = await getServerSpec(params.uri);
 
 	// Insert the new members at the cursor position (offset by one line)
@@ -478,15 +478,15 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 /**
  * Handler function for the `intersystems/refactor/validateOverrideCursor` request.
  */
-export function validateOverrideCursor(params: ValidateOverrideCursorParams): boolean {
-	const parsed = parsedDocuments.get(params.uri);
-	if (parsed === undefined) {return false;}
+export async function validateOverrideCursor(params: ValidateOverrideCursorParams): Promise<boolean> {
 	const doc = documents.get(params.uri);
 	if (doc === undefined) {return false;}
 	if (doc.languageId !== "objectscript-class") {
 		// Can't override class members if the document isn't a class
 		return false;
 	}
+	const parsed = await getParsedDocument(params.uri);
+	if (parsed === undefined) {return false;}
 
 	// Check that the first non-empty line above the cursor ends with a UDL token
 	var abovevalid = false;
@@ -574,11 +574,11 @@ export async function listImportPackages(params: ListImportPackagesParams): Prom
 /**
  * Handler function for the `intersystems/refactor/addImportPackage` request.
  */
-export function addImportPackage(params: AddImportPackageParams): WorkspaceEdit {
-	const parsed = parsedDocuments.get(params.uri);
-	if (parsed === undefined) {return {};}
+export async function addImportPackage(params: AddImportPackageParams): Promise<WorkspaceEdit> {
 	const doc = documents.get(params.uri);
 	if (doc === undefined) {return {};}
+	const parsed = await getParsedDocument(params.uri);
+	if (parsed === undefined) {return {};}
 
 	// Compute the TextEdits
 	var edits: TextEdit[] = [];
@@ -642,10 +642,10 @@ export function addImportPackage(params: AddImportPackageParams): WorkspaceEdit 
  * Handler function for the `intersystems/refactor/addMethod` request.
  */
 export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit | null> {
-	const parsed = parsedDocuments.get(params.uri);
-	if (parsed === undefined) {return null;}
 	const doc = documents.get(params.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.uri);
+	if (parsed === undefined) {return null;}
 	const lnstart  = params.lnstart;	// First non-empty line of the selection
 	const lnend = params.lnend;			// Last non-empty line of the selection
 
@@ -1418,10 +1418,10 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
  * Handler function for the `textDocument/codeAction` request.
  */
 export async function onCodeAction(params: CodeActionParams): Promise<CodeAction[] | null> {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 
 	var result: CodeAction[] = [];
 	if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.Refactor)) {
@@ -1652,10 +1652,10 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 
 	if (codeAction.title === 'Wrap in Try/Catch') {
 		const data: [string,number,number] = <[string,number,number]> codeAction.data; 
-		const parsed = parsedDocuments.get(data[0]);
-		if (parsed === undefined) {return codeAction;}
 		const doc = documents.get(data[0]);
 		if (doc === undefined) {return codeAction;}
+		const parsed = await getParsedDocument(data[0]);
+		if (parsed === undefined) {return codeAction;}
 
 		const lnstart = data[1];	// First non-empty line of the selection
 		const lnend = data[2];		// Last non-empty line of the selection
@@ -1742,7 +1742,7 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 		};
 	} else if (codeAction.title === 'Remove incorrect type') {
 		const data: [string,Range] = <[string,Range]> codeAction.data;
-		const parsed = parsedDocuments.get(data[0]);
+		const parsed = await getParsedDocument(data[0]);
 		if (parsed === undefined) {return codeAction;}
 
 		const ln = data[1].start.line

@@ -115,6 +115,8 @@ documents.onDidClose(e => {
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
 documents.onDidChangeContent(async change => {
+	// Clear the parsedDocuments value so we know to wait for an update elsewhere
+	parsedDocuments.set(change.document.uri,undefined);
 	const path = URI.parse(change.document.uri).path;
 	parsedDocuments.set(
 		change.document.uri,

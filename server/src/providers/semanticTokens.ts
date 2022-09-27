@@ -1,7 +1,8 @@
 import { SemanticTokensBuilder, SemanticTokensDeltaParams, SemanticTokensParams } from 'vscode-languageserver/node';
 import { lookupattr } from '../parse/parse';
+import { getParsedDocument } from '../utils/functions';
 import { compressedline } from '../utils/types';
-import { parsedDocuments, tokenBuilders } from '../utils/variables';
+import { tokenBuilders } from '../utils/variables';
 
 /**
  * Get the semantic tokens builder for this document, or create one if it doesn't exist.
@@ -28,8 +29,8 @@ function insertTokensIntoBuilder(tokens: compressedline[], builder: SemanticToke
 	}
 }
 
-export function onSemanticTokens(params: SemanticTokensParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
+export async function onSemanticTokens(params: SemanticTokensParams) {
+	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) {return { data: [] };}
 	
 	// Get the token builder for this document
@@ -41,9 +42,9 @@ export function onSemanticTokens(params: SemanticTokensParams) {
 	return builder.build();
 }
 
-export function onSemanticTokensDelta(params: SemanticTokensDeltaParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return { data: [] };}
+export async function onSemanticTokensDelta(params: SemanticTokensDeltaParams) {
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return { edits: [] };}
 	
 	// Get the token builder for this document
 	const builder = getTokenBuilder(params.textDocument.uri);

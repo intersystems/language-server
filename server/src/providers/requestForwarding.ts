@@ -1,6 +1,7 @@
 import { DocumentUri, Position, Range, TextDocumentPositionParams } from 'vscode-languageserver/node';
-import { parsedDocuments, documents } from '../utils/variables';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
+import { getParsedDocument } from '../utils/functions';
 
 interface IsolateEmbeddedLanguageParams {
 	uri: DocumentUri;
@@ -11,11 +12,11 @@ interface IsolateEmbeddedLanguageParams {
 /**
  * Handler function for the `intersystems/embedded/languageAtPosition` request.
  */
-export function languageAtPosition(params: TextDocumentPositionParams): number {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return -1;}
+export async function languageAtPosition(params: TextDocumentPositionParams): Promise<number> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return -1;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return -1;}
 	if (params.position.line === parsed.length) {return -1;}
 
 	let thistoken: number = -1;
@@ -34,11 +35,11 @@ export function languageAtPosition(params: TextDocumentPositionParams): number {
 /**
  * Handler function for the `intersystems/embedded/isolateEmbeddedLanguage` request.
  */
-export function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguageParams): string | undefined {
-	const parsed = parsedDocuments.get(params.uri);
-	if (parsed === undefined) {return undefined;}
+export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguageParams): Promise<string | undefined> {
 	const doc = documents.get(params.uri);
 	if (doc === undefined) {return undefined;}
+	const parsed = await getParsedDocument(params.uri);
+	if (parsed === undefined) {return undefined;}
 	
 	if (params.language == ld.py_langindex) {
 		// Embedded language is python

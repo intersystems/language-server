@@ -1,12 +1,13 @@
 import { Position, RenameParams, TextDocumentPositionParams, TextEdit, Range } from 'vscode-languageserver/node';
-import { parsedDocuments, documents } from '../utils/variables';
+import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
+import { getParsedDocument } from '../utils/functions';
 
-export function onPrepareRename(params: TextDocumentPositionParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+export async function onPrepareRename(params: TextDocumentPositionParams) {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 
 	if (doc.languageId === "objectscript-class") {
 		var result: Range | null = null;
@@ -198,11 +199,11 @@ export function onPrepareRename(params: TextDocumentPositionParams) {
 	}
 }
 
-export function onRenameRequest(params: RenameParams) {
-	const parsed = parsedDocuments.get(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+export async function onRenameRequest(params: RenameParams) {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
+	const parsed = await getParsedDocument(params.textDocument.uri);
+	if (parsed === undefined) {return null;}
 
 	// Loop through the line that we're on to find the token type and old name
 	var oldname: string = "";

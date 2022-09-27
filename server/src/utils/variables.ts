@@ -5,7 +5,7 @@ import { compressedline, LanguageServerConfiguration, ServerSpec } from './types
 /**
  * TextDocument URI's mapped to the tokenized representation of the document.
  */
-export let parsedDocuments: Map<string, compressedline[]> = new Map();
+export let parsedDocuments: Map<string, compressedline[] | undefined> = new Map();
 
 /**
  * Node IPC connection between the server and client.

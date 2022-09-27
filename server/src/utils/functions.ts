@@ -103,7 +103,7 @@ turndown.addRule("documaticReturn",{
  */
 export async function computeDiagnostics(doc: TextDocument) {
 	// Get the parsed document
-	const parsed = parsedDocuments.get(doc.uri);
+	const parsed = await getParsedDocument(doc.uri);
 	if (parsed !== undefined) {
 		const server: ServerSpec = await getServerSpec(doc.uri);
 		const settings = await getLanguageServerSettings(doc.uri);
@@ -2496,4 +2496,27 @@ export function storageKeywordsKeyForToken(doc: TextDocument, parsed: compressed
 		result = "STORAGE" + (ignoreLastOpen ? open.slice(0,-1) : open).join("").toUpperCase();
 	}
 	return result;
+}
+
+/**
+ * Wait for the updated semantic tokens for `uri` to be stored, then return them.
+ * 
+ * @param uri The uri of the document to get semantic tokens for.
+ * @returns The semantic tokens, or `undefined` if `uri` is not a key of `parsedDocuments` or retrieval took too long.
+ */
+export async function getParsedDocument(uri: string): Promise<compressedline[] | undefined> {
+	if (!parsedDocuments.has(uri)) {
+		return undefined;
+	}
+	const start = Date.now();
+	function waitForTokens(resolve: (value: compressedline[] | undefined) => void) {
+		const result = parsedDocuments.get(uri);
+		if (result != undefined || ((Date.now() - start) >= 5000)) {
+			resolve(result);
+		}
+		else {
+			setTimeout(waitForTokens, 25, resolve);
+		}
+	};
+	return new Promise(waitForTokens);
 }
