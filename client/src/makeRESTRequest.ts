@@ -69,6 +69,11 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 		);
 		return undefined;
 	}
+	if (server.username != undefined && server.username != "" && typeof server.password === "undefined") {
+		// A username without a password isn't allowed
+		client.warn("Cannot make required REST request because the configured server connection has a username but no password.");
+		return undefined;
+	}
 
 	// Build the URL
 	let url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/v${server.apiVersion}/${server.namespace}${path}`);

@@ -20,7 +20,7 @@ import {
 	TransportKind
 } from 'vscode-languageclient/node';
 
-import { lte } from "semver";
+import { gt, lte } from "semver";
 
 import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
 import {
@@ -136,18 +136,30 @@ export async function activate(context: ExtensionContext) {
 		// Register custom request handlers
 		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
 			let serverSpec = objectScriptApi.serverForUri(Uri.parse(uri));
-			if (serverSpec.host !== "" && typeof serverSpec.password === "undefined") {
+			if (
+				serverSpec.host !== "" &&
+				typeof serverSpec.password === "undefined" &&
+				serverManagerExt != undefined &&
+				gt(serverManagerExt.packageJSON.version,"3.0.0")
+			) {
 				// The main extension didn't provide a password, so we must 
 				// get it from the server manager's authentication provider.
 				const AUTHENTICATION_PROVIDER = "intersystems-server-credentials";
 				const scopes = [serverSpec.serverName, serverSpec.username || ""];
-				let session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { silent: true });
-				if (!session) {
-					session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { createIfNone: true });
-				}
-				if (session) {
-					serverSpec.username = session.scopes[1];
-					serverSpec.password = session.accessToken;
+				try {
+					let session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { silent: true });
+					if (!session) {
+						session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { createIfNone: true });
+					}
+					if (session) {
+						serverSpec.username = session.scopes[1];
+						serverSpec.password = session.accessToken;
+					}
+				} catch (error) {
+					// The user did not consent to sharing authentication information
+					if (error instanceof Error) {
+						client.warn(`${AUTHENTICATION_PROVIDER}: ${error.message}`);
+					}
 				}
 			}
 			return serverSpec;
