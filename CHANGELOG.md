@@ -1,11 +1,13 @@
 # Changelog
 
-## [2.1.2] - 2022-XX-XX
+## [2.1.2] - 2022-10-03
 - Fix issue [#243](https://github.com/intersystems/language-server/issues/243): Scope cookies to a username on a server 
 - Fix issue [#244](https://github.com/intersystems/language-server/issues/244): Language Server crashes when editing Parameter that has a type
 - Fix issue [#245](https://github.com/intersystems/language-server/issues/245): Add types for Property and Parameter hover headers
 - Fix issue [#246](https://github.com/intersystems/language-server/issues/246): Semantic tokens occasionally disappear during typing
 - Fix issue [#247](https://github.com/intersystems/language-server/issues/247): Catch errors thrown when getting session from Server Manager 3's auth provider
+- Parser changes:
+  - DP-417337: Fix parsing of argumentless commands followed by /* comments
 
 ## [2.1.1] - 2022-09-19
 - Parser changes:
