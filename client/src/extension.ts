@@ -137,8 +137,15 @@ export async function activate(context: ExtensionContext) {
 		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
 			let serverSpec = objectScriptApi.serverForUri(Uri.parse(uri));
 			if (
+				// Server was resolved
 				serverSpec.host !== "" &&
+				// Connection isn't unauthenticated (i.e. UnknownUser)
+				serverSpec.username != undefined &&
+				serverSpec.username != "" &&
+				serverSpec.username.toLowerCase() != "unknownuser" &&
+				// A password is missing
 				typeof serverSpec.password === "undefined" &&
+				// A supported version of the Server Manager is installed
 				serverManagerExt != undefined &&
 				gt(serverManagerExt.packageJSON.version,"3.0.0")
 			) {

@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.1.3] - 2022-10-27
+- Fix issue [#248](https://github.com/intersystems/language-server/issues/248): Extension incorrectly prompts for InterSystems Server Credentials when using no authentication
+
 ## [2.1.2] - 2022-10-03
 - Fix issue [#243](https://github.com/intersystems/language-server/issues/243): Scope cookies to a username on a server 
 - Fix issue [#244](https://github.com/intersystems/language-server/issues/244): Language Server crashes when editing Parameter that has a type
