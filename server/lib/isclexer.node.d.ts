@@ -53,7 +53,7 @@ export function GetLanguageAttributes(moniker: string): string[];
  * @param source The source code to tokenize.
  * @param moniker The language moniker of `source`. Must be a language moniker returned from `GetLanguages()`.
  * @param tokentext Return the corresponding source text for each token. Defaults to `false`. Note that setting this to `true` decreases performance.
- * @param flags Lexer flags. Defaults to `0`.
+ * @param flags Lexer flags. A positive integer or `0`. Defaults to `0`.
  * @param omitwhitespace Omit white space tokens. Defaults to `true`.
  * @returns An array of arrays of semantic tokens. The outer array corresponds to the lines of `source` and the inner array corresponds to tokens on that line.
  */
