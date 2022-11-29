@@ -1,7 +1,10 @@
 [
   {
     "label": "BREAK",
-    "alias": ["BREAK", "B"],
+    "alias": [
+      "BREAK",
+      "B"
+    ],
     "documentation": [
       "Interrupts execution at a breakpoint. Enables or disables user interrupts.\n",
       "```objectscript\n",
@@ -18,7 +21,9 @@
   },
   {
     "label": "CATCH",
-    "alias": ["CATCH"],
+    "alias": [
+      "CATCH"
+    ],
     "documentation": [
       "Identifies a block of code to execute when an exception occurs.\n",
       "```objectscript\n",
@@ -34,7 +39,10 @@
   },
   {
     "label": "CLOSE",
-    "alias": ["CLOSE", "C"],
+    "alias": [
+      "CLOSE",
+      "C"
+    ],
     "documentation": [
       "Closes a file or a device.\n",
       "```objectscript\n",
@@ -48,7 +56,9 @@
   },
   {
     "label": "CONTINUE",
-    "alias": ["CONTINUE"],
+    "alias": [
+      "CONTINUE"
+    ],
     "documentation": [
       "Jumps to FOR, WHILE, or DO WHILE command and re-executes test and loop.\n",
       "```objectscript\n",
@@ -61,7 +71,10 @@
   },
   {
     "label": "DO",
-    "alias": ["DO", "D"],
+    "alias": [
+      "DO",
+      "D"
+    ],
     "documentation": [
       "Calls a routine.\n",
       "```objectscript\n",
@@ -91,14 +104,23 @@
   },
   {
     "label": "ELSE",
-    "alias": ["ELSE"],
-    "documentation": ["Clause of block-oriented IF command.\n", "```objectscript\n", "ELSE { code }\n", "```\n"],
+    "alias": [
+      "ELSE"
+    ],
+    "documentation": [
+      "Clause of block-oriented IF command.\n",
+      "```objectscript\n",
+      "ELSE { code }\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_celse",
     "insertText": "ELSE {\n\t$0\n}\n"
   },
   {
     "label": "ELSEIF",
-    "alias": ["ELSEIF"],
+    "alias": [
+      "ELSEIF"
+    ],
     "documentation": [
       "Clause of block-oriented IF command.\n",
       "```objectscript\n",
@@ -110,7 +132,10 @@
   },
   {
     "label": "FOR",
-    "alias": ["FOR", "F"],
+    "alias": [
+      "FOR",
+      "F"
+    ],
     "documentation": [
       "Executes a block of code repeatedly, testing at the beginning of each loop.\n",
       "```objectscript\n",
@@ -129,7 +154,10 @@
   },
   {
     "label": "GOTO",
-    "alias": ["GOTO", "G"],
+    "alias": [
+      "GOTO",
+      "G"
+    ],
     "documentation": [
       "Transfers control.\n",
       "```objectscript\n",
@@ -146,7 +174,10 @@
   },
   {
     "label": "HALT",
-    "alias": ["HALT", "H"],
+    "alias": [
+      "HALT",
+      "H"
+    ],
     "documentation": [
       "Terminates execution of the current process.\n",
       "```objectscript\n",
@@ -160,7 +191,10 @@
   },
   {
     "label": "HANG",
-    "alias": ["HANG", "H"],
+    "alias": [
+      "HANG",
+      "H"
+    ],
     "documentation": [
       "Suspends execution for a specified number of seconds.\n",
       "```objectscript\n",
@@ -174,7 +208,10 @@
   },
   {
     "label": "IF",
-    "alias": ["IF", "I"],
+    "alias": [
+      "IF",
+      "I"
+    ],
     "documentation": [
       "Evaluates an expression, then selects which block of code to execute based on the truth value of the expression.\n",
       "```objectscript\n",
@@ -197,7 +234,10 @@
   },
   {
     "label": "JOB",
-    "alias": ["JOB", "J"],
+    "alias": [
+      "JOB",
+      "J"
+    ],
     "documentation": [
       "Runs a process in background.\n",
       "```objectscript\n",
@@ -211,7 +251,10 @@
   },
   {
     "label": "KILL",
-    "alias": ["KILL", "K"],
+    "alias": [
+      "KILL",
+      "K"
+    ],
     "documentation": [
       "Deletes variables.\n",
       "```objectscript\n",
@@ -225,7 +268,10 @@
   },
   {
     "label": "LOCK",
-    "alias": ["LOCK", "L"],
+    "alias": [
+      "LOCK",
+      "L"
+    ],
     "documentation": [
       "Enables a process to apply and release locks to control access to data resources.\n",
       "```objectscript\n",
@@ -245,7 +291,10 @@
   },
   {
     "label": "MERGE",
-    "alias": ["MERGE", "M"],
+    "alias": [
+      "MERGE",
+      "M"
+    ],
     "documentation": [
       "Merges global nodes or subtrees from source into destination.\n",
       "```objectscript\n",
@@ -259,7 +308,10 @@
   },
   {
     "label": "NEW",
-    "alias": ["NEW", "N"],
+    "alias": [
+      "NEW",
+      "N"
+    ],
     "documentation": [
       "Creates empty local variable environment.\n",
       "```objectscript\n",
@@ -273,7 +325,10 @@
   },
   {
     "label": "OPEN",
-    "alias": ["OPEN", "O"],
+    "alias": [
+      "OPEN",
+      "O"
+    ],
     "documentation": [
       "Acquires ownership of a device or file for input/output operations.\n",
       "```objectscript\n",
@@ -287,7 +342,10 @@
   },
   {
     "label": "QUIT",
-    "alias": ["QUIT", "Q"],
+    "alias": [
+      "QUIT",
+      "Q"
+    ],
     "documentation": [
       "Terminates execution of a loop structure or a routine.\n",
       "```objectscript\n",
@@ -304,7 +362,10 @@
   },
   {
     "label": "READ",
-    "alias": ["READ", "R"],
+    "alias": [
+      "READ",
+      "R"
+    ],
     "documentation": [
       "Accepts input and stores it in a variable.\n",
       "```objectscript\n",
@@ -318,7 +379,10 @@
   },
   {
     "label": "RETURN",
-    "alias": ["RETURN", "RET"],
+    "alias": [
+      "RETURN",
+      "RET"
+    ],
     "documentation": [
       "Terminates execution of a routine.\n",
       "```objectscript\n",
@@ -332,7 +396,10 @@
   },
   {
     "label": "SET",
-    "alias": ["SET", "S"],
+    "alias": [
+      "SET",
+      "S"
+    ],
     "documentation": [
       "Assigns a value to a variable.\n",
       "```objectscript\n",
@@ -346,7 +413,10 @@
   },
   {
     "label": "TCOMMIT",
-    "alias": ["TCOMMIT", "TC"],
+    "alias": [
+      "TCOMMIT",
+      "TC"
+    ],
     "documentation": [
       "Marks the successful completion of a transaction.\n",
       "```objectscript\n",
@@ -360,7 +430,9 @@
   },
   {
     "label": "THROW",
-    "alias": ["THROW"],
+    "alias": [
+      "THROW"
+    ],
     "documentation": [
       "Explicitly throws an exception to the next exception handler.\n",
       "```objectscript\n",
@@ -373,7 +445,10 @@
   },
   {
     "label": "TROLLBACK",
-    "alias": ["TROLLBACK", "TRO"],
+    "alias": [
+      "TROLLBACK",
+      "TRO"
+    ],
     "documentation": [
       "Rolls back an unsuccessful transaction.\n",
       "```objectscript\n",
@@ -391,7 +466,9 @@
   },
   {
     "label": "TRY",
-    "alias": ["TRY"],
+    "alias": [
+      "TRY"
+    ],
     "documentation": [
       "Identifies a block of code to monitor for errors during execution.\n",
       "```objectscript\n",
@@ -405,7 +482,10 @@
   },
   {
     "label": "TSTART",
-    "alias": ["TSTART", "TS"],
+    "alias": [
+      "TSTART",
+      "TS"
+    ],
     "documentation": [
       "Marks the beginning of a transaction.\n",
       "```objectscript\n",
@@ -419,7 +499,10 @@
   },
   {
     "label": "USE",
-    "alias": ["USE", "U"],
+    "alias": [
+      "USE",
+      "U"
+    ],
     "documentation": [
       "Establishes a device as the current device.\n",
       "```objectscript\n",
@@ -433,7 +516,10 @@
   },
   {
     "label": "VIEW",
-    "alias": ["VIEW", "V"],
+    "alias": [
+      "VIEW",
+      "V"
+    ],
     "documentation": [
       "Reads and writes database blocks and modifies data in memory.\n",
       "```objectscript\n",
@@ -447,7 +533,9 @@
   },
   {
     "label": "WHILE",
-    "alias": ["WHILE"],
+    "alias": [
+      "WHILE"
+    ],
     "documentation": [
       "Executes code while a condition is true.\n",
       "```objectscript\n",
@@ -463,7 +551,10 @@
   },
   {
     "label": "WRITE",
-    "alias": ["WRITE", "W"],
+    "alias": [
+      "WRITE",
+      "W"
+    ],
     "documentation": [
       "Displays output to current device.\n",
       "```objectscript\n",
@@ -477,7 +568,10 @@
   },
   {
     "label": "XECUTE",
-    "alias": ["XECUTE", "X"],
+    "alias": [
+      "XECUTE",
+      "X"
+    ],
     "documentation": [
       "Executes the specified commands.\n",
       "```objectscript\n",
@@ -491,7 +585,10 @@
   },
   {
     "label": "ZKILL",
-    "alias": ["ZKILL", "ZK"],
+    "alias": [
+      "ZKILL",
+      "ZK"
+    ],
     "documentation": [
       "Deletes a node while preserving the node?s descendants.\n",
       "```objectscript\n",
@@ -505,7 +602,10 @@
   },
   {
     "label": "ZNSPACE",
-    "alias": ["ZNSPACE", "ZN"],
+    "alias": [
+      "ZNSPACE",
+      "ZN"
+    ],
     "documentation": [
       "Sets the current namespace.\n",
       "```objectscript\n",
@@ -519,7 +619,10 @@
   },
   {
     "label": "ZTRAP",
-    "alias": ["ZTRAP", "ZT"],
+    "alias": [
+      "ZTRAP",
+      "ZT"
+    ],
     "documentation": [
       "Forces an error with a specified error code.\n",
       "```objectscript\n",
@@ -535,7 +638,10 @@
   },
   {
     "label": "ZWRITE",
-    "alias": ["ZWRITE", "ZW"],
+    "alias": [
+      "ZWRITE",
+      "ZW"
+    ],
     "documentation": [
       "Displays variable names and their values and/or expression values.\n",
       "```objectscript\n",
@@ -549,7 +655,9 @@
   },
   {
     "label": "ZZDUMP",
-    "alias": ["ZZDUMP"],
+    "alias": [
+      "ZZDUMP"
+    ],
     "documentation": [
       "Displays an expression in hexadecimal dump format.\n",
       "```objectscript\n",
@@ -562,7 +670,9 @@
   },
   {
     "label": "ZZWRITE",
-    "alias": ["ZZWRITE"],
+    "alias": [
+      "ZZWRITE"
+    ],
     "documentation": [
       "Displays the values of variables or expressions.\n",
       "```objectscript\n",

@@ -1,1 +1,408 @@
-{"STORAGE":[{"name":"CounterLocation","type":"KW_TYPE_STRING","description":"Specifies the base location of counters for properties with type is %Library.Counter. Normally this would be a global reference such as ^User.PersonC. The global reference can also include one or more leading subscripts."},{"name":"Data","type":"KW_TYPE_SUBNODE"},{"name":"DataLocation","type":"KW_TYPE_STRING","description":"Specifies expression that is the location where data is stored for this class. Normally this would be a global reference such as ^User.PersonD. The global reference can also include one or more leading subscripts."},{"name":"DefaultData","type":"KW_TYPE_STRING","description":"Specifies the name of the DATA definition that the Class Compiler Data Structure Generator uses to place any previously unstored properties. A property is unstored if it is storable, but is not listed in any DATA definition. "},{"name":"Deprecated","type":"KW_TYPE_BOOLEAN","description":"True if this storage is deprecated."},{"name":"ExtentLocation","type":"KW_TYPE_STRING","description":"Specifies the base location of globals used by the extent of this class. "},{"name":"ExtentSize","type":"KW_TYPE_STRING"},{"name":"Final","type":"KW_TYPE_BOOLEAN","description":"Specifies that the storage definition cannot be modified by subclasses."},{"name":"IdExpression","type":"KW_TYPE_STRING"},{"name":"IdFunction","type":"KW_TYPE_STRING","constraint":["increment","sequence"],"description":"Specifies the system function used to allocate new id values."},{"name":"IdLocation","type":"KW_TYPE_STRING","description":"Specifies location of the ID Counter."},{"name":"Index","type":"KW_TYPE_SUBNODE"},{"name":"IndexLocation","type":"KW_TYPE_STRING","description":"Specifies the global used for indices for this class. If not specified, the index location is ^MyApp.MyClassI, where MyApp.MyClass is the classname. "},{"name":"Internal","type":"KW_TYPE_BOOLEAN","description":"If true then do not display this item in automatic documentation."},{"name":"Name","type":"KW_TYPE_STRING","description":"Specifies the name of the Storage definition. This name must be a valid class member name and must not conflict with any other class member names."},{"name":"Property","type":"KW_TYPE_SUBNODE"},{"name":"SqlChildSub","type":"KW_TYPE_STRING"},{"name":"SqlIdExpression","type":"KW_TYPE_STRING"},{"name":"SQLMap","type":"KW_TYPE_SUBNODE"},{"name":"SqlRowIdName","type":"KW_TYPE_STRING","description":"Specifies the name of the Row ID column projected to SQL."},{"name":"SqlRowIdProperty","type":"KW_TYPE_STRING","description":"Specifies the SQL RowId property. This keyword is only used by classes that have been migrated from earlier InterSystems products."},{"name":"SqlTableNumber","type":"KW_TYPE_STRING","description":"Specifies the internal SQL Table Number. This keyword is only used by classes that have been migrated from earlier InterSystems products."},{"name":"State","type":"KW_TYPE_STRING","description":"For a serial embedded class, this keyword specifies which Data definition is used to define the serialized state of the object. This is also the default DATA definition that unstored properties will be added to by the default structure generator."},{"name":"StreamLocation","type":"KW_TYPE_STRING","description":"Specifies the default global used to store any stream properties within this class. If not specified, the index location is ^MyApp.MyClassS, where MyApp.MyClass is the classname. "},{"name":"Type","type":"KW_TYPE_CLASSNAME","constraint":"KW_SYSENUM_CLASS_LIST","description":"Specifies the Storage Class used to provide persistence for this class."},{"name":"VersionLocation","type":"KW_TYPE_STRING","description":"Specifies location of the %Version Counter."}],"STORAGEDATA":[{"name":"Attribute","type":"KW_TYPE_STRING"},{"name":"ColumnarGlobal","type":"KW_TYPE_STRING","description":"Specifies the name of the global this Columnar column is stored in."},{"name":"Name","type":"KW_TYPE_STRING","description":"Specifies the name of the StorageData definition. This name must be a valid storage member name and must not conflict with any other StorageData names."},{"name":"Structure","type":"KW_TYPE_STRING","constraint":["node","listnode","subnode","vector"],"description":"Specifies how the data is stored into a global node."},{"name":"Subscript","type":"KW_TYPE_STRING"},{"name":"Value","type":"KW_TYPE_SUBNODE"}],"STORAGEDATAVALUE":[{"name":"Name","type":"KW_TYPE_INTEGER","description":"Specifies the name of the StorageDataValue. This name must be a valid storage member name and must not conflict with any other StorageDataValue names."},{"name":"Value","type":"KW_TYPE_STRING"}],"STORAGEINDEX":[{"name":"Location","type":"KW_TYPE_STRING"},{"name":"Name","type":"KW_TYPE_STRING"}],"STORAGEPROPERTY":[{"name":"AverageFieldSize","type":"KW_TYPE_STRING"},{"name":"BiasQueriesAsOutlier","type":"KW_TYPE_STRING","constraint":["0","1"]},{"name":"ChildBlockCount","type":"KW_TYPE_STRING"},{"name":"ChildExtentSize","type":"KW_TYPE_STRING"},{"name":"Histogram","type":"KW_TYPE_STRING"},{"name":"Name","type":"KW_TYPE_STRING"},{"name":"OutlierSelectivity","type":"KW_TYPE_STRING"},{"name":"Selectivity","type":"KW_TYPE_STRING"},{"name":"StreamLocation","type":"KW_TYPE_STRING"}],"STORAGESQLMAP":[{"name":"BlockCount","type":"KW_TYPE_INTEGER"},{"name":"Condition","type":"KW_TYPE_STRING"},{"name":"ConditionalWithHostVars","type":"KW_TYPE_BOOLEAN"},{"name":"ConditionFields","type":"KW_TYPE_STRING"},{"name":"Data","type":"KW_TYPE_SUBNODE"},{"name":"Global","type":"KW_TYPE_STRING"},{"name":"Name","type":"KW_TYPE_STRING"},{"name":"PopulationPct","type":"KW_TYPE_STRING"},{"name":"PopulationType","type":"KW_TYPE_STRING"},{"name":"RowIdSpec","type":"KW_TYPE_SUBNODE"},{"name":"RowReference","type":"KW_TYPE_STRING"},{"name":"Structure","type":"KW_TYPE_STRING"},{"name":"Subscript","type":"KW_TYPE_SUBNODE"},{"name":"Type","type":"KW_TYPE_STRING","constraint":["data","index","bitmap","bitmapextent"],"description":"Specifies what kind of a map this is."}],"STORAGESQLMAPDATA":[{"name":"Delimiter","type":"KW_TYPE_STRING"},{"name":"Name","type":"KW_TYPE_STRING"},{"name":"Node","type":"KW_TYPE_STRING"},{"name":"Piece","type":"KW_TYPE_STRING"},{"name":"RetrievalCode","type":"KW_TYPE_STRING"}],"STORAGESQLMAPROWIDSPEC":[{"name":"Expression","type":"KW_TYPE_STRING"},{"name":"Field","type":"KW_TYPE_STRING"},{"name":"Name","type":"KW_TYPE_INTEGER"}],"STORAGESQLMAPSUBSCRIPT":[{"name":"AccessType","type":"KW_TYPE_STRING"},{"name":"Accessvar","type":"KW_TYPE_SUBNODE"},{"name":"DataAccess","type":"KW_TYPE_STRING"},{"name":"Delimiter","type":"KW_TYPE_STRING"},{"name":"Expression","type":"KW_TYPE_STRING"},{"name":"Invalidcondition","type":"KW_TYPE_SUBNODE"},{"name":"LoopInitValue","type":"KW_TYPE_STRING"},{"name":"Name","type":"KW_TYPE_INTEGER"},{"name":"NextCode","type":"KW_TYPE_STRING"},{"name":"NullMarker","type":"KW_TYPE_STRING"},{"name":"StartValue","type":"KW_TYPE_STRING"},{"name":"StopExpression","type":"KW_TYPE_STRING"},{"name":"StopValue","type":"KW_TYPE_STRING"}],"STORAGESQLMAPSUBSCRIPTACCESSVAR":[{"name":"Code","type":"KW_TYPE_STRING"},{"name":"Name","type":"KW_TYPE_INTEGER"},{"name":"Variable","type":"KW_TYPE_STRING"}],"STORAGESQLMAPSUBSCRIPTINVALIDCONDITION":[{"name":"Expression","type":"KW_TYPE_STRING"},{"name":"Name","type":"KW_TYPE_INTEGER"}]}
+{
+  "STORAGE": [
+    {
+      "name": "CounterLocation",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the base location of counters for properties with type is %Library.Counter. Normally this would be a global reference such as ^User.PersonC. The global reference can also include one or more leading subscripts."
+    },
+    {
+      "name": "Data",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "DataLocation",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies expression that is the location where data is stored for this class. Normally this would be a global reference such as ^User.PersonD. The global reference can also include one or more leading subscripts."
+    },
+    {
+      "name": "DefaultData",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the DATA definition that the Class Compiler Data Structure Generator uses to place any previously unstored properties. A property is unstored if it is storable, but is not listed in any DATA definition. "
+    },
+    {
+      "name": "Deprecated",
+      "type": "KW_TYPE_BOOLEAN",
+      "description": "True if this storage is deprecated."
+    },
+    {
+      "name": "ExtentLocation",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the base location of globals used by the extent of this class. "
+    },
+    {
+      "name": "ExtentSize",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Final",
+      "type": "KW_TYPE_BOOLEAN",
+      "description": "Specifies that the storage definition cannot be modified by subclasses."
+    },
+    {
+      "name": "IdExpression",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "IdFunction",
+      "type": "KW_TYPE_STRING",
+      "constraint": [
+        "increment",
+        "sequence"
+      ],
+      "description": "Specifies the system function used to allocate new id values."
+    },
+    {
+      "name": "IdLocation",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies location of the ID Counter."
+    },
+    {
+      "name": "Index",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "IndexLocation",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the global used for indices for this class. If not specified, the index location is ^MyApp.MyClassI, where MyApp.MyClass is the classname. "
+    },
+    {
+      "name": "Internal",
+      "type": "KW_TYPE_BOOLEAN",
+      "description": "If true then do not display this item in automatic documentation."
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the Storage definition. This name must be a valid class member name and must not conflict with any other class member names."
+    },
+    {
+      "name": "Property",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "SqlChildSub",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "SqlIdExpression",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "SQLMap",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "SqlRowIdName",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the Row ID column projected to SQL."
+    },
+    {
+      "name": "SqlRowIdProperty",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the SQL RowId property. This keyword is only used by classes that have been migrated from earlier InterSystems products."
+    },
+    {
+      "name": "SqlTableNumber",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the internal SQL Table Number. This keyword is only used by classes that have been migrated from earlier InterSystems products."
+    },
+    {
+      "name": "State",
+      "type": "KW_TYPE_STRING",
+      "description": "For a serial embedded class, this keyword specifies which Data definition is used to define the serialized state of the object. This is also the default DATA definition that unstored properties will be added to by the default structure generator."
+    },
+    {
+      "name": "StreamLocation",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the default global used to store any stream properties within this class. If not specified, the index location is ^MyApp.MyClassS, where MyApp.MyClass is the classname. "
+    },
+    {
+      "name": "Type",
+      "type": "KW_TYPE_CLASSNAME",
+      "constraint": "KW_SYSENUM_CLASS_LIST",
+      "description": "Specifies the Storage Class used to provide persistence for this class."
+    },
+    {
+      "name": "VersionLocation",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies location of the %Version Counter."
+    }
+  ],
+  "STORAGEDATA": [
+    {
+      "name": "Attribute",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "ColumnarGlobal",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the global this Columnar column is stored in."
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the StorageData definition. This name must be a valid storage member name and must not conflict with any other StorageData names."
+    },
+    {
+      "name": "Structure",
+      "type": "KW_TYPE_STRING",
+      "constraint": [
+        "node",
+        "listnode",
+        "subnode",
+        "vector"
+      ],
+      "description": "Specifies how the data is stored into a global node."
+    },
+    {
+      "name": "Subscript",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Value",
+      "type": "KW_TYPE_SUBNODE"
+    }
+  ],
+  "STORAGEDATAVALUE": [
+    {
+      "name": "Name",
+      "type": "KW_TYPE_INTEGER",
+      "description": "Specifies the name of the StorageDataValue. This name must be a valid storage member name and must not conflict with any other StorageDataValue names."
+    },
+    {
+      "name": "Value",
+      "type": "KW_TYPE_STRING"
+    }
+  ],
+  "STORAGEINDEX": [
+    {
+      "name": "Location",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_STRING"
+    }
+  ],
+  "STORAGEPROPERTY": [
+    {
+      "name": "AverageFieldSize",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "BiasQueriesAsOutlier",
+      "type": "KW_TYPE_STRING",
+      "constraint": [
+        "0",
+        "1"
+      ]
+    },
+    {
+      "name": "ChildBlockCount",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "ChildExtentSize",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Histogram",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "OutlierSelectivity",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Selectivity",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "StreamLocation",
+      "type": "KW_TYPE_STRING"
+    }
+  ],
+  "STORAGESQLMAP": [
+    {
+      "name": "BlockCount",
+      "type": "KW_TYPE_INTEGER"
+    },
+    {
+      "name": "Condition",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "ConditionalWithHostVars",
+      "type": "KW_TYPE_BOOLEAN"
+    },
+    {
+      "name": "ConditionFields",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Data",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "Global",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "PopulationPct",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "PopulationType",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "RowIdSpec",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "RowReference",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Structure",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Subscript",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "Type",
+      "type": "KW_TYPE_STRING",
+      "constraint": [
+        "data",
+        "index",
+        "bitmap",
+        "bitmapextent"
+      ],
+      "description": "Specifies what kind of a map this is."
+    }
+  ],
+  "STORAGESQLMAPDATA": [
+    {
+      "name": "Delimiter",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Node",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Piece",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "RetrievalCode",
+      "type": "KW_TYPE_STRING"
+    }
+  ],
+  "STORAGESQLMAPROWIDSPEC": [
+    {
+      "name": "Expression",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Field",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_INTEGER"
+    }
+  ],
+  "STORAGESQLMAPSUBSCRIPT": [
+    {
+      "name": "AccessType",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Accessvar",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "DataAccess",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Delimiter",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Expression",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Invalidcondition",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "LoopInitValue",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_INTEGER"
+    },
+    {
+      "name": "NextCode",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "NullMarker",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "StartValue",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "StopExpression",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "StopValue",
+      "type": "KW_TYPE_STRING"
+    }
+  ],
+  "STORAGESQLMAPSUBSCRIPTACCESSVAR": [
+    {
+      "name": "Code",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_INTEGER"
+    },
+    {
+      "name": "Variable",
+      "type": "KW_TYPE_STRING"
+    }
+  ],
+  "STORAGESQLMAPSUBSCRIPTINVALIDCONDITION": [
+    {
+      "name": "Expression",
+      "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_INTEGER"
+    }
+  ]
+}

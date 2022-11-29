@@ -1,7 +1,10 @@
 [
   {
     "label": "$DEVICE",
-    "alias": ["$DEVICE", "$D"],
+    "alias": [
+      "$DEVICE",
+      "$D"
+    ],
     "documentation": [
       "Contains user-specified device status information.\n",
       "```objectscript\n",
@@ -13,13 +16,25 @@
   },
   {
     "label": "$ECODE",
-    "alias": ["$ECODE", "$EC"],
-    "documentation": ["Contains the current error code string.\n", "```objectscript\n", "$ECODE\n", "$EC\n", "```\n"],
+    "alias": [
+      "$ECODE",
+      "$EC"
+    ],
+    "documentation": [
+      "Contains the current error code string.\n",
+      "```objectscript\n",
+      "$ECODE\n",
+      "$EC\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vecode"
   },
   {
     "label": "$ESTACK",
-    "alias": ["$ESTACK", "$ES"],
+    "alias": [
+      "$ESTACK",
+      "$ES"
+    ],
     "documentation": [
       "Contains the number of context frames saved on the call stack from a user-defined point.\n",
       "```objectscript\n",
@@ -31,7 +46,10 @@
   },
   {
     "label": "$ETRAP",
-    "alias": ["$ETRAP", "$ET"],
+    "alias": [
+      "$ETRAP",
+      "$ET"
+    ],
     "documentation": [
       "Contains a string of ObjectScript commands to be executed when an error occurs.\n",
       "```objectscript\n",
@@ -43,13 +61,23 @@
   },
   {
     "label": "$HALT",
-    "alias": ["$HALT"],
-    "documentation": ["Contains a halt trap routine call.\n", "```objectscript\n", "$HALT\n", "```\n"],
+    "alias": [
+      "$HALT"
+    ],
+    "documentation": [
+      "Contains a halt trap routine call.\n",
+      "```objectscript\n",
+      "$HALT\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vhalt"
   },
   {
     "label": "$HOROLOG",
-    "alias": ["$HOROLOG", "$H"],
+    "alias": [
+      "$HOROLOG",
+      "$H"
+    ],
     "documentation": [
       "Contains the local date and time for the current process.\n",
       "```objectscript\n",
@@ -61,7 +89,10 @@
   },
   {
     "label": "$IO",
-    "alias": ["$IO", "$I"],
+    "alias": [
+      "$IO",
+      "$I"
+    ],
     "documentation": [
       "Contains the ID of the current input/output device.\n",
       "```objectscript\n",
@@ -73,13 +104,25 @@
   },
   {
     "label": "$JOB",
-    "alias": ["$JOB", "$J"],
-    "documentation": ["Contains the ID of the current process.\n", "```objectscript\n", "$JOB\n", "$J\n", "```\n"],
+    "alias": [
+      "$JOB",
+      "$J"
+    ],
+    "documentation": [
+      "Contains the ID of the current process.\n",
+      "```objectscript\n",
+      "$JOB\n",
+      "$J\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vjob"
   },
   {
     "label": "$KEY",
-    "alias": ["$KEY", "$K"],
+    "alias": [
+      "$KEY",
+      "$K"
+    ],
     "documentation": [
       "Contains the terminator character from the most recent READ.\n",
       "```objectscript\n",
@@ -91,7 +134,9 @@
   },
   {
     "label": "$NAMESPACE",
-    "alias": ["$NAMESPACE"],
+    "alias": [
+      "$NAMESPACE"
+    ],
     "documentation": [
       "Contains the namespace for the current stack level.\n",
       "```objectscript\n",
@@ -103,7 +148,10 @@
   },
   {
     "label": "$PRINCIPAL",
-    "alias": ["$PRINCIPAL", "$P"],
+    "alias": [
+      "$PRINCIPAL",
+      "$P"
+    ],
     "documentation": [
       "Contains the ID of the principal I/O device.\n",
       "```objectscript\n",
@@ -115,7 +163,10 @@
   },
   {
     "label": "$QUIT",
-    "alias": ["$QUIT", "$Q"],
+    "alias": [
+      "$QUIT",
+      "$Q"
+    ],
     "documentation": [
       "Contains a flag indicating\nwhat kind of QUIT is required to exit the current context.\n",
       "```objectscript\n",
@@ -127,7 +178,9 @@
   },
   {
     "label": "$ROLES",
-    "alias": ["$ROLES"],
+    "alias": [
+      "$ROLES"
+    ],
     "documentation": [
       "Contains the roles assigned to the current process.\n",
       "```objectscript\n",
@@ -138,7 +191,10 @@
   },
   {
     "label": "$STACK",
-    "alias": ["$STACK", "$ST"],
+    "alias": [
+      "$STACK",
+      "$ST"
+    ],
     "documentation": [
       "Contains the number of context frames saved on the call stack.\n",
       "```objectscript\n",
@@ -150,7 +206,10 @@
   },
   {
     "label": "$STORAGE",
-    "alias": ["$STORAGE", "$S"],
+    "alias": [
+      "$STORAGE",
+      "$S"
+    ],
     "documentation": [
       "Contains the number of bytes available for local variable storage.\n",
       "```objectscript\n",
@@ -162,7 +221,11 @@
   },
   {
     "label": "$SYSTEM",
-    "alias": ["$SYSTEM", "$SY", "$SYSTEM.class.method"],
+    "alias": [
+      "$SYSTEM",
+      "$SY",
+      "$SYSTEM.class.method"
+    ],
     "documentation": [
       "Contains system information about system objects.\n",
       "```objectscript\n",
@@ -175,7 +238,10 @@
   },
   {
     "label": "$TEST",
-    "alias": ["$TEST", "$T"],
+    "alias": [
+      "$TEST",
+      "$T"
+    ],
     "documentation": [
       "Contains the truth value resulting from the last command using the timeout option.\n",
       "```objectscript\n",
@@ -187,19 +253,36 @@
   },
   {
     "label": "$THIS",
-    "alias": ["$THIS"],
-    "documentation": ["Contains the current class context.\n", "```objectscript\n", "$THIS\n", "```\n"],
+    "alias": [
+      "$THIS"
+    ],
+    "documentation": [
+      "Contains the current class context.\n",
+      "```objectscript\n",
+      "$THIS\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vthis"
   },
   {
     "label": "$THROWOBJ",
-    "alias": ["$THROWOBJ"],
-    "documentation": ["Contains the OREF from an unsuccessful THROW.\n", "```objectscript\n", "$THROWOBJ\n", "```\n"],
+    "alias": [
+      "$THROWOBJ"
+    ],
+    "documentation": [
+      "Contains the OREF from an unsuccessful THROW.\n",
+      "```objectscript\n",
+      "$THROWOBJ\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vthrowobj"
   },
   {
     "label": "$TLEVEL",
-    "alias": ["$TLEVEL", "$TL"],
+    "alias": [
+      "$TLEVEL",
+      "$TL"
+    ],
     "documentation": [
       "Contains the current nesting level for transaction processing.\n",
       "```objectscript\n",
@@ -211,13 +294,22 @@
   },
   {
     "label": "$USERNAME",
-    "alias": ["$USERNAME"],
-    "documentation": ["Contains the username for the current process.\n", "```objectscript\n", "$USERNAME\n", "```\n"],
+    "alias": [
+      "$USERNAME"
+    ],
+    "documentation": [
+      "Contains the username for the current process.\n",
+      "```objectscript\n",
+      "$USERNAME\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vusername"
   },
   {
     "label": "$X",
-    "alias": ["$X"],
+    "alias": [
+      "$X"
+    ],
     "documentation": [
       "Contains the current horizontal position of the cursor.\n",
       "```objectscript\n",
@@ -228,13 +320,22 @@
   },
   {
     "label": "$Y",
-    "alias": ["$Y"],
-    "documentation": ["Contains the current vertical position of the cursor.\n", "```objectscript\n", "$Y\n", "```\n"],
+    "alias": [
+      "$Y"
+    ],
+    "documentation": [
+      "Contains the current vertical position of the cursor.\n",
+      "```objectscript\n",
+      "$Y\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vy"
   },
   {
     "label": "$ZA",
-    "alias": ["$ZA"],
+    "alias": [
+      "$ZA"
+    ],
     "documentation": [
       "Contains the status of the last READ on the current device.\n",
       "```objectscript\n",
@@ -245,7 +346,9 @@
   },
   {
     "label": "$ZB",
-    "alias": ["$ZB"],
+    "alias": [
+      "$ZB"
+    ],
     "documentation": [
       "Contains status information for the current I/O device.\n",
       "```objectscript\n",
@@ -256,7 +359,10 @@
   },
   {
     "label": "$ZCHILD",
-    "alias": ["$ZCHILD", "$ZC"],
+    "alias": [
+      "$ZCHILD",
+      "$ZC"
+    ],
     "documentation": [
       "Contains the ID of the last child process.\n",
       "```objectscript\n",
@@ -268,7 +374,9 @@
   },
   {
     "label": "$ZEOF",
-    "alias": ["$ZEOF"],
+    "alias": [
+      "$ZEOF"
+    ],
     "documentation": [
       "Contains flag indicating whether end-of-file has been reached.\n",
       "```objectscript\n",
@@ -279,7 +387,9 @@
   },
   {
     "label": "$ZEOS",
-    "alias": ["$ZEOS"],
+    "alias": [
+      "$ZEOS"
+    ],
     "documentation": [
       "Contains end-of-stream status when reading a compressed stream.\n",
       "```objectscript\n",
@@ -290,7 +400,10 @@
   },
   {
     "label": "$ZERROR",
-    "alias": ["$ZERROR", "$ZE"],
+    "alias": [
+      "$ZERROR",
+      "$ZE"
+    ],
     "documentation": [
       "Contains the name and location of the last error.\n",
       "```objectscript\n",
@@ -302,7 +415,10 @@
   },
   {
     "label": "$ZHOROLOG",
-    "alias": ["$ZHOROLOG", "$ZH"],
+    "alias": [
+      "$ZHOROLOG",
+      "$ZH"
+    ],
     "documentation": [
       "Contains the number of seconds elapsed since InterSystems IRIS startup.\n",
       "```objectscript\n",
@@ -314,7 +430,10 @@
   },
   {
     "label": "$ZIO",
-    "alias": ["$ZIO", "$ZI"],
+    "alias": [
+      "$ZIO",
+      "$ZI"
+    ],
     "documentation": [
       "Contains information about the current terminal I/O device.\n",
       "```objectscript\n",
@@ -326,13 +445,25 @@
   },
   {
     "label": "$ZJOB",
-    "alias": ["$ZJOB", "$ZJ"],
-    "documentation": ["Contains job status information.\n", "```objectscript\n", "$ZJOB\n", "$ZJ\n", "```\n"],
+    "alias": [
+      "$ZJOB",
+      "$ZJ"
+    ],
+    "documentation": [
+      "Contains job status information.\n",
+      "```objectscript\n",
+      "$ZJOB\n",
+      "$ZJ\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzjob"
   },
   {
     "label": "$ZMODE",
-    "alias": ["$ZMODE", "$ZM"],
+    "alias": [
+      "$ZMODE",
+      "$ZM"
+    ],
     "documentation": [
       "Contains current I/O device OPEN parameters.\n",
       "```objectscript\n",
@@ -344,19 +475,38 @@
   },
   {
     "label": "$ZNAME",
-    "alias": ["$ZNAME", "$ZN"],
-    "documentation": ["Contains the current routine name.\n", "```objectscript\n", "$ZNAME\n", "$ZN\n", "```\n"],
+    "alias": [
+      "$ZNAME",
+      "$ZN"
+    ],
+    "documentation": [
+      "Contains the current routine name.\n",
+      "```objectscript\n",
+      "$ZNAME\n",
+      "$ZN\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzname"
   },
   {
     "label": "$ZNSPACE",
-    "alias": ["$ZNSPACE"],
-    "documentation": ["Contains the current namespace name.\n", "```objectscript\n", "$ZNSPACE\n", "```\n"],
+    "alias": [
+      "$ZNSPACE"
+    ],
+    "documentation": [
+      "Contains the current namespace name.\n",
+      "```objectscript\n",
+      "$ZNSPACE\n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vznspace"
   },
   {
     "label": "$ZORDER",
-    "alias": ["$ZORDER", "$ZO"],
+    "alias": [
+      "$ZORDER",
+      "$ZO"
+    ],
     "documentation": [
       "Contains the value of the next global node.\n",
       "```objectscript\n",
@@ -368,7 +518,10 @@
   },
   {
     "label": "$ZPARENT",
-    "alias": ["$ZPARENT", "$ZP"],
+    "alias": [
+      "$ZPARENT",
+      "$ZP"
+    ],
     "documentation": [
       "Contains the ID of the\nparent process of the current process.\n",
       "```objectscript\n",
@@ -380,13 +533,22 @@
   },
   {
     "label": "$ZPI",
-    "alias": ["$ZPI"],
-    "documentation": ["Contains the value of pi.\n", "```objectscript\n", "$ZPI  \n", "```\n"],
+    "alias": [
+      "$ZPI"
+    ],
+    "documentation": [
+      "Contains the value of pi.\n",
+      "```objectscript\n",
+      "$ZPI  \n",
+      "```\n"
+    ],
     "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzpi"
   },
   {
     "label": "$ZPOS",
-    "alias": ["$ZPOS"],
+    "alias": [
+      "$ZPOS"
+    ],
     "documentation": [
       "Contains the current file position during the reading of a sequential file.\n",
       "```objectscript\n",
@@ -397,7 +559,10 @@
   },
   {
     "label": "$ZREFERENCE",
-    "alias": ["$ZREFERENCE", "$ZR"],
+    "alias": [
+      "$ZREFERENCE",
+      "$ZR"
+    ],
     "documentation": [
       "Contains the current global reference.\n",
       "```objectscript\n",
@@ -409,7 +574,10 @@
   },
   {
     "label": "$ZSTORAGE",
-    "alias": ["$ZSTORAGE", "$ZS"],
+    "alias": [
+      "$ZSTORAGE",
+      "$ZS"
+    ],
     "documentation": [
       "Contains the maximum available memory for a process.\n",
       "```objectscript\n",
@@ -421,7 +589,10 @@
   },
   {
     "label": "$ZTIMESTAMP",
-    "alias": ["$ZTIMESTAMP", "$ZTS"],
+    "alias": [
+      "$ZTIMESTAMP",
+      "$ZTS"
+    ],
     "documentation": [
       "Contains the current date and time in Coordinated Universal Time format.\n",
       "```objectscript\n",
@@ -433,7 +604,10 @@
   },
   {
     "label": "$ZTIMEZONE",
-    "alias": ["$ZTIMEZONE", "$ZTZ"],
+    "alias": [
+      "$ZTIMEZONE",
+      "$ZTZ"
+    ],
     "documentation": [
       "Contains the time zone offset from the Greenwich meridian.\n",
       "```objectscript\n",
@@ -445,7 +619,10 @@
   },
   {
     "label": "$ZTRAP",
-    "alias": ["$ZTRAP", "$ZT"],
+    "alias": [
+      "$ZTRAP",
+      "$ZT"
+    ],
     "documentation": [
       "Contains the location of the current error trap handler.\n",
       "```objectscript\n",
@@ -457,7 +634,10 @@
   },
   {
     "label": "$ZVERSION",
-    "alias": ["$ZVERSION", "$ZV"],
+    "alias": [
+      "$ZVERSION",
+      "$ZV"
+    ],
     "documentation": [
       "Contains a string describing the current version of InterSystems IRIS.\n",
       "```objectscript\n",

@@ -1,1 +1,7 @@
-[{"name":"Deprecated","type":"KW_TYPE_BOOLEAN","description":"True if this constraint is deprecated."}]
+[
+  {
+    "name": "Deprecated",
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "True if this constraint is deprecated."
+  }
+]
