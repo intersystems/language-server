@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.1.4] - 2022-12-XX
+- Fix issue [#250](https://github.com/intersystems/language-server/issues/250): Hyperlink class description hover to full Documatic information
+
 ## [2.1.3] - 2022-10-27
 - Fix issue [#248](https://github.com/intersystems/language-server/issues/248): Extension incorrectly prompts for InterSystems Server Credentials when using no authentication
 

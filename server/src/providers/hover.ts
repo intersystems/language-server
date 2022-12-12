@@ -82,7 +82,10 @@ export async function onHover(params: TextDocumentPositionParams) {
 				if (respdata !== undefined && respdata.data.result.content !== undefined && respdata.data.result.content.length === 1) {
 					// The class was found
 					return {
-						contents: [normalizedname,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+						contents: [
+							`[${normalizedname}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%CSP.Documatic.cls?LIBRARY=${server.namespace.toUpperCase()}&CLASSNAME=${normalizedname})`,
+							documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
+						],
 						range: wordrange
 					};
 				}
