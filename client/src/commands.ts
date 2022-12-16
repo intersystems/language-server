@@ -66,7 +66,7 @@ export async function overrideClassMembers() {
 	}
 
 	// Ask the user to select the type of member that they want to override
-	const selectedType = await window.showQuickPick(["Method","Parameter","Property","Query","Trigger","XData"],{
+	const selectedType = await window.showQuickPick(["Method","Parameter","Projection","Property","Query","Trigger","XData"],{
 		placeHolder: "Select the class member type to override"
 	});
 	if (!selectedType) {

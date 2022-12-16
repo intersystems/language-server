@@ -279,6 +279,22 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 				}
 			}
 		}
+		else if (params.memberType === "Projection") {
+			const querydata: QueryData = {
+				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProjection WHERE parent->ID = ? AND Origin != ?",
+				parameters: [thisclass,thisclass]
+			};
+			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+			if (respdata !== undefined && respdata.data.result.content.length > 0) {
+				for (let memobj of respdata.data.result.content) {
+					result.push({
+						label: memobj.Name,
+						description: memobj.Type,
+						detail: "Origin class: "+memobj.Origin
+					});
+				}
+			}
+		}
 		else if (params.memberType === "Property") {
 			const querydata: QueryData = {
 				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND Origin != ? AND Final = 0",
@@ -409,7 +425,7 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 							(firstword.indexOf("method") !== -1) || (firstword.indexOf("property") !== -1) ||
 							(firstword.indexOf("parameter") !== -1) || (firstword.indexOf("relationship") !== -1) ||
 							(firstword.indexOf("query") !== -1) || (firstword.indexOf("trigger") !== -1) ||
-							(firstword.indexOf("xdata") !== -1)
+							(firstword.indexOf("xdata") !== -1) || (firstword.indexOf("projection") !== -1)
 						) {
 							// This line is the start of a class member definition
 							const searchstr = cls.content[ln].slice(cls.content[ln].indexOf(" ")+1).trim();
@@ -433,7 +449,7 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 
 									if (
 										(firstword.indexOf("property") !== -1) || (firstword.indexOf("relationship") !== -1) ||
-										(firstword.indexOf("parameter") !== -1)
+										(firstword.indexOf("parameter") !== -1) || (firstword.indexOf("projection") !== -1)
 									) {
 										// Look for the end of the member
 										if (cls.content[mln].trim().slice(-1) === ";") {

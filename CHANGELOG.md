@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.1.5] - 202X-XX-XX
+- Fix issue [#251](https://github.com/intersystems/language-server/issues/251): "Override Class Members" does not support overriding projections
+
 ## [2.1.4] - 2022-12-12
 - Fix issue [#250](https://github.com/intersystems/language-server/issues/250): Hyperlink class description hover to full Documatic information
 - Parser changes:
