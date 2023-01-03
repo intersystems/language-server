@@ -4,7 +4,7 @@ import { URI } from 'vscode-uri';
 import { parse } from 'node-html-parser';
 
 import { ServerSpec, StudioOpenDialogFile, QueryData, compressedline, CommandDoc, LanguageServerConfiguration, MacroContext, DimResult, PossibleClasses, ClassMemberContext } from './types';
-import { parsedDocuments, connection, serverSpecs, languageServerSettings } from './variables';
+import { parsedDocuments, connection, serverSpecs, languageServerSettings, zutilFunctions } from './variables';
 import * as ld from './languageDefinitions';
 
 import commands = require("../documentation/commands.json");
@@ -259,7 +259,7 @@ export async function computeDiagnostics(doc: TextDocument) {
 						let diagnostic: Diagnostic = {
 							severity: DiagnosticSeverity.Warning,
 							range: varrange,
-							message: "Local variable '"+doc.getText(varrange)+"' is undefined.",
+							message: "Local variable '"+doc.getText(varrange)+"' may be undefined.",
 							source: 'InterSystems Language Server'
 						};
 						diagnostics.push(diagnostic);
@@ -640,6 +640,81 @@ export async function computeDiagnostics(doc: TextDocument) {
 									addRangeToMapVal(methods,memberstr,memberrange);
 									addRangeToMapVal(properties,memberstr,memberrange);
 								}
+							}
+						}
+					}
+					else if (
+						settings.diagnostics.zutil && parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_sysf_attrindex &&
+						/^\$zu(til)?$/i.test(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c))) && j < parsed[i].length - 1
+					) {
+						// This is a $ZUTIL call
+
+						// Determine if this is a known function
+						let brk = false;
+						let nums: string[] = [];
+						for (let ln = i; ln < parsed.length; ln++) {
+							if (parsed[ln] == undefined || parsed[ln].length == 0) {
+								continue;
+							}
+							for (let tkn = (ln == i ? j + 2 : 0); tkn < parsed[ln].length; tkn++) {
+								if (parsed[ln][tkn].l != ld.cos_langindex) {
+									// We hit another language, so exit
+									brk = true;
+									break;
+								}
+								const tknText = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+								if (parsed[ln][tkn].s == ld.cos_delim_attrindex) {
+									if (nums.length) {
+										const argList = nums.join(",") + tknText;
+										if (
+											zutilFunctions.deprecated.includes(argList) ||
+											zutilFunctions.replace[argList] != undefined ||
+											zutilFunctions.noReplace.includes(argList)
+										) {
+											// This is a known function, so create a Diagnostic
+											const diag: Diagnostic = {
+												range: Range.create(i,parsed[i][j].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c),
+												severity: DiagnosticSeverity.Warning,
+												source: 'InterSystems Language Server',
+												message: ""
+											};
+											if (zutilFunctions.deprecated.includes(argList)) {
+												diag.message = "Deprecated function.";
+												diag.tags = [DiagnosticTag.Deprecated];
+											}
+											else {
+												diag.message = "Function has been superseded.";
+												if (zutilFunctions.replace[argList] != undefined) {
+													diag.data = argList;
+												}
+											}
+											diagnostics.push(diag);
+											brk = true;
+											break;
+										}
+										else if (tknText == ")") {
+											// Hit the end of the arg list, so exit
+											brk = true;
+											break;
+										}
+									}
+									else {
+										// Delimiter is first token after open parenthesis, so exit
+										brk = true;
+										break;
+									}
+								}
+								else if (parsed[ln][tkn].s == ld.cos_number_attrindex) {
+									nums.push(tknText);
+								}
+								else {
+									// We hit another token, so exit
+									brk = true;
+									break;
+								}
+							}
+							if (brk) {
+								break;
 							}
 						}
 					}

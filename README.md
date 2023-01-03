@@ -24,6 +24,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Invalid UDL Parameter types.
   - Mismatches between declared UDL Parameter types and the assigned value.
   - Classes, Methods, Parameters and Properties that are [Deprecated](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_deprecated).
+  - `$ZUTIL` functions that [are deprecated or have been superseded](https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_replacements).
 - [Folding Ranges](https://code.visualstudio.com/docs/editor/codebasics#_folding) for the following:
   - ObjectScript code blocks (If/ElseIf/Else, Try/Catch, For, While, etc.)
   - UDL class members
@@ -59,6 +60,8 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Invalid UDL Parameter types and mismatches between declared UDL Parameter types and the assigned value:
     - Remove the invalid UDL Parameter type.
     - Select a correct UDL Parameter type to replace the invalid one.
+  - `$ZUTIL` functions that have been superseded by ClassMethods:
+    - Replace the `$ZUTIL` function call with the appropriate ClassMethod.
 - Intellisense for the following embedded languages (provided by [request forwarding](https://code.visualstudio.com/api/language-extensions/embedded-languages#request-forwarding)):
   - Hover and code completion for HTML tags and CSS embedded in CSP/CSR files, HTML embedded in ObjectScript using the `&html` directive and CSS embedded in XML XData blocks.
   - Hover, code completion and signature help for JavaScript methods in ObjectScript classes and JavaScript embedded in CSP using `<script>` tags or embedded in ObjectScript using the `&js` directive.

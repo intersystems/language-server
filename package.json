@@ -231,6 +231,12 @@
 					"type": "boolean",
 					"default": false,
 					"description": "Controls whether short class names will be expanded to include a package during a document formatting request."
+				},
+				"intersystems.language-server.diagnostics.zutil": {
+					"scope": "resource",
+					"type": "boolean",
+					"default": true,
+					"markdownDescription": "Controls whether diagnostics are provided when a deprecated or superseded `$ZUTIL` function is being called."
 				}
 			}
 		},

@@ -26,7 +26,8 @@ export type LanguageServerConfiguration = {
 		routines: boolean,
 		parameters: boolean,
 		classes: boolean,
-		deprecation: boolean
+		deprecation: boolean,
+		zutil: boolean
 	},
 	signaturehelp: {
 		documentation: boolean

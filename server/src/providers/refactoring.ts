@@ -16,7 +16,7 @@ import parameterTypes = require("../documentation/parameterTypes.json");
 import * as ld from '../utils/languageDefinitions';
 import { compressedline, QueryData, ServerSpec } from '../utils/types';
 import { getServerSpec, findFullRange, makeRESTRequest, quoteUDLIdentifier, parseDimLine, getLanguageServerSettings, getParsedDocument } from '../utils/functions';
-import { documents, connection } from '../utils/variables';
+import { documents, connection, zutilFunctions } from '../utils/variables';
 
 /**
  * Represents an item that can be selected from a list of items.
@@ -1438,6 +1438,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 	if (doc === undefined) {return null;}
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) {return null;}
+	const settings = await getLanguageServerSettings(doc.uri);
 
 	var result: CodeAction[] = [];
 	if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.Refactor)) {
@@ -1606,46 +1607,71 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 		}
 		result[0].data = [doc.uri,lnstart,lnend];
 	} else if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.QuickFix)) {
-		const diagnostics = params.context.diagnostics; // Diagnostics array of the selection
-		if (diagnostics.length > 0) {
-			for (let i = 0; i < diagnostics.length; i++) {
-				if (
-					diagnostics[i].message === "Invalid parameter type." || 
-					diagnostics[i].message === "Parameter value and type do not match."
-				) {
-					result.push({
-						title: 'Remove incorrect type',
-						kind: CodeActionKind.QuickFix,
-						diagnostics: [diagnostics[i]]
-					})
-					result[result.length-1].data = [doc.uri,params.range];
+		for (const diagnostic of params.context.diagnostics) {
+			if (
+				diagnostic.message === "Invalid parameter type." || 
+				diagnostic.message === "Parameter value and type do not match."
+			) {
+				result.push({
+					title: 'Remove incorrect type',
+					kind: CodeActionKind.QuickFix,
+					diagnostics: [diagnostic]
+				});
+				result[result.length-1].data = [doc.uri,params.range];
 
-					const ln = params.range.start.line;
-					const range: Range = Range.create(
-						Position.create(ln,parsed[ln][3].p),
-						Position.create(ln,parsed[ln][3].p+parsed[ln][3].c)
-					);
-					result.push({
-						title: 'Select correct type',
-						kind: CodeActionKind.QuickFix,
-						command: Command.create("Select Parameter Type","intersystems.language-server.selectParameterType",params.textDocument.uri,range),
-						diagnostics: [diagnostics[i]]
-					})
-					break;
-				} else if (diagnostics[i].message === "Class '" + diagnostics[i].message.split('\'')[1] + "' does not exist.") {
-					const classname = diagnostics[i].message.split('\'')[1];
-					result.push({
-						title: 'Select package to import',
-						kind: CodeActionKind.QuickFix,
-						command: Command.create("Select Import Package","intersystems.language-server.selectImportPackage",params.textDocument.uri,classname),
-						diagnostics: [diagnostics[i]] 
-					});
-					if (classname.includes('.')) {
-						result[result.length-1].disabled = {
-							reason: "The class name from the Diagnostic contains a dot"
-						};
+				const ln = params.range.start.line;
+				const range: Range = Range.create(
+					Position.create(ln,parsed[ln][3].p),
+					Position.create(ln,parsed[ln][3].p+parsed[ln][3].c)
+				);
+				result.push({
+					title: 'Select correct type',
+					kind: CodeActionKind.QuickFix,
+					command: Command.create("Select Parameter Type","intersystems.language-server.selectParameterType",params.textDocument.uri,range),
+					diagnostics: [diagnostic]
+				});
+			} else if (diagnostic.message === "Class '" + diagnostic.message.split('\'')[1] + "' does not exist.") {
+				const classname = diagnostic.message.split('\'')[1];
+				result.push({
+					title: 'Select package to import',
+					kind: CodeActionKind.QuickFix,
+					command: Command.create("Select Import Package","intersystems.language-server.selectImportPackage",params.textDocument.uri,classname),
+					diagnostics: [diagnostic] 
+				});
+				if (classname.includes('.')) {
+					result[result.length-1].disabled = {
+						reason: "The class name from the Diagnostic contains a dot"
+					};
+				}
+			} else if (diagnostic.message == "Function has been superseded." && typeof diagnostic.data == "string") {
+				// This is a replaceable $ZUTIL function diagnostic
+				const classMethod = zutilFunctions.replace[diagnostic.data];
+				if (classMethod != undefined) {
+					// Convert the string into a ##class or $SYSTEM.Class call
+					let newText: string;
+					if (classMethod.startsWith("%SYSTEM.")) {
+						newText = "$";
+						newText += settings.formatting.system.case == "upper" ? "SYSTEM" : settings.formatting.system.case == "lower" ? "system" : "System";
+						newText += `${classMethod.slice(7,classMethod.indexOf("_"))}.${classMethod.slice(classMethod.indexOf("_") + 1)}(`;
+					} else {
+						newText = `##class(${classMethod.slice(0,classMethod.indexOf("_"))}).${classMethod.slice(classMethod.indexOf("_") + 1)}(`;
 					}
-					break;
+					if (diagnostic.data.endsWith(")")) {
+						newText += ")";
+					}
+					result.push({
+						title: "Replace with ClassMethod",
+						kind: CodeActionKind.QuickFix,
+						edit: {
+							changes: {
+								[params.textDocument.uri]: [{
+									range: diagnostic.range,
+									newText
+								}]
+							}
+						},
+						diagnostics: [diagnostic] 
+					});
 				}
 			}
 		}
