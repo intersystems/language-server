@@ -2427,7 +2427,8 @@ function parseSetCommand(doc: TextDocument, parsed: compressedline[], line: numb
 					parsed[ln][tkn].s == ld.cos_localdec_attrindex || parsed[ln][tkn].s == ld.cos_localvar_attrindex
 				) &&
 				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == selector &&
-				!(tkn+1 < parsed[ln].length && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s == ld.cos_objdot_attrindex)
+				!(tkn+1 < parsed[ln].length && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s == ld.cos_objdot_attrindex) &&
+				!(tkn-1 >= 0 && parsed[ln][tkn-1].l == ld.cos_langindex && parsed[ln][tkn-1].s == ld.cos_indir_attrindex)
 			) {
 				// We found the variable, so now look for the assignment operator
 				foundVar = true;
