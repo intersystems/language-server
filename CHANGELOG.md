@@ -1,7 +1,8 @@
 # Changelog
 
-## [2.1.5] - 202X-XX-XX
+## [2.2.0] - 2023-01-XX
 - Fix issue [#251](https://github.com/intersystems/language-server/issues/251): "Override Class Members" does not support overriding projections
+- Fix issue [#252](https://github.com/intersystems/language-server/issues/252): Add intellisense for variables created by `%New()`, `%Open()` or `%OpenId()`
 
 ## [2.1.4] - 2022-12-12
 - Fix issue [#250](https://github.com/intersystems/language-server/issues/250): Hyperlink class description hover to full Documatic information

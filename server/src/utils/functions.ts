@@ -1070,15 +1070,15 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 };
 
 /**
- * Parse a line of ObjectScript code that starts with #Dim and look to see if it contains selector.
+ * Parse a line of ObjectScript code that starts with #Dim and look to see if it contains `selector`.
  * 
  * @param doc The TextDocument that the line is in.
- * @param parsed The tokenized representation of doc.
+ * @param parsed The tokenized representation of `doc`.
  * @param line The line to parse.
  * @param selector The variable that we're looking for.
  */
 export function parseDimLine(doc: TextDocument, parsed: compressedline[], line: number, selector: string): DimResult {
-	var result: DimResult = {
+	let result: DimResult = {
 		founddim: false,
 		class: ""
 	};
@@ -1465,7 +1465,7 @@ export async function getClassMemberContext(
 		}
 	}
 	else if (
-		parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_delim_attrindex &&
+		dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_delim_attrindex &&
 		doc.getText(Range.create(
 			Position.create(line,parsed[line][dot-1].p),
 			Position.create(line,parsed[line][dot-1].p+parsed[line][dot-1].c)
@@ -1575,7 +1575,7 @@ export async function getClassMemberContext(
 			}
 		}
 	}
-	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_clsname_attrindex) {
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_clsname_attrindex) {
 		// The token before the dot is part of a class name
 
 		result = {
@@ -1583,7 +1583,7 @@ export async function getClassMemberContext(
 			context: "system"
 		};
 	}
-	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_param_attrindex) {
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_param_attrindex) {
 		// The token before the dot is a parameter
 
 		const paramcon = await determineParameterClass(doc,parsed,line,dot-1,server);
@@ -1591,15 +1591,20 @@ export async function getClassMemberContext(
 			result = paramcon;
 		}
 	}
-	else if (parsed[line][dot-1].l == ld.cos_langindex && (parsed[line][dot-1].s == ld.cos_localdec_attrindex || parsed[line][dot-1].s == ld.cos_localvar_attrindex)) {
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (parsed[line][dot-1].s == ld.cos_localdec_attrindex || parsed[line][dot-1].s == ld.cos_localvar_attrindex)) {
 		// The token before the dot is a declared local variable or public variable 
 
-		const localdeccon = await determineDeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
-		if (localdeccon !== undefined) {
-			result = localdeccon;
+		// First check if it's #Dim'd
+		let varContext = await determineDeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
+		if (varContext === undefined) {
+			// If it's not, check if it's Set using %New(), %Open() or %OpenId()
+			varContext = await determineUndeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
+		}
+		if (varContext !== undefined) {
+			result = varContext;
 		}
 	}
-	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_sysv_attrindex) {
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_sysv_attrindex) {
 		// The token before the dot is a system variable
 
 		const thisvar = doc.getText(findFullRange(line,parsed,dot-1,parsed[line][dot-1].p,parsed[line][dot-1].p+parsed[line][dot-1].c)).toLowerCase();
@@ -1630,7 +1635,7 @@ export async function getClassMemberContext(
 			}
 		}
 	}
-	else if (parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_attr_attrindex && dot >= 2) {
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_attr_attrindex && dot >= 2) {
 		// The token before the dot is an object attribute
 
 		// This is a chained reference, so get the base class of the previous token
@@ -1655,6 +1660,14 @@ export async function getClassMemberContext(
 					context: "instance"
 				};
 			}
+		}
+	}
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (parsed[line][dot-1].s == ld.cos_otw_attrindex || parsed[line][dot-1].s == ld.cos_localundec_attrindex)) {
+		// The token before the dot is an undeclared local variable
+
+		const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
+		if (localundeccon !== undefined) {
+			result = localundeccon;
 		}
 	}
 
@@ -2228,7 +2241,8 @@ export async function determineDeclaredLocalVarClass(
 	}
 	else {
 		// Scan to the top of the method to find the #Dim
-		var founddim = false;
+		let founddim = false;
+		let firstLabel = true;
 		for (let j = line; j >= 0; j--) {
 			if (parsed[j].length === 0) {
 				continue;
@@ -2237,9 +2251,18 @@ export async function determineDeclaredLocalVarClass(
 				// This is the definition for the class member that the variable is in
 				break;
 			}
-			else if (doc.languageId === "objectscript" && parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex) {
-				// This is the label for the code block that the variable is in
-				break;
+			else if (
+				["objectscript","objectscript-int"].includes(doc.languageId) && firstLabel &&
+				parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex
+			) {
+				// This is the first label above the variable
+				
+				if (labelIsProcedureBlock(doc,parsed,j) != undefined) {
+					// This variable is in a procedure block, so stop scanning
+					break;
+				}
+				// Scan the whole file
+				firstLabel = false;
 			}
 			else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
 				// This is a preprocessor command
@@ -2258,6 +2281,262 @@ export async function determineDeclaredLocalVarClass(
 				if (founddim) {
 					break;
 				}
+			}
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Parse a Set command's arguments and look to see if `selector` was set using `%New()`, `%Open()` or `%OpenId()`.
+ * 
+ * @param doc The TextDocument that the Set is in.
+ * @param parsed The tokenized representation of `doc`.
+ * @param line The line the Set is in.
+ * @param token The offset of the Set within `line`.
+ * @param selector The variable that we're looking for.
+ */
+function parseSetCommand(doc: TextDocument, parsed: compressedline[], line: number, token: number, selector: string): { foundset: boolean; class: string; } {
+	let result = {
+		foundset: false,
+		class: ""
+	};
+
+	let brk = false;
+	let inPostconditional = false;
+	let pcParenCount = 0;
+	let foundVar = false;
+	let operatorTuple: [number, number] | undefined = undefined;
+	for (let ln = line; ln < parsed.length; ln++) {
+		if (parsed[ln] == undefined || parsed[ln].length == 0) {
+			continue;
+		}
+		for (let tkn = (ln == line ? token + 1 : 0); tkn < parsed[ln].length; tkn++) {
+			if (parsed[ln][tkn].l == ld.cos_langindex && (parsed[ln][tkn].s === ld.cos_command_attrindex || parsed[ln][tkn].s === ld.cos_zcom_attrindex)) {
+				// This is the next command, so stop looping
+				brk = true;
+				break;
+			}
+			if (
+				ln == line && tkn == token + 1 && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s === ld.cos_delim_attrindex &&
+				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == ":"
+			) {
+				// This Set has a postconditional
+				inPostconditional = true;
+			}
+			if (inPostconditional && pcParenCount == 0 && tkn > 0 && parsed[ln][tkn].p > (parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)) {
+				// We've hit the end of the postconditional
+				inPostconditional = false;
+			}
+			if (
+				inPostconditional && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s === ld.cos_delim_attrindex &&
+				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == "("
+			) {
+				pcParenCount++;
+			}
+			if (
+				inPostconditional && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s === ld.cos_delim_attrindex &&
+				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == ")"
+			) {
+				pcParenCount--;
+				if (pcParenCount == 0) {
+					// We've hit the end of the postconditional
+					inPostconditional = false;
+				}
+			}
+			if (
+				!inPostconditional && parsed[ln][tkn].l == ld.cos_langindex &&
+				(
+					parsed[ln][tkn].s == ld.cos_otw_attrindex || parsed[ln][tkn].s == ld.cos_localundec_attrindex ||
+					parsed[ln][tkn].s == ld.cos_localdec_attrindex || parsed[ln][tkn].s == ld.cos_localvar_attrindex
+				) &&
+				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == selector &&
+				!(tkn+1 < parsed[ln].length && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s == ld.cos_objdot_attrindex)
+			) {
+				// We found the variable, so now look for the assignment operator
+				foundVar = true;
+			}
+			if (
+				foundVar && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_oper_attrindex &&
+				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == "="
+			) {
+				// We found the assignment operator, so now we need to see what the value is
+				operatorTuple = [ln,tkn];
+			}
+			if (operatorTuple != undefined && ((tkn == operatorTuple[1] + 1) || (ln == operatorTuple[0] + 1 && tkn == 0))) {
+				// This is the token immediately after the assignment operator
+
+				if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_clsobj_attrindex) {
+					// This is the start of a ##class
+
+					// Find the class name and the method/parameter being referred to
+					if ((tkn + 6) < parsed[ln].length) {
+						// Need at least 6 more tokens (open paren, class, close paren, dot, method, open paren)
+						for (let clstkn = tkn + 5; clstkn < parsed[ln].length; clstkn++) {
+							if (
+								parsed[ln][clstkn].l == ld.cos_langindex && parsed[ln][clstkn].s == ld.cos_method_attrindex &&
+								["%New","%Open","%OpenId"].includes(doc.getText(Range.create(ln,parsed[ln][clstkn].p,ln,parsed[ln][clstkn].p+parsed[ln][clstkn].c)))
+							) {
+								// This is ##class(cls).%New/%Open/%OpenId( so save the class name
+								result = {
+									foundset: true,
+									class: doc.getText(findFullRange(ln,parsed,tkn+2,parsed[ln][tkn+2].p,parsed[ln][tkn+2].p+parsed[ln][tkn+2].c))
+								};
+								break;
+							}
+						}
+					}
+				}
+				else if (
+					parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_sysv_attrindex &&
+					doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)).toLowerCase() == "$system" &&
+					tkn < parsed[ln].length - 1 && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s == ld.cos_clsname_attrindex
+				) {
+					// This is $SYSTEM followed by a class name
+
+					// Check if the method being called is %New(), %Open() or %OpenId()
+					if ((tkn + 4) < parsed[ln].length) {
+						// Need at least 4 more tokens (class, dot, method, open paren)
+						for (let clstkn = tkn + 3; clstkn < parsed[ln].length; clstkn++) {
+							if (
+								parsed[ln][clstkn].l == ld.cos_langindex && parsed[ln][clstkn].s == ld.cos_method_attrindex &&
+								["%New","%Open","%OpenId"].includes(doc.getText(Range.create(ln,parsed[ln][clstkn].p,ln,parsed[ln][clstkn].p+parsed[ln][clstkn].c)))
+							) {
+								// This is $SYSTEM.cls.%New/%Open/%OpenId( so find the name of this class and save it
+								result = {
+									foundset: true,
+									class: `%SYSTEM${doc.getText(findFullRange(ln,parsed,tkn+1,parsed[ln][tkn+1].p,parsed[ln][tkn+1].p+parsed[ln][tkn+1].c))}`
+								};
+								break;
+							}
+						}
+					}
+				}
+				else if (
+					parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_objdot_attrindex &&
+					doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == ".."
+				) {
+					// This is relative dot syntax
+
+					// Check if the method being called is %New(), %Open() or %OpenId()
+					if (
+						(tkn + 2) < parsed[ln].length && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s == ld.cos_method_attrindex &&
+						["%New","%Open","%OpenId"].includes(doc.getText(Range.create(ln,parsed[ln][tkn+1].p,ln,parsed[ln][tkn+1].p+parsed[ln][tkn+1].c)))
+					) {
+						// This is ..%New/%Open/%OpenId( so find the name of this class
+
+						let clsname = "";
+						for (let i = 0; i < parsed.length; i++) {
+							if (parsed[i].length === 0) {
+								continue;
+							}
+							else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
+								// This line starts with a UDL keyword
+					
+								const keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c)));
+								if (keyword.toLowerCase() === "class") {
+									for (let j = 1; j < parsed[i].length; j++) {
+										if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
+											clsname += doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
+										}
+										else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
+											// We hit the 'Extends' keyword
+											break;
+										}
+									}
+									break;
+								}
+							}
+						}
+						if (clsname != "") {
+							result = {
+								foundset: true,
+								class: clsname
+							};
+						}
+					}
+				}
+
+				// Exit the loop because we've already found our variable
+				brk = true;
+				break;
+			}
+		}
+		if (brk) {
+			break;
+		}
+	}
+
+	return result;
+}
+
+/**
+ * Determine the normalized name of the class for the undeclared local variable at (line,tkn).
+ * If it's found, return its class. Helper method for getClassMemberContext() and onTypeDefinition().
+ * 
+ * @param doc The TextDocument that the undeclared local variable is in.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line that the undeclared local variable is in.
+ * @param tkn The token of the undeclared local variable in the line.
+ * @param server The server that doc is associated with.
+ * 
+ * The following optional parameters are only provided when called via computeDiagnostics():
+ * @param allfiles An array of all files in a database.
+ * @param inheritedpackages An array containing packages imported by superclasses of this class.
+ */
+export async function determineUndeclaredLocalVarClass(
+	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
+	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
+): Promise<ClassMemberContext | undefined> {
+	let result: ClassMemberContext | undefined = undefined;
+	const thisvar = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
+
+	// Scan to the top of the method to find where the variable was Set
+	let foundset = false;
+	let firstLabel = true;
+	for (let j = line; j >= 0; j--) {
+		if (parsed[j].length === 0) {
+			continue;
+		}
+		else if (doc.languageId === "objectscript-class" && parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
+			// This is the definition for the class member that the variable is in
+			break;
+		}
+		else if (
+			["objectscript","objectscript-int"].includes(doc.languageId) && firstLabel &&
+			parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex
+		) {
+			// This is the first label above the variable
+			
+			if (labelIsProcedureBlock(doc,parsed,j) != undefined) {
+				// This variable is in a procedure block, so stop scanning
+				break;
+			}
+			// Scan the whole file
+			firstLabel = false;
+		}
+		else {
+			// Loop through the line looking for Sets
+			for (let tkn = 0; tkn < parsed[j].length; tkn++) {
+				if (
+					parsed[j][tkn].l == ld.cos_langindex && parsed[j][tkn].s === ld.cos_command_attrindex &&
+					["s","set"].includes(doc.getText(Range.create(j,parsed[j][tkn].p,j,parsed[j][tkn].p+parsed[j][tkn].c)).toLowerCase())
+				) {
+					// This is a Set command
+					const setresult = parseSetCommand(doc,parsed,j,tkn,thisvar);
+					foundset = setresult.foundset;
+					if (foundset) {
+						result = {
+							baseclass: await normalizeClassname(doc,parsed,setresult.class,server,j,allfiles,undefined,inheritedpackages),
+							context: "instance"
+						};
+						break;
+					}
+				}
+			}
+			if (foundset) {
+				break;
 			}
 		}
 	}
@@ -2402,7 +2681,7 @@ export async function determineNormalizedPropertyClass(doc: TextDocument, parsed
  * 
  * @param doc The TextDocument.
  * @param parsed The tokenized representation of doc.
- * @param line The line of this token is on.
+ * @param line The line this token is on.
  * @param token The offset of this token in the line.
  * @returns The key in the `storageKeywords` object for this nesting level,
  * or the empty string if the token is not in a Storage definition.
@@ -2519,4 +2798,111 @@ export async function getParsedDocument(uri: string): Promise<compressedline[] |
 		}
 	};
 	return new Promise(waitForTokens);
+}
+
+/**
+ * Check if label on `line` of `doc` is a procedure block.
+ * 
+ * @param doc The TextDocument.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line that this label is in.
+ * @returns A line, token tuple of the first brace after the procedure definition, else `undefined`.
+ */
+export function labelIsProcedureBlock(doc: TextDocument, parsed: compressedline[], line: number): [number, number] | undefined {
+	const lastLabelTkn = parsed[line].length > 1 && parsed[line][1].s == ld.cos_label_attrindex ? 1 : 0;
+	let currentLabelIsProcedureBlock: boolean = false;
+	let result: [number, number] | undefined = undefined;
+
+	if (
+		parsed[line].length > lastLabelTkn + 1 &&
+		parsed[line][lastLabelTkn + 1].s == ld.cos_delim_attrindex &&
+		doc.getText(
+			Range.create(
+				line,parsed[line][lastLabelTkn + 1].p,
+				line,parsed[line][lastLabelTkn + 1].p+parsed[line][lastLabelTkn + 1].c
+			)
+		) == "("
+	) {
+		// Walk the parsed document until we hit the end of the procedure definition
+		
+		let openparen = 0;
+		let inparam = true;
+		let brk = false;
+		for (let ln = (parsed[line].length == lastLabelTkn + 2 ? line + 1 : line); ln < parsed.length; ln++) {
+			for (let tkn = (ln == line ? lastLabelTkn + 2 : 0); tkn < parsed[ln].length; tkn++) {
+				if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_comment_attrindex) {
+					// Comments are allowed anywhere in the procedure definition, so ignore them
+					continue;
+				}
+				else if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_delim_attrindex) {
+					const delim = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+					if (inparam) {
+						if (delim == "(") {
+							openparen++;
+						}
+						else if (delim == ")") {
+							if (openparen == 0) {
+								// Found the end of the parameter list
+								inparam = false;
+							}
+							else {
+								openparen--;
+							}
+						}
+					}
+					else {
+						if (delim == "[") {
+							// We hit the public list, which means this label is a procedure block
+							currentLabelIsProcedureBlock = true;
+						}
+						else if (currentLabelIsProcedureBlock && (delim == "]" || delim == ",")) {
+							// These are delimiters inside the public list, so ignore them
+							continue;
+						}
+						else {
+							// This is some other delimiter, so this label is not a procedure block
+							brk = true;
+							break;
+						}
+					}
+				}
+				else if (!inparam && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_command_attrindex) {
+					const command = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+					if (["public","private"].includes(command.toLowerCase())) {
+						// The access modifier can be present with our without a brace, so ignore it
+						continue;
+					}
+					else {
+						// This is some other command, so this label is not a procedure block
+						brk = true;
+						break;
+					}
+				}
+				else if (!inparam && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_brace_attrindex) {
+					const brace = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+					if (brace == "{") {
+						// This is an open brace, so this label is procedure block
+						currentLabelIsProcedureBlock = true;
+						result = [ln, tkn];
+						brk = true;
+						break;
+					} else {
+						// This is a close brace, so this label is not a procedure block
+						brk = true;
+						break;
+					}
+				}
+				else if (!inparam && !currentLabelIsProcedureBlock) {
+					// This is some other token, so this label is not a procedure block
+					brk = true;
+					break;
+				}
+			}
+			if (brk) {
+				break;
+			}
+		}
+	}
+
+	return result;
 }

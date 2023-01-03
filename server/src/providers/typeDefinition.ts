@@ -1,5 +1,5 @@
 import { TextDocumentPositionParams, Position, Range } from 'vscode-languageserver';
-import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, getGetDocFormatParam, determineDeclaredLocalVarClass, determineParameterClass, getClassMemberContext, getParsedDocument } from '../utils/functions';
+import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, getGetDocFormatParam, determineDeclaredLocalVarClass, determineParameterClass, getClassMemberContext, getParsedDocument, determineUndeclaredLocalVarClass } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -40,11 +40,15 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 			) {
 				// This token is a declared local variable or public variable
 
-				// Determine the class of the declared local variable
-				const localdeccon = await determineDeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
-				if (localdeccon !== undefined) {
+				// First check if it's #Dim'd
+				let varContext = await determineDeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
+				if (varContext === undefined) {
+					// If it's not, check if it's Set using %New(), %Open() or %OpenId()
+					varContext = await determineUndeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
+				}
+				if (varContext !== undefined) {
 					// The declared local variable has a class
-					targetcls = localdeccon.baseclass;
+					targetcls = varContext.baseclass;
 				}
 			}
 			else if (
@@ -145,6 +149,19 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 					if (memobj.Type !== "") {
 						targetcls = memobj.Type;
 					}
+				}
+			}
+			else if (
+				parsed[params.position.line][i].l == ld.cos_langindex &&
+				(parsed[params.position.line][i].s == ld.cos_otw_attrindex || parsed[params.position.line][i].s == ld.cos_localundec_attrindex)
+			) {
+				// This token is an undeclared local variable
+
+				// Determine the class of the undeclared local variable
+				const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
+				if (localundeccon !== undefined) {
+					// The undeclared local variable has a class
+					targetcls = localundeccon.baseclass;
 				}
 			}
 

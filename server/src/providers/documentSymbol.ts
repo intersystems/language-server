@@ -1,5 +1,5 @@
 import { DocumentSymbol, DocumentSymbolParams, Position, SymbolKind, Range } from 'vscode-languageserver/node';
-import { findFullRange, getParsedDocument } from '../utils/functions';
+import { findFullRange, getParsedDocument, labelIsProcedureBlock } from '../utils/functions';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
@@ -208,7 +208,6 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 
 				const labelrange = findFullRange(line,parsed,0,parsed[line][0].p,parsed[line][0].p+parsed[line][0].c);
 				const label = doc.getText(labelrange);
-				const lastLabelTkn = parsed[line].length > 1 &&parsed[line][1].s == ld.cos_label_attrindex ? 1 : 0;
 				const inProcedureBlock = (
 					result.length > 0 &&
 					Array.isArray(result[result.length - 1].children) &&
@@ -216,104 +215,14 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 					labelrange.start.line <= result[result.length - 1].range.end.line
 				);
 				
-				let currentLabelIsProcedureBlock = false;
-				let firstbrace: [number, number] = [-1, -1];
+				let firstbrace: [number, number] | undefined = undefined;
 				if (!inProcedureBlock) {
 					// Check if this label is a procedure block
-					if (
-						parsed[line].length > lastLabelTkn + 1 &&
-						parsed[line][lastLabelTkn + 1].s == ld.cos_delim_attrindex &&
-						doc.getText(
-							Range.create(
-								line,parsed[line][lastLabelTkn + 1].p,
-								line,parsed[line][lastLabelTkn + 1].p+parsed[line][lastLabelTkn + 1].c
-							)
-						) == "("
-					) {
-						// Walk the parsed document until we hit the end of the procedure definition
-						
-						let openparen = 0;
-						let inparam = true;
-						let brk = false;
-						for (let ln = (parsed[line].length == lastLabelTkn + 2 ? line + 1 : line); ln < parsed.length; ln++) {
-							for (let tkn = (ln == line ? lastLabelTkn + 2 : 0); tkn < parsed[ln].length; tkn++) {
-								if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_comment_attrindex) {
-									// Comments are allowed anywhere in the procedure definition, so ignore them
-									continue;
-								}
-								else if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_delim_attrindex) {
-									const delim = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
-									if (inparam) {
-										if (delim == "(") {
-											openparen++;
-										}
-										else if (delim == ")") {
-											if (openparen == 0) {
-												// Found the end of the parameter list
-												inparam = false;
-											}
-											else {
-												openparen--;
-											}
-										}
-									}
-									else {
-										if (delim == "[") {
-											// We hit the public list, which means this label is a procedure block
-											currentLabelIsProcedureBlock = true;
-										}
-										else if (currentLabelIsProcedureBlock && (delim == "]" || delim == ",")) {
-											// These are delimiters inside the public list, so ignore them
-											continue;
-										}
-										else {
-											// This is some other delimiter, so this label is not a procedure block
-											brk = true;
-											break;
-										}
-									}
-								}
-								else if (!inparam && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_command_attrindex) {
-									const command = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
-									if (["public","private"].includes(command.toLowerCase())) {
-										// The access modifier can be present with our without a brace, so ignore it
-										continue;
-									}
-									else {
-										// This is some other command, so this label is not a procedure block
-										brk = true;
-										break;
-									}
-								}
-								else if (!inparam && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_brace_attrindex) {
-									const brace = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
-									if (brace == "{") {
-										// This is an open brace, so this label is procedure block
-										currentLabelIsProcedureBlock = true;
-										firstbrace = [ln, tkn];
-										brk = true;
-										break;
-									} else {
-										// This is a close brace, so this label is not a procedure block
-										brk = true;
-										break;
-									}
-								}
-								else if (!inparam && !currentLabelIsProcedureBlock) {
-									// This is some other token, so this label is not a procedure block
-									brk = true;
-									break;
-								}
-							}
-							if (brk) {
-								break;
-							}
-						}
-					}
+					firstbrace = labelIsProcedureBlock(doc,parsed,line);
 				}
 
 				let endLine = line;
-				if (currentLabelIsProcedureBlock && firstbrace[0] != -1) {
+				if (firstbrace != undefined) {
 					// Loop through the file from the first brace until we hit the last closing brace
 					let openbrace = 0;
 					let brk = false;
@@ -368,7 +277,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 						kind: SymbolKind.Method,
 						range: Range.create(labelrange.start,Position.create(endLine,parsed[endLine][parsed[endLine].length-1].p+parsed[endLine][parsed[endLine].length-1].c)),
 						selectionRange: labelrange,
-						children: currentLabelIsProcedureBlock ? [] : undefined
+						children: firstbrace != undefined ? [] : undefined
 					});
 				}
 			}
