@@ -1,6 +1,6 @@
 {
 	"name": "language-server-server",
-	"version": "2.1.0",
+	"version": "2.2.0",
 	"author": "InterSystems Corporation",
 	"private": true,
 	"engines": {
@@ -11,6 +11,6 @@
 		"turndown-ext": "^7.0.5",
 		"vscode-languageserver": "^8.0.2",
 		"vscode-languageserver-textdocument": "^1.0.8",
-		"vscode-uri": "^3.0.6"
+		"vscode-uri": "^3.0.7"
 	}
 }

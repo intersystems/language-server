@@ -1,9 +1,11 @@
 # Changelog
 
-## [2.2.0] - 2023-01-XX
+## [2.2.0] - 2023-01-04
 - Fix issue [#251](https://github.com/intersystems/language-server/issues/251): "Override Class Members" does not support overriding projections
 - Fix issue [#252](https://github.com/intersystems/language-server/issues/252): Add intellisense for variables created by `%New()`, `%Open()` or `%OpenId()`
 - Fix issue [#254](https://github.com/intersystems/language-server/issues/254): Add Diagnostics for deprecated or superseded `$ZUTIL` functions
+- Parser changes:
+  - DP-419184: Add parser support for `ZBREAK` syntax with braces
 
 ## [2.1.4] - 2022-12-12
 - Fix issue [#250](https://github.com/intersystems/language-server/issues/250): Hyperlink class description hover to full Documatic information
