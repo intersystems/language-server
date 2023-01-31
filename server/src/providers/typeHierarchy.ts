@@ -26,6 +26,7 @@ export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<Typ
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	let cls: string | null = null;
 
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file
@@ -62,34 +63,68 @@ export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<Typ
 					}
 					else {
 						// This classname is invalid
-						return null;
+						break;
 					}
 				}
 				if (word.charAt(0) === '"') {
 					// This classname is delimited with ", so strip them
 					word = word.slice(1,-1);
 				}
-
-				// Normalize the class name if there are imports
-				let normalizedname = await normalizeClassname(doc,parsed,word,server,params.position.line);
-
-				// Get the uri for this class
-				const uri: string[] = await connection.sendRequest("intersystems/uri/forTypeHierarchyClasses",[normalizedname]);
-
-				// Create and return the TypeHierarchyItem
-				return [{
-					name: normalizedname,
-					kind: SymbolKind.Class,
-					range: Range.create(Position.create(0,0),Position.create(0,0)),
-					selectionRange: Range.create(Position.create(0,0),Position.create(0,0)),
-					uri: uri[0],
-					data: server
-				}];
+				cls = word;
 			}
 			break;
 		}
 	}
-	return null;
+	if (cls == null && doc.languageId == "objectscript-class") {
+		// Default to showing the Type Hierarchy for the opened class
+
+		// Find the class name
+		for (let i = 0; i < parsed.length; i++) {
+			if (parsed[i].length === 0) {
+				continue;
+			}
+			else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
+				// This line starts with a UDL keyword
+				const keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
+				if (keyword.toLowerCase() === "class") {
+					for (let j = 1; j < parsed[i].length; j++) {
+						if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
+							if (cls == null) {
+								cls = "";
+							}
+							cls += doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
+						}
+						else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
+							// We hit the 'Extends' keyword
+							break;
+						}
+					}
+					break;
+				}
+			}
+		}
+	}
+
+	if (cls != null) {
+		// Normalize the class name if there are imports
+		let normalizedname = await normalizeClassname(doc,parsed,cls,server,params.position.line);
+
+		// Get the uri for this class
+		const uri: string[] = await connection.sendRequest("intersystems/uri/forTypeHierarchyClasses",[normalizedname]);
+
+		// Create and return the TypeHierarchyItem
+		return [{
+			name: normalizedname,
+			kind: SymbolKind.Class,
+			range: Range.create(Position.create(0,0),Position.create(0,0)),
+			selectionRange: Range.create(Position.create(0,0),Position.create(0,0)),
+			uri: uri[0],
+			data: server
+		}];
+	}
+	else {
+		return null;
+	}
 }
 
 /**

@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.2.1] - 2023-XX-XX
+- Fix issue [#255](https://github.com/intersystems/language-server/issues/255): Improve the TypeHierarchyProvider fallback behaviour
+
 ## [2.2.0] - 2023-01-04
 - Fix issue [#251](https://github.com/intersystems/language-server/issues/251): "Override Class Members" does not support overriding projections
 - Fix issue [#252](https://github.com/intersystems/language-server/issues/252): Add intellisense for variables created by `%New()`, `%Open()` or `%OpenId()`
