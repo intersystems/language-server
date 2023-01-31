@@ -2,6 +2,7 @@
 
 ## [2.2.1] - 2023-XX-XX
 - Fix issue [#255](https://github.com/intersystems/language-server/issues/255): Improve the TypeHierarchyProvider fallback behaviour
+- Fix issue [#256](https://github.com/intersystems/language-server/issues/256): Go To Definition may go to wrong class member
 
 ## [2.2.0] - 2023-01-04
 - Fix issue [#251](https://github.com/intersystems/language-server/issues/251): "Override Class Members" does not support overriding projections

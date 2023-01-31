@@ -370,6 +370,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 	
 								// Loop through the file contents to find this member
 								var linect = 0;
+								const regex = new RegExp(`^(?:Method|ClassMethod|ClientMethod|Property|Parameter|Relationship) ${membernameinfile}(?:\\(|;| )`);
 								for (let j = 0; j < docrespdata.data.result.content.length; j++) {
 									if (linect > 0) {
 										linect++;
@@ -384,22 +385,13 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 											break;
 										}
 									}
-									else if (
-										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("method") !== -1) ||
-										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1) ||
-										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("parameter") !== -1) ||
-										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("relationship") !== -1)
-									) {
-										// This is the right type of class member
-										const searchstr = docrespdata.data.result.content[j].slice(docrespdata.data.result.content[j].indexOf(" ")+1).trim();
-										if (searchstr.indexOf(membernameinfile) === 0) {
-											// This is the right member
-											const memberlineidx = docrespdata.data.result.content[j].indexOf(searchstr);
-											if (memberlineidx !== -1) {
-												targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+membernameinfile.length));
-												targetrange.start = Position.create(j,0);
-												linect++;
-											}
+									else if (regex.test(docrespdata.data.result.content[j])) {
+										// This is the right class member
+										const memberlineidx = docrespdata.data.result.content[j].indexOf(membernameinfile);
+										if (memberlineidx !== -1) {
+											targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+membernameinfile.length));
+											targetrange.start = Position.create(j,0);
+											linect++;
 										}
 									}
 								}
@@ -912,6 +904,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 								var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
 								var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
 								var linect = 0;
+								const regex = new RegExp(`^(?:ClassMethod|Query) ${procname}\\(`);
 								for (let j = 0; j < docrespdata.data.result.content.length; j++) {
 									if (linect > 0) {
 										linect++;
@@ -929,21 +922,13 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 											break;
 										}
 									}
-									else if (
-										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("classmethod") !== -1) ||
-										(docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("query") !== -1)
-									) {
-										// This is the right type of class member
-										var memberlineidx = docrespdata.data.result.content[j].indexOf(procname);
-										if (memberlineidx !==  -1) {
-											// This is the right type of class member
-											const memberlineidx = docrespdata.data.result.content[j].indexOf(procname);
-											if (memberlineidx !== -1) {
-												// This is the right member
-												targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+procname.length));
-												targetrange.start = Position.create(j,0);
-												linect++;
-											}
+									else if (regex.test(docrespdata.data.result.content[j])) {
+										// This is the right class member
+										const memberlineidx = docrespdata.data.result.content[j].indexOf(procname);
+										if (memberlineidx !== -1) {
+											targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+procname.length));
+											targetrange.start = Position.create(j,0);
+											linect++;
 										}
 									}
 								}
@@ -1010,6 +995,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 											var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
 											var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
 											var linect = 0;
+											const regex = new RegExp(`^(?:Property|Relationship) ${propname}(?:;| )`);
 											for (let j = 0; j < docrespdata.data.result.content.length; j++) {
 												if (linect > 0) {
 													linect++;
@@ -1027,21 +1013,13 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 														break;
 													}
 												}
-												else if (
-													docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1 ||
-													docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("relationship") !== -1
-												) {
-													// This is the right type of class member
-													var memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
-													if (memberlineidx !==  -1) {
-														// This is the right type of class member
-														const memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
-														if (memberlineidx !== -1) {
-															// This is the right member
-															targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length));
-															targetrange.start = Position.create(j,0);
-															linect++;
-														}
+												else if (regex.test(docrespdata.data.result.content[j])) {
+													// This is the right class member
+													const memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
+													if (memberlineidx !== -1) {
+														targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length));
+														targetrange.start = Position.create(j,0);
+														linect++;
 													}
 												}
 											}
@@ -1154,8 +1132,8 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						}];
 					}
 				}
-				// The parameter is defined in another class
 
+				// The parameter is defined in another class
 				const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
 					query: "SELECT Origin FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?",
 					parameters: [normalizedcls,param]
@@ -1172,17 +1150,14 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 								// The class was found
 	
 								// Loop through the file contents to find this parameter
+								const regex = new RegExp(`^Parameter ${param}(?:;| )`);
 								for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-									if (docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase() === "parameter") {
-										// This is a parameter
-										const searchstr = docrespdata.data.result.content[j].slice(docrespdata.data.result.content[j].indexOf(" ")+1).trim();
-										if (searchstr.indexOf(param) === 0) {
-											// This is the right parameter
-											const memberlineidx = docrespdata.data.result.content[j].indexOf(searchstr);
-											if (memberlineidx !== -1) {
-												targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+param.length));
-												targetrange = Range.create(j,0,j+1,0);
-											}
+									if (regex.test(docrespdata.data.result.content[j])) {
+										// This is the right parameter
+										const memberlineidx = docrespdata.data.result.content[j].indexOf(param);
+										if (memberlineidx !== -1) {
+											targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+param.length));
+											targetrange = Range.create(j,0,j+1,0);
 										}
 									}
 								}
