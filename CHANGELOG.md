@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.2.1] - 2023-XX-XX
+## [2.2.1] - 2023-02-01
 - Fix issue [#255](https://github.com/intersystems/language-server/issues/255): Improve the TypeHierarchyProvider fallback behaviour
 - Fix issue [#256](https://github.com/intersystems/language-server/issues/256): Go To Definition may go to wrong class member
 
