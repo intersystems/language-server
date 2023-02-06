@@ -2982,3 +2982,26 @@ export function labelIsProcedureBlock(doc: TextDocument, parsed: compressedline[
 
 	return result;
 }
+
+/**
+ * Find the name of the class contained in `doc`.
+ * Returns the empty string if no class declaration was found.
+ */
+export function currentClass(doc: TextDocument, parsed: compressedline[]): string {
+	let result: string = "";
+	for (let i = 0; i < parsed.length; i++) {
+		if (parsed[i].length === 0) {
+			continue;
+		}
+		else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
+			// This line starts with a UDL keyword
+
+			const keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
+			if (keyword.toLowerCase() === "class") {
+				result = doc.getText(findFullRange(i,parsed,1,parsed[i][1].p,parsed[i][1].p+parsed[i][1].c));
+				break;
+			}
+		}
+	}
+	return result;
+}

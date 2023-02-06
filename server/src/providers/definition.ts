@@ -1,5 +1,5 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getGetDocFormatParam, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineNormalizedPropertyClass, getParsedDocument } from '../utils/functions';
+import { getServerSpec, getGetDocFormatParam, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineNormalizedPropertyClass, getParsedDocument, currentClass } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -1082,23 +1082,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				}
 
 				// If this is a class file, determine what class we're in
-				var thisclass = "";
-				if (doc.languageId === "objectscript-class") {
-					for (let ln = 0; ln < parsed.length; ln++) {
-						if (parsed[ln].length === 0) {
-							continue;
-						}
-						else if (parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
-							// This line starts with a UDL keyword
-				
-							var keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
-							if (keyword === "class") {
-								thisclass = doc.getText(findFullRange(ln,parsed,1,parsed[ln][1].p,parsed[ln][1].p+parsed[ln][1].c));
-								break;
-							}
-						}
-					}
-				}
+				const thisclass = doc.languageId === "objectscript-class" ? currentClass(doc,parsed) : "";
 
 				var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
 				var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
@@ -1135,8 +1119,9 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 				// The parameter is defined in another class
 				const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
-					query: "SELECT Origin FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?",
-					parameters: [normalizedcls,param]
+					query: "SELECT Origin FROM %Dictionary.CompiledParameter WHERE Name = ? AND (parent->ID = ? OR " +
+					"parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
+					parameters: [param,normalizedcls,thisclass]
 				});
 				if (queryrespdata !== undefined) {
 					if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {

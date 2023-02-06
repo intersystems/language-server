@@ -1,5 +1,5 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, Position, Range, TextEdit } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineNormalizedPropertyClass, storageKeywordsKeyForToken, getParsedDocument } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineNormalizedPropertyClass, storageKeywordsKeyForToken, getParsedDocument, currentClass } from '../utils/functions';
 import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -1307,8 +1307,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Query the server to get the names and descriptions of all class-specific parameters
 		const data: QueryData = {
-			query: "SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?",
-			parameters: [normalizedcls]
+			query: "SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ? OR " +
+			"parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)",
+			parameters: [normalizedcls,currentClass(doc,parsed)]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {

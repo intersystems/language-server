@@ -1,5 +1,5 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineNormalizedPropertyClass, storageKeywordsKeyForToken, getParsedDocument } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineNormalizedPropertyClass, storageKeywordsKeyForToken, getParsedDocument, currentClass } from '../utils/functions';
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -879,8 +879,9 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const normalizedcls = await determineNormalizedPropertyClass(doc,parsed,params.position.line,server);
 				if (normalizedcls !== "") {
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
-						query: "SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?",
-						parameters: [normalizedcls,param]
+						query: "SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (parent->ID = ? OR " +
+						"parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
+						parameters: [param,normalizedcls,currentClass(doc,parsed)]
 					});
 					if (respdata !== undefined) {
 						if ("content" in respdata.data.result && respdata.data.result.content.length > 0) {
