@@ -2,6 +2,7 @@
 
 ## [2.2.2] - 2023-XX-XX
 - Fix issue [#257](https://github.com/intersystems/language-server/issues/257): Property parameter intellisense does not respect `PropertyClass` keyword
+- Fix issue [#259](https://github.com/intersystems/language-server/issues/259): Correctly color DynamicObject brace syntax in Triggers and SqlComputeCodes
 
 ## [2.2.1] - 2023-02-01
 - Fix issue [#255](https://github.com/intersystems/language-server/issues/255): Improve the TypeHierarchyProvider fallback behaviour
