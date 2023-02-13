@@ -6,7 +6,6 @@ on:
       - master
     paths-ignore:
       - ".vscode/**"
-      - ".github/**"
       - "*.md"
       - "**/*.md"
   pull_request:
