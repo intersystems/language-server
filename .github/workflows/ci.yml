@@ -6,6 +6,7 @@ on:
       - master
     paths-ignore:
       - ".vscode/**"
+      - ".github/**"
       - "*.md"
       - "**/*.md"
   pull_request:
@@ -27,8 +28,8 @@ jobs:
       matrix:
         platarch: [win32-x64, linux-x64, linux-arm64, alpine-x64, alpine-arm64, darwin-x64, darwin-arm64]
     steps:
-      - uses: actions/checkout@v3
-      - run: git fetch --depth=1 origin
+      - name: Check out repository
+        uses: actions/checkout@v3
       - name: Set package name and version
         id: set-version
         run: |
@@ -90,6 +91,13 @@ jobs:
     needs: build
     if: success() && github.event_name == 'release'
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: npm install
       - name: Download packages
         uses: actions/download-artifact@v3
       - name: Attach packages to release
@@ -115,10 +123,10 @@ jobs:
     needs: [build, publish]
     if: github.event_name == 'release'
     steps:
-      - uses: actions/checkout@v3
+      - name: Check out repository
+        uses: actions/checkout@v3
         with:
           ref: master
-          token: ${{ secrets.GITHUB_TOKEN }}
       - name: Download metadata
         uses: actions/download-artifact@v3
         with:
