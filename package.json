@@ -1,1789 +1,1789 @@
 {
-	"name": "language-server",
-	"displayName": "InterSystems Language Server",
-	"description": "A language server for InterSystems ObjectScript.",
-	"author": "InterSystems Corporation",
-	"license": "SEE LICENSE IN LICENSE.txt",
-	"version": "2.3.0-SNAPSHOT",
-	"publisher": "intersystems",
-	"repository": {
-		"type": "github",
-		"url": "https://github.com/intersystems/language-server"
-	},
-	"bugs": {
-		"url": "https://github.com/intersystems/language-server/issues"
-	},
-	"icon": "images/logo.png",
-	"categories": [
-		"Programming Languages",
-		"Formatters",
-		"Linters"
-	],
-	"keywords": [
-		"IntelliSense",
-		"intersystems",
-		"objectscript",
-		"multi-root ready"
-	],
-	"engines": {
-		"vscode": "^1.67.0"
-	},
-	"activationEvents": [
-		"workspaceContains:**/*.cls",
-		"workspaceContains:**/*.mac",
-		"workspaceContains:**/*.int",
-		"workspaceContains:**/*.inc",
-		"workspaceContains:**/*.csp",
-		"workspaceContains:**/*.csr",
-		"onLanguage:objectscript",
-		"onLanguage:objectscript-int",
-		"onLanguage:objectscript-class",
-		"onLanguage:objectscript-macros",
-		"onLanguage:objectscript-csp",
-		"onFileSystem:isfs",
-		"onFileSystem:isfs-readonly",
-		"onFileSystem:objectscript"
-	],
-	"main": "./client/out/extension",
-	"capabilities": {
-		"untrustedWorkspaces": {
-			"supported": true
-		}
-	},
-	"contributes": {
-		"commands": [
-			{
-				"command": "intersystems.language-server.overrideClassMembers",
-				"title": "Override Class Members",
-				"category": "InterSystems Language Server"
-			},
-			{
-				"command": "intersystems.language-server.selectParameterType",
-				"title": "Select Parameter Type",
-				"category": "InterSystems Language Server"
-			},
-			{
-				"command": "intersystems.language-server.selectImportPackage",
-				"title": "Select Import Package",
-				"category": "InterSystems Language Server"
-			},
-			{
-				"command": "intersystems.language-server.extractMethodDisposable",
-				"title": "Extract Method",
-				"category": "InterSystems Language Server"
-			},
-			{
-				"command": "intersystems.language-server.showSymbolInClass",
-				"title": "Open Symbol In Document",
-				"category": "InterSystems Language Server"
-			}
-		],
-		"menus": {
-			"commandPalette": [
-				{
-					"command": "intersystems.language-server.overrideClassMembers",
-					"when": "false"
-				},
-				{
-					"command": "intersystems.language-server.selectParameterType",
-					"when": "false"
-				},
-				{
-					"command": "intersystems.language-server.selectImportPackage",
-					"when": "false"
-				},
-				{
-					"command": "intersystems.language-server.extractMethodDisposable",
-					"when": "false"
-				},
-				{
-					"command": "intersystems.language-server.showSymbolInClass",
-					"when": "false"
-				}
-			],
-			"editor/context": [
-				{
-					"command": "intersystems.language-server.overrideClassMembers",
-					"when": "vscode-objectscript.connectActive && editorLangId == objectscript-class",
-					"group": "1_modification"
-				}
-			]
-		},
-		"configuration": {
-			"type": "object",
-			"title": "InterSystems Language Server",
-			"properties": {
-				"intersystems.language-server.trace.server": {
-					"scope": "window",
-					"type": "string",
-					"enum": [
-						"off",
-						"messages",
-						"verbose"
-					],
-					"default": "off",
-					"description": "Traces the communication between VS Code and the language server."
-				},
-				"intersystems.language-server.formatting.commands.case": {
-					"scope": "resource",
-					"type": "string",
-					"enum": [
-						"upper",
-						"lower",
-						"word"
-					],
-					"default": "word",
-					"description": "Controls the case that ObjectScript commands will be changed to during a document formatting request."
-				},
-				"intersystems.language-server.formatting.commands.length": {
-					"scope": "resource",
-					"type": "string",
-					"enum": [
-						"short",
-						"long"
-					],
-					"default": "long",
-					"description": "Controls the length that ObjectScript commands will be changed to during a document formatting request."
-				},
-				"intersystems.language-server.formatting.system.case": {
-					"scope": "resource",
-					"type": "string",
-					"enum": [
-						"upper",
-						"lower",
-						"word"
-					],
-					"default": "upper",
-					"description": "Controls the case that ObjectScript system functions and variables will be changed to during a document formatting request."
-				},
-				"intersystems.language-server.formatting.system.length": {
-					"scope": "resource",
-					"type": "string",
-					"enum": [
-						"short",
-						"long"
-					],
-					"default": "long",
-					"description": "Controls the length that ObjectScript system functions and variables will be changed to during a document formatting request."
-				},
-				"intersystems.language-server.hover.commands": {
-					"scope": "window",
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether hover information is provided for ObjectScript commands."
-				},
-				"intersystems.language-server.hover.system": {
-					"scope": "window",
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether hover information is provided for ObjectScript system functions and variables."
-				},
-				"intersystems.language-server.hover.preprocessor": {
-					"scope": "window",
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether hover information is provided for ObjectScript preprocessor directives."
-				},
-				"intersystems.language-server.diagnostics.routines": {
-					"scope": "resource",
-					"type": "boolean",
-					"default": false,
-					"description": "Controls whether error diagnostics are provided when a routine or include file that is being referred to doesn't exist in the database."
-				},
-				"intersystems.language-server.diagnostics.parameters": {
-					"scope": "resource",
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether warning diagnostics are provided when a class Parameter has an invalid type or the assigned value of the Parameter doesn't match the declared type."
-				},
-				"intersystems.language-server.diagnostics.classes": {
-					"scope": "resource",
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether error diagnostics are provided when a class that is being referred to doesn't exist in the database."
-				},
-				"intersystems.language-server.diagnostics.deprecation": {
-					"scope": "resource",
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether strikethrough warning diagnostics are provided when a class or class member that is being referred to is deprecated."
-				},
-				"intersystems.language-server.signaturehelp.documentation": {
-					"scope": "window",
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether documentation for a method is shown when a SignatureHelp is active. NOTE: This setting does not affect documentation for macro SignatureHelp views, which is always shown."
-				},
-				"intersystems.language-server.suggestTheme": {
-					"scope": "window",
-					"type": "boolean",
-					"default": true,
-					"description": "Controls whether the extension will suggest that one of the InterSystems default themes be used if neither one is active upon extension activation."
-				},
-				"intersystems.language-server.refactor.exceptionVariable": {
-					"scope": "resource",
-					"type": "string",
-					"default": "ex",
-					"description": "The name of the exception variable inserted in a 'Wrap in Try/Catch' refactor."
-				},
-				"intersystems.language-server.formatting.expandClassNames": {
-					"scope": "resource",
-					"type": "boolean",
-					"default": false,
-					"description": "Controls whether short class names will be expanded to include a package during a document formatting request."
-				},
-				"intersystems.language-server.diagnostics.zutil": {
-					"scope": "resource",
-					"type": "boolean",
-					"default": true,
-					"markdownDescription": "Controls whether diagnostics are provided when a deprecated or superseded `$ZUTIL` function is being called."
-				}
-			}
-		},
-		"semanticTokenTypes": [
-			{
-				"id": "ISC_Error",
-				"description": "InterSystems-wide error token."
-			},
-			{
-				"id": "ISC_Comment",
-				"description": "InterSystems-wide comment token."
-			},
-			{
-				"id": "ISC_StringLiteral",
-				"description": "InterSystems-wide string literal token."
-			},
-			{
-				"id": "ISC_NumericLiteral",
-				"description": "InterSystems-wide numeric literal token."
-			},
-			{
-				"id": "ISC_ClassName",
-				"description": "InterSystems-wide class and routine name token."
-			},
-			{
-				"id": "ISC_DocComment",
-				"description": "InterSystems-wide documentation comment token."
-			},
-			{
-				"id": "ISC_Parameter",
-				"description": "InterSystems-wide parameter token."
-			},
-			{
-				"id": "ISC_System",
-				"description": "InterSystems-wide system function and variable token."
-			},
-			{
-				"id": "ISC_Command",
-				"description": "InterSystems-wide command token."
-			},
-			{
-				"id": "ISC_Keyword",
-				"description": "InterSystems-wide keyword token."
-			},
-			{
-				"id": "ISC_ClassMember",
-				"description": "InterSystems-wide class member token."
-			},
-			{
-				"id": "ISC_LocalVariable",
-				"description": "InterSystems-wide local variable token."
-			},
-			{
-				"id": "ISC_LocalVariableUnset",
-				"description": "InterSystems-wide unset local variable token."
-			},
-			{
-				"id": "ISC_PublicVariable",
-				"description": "InterSystems-wide public variable and global token."
-			},
-			{
-				"id": "ISC_SQLKeyword",
-				"description": "InterSystems-wide SQL keyword and datatype token."
-			},
-			{
-				"id": "ISC_SQLFunction",
-				"description": "InterSystems-wide SQL function token."
-			},
-			{
-				"id": "ISC_Neutral",
-				"description": "InterSystems-wide neutral token."
-			},
-			{
-				"id": "ISC_Operator",
-				"description": "InterSystems-wide operator token."
-			},
-			{
-				"id": "ISC_Delimiter",
-				"description": "InterSystems-wide delimiter token."
-			},
-			{
-				"id": "XML_Grayout",
-				"description": "XML grayout token."
-			},
-			{
-				"id": "COS_VB",
-				"description": "ObjectScript VB token."
-			},
-			{
-				"id": "ISC_MarkupText",
-				"description": "InterSystems-wide markup text token."
-			},
-			{
-				"id": "CLS_Error",
-				"superType": "ISC_Error",
-				"description": "UDL error token."
-			},
-			{
-				"id": "COS_Error",
-				"superType": "ISC_Error",
-				"description": "ObjectScript error token."
-			},
-			{
-				"id": "XML_Error",
-				"superType": "ISC_Error",
-				"description": "XML error token."
-			},
-			{
-				"id": "BAS_Error",
-				"superType": "ISC_Error",
-				"description": "Basic error token."
-			},
-			{
-				"id": "CSS_Error",
-				"superType": "ISC_Error",
-				"description": "CSS error token."
-			},
-			{
-				"id": "HTML_Error",
-				"superType": "ISC_Error",
-				"description": "HTML error token."
-			},
-			{
-				"id": "JAVA_Error",
-				"superType": "ISC_Error",
-				"description": "Java error token."
-			},
-			{
-				"id": "JAVASCRIPT_Error",
-				"superType": "ISC_Error",
-				"description": "Javascript error token."
-			},
-			{
-				"id": "MVBASIC_Error",
-				"superType": "ISC_Error",
-				"description": "MVBasic error token."
-			},
-			{
-				"id": "TSQL_Error",
-				"superType": "ISC_Error",
-				"description": "TSQL error token."
-			},
-			{
-				"id": "SQL_Error",
-				"superType": "ISC_Error",
-				"description": "SQL error token."
-			},
-			{
-				"id": "CLS_Comment",
-				"superType": "ISC_Comment",
-				"description": "UDL comment token."
-			},
-			{
-				"id": "COS_Comment",
-				"superType": "ISC_Comment",
-				"description": "ObjectScript comment token."
-			},
-			{
-				"id": "XML_Comment",
-				"superType": "ISC_Comment",
-				"description": "XML comment token."
-			},
-			{
-				"id": "BAS_Comment",
-				"superType": "ISC_Comment",
-				"description": "Basic comment token."
-			},
-			{
-				"id": "HTML_Comment",
-				"superType": "ISC_Comment",
-				"description": "HTML comment token."
-			},
-			{
-				"id": "JAVA_Comment",
-				"superType": "ISC_Comment",
-				"description": "Java comment token."
-			},
-			{
-				"id": "JAVASCRIPT_Comment",
-				"superType": "ISC_Comment",
-				"description": "Javascript comment token."
-			},
-			{
-				"id": "MVBASIC_Comment",
-				"superType": "ISC_Comment",
-				"description": "MVBasic comment token."
-			},
-			{
-				"id": "TSQL_Comment",
-				"superType": "ISC_Comment",
-				"description": "TSQL comment token."
-			},
-			{
-				"id": "SQL_Comment",
-				"superType": "ISC_Comment",
-				"description": "SQL comment token."
-			},
-			{
-				"id": "CSS_CstyleCommentxxx",
-				"superType": "ISC_Comment",
-				"description": "CSS comment token."
-			},
-			{
-				"id": "CLS_StringLiteral",
-				"superType": "ISC_StringLiteral",
-				"description": "UDL string literal token."
-			},
-			{
-				"id": "COS_String",
-				"superType": "ISC_StringLiteral",
-				"description": "ObjectScript string literal token."
-			},
-			{
-				"id": "XML_String",
-				"superType": "ISC_StringLiteral",
-				"description": "XML string literal token."
-			},
-			{
-				"id": "BAS_String",
-				"superType": "ISC_StringLiteral",
-				"description": "Basic string literal token."
-			},
-			{
-				"id": "CSS_String",
-				"superType": "ISC_StringLiteral",
-				"description": "CSS string literal token."
-			},
-			{
-				"id": "HTML_String",
-				"superType": "ISC_StringLiteral",
-				"description": "HTML string literal token."
-			},
-			{
-				"id": "JAVA_String",
-				"superType": "ISC_StringLiteral",
-				"description": "Java string literal token."
-			},
-			{
-				"id": "JAVASCRIPT_String",
-				"superType": "ISC_StringLiteral",
-				"description": "Javascript string literal token."
-			},
-			{
-				"id": "MVBASIC_String",
-				"superType": "ISC_StringLiteral",
-				"description": "MVBasic string literal token."
-			},
-			{
-				"id": "TSQL_String",
-				"superType": "ISC_StringLiteral",
-				"description": "TSQL string literal token."
-			},
-			{
-				"id": "SQL_String",
-				"superType": "ISC_StringLiteral",
-				"description": "SQL string literal token."
-			},
-			{
-				"id": "CLS_NumericLiteral",
-				"superType": "ISC_NumericLiteral",
-				"description": "UDL numeric literal token."
-			},
-			{
-				"id": "COS_Number",
-				"superType": "ISC_NumericLiteral",
-				"description": "ObjectScript numeric literal token."
-			},
-			{
-				"id": "CSS_Number",
-				"superType": "ISC_NumericLiteral",
-				"description": "CSS numeric literal token."
-			},
-			{
-				"id": "HTML_Number",
-				"superType": "ISC_NumericLiteral",
-				"description": "HTML numeric literal token."
-			},
-			{
-				"id": "JAVASCRIPT_Floatingpointnumber",
-				"superType": "ISC_NumericLiteral",
-				"description": "Javascript floating point numeric literal token."
-			},
-			{
-				"id": "JAVA_Floatingpointnumber",
-				"superType": "ISC_NumericLiteral",
-				"description": "Java floating point numeric literal token."
-			},
-			{
-				"id": "TSQL_Integernumber",
-				"superType": "ISC_NumericLiteral",
-				"description": "TSQL integer numeric literal token."
-			},
-			{
-				"id": "TSQL_Hexadecimalnumber",
-				"superType": "ISC_NumericLiteral",
-				"description": "TSQL hexadecimal numeric literal token."
-			},
-			{
-				"id": "TSQL_Floatingpointnumber",
-				"superType": "ISC_NumericLiteral",
-				"description": "TSQL floating point numeric literal token."
-			},
-			{
-				"id": "SQL_Integernumber",
-				"superType": "ISC_NumericLiteral",
-				"description": "SQL integer numeric literal token."
-			},
-			{
-				"id": "SQL_Floatingpointnumber",
-				"superType": "ISC_NumericLiteral",
-				"description": "SQL floating point numeric literal token."
-			},
-			{
-				"id": "TSQL_Money",
-				"superType": "ISC_NumericLiteral",
-				"description": "TSQL currency literal token."
-			},
-			{
-				"id": "BAS_Hexadecimalinteger",
-				"superType": "ISC_NumericLiteral",
-				"description": "Basic hexadecimal numeric literal token."
-			},
-			{
-				"id": "BAS_Integer",
-				"superType": "ISC_NumericLiteral",
-				"description": "Basic numeric literal token."
-			},
-			{
-				"id": "JAVASCRIPT_Decimalinteger",
-				"superType": "ISC_NumericLiteral",
-				"description": "Javascript decimal numeric literal token."
-			},
-			{
-				"id": "JAVASCRIPT_Hexadecimalinteger",
-				"superType": "ISC_NumericLiteral",
-				"description": "Javascript hexadecimal numeric literal token."
-			},
-			{
-				"id": "JAVA_Decimalinteger",
-				"superType": "ISC_NumericLiteral",
-				"description": "Java decimal numeric literal token."
-			},
-			{
-				"id": "JAVA_Hexadecimalinteger",
-				"superType": "ISC_NumericLiteral",
-				"description": "Java hexidecimal numeric literal token."
-			},
-			{
-				"id": "JAVA_Octalinteger",
-				"superType": "ISC_NumericLiteral",
-				"description": "Java octal numeric literal token."
-			},
-			{
-				"id": "MVBASIC_Hexadecimalinteger",
-				"superType": "ISC_NumericLiteral",
-				"description": "MVBasic hexadecimal numeric literal token."
-			},
-			{
-				"id": "MVBASIC_Integer",
-				"superType": "ISC_NumericLiteral",
-				"description": "MVBasic numeric literal token."
-			},
-			{
-				"id": "CLS_Description",
-				"superType": "ISC_DocComment",
-				"description": "UDL documentation comment token."
-			},
-			{
-				"id": "COS_Documentationcomment",
-				"superType": "ISC_DocComment",
-				"description": "ObjectScript documentation comment token."
-			},
-			{
-				"id": "CLS_ClassName",
-				"superType": "ISC_ClassName",
-				"description": "UDL class name token."
-			},
-			{
-				"id": "CLS_RoutineName",
-				"superType": "ISC_ClassName",
-				"description": "UDL routine name token."
-			},
-			{
-				"id": "COS_Objectname",
-				"superType": "ISC_ClassName",
-				"description": "ObjectScript class name token."
-			},
-			{
-				"id": "COS_PreProcessorFunction",
-				"superType": "COS_PreProcessor",
-				"description": "ObjectScript preprocessor function token."
-			},
-			{
-				"id": "COS_PreProcessorCommand",
-				"superType": "COS_PreProcessor",
-				"description": "ObjectScript preprocessor command token."
-			},
-			{
-				"id": "CLS_ClassParameter",
-				"superType": "ISC_Parameter",
-				"description": "UDL class parameter token."
-			},
-			{
-				"id": "CLS_Parameter",
-				"superType": "ISC_Parameter",
-				"description": "UDL parameter token."
-			},
-			{
-				"id": "COS_Parameter",
-				"superType": "ISC_Parameter",
-				"description": "ObjectScript parameter token."
-			},
-			{
-				"id": "COS_Function",
-				"superType": "ISC_System",
-				"description": "ObjectScript function token."
-			},
-			{
-				"id": "COS_Systemvariable",
-				"superType": "ISC_System",
-				"description": "ObjectScript system variable token."
-			},
-			{
-				"id": "CLS_Keyword",
-				"superType": "ISC_Keyword",
-				"description": "UDL keyword token."
-			},
-			{
-				"id": "COS_ObjectClass",
-				"superType": "ISC_Keyword",
-				"description": "ObjectScript ##class token."
-			},
-			{
-				"id": "COS_ObjectSuper",
-				"superType": "ISC_Keyword",
-				"description": "ObjectScript ##super token."
-			},
-			{
-				"id": "COS_ObjectThis",
-				"superType": "ISC_Keyword",
-				"description": "ObjectScript this token."
-			},
-			{
-				"id": "COS_SQL",
-				"superType": "ISC_Keyword",
-				"description": "ObjectScript SQL token."
-			},
-			{
-				"id": "CLS_ClassMember",
-				"superType": "ISC_ClassMember",
-				"description": "UDL class member token."
-			},
-			{
-				"id": "CLS_Identifier",
-				"superType": "ISC_ClassMember",
-				"description": "UDL identifier token."
-			},
-			{
-				"id": "CLS_SqlIdentifier",
-				"superType": "ISC_ClassMember",
-				"description": "UDL SQL identifier token."
-			},
-			{
-				"id": "COS_Objectproperty",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript object property token."
-			},
-			{
-				"id": "COS_Objectmethod",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript object method token."
-			},
-			{
-				"id": "COS_Objectattribute",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript object attribute token."
-			},
-			{
-				"id": "COS_Objectmember",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript object member token."
-			},
-			{
-				"id": "COS_Label",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript label token."
-			},
-			{
-				"id": "COS_Routine",
-				"superType": "ISC_ClassName",
-				"description": "ObjectScript routine token."
-			},
-			{
-				"id": "COS_Localvariableprivate",
-				"superType": "ISC_LocalVariable",
-				"description": "ObjectScript local variable token."
-			},
-			{
-				"id": "COS_Localundeclared",
-				"superType": "ISC_LocalVariable",
-				"description": "ObjectScript undeclared local variable token."
-			},
-			{
-				"id": "COS_Globalvariable",
-				"superType": "ISC_PublicVariable",
-				"description": "ObjectScript global token."
-			},
-			{
-				"id": "COS_Localvariable",
-				"superType": "ISC_PublicVariable",
-				"description": "ObjectScript public variable token."
-			},
-			{
-				"id": "COS_Structuredvariable",
-				"superType": "ISC_System",
-				"description": "ObjectScript structured variable token."
-			},
-			{
-				"id": "TSQL_Identifier",
-				"superType": "ISC_ClassMember",
-				"description": "TSQL class member token."
-			},
-			{
-				"id": "SQL_Identifier",
-				"superType": "ISC_ClassMember",
-				"description": "SQL class member token."
-			},
-			{
-				"id": "SQL_Hostvariablename",
-				"superType": "ISC_PublicVariable",
-				"description": "SQL host variable token."
-			},
-			{
-				"id": "SQL_Hostreferencevariablename",
-				"superType": "ISC_PublicVariable",
-				"description": "SQL host reference variable token."
-			},
-			{
-				"id": "SQL_Statementkeyword",
-				"superType": "ISC_SQLKeyword",
-				"description": "SQL statement keyword token."
-			},
-			{
-				"id": "SQL_Qualifierkeyword",
-				"superType": "ISC_SQLKeyword",
-				"description": "SQL qualifier keyword token."
-			},
-			{
-				"id": "SQL_Expressionkeyword",
-				"superType": "ISC_SQLKeyword",
-				"description": "SQL expression keyword token."
-			},
-			{
-				"id": "TSQL_Statementkeyword",
-				"superType": "ISC_SQLKeyword",
-				"description": "TSQL statement keyword token."
-			},
-			{
-				"id": "TSQL_Qualifierkeyword",
-				"superType": "ISC_SQLKeyword",
-				"description": "TSQL qualifier keyword token."
-			},
-			{
-				"id": "TSQL_Expressionkeyword",
-				"superType": "ISC_SQLKeyword",
-				"description": "TSQL expression keyword token."
-			},
-			{
-				"id": "TSQL_Controlkeyword",
-				"superType": "ISC_SQLKeyword",
-				"description": "TSQL control keyword token."
-			},
-			{
-				"id": "SQL_Hostextrinsicfunction",
-				"superType": "ISC_SQLFunction",
-				"description": "SQL host extrinsic function token."
-			},
-			{
-				"id": "SQL_Scalarfunctionname",
-				"superType": "ISC_SQLFunction",
-				"description": "SQL scalar function token."
-			},
-			{
-				"id": "SQL_ODBCfunctionname",
-				"superType": "ISC_SQLFunction",
-				"description": "SQL ODBC function token."
-			},
-			{
-				"id": "SQL_Aggregatefunctionname",
-				"superType": "ISC_SQLFunction",
-				"description": "SQL aggregate function token."
-			},
-			{
-				"id": "TSQL_Scalarfunctionname",
-				"superType": "ISC_SQLFunction",
-				"description": "TSQL scalar function token."
-			},
-			{
-				"id": "TSQL_ODBCfunctionname",
-				"superType": "ISC_SQLFunction",
-				"description": "TSQL ODBC function token."
-			},
-			{
-				"id": "TSQL_Aggregatefunctionname",
-				"superType": "ISC_SQLFunction",
-				"description": "TSQL aggregate function token."
-			},
-			{
-				"id": "TSQL_Userdefinedfunctionname",
-				"superType": "ISC_SQLFunction",
-				"description": "TSQL user defined function token."
-			},
-			{
-				"id": "TSQL_Unknownfunctionname",
-				"superType": "ISC_SQLFunction",
-				"description": "TSQL unknown function token."
-			},
-			{
-				"id": "SQL_Datatype",
-				"superType": "ISC_SQLKeyword",
-				"description": "SQL datatype token."
-			},
-			{
-				"id": "TSQL_Datatype",
-				"superType": "ISC_SQLKeyword",
-				"description": "TSQL datatype token."
-			},
-			{
-				"id": "SQL_Hostinstancename",
-				"superType": "ISC_PublicVariable",
-				"description": "SQL host instance variable token."
-			},
-			{
-				"id": "COS_Objectinstancevar",
-				"superType": "ISC_PublicVariable",
-				"description": "ObjectScript instance variable token."
-			},
-			{
-				"id": "COS_Extrinsicfunction",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript extrinsic function token."
-			},
-			{
-				"id": "COS_Macro",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript macro token."
-			},
-			{
-				"id": "COS_PreProcessor",
-				"superType": "ISC_Keyword",
-				"description": "ObjectScript preprocessor token."
-			},
-			{
-				"id": "SQL_CSPPPextension",
-				"superType": "ISC_SQLFunction",
-				"description": "SQL CSP/preprocessor token."
-			},
-			{
-				"id": "COS_HTML",
-				"superType": "ISC_Keyword",
-				"description": "ObjectScript HTML token."
-			},
-			{
-				"id": "COS_Javascript",
-				"superType": "ISC_Keyword",
-				"description": "ObjectScript Javascript token."
-			},
-			{
-				"id": "COS_Neutral",
-				"superType": "ISC_Neutral",
-				"description": "ObjectScript neutral token."
-			},
-			{
-				"id": "COS_UnknownZcommand",
-				"superType": "ISC_Command",
-				"description": "ObjectScript unknown Z command token."
-			},
-			{
-				"id": "COS_UnknownZfunction",
-				"superType": "ISC_System",
-				"description": "ObjectScript unknown Z function token."
-			},
-			{
-				"id": "COS_UnknownZvariable",
-				"superType": "ISC_System",
-				"description": "ObjectScript unknown Z variable token."
-			},
-			{
-				"id": "COS_JSONkeyword",
-				"superType": "ISC_Keyword",
-				"description": "ObjectScript JSON keyword token."
-			},
-			{
-				"id": "COS_Objectdotoperator",
-				"superType": "ISC_Operator",
-				"description": "ObjectScript dot operator token."
-			},
-			{
-				"id": "COS_Indirection",
-				"superType": "ISC_Operator",
-				"description": "ObjectScript indirection token."
-			},
-			{
-				"id": "COS_Operator",
-				"superType": "ISC_Operator",
-				"description": "ObjectScript operator token."
-			},
-			{
-				"id": "BAS_Assignmentoperator",
-				"superType": "ISC_Operator",
-				"description": "Basic assignment operator token."
-			},
-			{
-				"id": "BAS_Binaryoperator",
-				"superType": "ISC_Operator",
-				"description": "Basic binary operator token."
-			},
-			{
-				"id": "BAS_Objectoperator",
-				"superType": "ISC_Operator",
-				"description": "Basic object operator token."
-			},
-			{
-				"id": "BAS_Relationaloperator",
-				"superType": "ISC_Operator",
-				"description": "Basic relational operator token."
-			},
-			{
-				"id": "BAS_Unaryoperator",
-				"superType": "ISC_Operator",
-				"description": "Basic unary operator token."
-			},
-			{
-				"id": "CSS_Operator",
-				"superType": "ISC_Operator",
-				"description": "CSS operator token."
-			},
-			{
-				"id": "JAVA_Operator",
-				"superType": "ISC_Operator",
-				"description": "Java operator token."
-			},
-			{
-				"id": "JAVASCRIPT_Operator",
-				"superType": "ISC_Operator",
-				"description": "Javascript operator token."
-			},
-			{
-				"id": "MVBASIC_Assignmentoperator",
-				"superType": "ISC_Operator",
-				"description": "MVBasic assignment operator token."
-			},
-			{
-				"id": "MVBASIC_Binaryoperator",
-				"superType": "ISC_Operator",
-				"description": "MVBasic binary operator token."
-			},
-			{
-				"id": "MVBASIC_Objectoperator",
-				"superType": "ISC_Operator",
-				"description": "MVBasic object operator token."
-			},
-			{
-				"id": "MVBASIC_Relationaloperator",
-				"superType": "ISC_Operator",
-				"description": "MVBasic relational operator token."
-			},
-			{
-				"id": "MVBASIC_Unaryoperator",
-				"superType": "ISC_Operator",
-				"description": "MVBasic unary operator token."
-			},
-			{
-				"id": "TSQL_Operator",
-				"superType": "ISC_Operator",
-				"description": "TSQL operator token."
-			},
-			{
-				"id": "SQL_Operator",
-				"superType": "ISC_Operator",
-				"description": "SQL operator token."
-			},
-			{
-				"id": "CLS_XMLAttributeValue",
-				"superType": "ISC_StringLiteral",
-				"description": "UDL XML attribute value token."
-			},
-			{
-				"id": "CLS_XMLAttributeName",
-				"superType": "ISC_LocalVariable",
-				"description": "UDL XML attribute name token."
-			},
-			{
-				"id": "CLS_XMLElementName",
-				"superType": "ISC_Keyword",
-				"description": "UDL XML element name token."
-			},
-			{
-				"id": "XML_AttributeName",
-				"superType": "ISC_LocalVariable",
-				"description": "XML attribute name token."
-			},
-			{
-				"id": "XML_ElementName",
-				"superType": "ISC_Keyword",
-				"description": "XML element name token."
-			},
-			{
-				"id": "XML_DTDName",
-				"superType": "ISC_LocalVariable",
-				"description": "XML DTD name token."
-			},
-			{
-				"id": "XML_DTDKeyword",
-				"superType": "ISC_Keyword",
-				"description": "XML DTD keyword token."
-			},
-			{
-				"id": "XML_EntityReference",
-				"superType": "ISC_PublicVariable",
-				"description": "XML entity reference token."
-			},
-			{
-				"id": "XML_ParameterEntityReference",
-				"superType": "ISC_PublicVariable",
-				"description": "XML parameter entity reference token."
-			},
-			{
-				"id": "XML_CharacterReference",
-				"superType": "ISC_PublicVariable",
-				"description": "XML character reference token."
-			},
-			{
-				"id": "TSQL_Notimplemented",
-				"superType": "ISC_Neutral",
-				"description": "TSQL not implemented token."
-			},
-			{
-				"id": "XML_ProcessingInstructionContent",
-				"superType": "ISC_StringLiteral",
-				"description": "XML processing instruction content token."
-			},
-			{
-				"id": "XML_Indirection",
-				"superType": "ISC_Operator",
-				"description": "XML indirection token."
-			},
-			{
-				"id": "CLS_XMLCDATA",
-				"superType": "ISC_StringLiteral",
-				"description": "UDL XML CDATA token."
-			},
-			{
-				"id": "COS_Mnemonic",
-				"superType": "ISC_Operator",
-				"description": "ObjectScript mnemonic token."
-			},
-			{
-				"id": "COS_Pattern",
-				"superType": "ISC_Operator",
-				"description": "ObjectScript pattern token."
-			},
-			{
-				"id": "COS_OptionTrackWarning",
-				"superType": "ISC_LocalVariableUnset",
-				"description": "ObjectScript optional warning token."
-			},
-			{
-				"id": "CLS_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "UDL delimiter token."
-			},
-			{
-				"id": "COS_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "ObjectScript delimiter token."
-			},
-			{
-				"id": "COS_Brace",
-				"superType": "ISC_Delimiter",
-				"description": "ObjectScript brace token."
-			},
-			{
-				"id": "COS_JSONbracket",
-				"superType": "ISC_Delimiter",
-				"description": "ObjectScript JSON bracket token."
-			},
-			{
-				"id": "COS_JSONdelimeter",
-				"superType": "ISC_Delimiter",
-				"description": "ObjectScript JSON delimiter token."
-			},
-			{
-				"id": "XML_TagDelimiterand",
-				"superType": "ISC_Delimiter",
-				"description": "XML tag delimiter token."
-			},
-			{
-				"id": "XML_DTDDelimiter",
-				"superType": "ISC_Delimiter",
-				"description": "XML DTD delimiter token."
-			},
-			{
-				"id": "XML_ProcessingInstructionDelimiter",
-				"superType": "ISC_Delimiter",
-				"description": "XML processing instruction delimiter token."
-			},
-			{
-				"id": "BAS_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "Basic delimiter token."
-			},
-			{
-				"id": "CSS_CSSDelimiter",
-				"superType": "ISC_Delimiter",
-				"description": "CSS delimiter token."
-			},
-			{
-				"id": "CSS_OtherDelimiter",
-				"superType": "ISC_Delimiter",
-				"description": "CSS other delimiter token."
-			},
-			{
-				"id": "HTML_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "HTML delimiter token."
-			},
-			{
-				"id": "JAVA_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "Java delimiter token."
-			},
-			{
-				"id": "JAVASCRIPT_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "Javascript delimiter token."
-			},
-			{
-				"id": "JAVASCRIPT_Regexpdelimiter",
-				"superType": "ISC_Delimiter",
-				"description": "Javacsript regexp delimiter token."
-			},
-			{
-				"id": "MVBASIC_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "MVBasic delimiter token."
-			},
-			{
-				"id": "TSQL_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "TSQL delimiter token."
-			},
-			{
-				"id": "SQL_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "SQL delimiter token."
-			},
-			{
-				"id": "COS_VBControlname",
-				"superType": "COS_VB",
-				"description": "ObjectScript VB control name token."
-			},
-			{
-				"id": "COS_VBFormname",
-				"superType": "COS_VB",
-				"description": "ObjectScript VB form name token."
-			},
-			{
-				"id": "COS_VBPropertyname",
-				"superType": "COS_VB",
-				"description": "ObjectScript VB property name token."
-			},
-			{
-				"id": "JAVA_Definitionkeyword",
-				"superType": "ISC_Keyword",
-				"description": "Java definition keyword token."
-			},
-			{
-				"id": "JAVA_Literalkeyword",
-				"superType": "ISC_Keyword",
-				"description": "Java literal keyword token."
-			},
-			{
-				"id": "JAVA_Objectkeyword",
-				"superType": "ISC_Keyword",
-				"description": "Java object keyword token."
-			},
-			{
-				"id": "JAVASCRIPT_Definitionkeyword",
-				"superType": "ISC_Keyword",
-				"description": "Javascript definition keyword token."
-			},
-			{
-				"id": "JAVASCRIPT_Literalkeyword",
-				"superType": "ISC_Keyword",
-				"description": "Javascript literal keyword token."
-			},
-			{
-				"id": "JAVASCRIPT_Expressionkeyword",
-				"superType": "ISC_Keyword",
-				"description": "Javascript expression keyword token."
-			},
-			{
-				"id": "JAVASCRIPT_Futurekeyword",
-				"superType": "ISC_Keyword",
-				"description": "Javascript future keyword token."
-			},
-			{
-				"id": "COS_Command",
-				"superType": "ISC_Command",
-				"description": "ObjectScript command token."
-			},
-			{
-				"id": "JAVA_Statementkeyword",
-				"superType": "ISC_Command",
-				"description": "Java statement keyword token."
-			},
-			{
-				"id": "JAVASCRIPT_Statementkeyword",
-				"superType": "ISC_Command",
-				"description": "Javascript statement keyword token."
-			},
-			{
-				"id": "BAS_ClassIdentifier",
-				"superType": "ISC_ClassName",
-				"description": "Basic class identifier token."
-			},
-			{
-				"id": "MVBASIC_ClassIdentifier",
-				"superType": "ISC_ClassName",
-				"description": "MVBasic class identifier token."
-			},
-			{
-				"id": "BAS_Routinename",
-				"superType": "ISC_ClassName",
-				"description": "Basic routine name token."
-			},
-			{
-				"id": "MVBASIC_Routinename",
-				"superType": "ISC_ClassName",
-				"description": "MVBasic routine name token."
-			},
-			{
-				"id": "BAS_Variableidentifier",
-				"superType": "ISC_PublicVariable",
-				"description": "Basic variable identifier token."
-			},
-			{
-				"id": "MVBASIC_Variableidentifier",
-				"superType": "ISC_PublicVariable",
-				"description": "MVBasic variable identifier token."
-			},
-			{
-				"id": "JAVA_Classname",
-				"superType": "ISC_ClassName",
-				"description": "Java class name token."
-			},
-			{
-				"id": "JAVA_Interfacename",
-				"superType": "ISC_ClassName",
-				"description": "Java interface name token."
-			},
-			{
-				"id": "JAVA_Characterliteral",
-				"superType": "ISC_StringLiteral",
-				"description": "Java character literal token."
-			},
-			{
-				"id": "JAVA_Annotation",
-				"superType": "ISC_DocComment",
-				"description": "Java annotation token."
-			},
-			{
-				"id": "JAVA_Basictype",
-				"superType": "ISC_Command",
-				"description": "Java basic type token."
-			},
-			{
-				"id": "HTML_Tag",
-				"superType": "ISC_Keyword",
-				"description": "HTML tag token."
-			},
-			{
-				"id": "HTML_Name",
-				"superType": "ISC_LocalVariable",
-				"description": "HTML name token."
-			},
-			{
-				"id": "CLS_XMLEscapeSequence",
-				"superType": "ISC_MarkupText",
-				"description": "UDL XML escape sequence token."
-			},
-			{
-				"id": "HTML_EscapeSequence",
-				"superType": "ISC_MarkupText",
-				"description": "HTML escape sequence token."
-			},
-			{
-				"id": "JAVASCRIPT_Regexpescapesequence",
-				"superType": "ISC_PublicVariable",
-				"description": "Javascript regex escape sequence token."
-			},
-			{
-				"id": "JAVASCRIPT_Regexpbody",
-				"superType": "ISC_StringLiteral",
-				"description": "Javascript regex body token."
-			},
-			{
-				"id": "JAVASCRIPT_Regexpflags",
-				"superType": "ISC_StringLiteral",
-				"description": "Javascript regex flags token."
-			},
-			{
-				"id": "BAS_Keyword",
-				"superType": "ISC_Command",
-				"description": "Basic keyword token."
-			},
-			{
-				"id": "MVBASIC_Keyword",
-				"superType": "ISC_Command",
-				"description": "MVBasic keyword token."
-			},
-			{
-				"id": "BAS_SystemFunction",
-				"superType": "ISC_System",
-				"description": "Basic system function token."
-			},
-			{
-				"id": "MVBASIC_SystemFunction",
-				"superType": "ISC_System",
-				"description": "MVBasic system function token."
-			},
-			{
-				"id": "BAS_Constant",
-				"superType": "ISC_System",
-				"description": "Basic constant token."
-			},
-			{
-				"id": "MVBASIC_Constant",
-				"superType": "ISC_System",
-				"description": "MVBasic constant token."
-			},
-			{
-				"id": "JAVA_Identifier",
-				"superType": "ISC_ClassMember",
-				"description": "Java identifier token."
-			},
-			{
-				"id": "JAVASCRIPT_Identifier",
-				"superType": "ISC_ClassMember",
-				"description": "Javascript identifier token."
-			},
-			{
-				"id": "JAVA_Label",
-				"superType": "ISC_Keyword",
-				"description": "Java label token."
-			},
-			{
-				"id": "COS_Objectreferencevar",
-				"superType": "ISC_PublicVariable",
-				"description": "ObjectScript reference variable token."
-			},
-			{
-				"id": "TSQL_Label",
-				"superType": "ISC_SQLFunction",
-				"description": "TSQL label token."
-			},
-			{
-				"id": "JAVASCRIPT_Label",
-				"superType": "ISC_Keyword",
-				"description": "Javascript label token."
-			},
-			{
-				"id": "COS_Dots",
-				"superType": "ISC_Delimiter",
-				"description": "ObjectScript dots token."
-			},
-			{
-				"id": "COS_CSPExtension",
-				"superType": "COS_PreProcessor",
-				"description": "ObjectScript CSP extension token."
-			},
-			{
-				"id": "CLS_XMLText",
-				"superType": "ISC_MarkupText",
-				"description": "UDL XML text token."
-			},
-			{
-				"id": "XML_Text",
-				"superType": "ISC_MarkupText",
-				"description": "XML text token."
-			},
-			{
-				"id": "HTML_Text",
-				"superType": "ISC_MarkupText",
-				"description": "HTML text token."
-			},
-			{
-				"id": "COS_Externalreference",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript external reference token."
-			},
-			{
-				"id": "COS_Formatspecifier",
-				"superType": "ISC_Operator",
-				"description": "ObjectScript format specifier token."
-			},
-			{
-				"id": "CSS_Identifier",
-				"superType": "ISC_ClassMember",
-				"description": "CSS identifier token."
-			},
-			{
-				"id": "CSS_Hexcolor",
-				"superType": "ISC_NumericLiteral",
-				"description": "CSS hexcolor token."
-			},
-			{
-				"id": "CSS_Percentage",
-				"superType": "ISC_NumericLiteral",
-				"description": "CSS percentage token."
-			},
-			{
-				"id": "CSS_Measure",
-				"superType": "ISC_NumericLiteral",
-				"description": "CSS measure token."
-			},
-			{
-				"id": "CSS_URI",
-				"superType": "ISC_StringLiteral",
-				"description": "CSS URI token."
-			},
-			{
-				"id": "CSS_Keyword",
-				"superType": "ISC_Keyword",
-				"description": "CSS keyword token."
-			},
-			{
-				"id": "CSS_CSSKeyword",
-				"superType": "ISC_Keyword",
-				"description": "CSS @ keyword token."
-			},
-			{
-				"id": "CSS_Function",
-				"superType": "ISC_Keyword",
-				"description": "CSS function token."
-			},
-			{
-				"id": "CSS_Unicoderange",
-				"superType": "ISC_NumericLiteral",
-				"description": "CSS unicode range token."
-			},
-			{
-				"id": "CSS_CSPExtension",
-				"superType": "ISC_Keyword",
-				"description": "CSS CSP extension token."
-			},
-			{
-				"id": "JAVASCRIPT_CSPextension",
-				"superType": "ISC_Keyword",
-				"description": "Javascript CSP extension token."
-			},
-			{
-				"id": "BAS_Identifier",
-				"superType": "ISC_ClassMember",
-				"description": "Basic identifier token."
-			},
-			{
-				"id": "MVBASIC_Identifier",
-				"superType": "ISC_ClassMember",
-				"description": "MVBasic identifier token."
-			},
-			{
-				"id": "CSS_Name",
-				"superType": "ISC_Keyword",
-				"description": "CSS #name token."
-			},
-			{
-				"id": "COS_Name",
-				"superType": "ISC_ClassMember",
-				"description": "ObjectScript name token."
-			},
-			{
-				"id": "BAS_Property",
-				"superType": "ISC_ClassMember",
-				"description": "Basic property token."
-			},
-			{
-				"id": "MVBASIC_Property",
-				"superType": "ISC_ClassMember",
-				"description": "MVBasic property token."
-			},
-			{
-				"id": "BAS_Subroutine",
-				"superType": "ISC_ClassMember",
-				"description": "Basic subroutine token."
-			},
-			{
-				"id": "MVBASIC_Subroutine",
-				"superType": "ISC_ClassMember",
-				"description": "MVBasic subroutine token."
-			},
-			{
-				"id": "BAS_Label",
-				"superType": "ISC_Keyword",
-				"description": "Basic label token."
-			},
-			{
-				"id": "MVBASIC_Label",
-				"superType": "ISC_Keyword",
-				"description": "MVBasic label token."
-			},
-			{
-				"id": "BAS_Function",
-				"superType": "ISC_ClassMember",
-				"description": "Basic function token."
-			},
-			{
-				"id": "MVBASIC_Function",
-				"superType": "ISC_ClassMember",
-				"description": "MVBasic function token."
-			},
-			{
-				"id": "BAS_Real",
-				"superType": "ISC_NumericLiteral",
-				"description": "Basic real token."
-			},
-			{
-				"id": "MVBASIC_Real",
-				"superType": "ISC_NumericLiteral",
-				"description": "MVBasic real token."
-			},
-			{
-				"id": "BAS_Objectidentifier",
-				"superType": "ISC_LocalVariable",
-				"description": "Basic object identifier token."
-			},
-			{
-				"id": "MVBASIC_Objectidentifier",
-				"superType": "ISC_LocalVariable",
-				"description": "MVBasic object identifier token."
-			},
-			{
-				"id": "BAS_Procedure",
-				"superType": "ISC_ClassMember",
-				"description": "Basic procedure token."
-			},
-			{
-				"id": "MVBASIC_Procedure",
-				"superType": "ISC_ClassMember",
-				"description": "MVBasic procedure token."
-			},
-			{
-				"id": "BAS_Typedeclaration",
-				"superType": "ISC_ClassMember",
-				"description": "Basic type declaration token."
-			},
-			{
-				"id": "MVBASIC_Typedeclaration",
-				"superType": "ISC_ClassMember",
-				"description": "MVBasic type declaration token."
-			},
-			{
-				"id": "JAVASCRIPT_JSONpropertyname",
-				"superType": "ISC_StringLiteral",
-				"description": "Javascript JSON property name token."
-			},
-			{
-				"id": "COS_Embeddingopen",
-				"superType": "ISC_Delimiter",
-				"description": "ObjectScript embedded code open token."
-			},
-			{
-				"id": "COS_Embeddingclose",
-				"superType": "ISC_Delimiter",
-				"description": "ObjectScript embedded code close token."
-			},
-			{
-				"id": "CLS_KeywordTextValue",
-				"superType": "ISC_StringLiteral",
-				"description": "UDL keyword text value token."
-			},
-			{
-				"id": "PYTHON_Error",
-				"superType": "ISC_Error",
-				"description": "Python error token."
-			},
-			{
-				"id": "PYTHON_Comment",
-				"superType": "ISC_Comment",
-				"description": "Python comment token."
-			},
-			{
-				"id": "PYTHON_String",
-				"superType": "ISC_StringLiteral",
-				"description": "Python string token."
-			},
-			{
-				"id": "PYTHON_Delimiter",
-				"superType": "ISC_Delimiter",
-				"description": "Python delimiter token."
-			},
-			{
-				"id": "PYTHON_Number",
-				"superType": "ISC_NumericLiteral",
-				"description": "Python integer number token."
-			},
-			{
-				"id": "PYTHON_FloatingPoint",
-				"superType": "ISC_NumericLiteral",
-				"description": "Python floating point number token."
-			},
-			{
-				"id": "PYTHON_Name",
-				"superType": "ISC_LocalVariable",
-				"description": "Python name."
-			},
-			{
-				"id": "PYTHON_LineContinuation",
-				"superType": "ISC_Delimiter",
-				"description": "Python line continuation."
-			},
-			{
-				"id": "PYTHON_Keyword",
-				"superType": "ISC_Keyword",
-				"description": "Python keyword."
-			},
-			{
-				"id": "PYTHON_DefinitionKeyword",
-				"superType": "ISC_Keyword",
-				"description": "Python definition keyword."
-			},
-			{
-				"id": "PYTHON_ExpressionKeyword",
-				"superType": "ISC_Keyword",
-				"description": "Python expression keyword"
-			},
-			{
-				"id": "PYTHON_StatementKeyword",
-				"superType": "ISC_Keyword",
-				"description": "Python statement keyword"
-			},
-			{
-				"id": "PYTHON_Neutral",
-				"superType": "ISC_Neutral",
-				"description": "Python error recovery"
-			},
-			{
-				"id": "PYTHON_Operator",
-				"superType": "ISC_Operator",
-				"description": "Python operator"
-			},
-			{
-				"id": "PYTHON_AssignmentOperator",
-				"superType": "ISC_Operator",
-				"description": "Python assignment operator"
-			}
-		],
-		"semanticTokenScopes": [
-			{
-				"scopes": {
-					"ISC_Error": [
-						"invalid.illegal"
-					],
-					"ISC_Comment": [
-						"comment.line"
-					],
-					"ISC_StringLiteral": [
-						"string"
-					],
-					"ISC_NumericLiteral": [
-						"constant.numeric"
-					],
-					"ISC_ClassName": [
-						"entity.name.class"
-					],
-					"ISC_ClassMember": [
-						"entity.name.function.member"
-					],
-					"ISC_DocComment": [
-						"comment.block.documentation"
-					],
-					"ISC_Parameter": [
-						"variable.parameter"
-					],
-					"ISC_System": [
-						"constant.language"
-					],
-					"ISC_Command": [
-						"keyword.control"
-					],
-					"ISC_Keyword": [
-						"keyword"
-					],
-					"ISC_LocalVariable": [
-						"variable"
-					],
-					"ISC_LocalVariableUnset": [
-						"variable"
-					],
-					"ISC_PublicVariable": [
-						"variable"
-					],
-					"ISC_SQLKeyword": [
-						"keyword"
-					],
-					"ISC_SQLFunction": [
-						"keyword.control"
-					]
-				}
-			}
-		],
-		"themes": [
-			{
-				"label": "InterSystems Default Dark",
-				"uiTheme": "vs-dark",
-				"path": "./themes/isc-default-dark.json"
-			},
-			{
-				"label": "InterSystems Default Light",
-				"uiTheme": "vs",
-				"path": "./themes/isc-default-light.json"
-			}
-		]
-	},
-	"scripts": {
-		"vscode:prepublish": "npm run webpack",
-		"webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
-		"webpack:dev": "npm run clean && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
-		"compile": "tsc -b",
-		"watch": "tsc -b -w",
-		"clean": "rimraf client/out && rimraf server/out",
-		"postinstall": "cd client && npm install && cd ../server && npm install && cd .."
-	},
-	"devDependencies": {
-		"@types/node": "^16.11.19",
-		"@vscode/vsce": "^2.17.0",
-		"merge-options": "^3.0.4",
-		"node-loader": "^2.0.0",
-		"ovsx": "^0.8.0",
-		"rimraf": "^4.1.2",
-		"ts-loader": "^9.4.2",
-		"typescript": "^4.9.5",
-		"webpack": "^5.75.0",
-		"webpack-cli": "^5.0.1"
-	},
-	"extensionDependencies": [
-		"intersystems-community.vscode-objectscript"
-	]
+  "name": "language-server",
+  "displayName": "InterSystems Language Server",
+  "description": "A language server for InterSystems ObjectScript.",
+  "author": "InterSystems Corporation",
+  "license": "SEE LICENSE IN LICENSE.txt",
+  "version": "2.3.1-SNAPSHOT",
+  "publisher": "intersystems",
+  "repository": {
+    "type": "github",
+    "url": "https://github.com/intersystems/language-server"
+  },
+  "bugs": {
+    "url": "https://github.com/intersystems/language-server/issues"
+  },
+  "icon": "images/logo.png",
+  "categories": [
+    "Programming Languages",
+    "Formatters",
+    "Linters"
+  ],
+  "keywords": [
+    "IntelliSense",
+    "intersystems",
+    "objectscript",
+    "multi-root ready"
+  ],
+  "engines": {
+    "vscode": "^1.67.0"
+  },
+  "activationEvents": [
+    "workspaceContains:**/*.cls",
+    "workspaceContains:**/*.mac",
+    "workspaceContains:**/*.int",
+    "workspaceContains:**/*.inc",
+    "workspaceContains:**/*.csp",
+    "workspaceContains:**/*.csr",
+    "onLanguage:objectscript",
+    "onLanguage:objectscript-int",
+    "onLanguage:objectscript-class",
+    "onLanguage:objectscript-macros",
+    "onLanguage:objectscript-csp",
+    "onFileSystem:isfs",
+    "onFileSystem:isfs-readonly",
+    "onFileSystem:objectscript"
+  ],
+  "main": "./client/out/extension",
+  "capabilities": {
+    "untrustedWorkspaces": {
+      "supported": true
+    }
+  },
+  "contributes": {
+    "commands": [
+      {
+        "command": "intersystems.language-server.overrideClassMembers",
+        "title": "Override Class Members",
+        "category": "InterSystems Language Server"
+      },
+      {
+        "command": "intersystems.language-server.selectParameterType",
+        "title": "Select Parameter Type",
+        "category": "InterSystems Language Server"
+      },
+      {
+        "command": "intersystems.language-server.selectImportPackage",
+        "title": "Select Import Package",
+        "category": "InterSystems Language Server"
+      },
+      {
+        "command": "intersystems.language-server.extractMethodDisposable",
+        "title": "Extract Method",
+        "category": "InterSystems Language Server"
+      },
+      {
+        "command": "intersystems.language-server.showSymbolInClass",
+        "title": "Open Symbol In Document",
+        "category": "InterSystems Language Server"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "intersystems.language-server.overrideClassMembers",
+          "when": "false"
+        },
+        {
+          "command": "intersystems.language-server.selectParameterType",
+          "when": "false"
+        },
+        {
+          "command": "intersystems.language-server.selectImportPackage",
+          "when": "false"
+        },
+        {
+          "command": "intersystems.language-server.extractMethodDisposable",
+          "when": "false"
+        },
+        {
+          "command": "intersystems.language-server.showSymbolInClass",
+          "when": "false"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "intersystems.language-server.overrideClassMembers",
+          "when": "vscode-objectscript.connectActive && editorLangId == objectscript-class",
+          "group": "1_modification"
+        }
+      ]
+    },
+    "configuration": {
+      "type": "object",
+      "title": "InterSystems Language Server",
+      "properties": {
+        "intersystems.language-server.trace.server": {
+          "scope": "window",
+          "type": "string",
+          "enum": [
+            "off",
+            "messages",
+            "verbose"
+          ],
+          "default": "off",
+          "description": "Traces the communication between VS Code and the language server."
+        },
+        "intersystems.language-server.formatting.commands.case": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "upper",
+            "lower",
+            "word"
+          ],
+          "default": "word",
+          "description": "Controls the case that ObjectScript commands will be changed to during a document formatting request."
+        },
+        "intersystems.language-server.formatting.commands.length": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "short",
+            "long"
+          ],
+          "default": "long",
+          "description": "Controls the length that ObjectScript commands will be changed to during a document formatting request."
+        },
+        "intersystems.language-server.formatting.system.case": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "upper",
+            "lower",
+            "word"
+          ],
+          "default": "upper",
+          "description": "Controls the case that ObjectScript system functions and variables will be changed to during a document formatting request."
+        },
+        "intersystems.language-server.formatting.system.length": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "short",
+            "long"
+          ],
+          "default": "long",
+          "description": "Controls the length that ObjectScript system functions and variables will be changed to during a document formatting request."
+        },
+        "intersystems.language-server.hover.commands": {
+          "scope": "window",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether hover information is provided for ObjectScript commands."
+        },
+        "intersystems.language-server.hover.system": {
+          "scope": "window",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether hover information is provided for ObjectScript system functions and variables."
+        },
+        "intersystems.language-server.hover.preprocessor": {
+          "scope": "window",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether hover information is provided for ObjectScript preprocessor directives."
+        },
+        "intersystems.language-server.diagnostics.routines": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Controls whether error diagnostics are provided when a routine or include file that is being referred to doesn't exist in the database."
+        },
+        "intersystems.language-server.diagnostics.parameters": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether warning diagnostics are provided when a class Parameter has an invalid type or the assigned value of the Parameter doesn't match the declared type."
+        },
+        "intersystems.language-server.diagnostics.classes": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether error diagnostics are provided when a class that is being referred to doesn't exist in the database."
+        },
+        "intersystems.language-server.diagnostics.deprecation": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether strikethrough warning diagnostics are provided when a class or class member that is being referred to is deprecated."
+        },
+        "intersystems.language-server.signaturehelp.documentation": {
+          "scope": "window",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether documentation for a method is shown when a SignatureHelp is active. NOTE: This setting does not affect documentation for macro SignatureHelp views, which is always shown."
+        },
+        "intersystems.language-server.suggestTheme": {
+          "scope": "window",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether the extension will suggest that one of the InterSystems default themes be used if neither one is active upon extension activation."
+        },
+        "intersystems.language-server.refactor.exceptionVariable": {
+          "scope": "resource",
+          "type": "string",
+          "default": "ex",
+          "description": "The name of the exception variable inserted in a 'Wrap in Try/Catch' refactor."
+        },
+        "intersystems.language-server.formatting.expandClassNames": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": false,
+          "description": "Controls whether short class names will be expanded to include a package during a document formatting request."
+        },
+        "intersystems.language-server.diagnostics.zutil": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Controls whether diagnostics are provided when a deprecated or superseded `$ZUTIL` function is being called."
+        }
+      }
+    },
+    "semanticTokenTypes": [
+      {
+        "id": "ISC_Error",
+        "description": "InterSystems-wide error token."
+      },
+      {
+        "id": "ISC_Comment",
+        "description": "InterSystems-wide comment token."
+      },
+      {
+        "id": "ISC_StringLiteral",
+        "description": "InterSystems-wide string literal token."
+      },
+      {
+        "id": "ISC_NumericLiteral",
+        "description": "InterSystems-wide numeric literal token."
+      },
+      {
+        "id": "ISC_ClassName",
+        "description": "InterSystems-wide class and routine name token."
+      },
+      {
+        "id": "ISC_DocComment",
+        "description": "InterSystems-wide documentation comment token."
+      },
+      {
+        "id": "ISC_Parameter",
+        "description": "InterSystems-wide parameter token."
+      },
+      {
+        "id": "ISC_System",
+        "description": "InterSystems-wide system function and variable token."
+      },
+      {
+        "id": "ISC_Command",
+        "description": "InterSystems-wide command token."
+      },
+      {
+        "id": "ISC_Keyword",
+        "description": "InterSystems-wide keyword token."
+      },
+      {
+        "id": "ISC_ClassMember",
+        "description": "InterSystems-wide class member token."
+      },
+      {
+        "id": "ISC_LocalVariable",
+        "description": "InterSystems-wide local variable token."
+      },
+      {
+        "id": "ISC_LocalVariableUnset",
+        "description": "InterSystems-wide unset local variable token."
+      },
+      {
+        "id": "ISC_PublicVariable",
+        "description": "InterSystems-wide public variable and global token."
+      },
+      {
+        "id": "ISC_SQLKeyword",
+        "description": "InterSystems-wide SQL keyword and datatype token."
+      },
+      {
+        "id": "ISC_SQLFunction",
+        "description": "InterSystems-wide SQL function token."
+      },
+      {
+        "id": "ISC_Neutral",
+        "description": "InterSystems-wide neutral token."
+      },
+      {
+        "id": "ISC_Operator",
+        "description": "InterSystems-wide operator token."
+      },
+      {
+        "id": "ISC_Delimiter",
+        "description": "InterSystems-wide delimiter token."
+      },
+      {
+        "id": "XML_Grayout",
+        "description": "XML grayout token."
+      },
+      {
+        "id": "COS_VB",
+        "description": "ObjectScript VB token."
+      },
+      {
+        "id": "ISC_MarkupText",
+        "description": "InterSystems-wide markup text token."
+      },
+      {
+        "id": "CLS_Error",
+        "superType": "ISC_Error",
+        "description": "UDL error token."
+      },
+      {
+        "id": "COS_Error",
+        "superType": "ISC_Error",
+        "description": "ObjectScript error token."
+      },
+      {
+        "id": "XML_Error",
+        "superType": "ISC_Error",
+        "description": "XML error token."
+      },
+      {
+        "id": "BAS_Error",
+        "superType": "ISC_Error",
+        "description": "Basic error token."
+      },
+      {
+        "id": "CSS_Error",
+        "superType": "ISC_Error",
+        "description": "CSS error token."
+      },
+      {
+        "id": "HTML_Error",
+        "superType": "ISC_Error",
+        "description": "HTML error token."
+      },
+      {
+        "id": "JAVA_Error",
+        "superType": "ISC_Error",
+        "description": "Java error token."
+      },
+      {
+        "id": "JAVASCRIPT_Error",
+        "superType": "ISC_Error",
+        "description": "Javascript error token."
+      },
+      {
+        "id": "MVBASIC_Error",
+        "superType": "ISC_Error",
+        "description": "MVBasic error token."
+      },
+      {
+        "id": "TSQL_Error",
+        "superType": "ISC_Error",
+        "description": "TSQL error token."
+      },
+      {
+        "id": "SQL_Error",
+        "superType": "ISC_Error",
+        "description": "SQL error token."
+      },
+      {
+        "id": "CLS_Comment",
+        "superType": "ISC_Comment",
+        "description": "UDL comment token."
+      },
+      {
+        "id": "COS_Comment",
+        "superType": "ISC_Comment",
+        "description": "ObjectScript comment token."
+      },
+      {
+        "id": "XML_Comment",
+        "superType": "ISC_Comment",
+        "description": "XML comment token."
+      },
+      {
+        "id": "BAS_Comment",
+        "superType": "ISC_Comment",
+        "description": "Basic comment token."
+      },
+      {
+        "id": "HTML_Comment",
+        "superType": "ISC_Comment",
+        "description": "HTML comment token."
+      },
+      {
+        "id": "JAVA_Comment",
+        "superType": "ISC_Comment",
+        "description": "Java comment token."
+      },
+      {
+        "id": "JAVASCRIPT_Comment",
+        "superType": "ISC_Comment",
+        "description": "Javascript comment token."
+      },
+      {
+        "id": "MVBASIC_Comment",
+        "superType": "ISC_Comment",
+        "description": "MVBasic comment token."
+      },
+      {
+        "id": "TSQL_Comment",
+        "superType": "ISC_Comment",
+        "description": "TSQL comment token."
+      },
+      {
+        "id": "SQL_Comment",
+        "superType": "ISC_Comment",
+        "description": "SQL comment token."
+      },
+      {
+        "id": "CSS_CstyleCommentxxx",
+        "superType": "ISC_Comment",
+        "description": "CSS comment token."
+      },
+      {
+        "id": "CLS_StringLiteral",
+        "superType": "ISC_StringLiteral",
+        "description": "UDL string literal token."
+      },
+      {
+        "id": "COS_String",
+        "superType": "ISC_StringLiteral",
+        "description": "ObjectScript string literal token."
+      },
+      {
+        "id": "XML_String",
+        "superType": "ISC_StringLiteral",
+        "description": "XML string literal token."
+      },
+      {
+        "id": "BAS_String",
+        "superType": "ISC_StringLiteral",
+        "description": "Basic string literal token."
+      },
+      {
+        "id": "CSS_String",
+        "superType": "ISC_StringLiteral",
+        "description": "CSS string literal token."
+      },
+      {
+        "id": "HTML_String",
+        "superType": "ISC_StringLiteral",
+        "description": "HTML string literal token."
+      },
+      {
+        "id": "JAVA_String",
+        "superType": "ISC_StringLiteral",
+        "description": "Java string literal token."
+      },
+      {
+        "id": "JAVASCRIPT_String",
+        "superType": "ISC_StringLiteral",
+        "description": "Javascript string literal token."
+      },
+      {
+        "id": "MVBASIC_String",
+        "superType": "ISC_StringLiteral",
+        "description": "MVBasic string literal token."
+      },
+      {
+        "id": "TSQL_String",
+        "superType": "ISC_StringLiteral",
+        "description": "TSQL string literal token."
+      },
+      {
+        "id": "SQL_String",
+        "superType": "ISC_StringLiteral",
+        "description": "SQL string literal token."
+      },
+      {
+        "id": "CLS_NumericLiteral",
+        "superType": "ISC_NumericLiteral",
+        "description": "UDL numeric literal token."
+      },
+      {
+        "id": "COS_Number",
+        "superType": "ISC_NumericLiteral",
+        "description": "ObjectScript numeric literal token."
+      },
+      {
+        "id": "CSS_Number",
+        "superType": "ISC_NumericLiteral",
+        "description": "CSS numeric literal token."
+      },
+      {
+        "id": "HTML_Number",
+        "superType": "ISC_NumericLiteral",
+        "description": "HTML numeric literal token."
+      },
+      {
+        "id": "JAVASCRIPT_Floatingpointnumber",
+        "superType": "ISC_NumericLiteral",
+        "description": "Javascript floating point numeric literal token."
+      },
+      {
+        "id": "JAVA_Floatingpointnumber",
+        "superType": "ISC_NumericLiteral",
+        "description": "Java floating point numeric literal token."
+      },
+      {
+        "id": "TSQL_Integernumber",
+        "superType": "ISC_NumericLiteral",
+        "description": "TSQL integer numeric literal token."
+      },
+      {
+        "id": "TSQL_Hexadecimalnumber",
+        "superType": "ISC_NumericLiteral",
+        "description": "TSQL hexadecimal numeric literal token."
+      },
+      {
+        "id": "TSQL_Floatingpointnumber",
+        "superType": "ISC_NumericLiteral",
+        "description": "TSQL floating point numeric literal token."
+      },
+      {
+        "id": "SQL_Integernumber",
+        "superType": "ISC_NumericLiteral",
+        "description": "SQL integer numeric literal token."
+      },
+      {
+        "id": "SQL_Floatingpointnumber",
+        "superType": "ISC_NumericLiteral",
+        "description": "SQL floating point numeric literal token."
+      },
+      {
+        "id": "TSQL_Money",
+        "superType": "ISC_NumericLiteral",
+        "description": "TSQL currency literal token."
+      },
+      {
+        "id": "BAS_Hexadecimalinteger",
+        "superType": "ISC_NumericLiteral",
+        "description": "Basic hexadecimal numeric literal token."
+      },
+      {
+        "id": "BAS_Integer",
+        "superType": "ISC_NumericLiteral",
+        "description": "Basic numeric literal token."
+      },
+      {
+        "id": "JAVASCRIPT_Decimalinteger",
+        "superType": "ISC_NumericLiteral",
+        "description": "Javascript decimal numeric literal token."
+      },
+      {
+        "id": "JAVASCRIPT_Hexadecimalinteger",
+        "superType": "ISC_NumericLiteral",
+        "description": "Javascript hexadecimal numeric literal token."
+      },
+      {
+        "id": "JAVA_Decimalinteger",
+        "superType": "ISC_NumericLiteral",
+        "description": "Java decimal numeric literal token."
+      },
+      {
+        "id": "JAVA_Hexadecimalinteger",
+        "superType": "ISC_NumericLiteral",
+        "description": "Java hexidecimal numeric literal token."
+      },
+      {
+        "id": "JAVA_Octalinteger",
+        "superType": "ISC_NumericLiteral",
+        "description": "Java octal numeric literal token."
+      },
+      {
+        "id": "MVBASIC_Hexadecimalinteger",
+        "superType": "ISC_NumericLiteral",
+        "description": "MVBasic hexadecimal numeric literal token."
+      },
+      {
+        "id": "MVBASIC_Integer",
+        "superType": "ISC_NumericLiteral",
+        "description": "MVBasic numeric literal token."
+      },
+      {
+        "id": "CLS_Description",
+        "superType": "ISC_DocComment",
+        "description": "UDL documentation comment token."
+      },
+      {
+        "id": "COS_Documentationcomment",
+        "superType": "ISC_DocComment",
+        "description": "ObjectScript documentation comment token."
+      },
+      {
+        "id": "CLS_ClassName",
+        "superType": "ISC_ClassName",
+        "description": "UDL class name token."
+      },
+      {
+        "id": "CLS_RoutineName",
+        "superType": "ISC_ClassName",
+        "description": "UDL routine name token."
+      },
+      {
+        "id": "COS_Objectname",
+        "superType": "ISC_ClassName",
+        "description": "ObjectScript class name token."
+      },
+      {
+        "id": "COS_PreProcessorFunction",
+        "superType": "COS_PreProcessor",
+        "description": "ObjectScript preprocessor function token."
+      },
+      {
+        "id": "COS_PreProcessorCommand",
+        "superType": "COS_PreProcessor",
+        "description": "ObjectScript preprocessor command token."
+      },
+      {
+        "id": "CLS_ClassParameter",
+        "superType": "ISC_Parameter",
+        "description": "UDL class parameter token."
+      },
+      {
+        "id": "CLS_Parameter",
+        "superType": "ISC_Parameter",
+        "description": "UDL parameter token."
+      },
+      {
+        "id": "COS_Parameter",
+        "superType": "ISC_Parameter",
+        "description": "ObjectScript parameter token."
+      },
+      {
+        "id": "COS_Function",
+        "superType": "ISC_System",
+        "description": "ObjectScript function token."
+      },
+      {
+        "id": "COS_Systemvariable",
+        "superType": "ISC_System",
+        "description": "ObjectScript system variable token."
+      },
+      {
+        "id": "CLS_Keyword",
+        "superType": "ISC_Keyword",
+        "description": "UDL keyword token."
+      },
+      {
+        "id": "COS_ObjectClass",
+        "superType": "ISC_Keyword",
+        "description": "ObjectScript ##class token."
+      },
+      {
+        "id": "COS_ObjectSuper",
+        "superType": "ISC_Keyword",
+        "description": "ObjectScript ##super token."
+      },
+      {
+        "id": "COS_ObjectThis",
+        "superType": "ISC_Keyword",
+        "description": "ObjectScript this token."
+      },
+      {
+        "id": "COS_SQL",
+        "superType": "ISC_Keyword",
+        "description": "ObjectScript SQL token."
+      },
+      {
+        "id": "CLS_ClassMember",
+        "superType": "ISC_ClassMember",
+        "description": "UDL class member token."
+      },
+      {
+        "id": "CLS_Identifier",
+        "superType": "ISC_ClassMember",
+        "description": "UDL identifier token."
+      },
+      {
+        "id": "CLS_SqlIdentifier",
+        "superType": "ISC_ClassMember",
+        "description": "UDL SQL identifier token."
+      },
+      {
+        "id": "COS_Objectproperty",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript object property token."
+      },
+      {
+        "id": "COS_Objectmethod",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript object method token."
+      },
+      {
+        "id": "COS_Objectattribute",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript object attribute token."
+      },
+      {
+        "id": "COS_Objectmember",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript object member token."
+      },
+      {
+        "id": "COS_Label",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript label token."
+      },
+      {
+        "id": "COS_Routine",
+        "superType": "ISC_ClassName",
+        "description": "ObjectScript routine token."
+      },
+      {
+        "id": "COS_Localvariableprivate",
+        "superType": "ISC_LocalVariable",
+        "description": "ObjectScript local variable token."
+      },
+      {
+        "id": "COS_Localundeclared",
+        "superType": "ISC_LocalVariable",
+        "description": "ObjectScript undeclared local variable token."
+      },
+      {
+        "id": "COS_Globalvariable",
+        "superType": "ISC_PublicVariable",
+        "description": "ObjectScript global token."
+      },
+      {
+        "id": "COS_Localvariable",
+        "superType": "ISC_PublicVariable",
+        "description": "ObjectScript public variable token."
+      },
+      {
+        "id": "COS_Structuredvariable",
+        "superType": "ISC_System",
+        "description": "ObjectScript structured variable token."
+      },
+      {
+        "id": "TSQL_Identifier",
+        "superType": "ISC_ClassMember",
+        "description": "TSQL class member token."
+      },
+      {
+        "id": "SQL_Identifier",
+        "superType": "ISC_ClassMember",
+        "description": "SQL class member token."
+      },
+      {
+        "id": "SQL_Hostvariablename",
+        "superType": "ISC_PublicVariable",
+        "description": "SQL host variable token."
+      },
+      {
+        "id": "SQL_Hostreferencevariablename",
+        "superType": "ISC_PublicVariable",
+        "description": "SQL host reference variable token."
+      },
+      {
+        "id": "SQL_Statementkeyword",
+        "superType": "ISC_SQLKeyword",
+        "description": "SQL statement keyword token."
+      },
+      {
+        "id": "SQL_Qualifierkeyword",
+        "superType": "ISC_SQLKeyword",
+        "description": "SQL qualifier keyword token."
+      },
+      {
+        "id": "SQL_Expressionkeyword",
+        "superType": "ISC_SQLKeyword",
+        "description": "SQL expression keyword token."
+      },
+      {
+        "id": "TSQL_Statementkeyword",
+        "superType": "ISC_SQLKeyword",
+        "description": "TSQL statement keyword token."
+      },
+      {
+        "id": "TSQL_Qualifierkeyword",
+        "superType": "ISC_SQLKeyword",
+        "description": "TSQL qualifier keyword token."
+      },
+      {
+        "id": "TSQL_Expressionkeyword",
+        "superType": "ISC_SQLKeyword",
+        "description": "TSQL expression keyword token."
+      },
+      {
+        "id": "TSQL_Controlkeyword",
+        "superType": "ISC_SQLKeyword",
+        "description": "TSQL control keyword token."
+      },
+      {
+        "id": "SQL_Hostextrinsicfunction",
+        "superType": "ISC_SQLFunction",
+        "description": "SQL host extrinsic function token."
+      },
+      {
+        "id": "SQL_Scalarfunctionname",
+        "superType": "ISC_SQLFunction",
+        "description": "SQL scalar function token."
+      },
+      {
+        "id": "SQL_ODBCfunctionname",
+        "superType": "ISC_SQLFunction",
+        "description": "SQL ODBC function token."
+      },
+      {
+        "id": "SQL_Aggregatefunctionname",
+        "superType": "ISC_SQLFunction",
+        "description": "SQL aggregate function token."
+      },
+      {
+        "id": "TSQL_Scalarfunctionname",
+        "superType": "ISC_SQLFunction",
+        "description": "TSQL scalar function token."
+      },
+      {
+        "id": "TSQL_ODBCfunctionname",
+        "superType": "ISC_SQLFunction",
+        "description": "TSQL ODBC function token."
+      },
+      {
+        "id": "TSQL_Aggregatefunctionname",
+        "superType": "ISC_SQLFunction",
+        "description": "TSQL aggregate function token."
+      },
+      {
+        "id": "TSQL_Userdefinedfunctionname",
+        "superType": "ISC_SQLFunction",
+        "description": "TSQL user defined function token."
+      },
+      {
+        "id": "TSQL_Unknownfunctionname",
+        "superType": "ISC_SQLFunction",
+        "description": "TSQL unknown function token."
+      },
+      {
+        "id": "SQL_Datatype",
+        "superType": "ISC_SQLKeyword",
+        "description": "SQL datatype token."
+      },
+      {
+        "id": "TSQL_Datatype",
+        "superType": "ISC_SQLKeyword",
+        "description": "TSQL datatype token."
+      },
+      {
+        "id": "SQL_Hostinstancename",
+        "superType": "ISC_PublicVariable",
+        "description": "SQL host instance variable token."
+      },
+      {
+        "id": "COS_Objectinstancevar",
+        "superType": "ISC_PublicVariable",
+        "description": "ObjectScript instance variable token."
+      },
+      {
+        "id": "COS_Extrinsicfunction",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript extrinsic function token."
+      },
+      {
+        "id": "COS_Macro",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript macro token."
+      },
+      {
+        "id": "COS_PreProcessor",
+        "superType": "ISC_Keyword",
+        "description": "ObjectScript preprocessor token."
+      },
+      {
+        "id": "SQL_CSPPPextension",
+        "superType": "ISC_SQLFunction",
+        "description": "SQL CSP/preprocessor token."
+      },
+      {
+        "id": "COS_HTML",
+        "superType": "ISC_Keyword",
+        "description": "ObjectScript HTML token."
+      },
+      {
+        "id": "COS_Javascript",
+        "superType": "ISC_Keyword",
+        "description": "ObjectScript Javascript token."
+      },
+      {
+        "id": "COS_Neutral",
+        "superType": "ISC_Neutral",
+        "description": "ObjectScript neutral token."
+      },
+      {
+        "id": "COS_UnknownZcommand",
+        "superType": "ISC_Command",
+        "description": "ObjectScript unknown Z command token."
+      },
+      {
+        "id": "COS_UnknownZfunction",
+        "superType": "ISC_System",
+        "description": "ObjectScript unknown Z function token."
+      },
+      {
+        "id": "COS_UnknownZvariable",
+        "superType": "ISC_System",
+        "description": "ObjectScript unknown Z variable token."
+      },
+      {
+        "id": "COS_JSONkeyword",
+        "superType": "ISC_Keyword",
+        "description": "ObjectScript JSON keyword token."
+      },
+      {
+        "id": "COS_Objectdotoperator",
+        "superType": "ISC_Operator",
+        "description": "ObjectScript dot operator token."
+      },
+      {
+        "id": "COS_Indirection",
+        "superType": "ISC_Operator",
+        "description": "ObjectScript indirection token."
+      },
+      {
+        "id": "COS_Operator",
+        "superType": "ISC_Operator",
+        "description": "ObjectScript operator token."
+      },
+      {
+        "id": "BAS_Assignmentoperator",
+        "superType": "ISC_Operator",
+        "description": "Basic assignment operator token."
+      },
+      {
+        "id": "BAS_Binaryoperator",
+        "superType": "ISC_Operator",
+        "description": "Basic binary operator token."
+      },
+      {
+        "id": "BAS_Objectoperator",
+        "superType": "ISC_Operator",
+        "description": "Basic object operator token."
+      },
+      {
+        "id": "BAS_Relationaloperator",
+        "superType": "ISC_Operator",
+        "description": "Basic relational operator token."
+      },
+      {
+        "id": "BAS_Unaryoperator",
+        "superType": "ISC_Operator",
+        "description": "Basic unary operator token."
+      },
+      {
+        "id": "CSS_Operator",
+        "superType": "ISC_Operator",
+        "description": "CSS operator token."
+      },
+      {
+        "id": "JAVA_Operator",
+        "superType": "ISC_Operator",
+        "description": "Java operator token."
+      },
+      {
+        "id": "JAVASCRIPT_Operator",
+        "superType": "ISC_Operator",
+        "description": "Javascript operator token."
+      },
+      {
+        "id": "MVBASIC_Assignmentoperator",
+        "superType": "ISC_Operator",
+        "description": "MVBasic assignment operator token."
+      },
+      {
+        "id": "MVBASIC_Binaryoperator",
+        "superType": "ISC_Operator",
+        "description": "MVBasic binary operator token."
+      },
+      {
+        "id": "MVBASIC_Objectoperator",
+        "superType": "ISC_Operator",
+        "description": "MVBasic object operator token."
+      },
+      {
+        "id": "MVBASIC_Relationaloperator",
+        "superType": "ISC_Operator",
+        "description": "MVBasic relational operator token."
+      },
+      {
+        "id": "MVBASIC_Unaryoperator",
+        "superType": "ISC_Operator",
+        "description": "MVBasic unary operator token."
+      },
+      {
+        "id": "TSQL_Operator",
+        "superType": "ISC_Operator",
+        "description": "TSQL operator token."
+      },
+      {
+        "id": "SQL_Operator",
+        "superType": "ISC_Operator",
+        "description": "SQL operator token."
+      },
+      {
+        "id": "CLS_XMLAttributeValue",
+        "superType": "ISC_StringLiteral",
+        "description": "UDL XML attribute value token."
+      },
+      {
+        "id": "CLS_XMLAttributeName",
+        "superType": "ISC_LocalVariable",
+        "description": "UDL XML attribute name token."
+      },
+      {
+        "id": "CLS_XMLElementName",
+        "superType": "ISC_Keyword",
+        "description": "UDL XML element name token."
+      },
+      {
+        "id": "XML_AttributeName",
+        "superType": "ISC_LocalVariable",
+        "description": "XML attribute name token."
+      },
+      {
+        "id": "XML_ElementName",
+        "superType": "ISC_Keyword",
+        "description": "XML element name token."
+      },
+      {
+        "id": "XML_DTDName",
+        "superType": "ISC_LocalVariable",
+        "description": "XML DTD name token."
+      },
+      {
+        "id": "XML_DTDKeyword",
+        "superType": "ISC_Keyword",
+        "description": "XML DTD keyword token."
+      },
+      {
+        "id": "XML_EntityReference",
+        "superType": "ISC_PublicVariable",
+        "description": "XML entity reference token."
+      },
+      {
+        "id": "XML_ParameterEntityReference",
+        "superType": "ISC_PublicVariable",
+        "description": "XML parameter entity reference token."
+      },
+      {
+        "id": "XML_CharacterReference",
+        "superType": "ISC_PublicVariable",
+        "description": "XML character reference token."
+      },
+      {
+        "id": "TSQL_Notimplemented",
+        "superType": "ISC_Neutral",
+        "description": "TSQL not implemented token."
+      },
+      {
+        "id": "XML_ProcessingInstructionContent",
+        "superType": "ISC_StringLiteral",
+        "description": "XML processing instruction content token."
+      },
+      {
+        "id": "XML_Indirection",
+        "superType": "ISC_Operator",
+        "description": "XML indirection token."
+      },
+      {
+        "id": "CLS_XMLCDATA",
+        "superType": "ISC_StringLiteral",
+        "description": "UDL XML CDATA token."
+      },
+      {
+        "id": "COS_Mnemonic",
+        "superType": "ISC_Operator",
+        "description": "ObjectScript mnemonic token."
+      },
+      {
+        "id": "COS_Pattern",
+        "superType": "ISC_Operator",
+        "description": "ObjectScript pattern token."
+      },
+      {
+        "id": "COS_OptionTrackWarning",
+        "superType": "ISC_LocalVariableUnset",
+        "description": "ObjectScript optional warning token."
+      },
+      {
+        "id": "CLS_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "UDL delimiter token."
+      },
+      {
+        "id": "COS_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "ObjectScript delimiter token."
+      },
+      {
+        "id": "COS_Brace",
+        "superType": "ISC_Delimiter",
+        "description": "ObjectScript brace token."
+      },
+      {
+        "id": "COS_JSONbracket",
+        "superType": "ISC_Delimiter",
+        "description": "ObjectScript JSON bracket token."
+      },
+      {
+        "id": "COS_JSONdelimeter",
+        "superType": "ISC_Delimiter",
+        "description": "ObjectScript JSON delimiter token."
+      },
+      {
+        "id": "XML_TagDelimiterand",
+        "superType": "ISC_Delimiter",
+        "description": "XML tag delimiter token."
+      },
+      {
+        "id": "XML_DTDDelimiter",
+        "superType": "ISC_Delimiter",
+        "description": "XML DTD delimiter token."
+      },
+      {
+        "id": "XML_ProcessingInstructionDelimiter",
+        "superType": "ISC_Delimiter",
+        "description": "XML processing instruction delimiter token."
+      },
+      {
+        "id": "BAS_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "Basic delimiter token."
+      },
+      {
+        "id": "CSS_CSSDelimiter",
+        "superType": "ISC_Delimiter",
+        "description": "CSS delimiter token."
+      },
+      {
+        "id": "CSS_OtherDelimiter",
+        "superType": "ISC_Delimiter",
+        "description": "CSS other delimiter token."
+      },
+      {
+        "id": "HTML_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "HTML delimiter token."
+      },
+      {
+        "id": "JAVA_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "Java delimiter token."
+      },
+      {
+        "id": "JAVASCRIPT_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "Javascript delimiter token."
+      },
+      {
+        "id": "JAVASCRIPT_Regexpdelimiter",
+        "superType": "ISC_Delimiter",
+        "description": "Javacsript regexp delimiter token."
+      },
+      {
+        "id": "MVBASIC_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "MVBasic delimiter token."
+      },
+      {
+        "id": "TSQL_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "TSQL delimiter token."
+      },
+      {
+        "id": "SQL_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "SQL delimiter token."
+      },
+      {
+        "id": "COS_VBControlname",
+        "superType": "COS_VB",
+        "description": "ObjectScript VB control name token."
+      },
+      {
+        "id": "COS_VBFormname",
+        "superType": "COS_VB",
+        "description": "ObjectScript VB form name token."
+      },
+      {
+        "id": "COS_VBPropertyname",
+        "superType": "COS_VB",
+        "description": "ObjectScript VB property name token."
+      },
+      {
+        "id": "JAVA_Definitionkeyword",
+        "superType": "ISC_Keyword",
+        "description": "Java definition keyword token."
+      },
+      {
+        "id": "JAVA_Literalkeyword",
+        "superType": "ISC_Keyword",
+        "description": "Java literal keyword token."
+      },
+      {
+        "id": "JAVA_Objectkeyword",
+        "superType": "ISC_Keyword",
+        "description": "Java object keyword token."
+      },
+      {
+        "id": "JAVASCRIPT_Definitionkeyword",
+        "superType": "ISC_Keyword",
+        "description": "Javascript definition keyword token."
+      },
+      {
+        "id": "JAVASCRIPT_Literalkeyword",
+        "superType": "ISC_Keyword",
+        "description": "Javascript literal keyword token."
+      },
+      {
+        "id": "JAVASCRIPT_Expressionkeyword",
+        "superType": "ISC_Keyword",
+        "description": "Javascript expression keyword token."
+      },
+      {
+        "id": "JAVASCRIPT_Futurekeyword",
+        "superType": "ISC_Keyword",
+        "description": "Javascript future keyword token."
+      },
+      {
+        "id": "COS_Command",
+        "superType": "ISC_Command",
+        "description": "ObjectScript command token."
+      },
+      {
+        "id": "JAVA_Statementkeyword",
+        "superType": "ISC_Command",
+        "description": "Java statement keyword token."
+      },
+      {
+        "id": "JAVASCRIPT_Statementkeyword",
+        "superType": "ISC_Command",
+        "description": "Javascript statement keyword token."
+      },
+      {
+        "id": "BAS_ClassIdentifier",
+        "superType": "ISC_ClassName",
+        "description": "Basic class identifier token."
+      },
+      {
+        "id": "MVBASIC_ClassIdentifier",
+        "superType": "ISC_ClassName",
+        "description": "MVBasic class identifier token."
+      },
+      {
+        "id": "BAS_Routinename",
+        "superType": "ISC_ClassName",
+        "description": "Basic routine name token."
+      },
+      {
+        "id": "MVBASIC_Routinename",
+        "superType": "ISC_ClassName",
+        "description": "MVBasic routine name token."
+      },
+      {
+        "id": "BAS_Variableidentifier",
+        "superType": "ISC_PublicVariable",
+        "description": "Basic variable identifier token."
+      },
+      {
+        "id": "MVBASIC_Variableidentifier",
+        "superType": "ISC_PublicVariable",
+        "description": "MVBasic variable identifier token."
+      },
+      {
+        "id": "JAVA_Classname",
+        "superType": "ISC_ClassName",
+        "description": "Java class name token."
+      },
+      {
+        "id": "JAVA_Interfacename",
+        "superType": "ISC_ClassName",
+        "description": "Java interface name token."
+      },
+      {
+        "id": "JAVA_Characterliteral",
+        "superType": "ISC_StringLiteral",
+        "description": "Java character literal token."
+      },
+      {
+        "id": "JAVA_Annotation",
+        "superType": "ISC_DocComment",
+        "description": "Java annotation token."
+      },
+      {
+        "id": "JAVA_Basictype",
+        "superType": "ISC_Command",
+        "description": "Java basic type token."
+      },
+      {
+        "id": "HTML_Tag",
+        "superType": "ISC_Keyword",
+        "description": "HTML tag token."
+      },
+      {
+        "id": "HTML_Name",
+        "superType": "ISC_LocalVariable",
+        "description": "HTML name token."
+      },
+      {
+        "id": "CLS_XMLEscapeSequence",
+        "superType": "ISC_MarkupText",
+        "description": "UDL XML escape sequence token."
+      },
+      {
+        "id": "HTML_EscapeSequence",
+        "superType": "ISC_MarkupText",
+        "description": "HTML escape sequence token."
+      },
+      {
+        "id": "JAVASCRIPT_Regexpescapesequence",
+        "superType": "ISC_PublicVariable",
+        "description": "Javascript regex escape sequence token."
+      },
+      {
+        "id": "JAVASCRIPT_Regexpbody",
+        "superType": "ISC_StringLiteral",
+        "description": "Javascript regex body token."
+      },
+      {
+        "id": "JAVASCRIPT_Regexpflags",
+        "superType": "ISC_StringLiteral",
+        "description": "Javascript regex flags token."
+      },
+      {
+        "id": "BAS_Keyword",
+        "superType": "ISC_Command",
+        "description": "Basic keyword token."
+      },
+      {
+        "id": "MVBASIC_Keyword",
+        "superType": "ISC_Command",
+        "description": "MVBasic keyword token."
+      },
+      {
+        "id": "BAS_SystemFunction",
+        "superType": "ISC_System",
+        "description": "Basic system function token."
+      },
+      {
+        "id": "MVBASIC_SystemFunction",
+        "superType": "ISC_System",
+        "description": "MVBasic system function token."
+      },
+      {
+        "id": "BAS_Constant",
+        "superType": "ISC_System",
+        "description": "Basic constant token."
+      },
+      {
+        "id": "MVBASIC_Constant",
+        "superType": "ISC_System",
+        "description": "MVBasic constant token."
+      },
+      {
+        "id": "JAVA_Identifier",
+        "superType": "ISC_ClassMember",
+        "description": "Java identifier token."
+      },
+      {
+        "id": "JAVASCRIPT_Identifier",
+        "superType": "ISC_ClassMember",
+        "description": "Javascript identifier token."
+      },
+      {
+        "id": "JAVA_Label",
+        "superType": "ISC_Keyword",
+        "description": "Java label token."
+      },
+      {
+        "id": "COS_Objectreferencevar",
+        "superType": "ISC_PublicVariable",
+        "description": "ObjectScript reference variable token."
+      },
+      {
+        "id": "TSQL_Label",
+        "superType": "ISC_SQLFunction",
+        "description": "TSQL label token."
+      },
+      {
+        "id": "JAVASCRIPT_Label",
+        "superType": "ISC_Keyword",
+        "description": "Javascript label token."
+      },
+      {
+        "id": "COS_Dots",
+        "superType": "ISC_Delimiter",
+        "description": "ObjectScript dots token."
+      },
+      {
+        "id": "COS_CSPExtension",
+        "superType": "COS_PreProcessor",
+        "description": "ObjectScript CSP extension token."
+      },
+      {
+        "id": "CLS_XMLText",
+        "superType": "ISC_MarkupText",
+        "description": "UDL XML text token."
+      },
+      {
+        "id": "XML_Text",
+        "superType": "ISC_MarkupText",
+        "description": "XML text token."
+      },
+      {
+        "id": "HTML_Text",
+        "superType": "ISC_MarkupText",
+        "description": "HTML text token."
+      },
+      {
+        "id": "COS_Externalreference",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript external reference token."
+      },
+      {
+        "id": "COS_Formatspecifier",
+        "superType": "ISC_Operator",
+        "description": "ObjectScript format specifier token."
+      },
+      {
+        "id": "CSS_Identifier",
+        "superType": "ISC_ClassMember",
+        "description": "CSS identifier token."
+      },
+      {
+        "id": "CSS_Hexcolor",
+        "superType": "ISC_NumericLiteral",
+        "description": "CSS hexcolor token."
+      },
+      {
+        "id": "CSS_Percentage",
+        "superType": "ISC_NumericLiteral",
+        "description": "CSS percentage token."
+      },
+      {
+        "id": "CSS_Measure",
+        "superType": "ISC_NumericLiteral",
+        "description": "CSS measure token."
+      },
+      {
+        "id": "CSS_URI",
+        "superType": "ISC_StringLiteral",
+        "description": "CSS URI token."
+      },
+      {
+        "id": "CSS_Keyword",
+        "superType": "ISC_Keyword",
+        "description": "CSS keyword token."
+      },
+      {
+        "id": "CSS_CSSKeyword",
+        "superType": "ISC_Keyword",
+        "description": "CSS @ keyword token."
+      },
+      {
+        "id": "CSS_Function",
+        "superType": "ISC_Keyword",
+        "description": "CSS function token."
+      },
+      {
+        "id": "CSS_Unicoderange",
+        "superType": "ISC_NumericLiteral",
+        "description": "CSS unicode range token."
+      },
+      {
+        "id": "CSS_CSPExtension",
+        "superType": "ISC_Keyword",
+        "description": "CSS CSP extension token."
+      },
+      {
+        "id": "JAVASCRIPT_CSPextension",
+        "superType": "ISC_Keyword",
+        "description": "Javascript CSP extension token."
+      },
+      {
+        "id": "BAS_Identifier",
+        "superType": "ISC_ClassMember",
+        "description": "Basic identifier token."
+      },
+      {
+        "id": "MVBASIC_Identifier",
+        "superType": "ISC_ClassMember",
+        "description": "MVBasic identifier token."
+      },
+      {
+        "id": "CSS_Name",
+        "superType": "ISC_Keyword",
+        "description": "CSS #name token."
+      },
+      {
+        "id": "COS_Name",
+        "superType": "ISC_ClassMember",
+        "description": "ObjectScript name token."
+      },
+      {
+        "id": "BAS_Property",
+        "superType": "ISC_ClassMember",
+        "description": "Basic property token."
+      },
+      {
+        "id": "MVBASIC_Property",
+        "superType": "ISC_ClassMember",
+        "description": "MVBasic property token."
+      },
+      {
+        "id": "BAS_Subroutine",
+        "superType": "ISC_ClassMember",
+        "description": "Basic subroutine token."
+      },
+      {
+        "id": "MVBASIC_Subroutine",
+        "superType": "ISC_ClassMember",
+        "description": "MVBasic subroutine token."
+      },
+      {
+        "id": "BAS_Label",
+        "superType": "ISC_Keyword",
+        "description": "Basic label token."
+      },
+      {
+        "id": "MVBASIC_Label",
+        "superType": "ISC_Keyword",
+        "description": "MVBasic label token."
+      },
+      {
+        "id": "BAS_Function",
+        "superType": "ISC_ClassMember",
+        "description": "Basic function token."
+      },
+      {
+        "id": "MVBASIC_Function",
+        "superType": "ISC_ClassMember",
+        "description": "MVBasic function token."
+      },
+      {
+        "id": "BAS_Real",
+        "superType": "ISC_NumericLiteral",
+        "description": "Basic real token."
+      },
+      {
+        "id": "MVBASIC_Real",
+        "superType": "ISC_NumericLiteral",
+        "description": "MVBasic real token."
+      },
+      {
+        "id": "BAS_Objectidentifier",
+        "superType": "ISC_LocalVariable",
+        "description": "Basic object identifier token."
+      },
+      {
+        "id": "MVBASIC_Objectidentifier",
+        "superType": "ISC_LocalVariable",
+        "description": "MVBasic object identifier token."
+      },
+      {
+        "id": "BAS_Procedure",
+        "superType": "ISC_ClassMember",
+        "description": "Basic procedure token."
+      },
+      {
+        "id": "MVBASIC_Procedure",
+        "superType": "ISC_ClassMember",
+        "description": "MVBasic procedure token."
+      },
+      {
+        "id": "BAS_Typedeclaration",
+        "superType": "ISC_ClassMember",
+        "description": "Basic type declaration token."
+      },
+      {
+        "id": "MVBASIC_Typedeclaration",
+        "superType": "ISC_ClassMember",
+        "description": "MVBasic type declaration token."
+      },
+      {
+        "id": "JAVASCRIPT_JSONpropertyname",
+        "superType": "ISC_StringLiteral",
+        "description": "Javascript JSON property name token."
+      },
+      {
+        "id": "COS_Embeddingopen",
+        "superType": "ISC_Delimiter",
+        "description": "ObjectScript embedded code open token."
+      },
+      {
+        "id": "COS_Embeddingclose",
+        "superType": "ISC_Delimiter",
+        "description": "ObjectScript embedded code close token."
+      },
+      {
+        "id": "CLS_KeywordTextValue",
+        "superType": "ISC_StringLiteral",
+        "description": "UDL keyword text value token."
+      },
+      {
+        "id": "PYTHON_Error",
+        "superType": "ISC_Error",
+        "description": "Python error token."
+      },
+      {
+        "id": "PYTHON_Comment",
+        "superType": "ISC_Comment",
+        "description": "Python comment token."
+      },
+      {
+        "id": "PYTHON_String",
+        "superType": "ISC_StringLiteral",
+        "description": "Python string token."
+      },
+      {
+        "id": "PYTHON_Delimiter",
+        "superType": "ISC_Delimiter",
+        "description": "Python delimiter token."
+      },
+      {
+        "id": "PYTHON_Number",
+        "superType": "ISC_NumericLiteral",
+        "description": "Python integer number token."
+      },
+      {
+        "id": "PYTHON_FloatingPoint",
+        "superType": "ISC_NumericLiteral",
+        "description": "Python floating point number token."
+      },
+      {
+        "id": "PYTHON_Name",
+        "superType": "ISC_LocalVariable",
+        "description": "Python name."
+      },
+      {
+        "id": "PYTHON_LineContinuation",
+        "superType": "ISC_Delimiter",
+        "description": "Python line continuation."
+      },
+      {
+        "id": "PYTHON_Keyword",
+        "superType": "ISC_Keyword",
+        "description": "Python keyword."
+      },
+      {
+        "id": "PYTHON_DefinitionKeyword",
+        "superType": "ISC_Keyword",
+        "description": "Python definition keyword."
+      },
+      {
+        "id": "PYTHON_ExpressionKeyword",
+        "superType": "ISC_Keyword",
+        "description": "Python expression keyword"
+      },
+      {
+        "id": "PYTHON_StatementKeyword",
+        "superType": "ISC_Keyword",
+        "description": "Python statement keyword"
+      },
+      {
+        "id": "PYTHON_Neutral",
+        "superType": "ISC_Neutral",
+        "description": "Python error recovery"
+      },
+      {
+        "id": "PYTHON_Operator",
+        "superType": "ISC_Operator",
+        "description": "Python operator"
+      },
+      {
+        "id": "PYTHON_AssignmentOperator",
+        "superType": "ISC_Operator",
+        "description": "Python assignment operator"
+      }
+    ],
+    "semanticTokenScopes": [
+      {
+        "scopes": {
+          "ISC_Error": [
+            "invalid.illegal"
+          ],
+          "ISC_Comment": [
+            "comment.line"
+          ],
+          "ISC_StringLiteral": [
+            "string"
+          ],
+          "ISC_NumericLiteral": [
+            "constant.numeric"
+          ],
+          "ISC_ClassName": [
+            "entity.name.class"
+          ],
+          "ISC_ClassMember": [
+            "entity.name.function.member"
+          ],
+          "ISC_DocComment": [
+            "comment.block.documentation"
+          ],
+          "ISC_Parameter": [
+            "variable.parameter"
+          ],
+          "ISC_System": [
+            "constant.language"
+          ],
+          "ISC_Command": [
+            "keyword.control"
+          ],
+          "ISC_Keyword": [
+            "keyword"
+          ],
+          "ISC_LocalVariable": [
+            "variable"
+          ],
+          "ISC_LocalVariableUnset": [
+            "variable"
+          ],
+          "ISC_PublicVariable": [
+            "variable"
+          ],
+          "ISC_SQLKeyword": [
+            "keyword"
+          ],
+          "ISC_SQLFunction": [
+            "keyword.control"
+          ]
+        }
+      }
+    ],
+    "themes": [
+      {
+        "label": "InterSystems Default Dark",
+        "uiTheme": "vs-dark",
+        "path": "./themes/isc-default-dark.json"
+      },
+      {
+        "label": "InterSystems Default Light",
+        "uiTheme": "vs",
+        "path": "./themes/isc-default-light.json"
+      }
+    ]
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run webpack",
+    "webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
+    "webpack:dev": "npm run clean && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
+    "compile": "tsc -b",
+    "watch": "tsc -b -w",
+    "clean": "rimraf client/out && rimraf server/out",
+    "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+  },
+  "devDependencies": {
+    "@types/node": "^16.11.19",
+    "@vscode/vsce": "^2.17.0",
+    "merge-options": "^3.0.4",
+    "node-loader": "^2.0.0",
+    "ovsx": "^0.8.0",
+    "rimraf": "^4.1.2",
+    "ts-loader": "^9.4.2",
+    "typescript": "^4.9.5",
+    "webpack": "^5.75.0",
+    "webpack-cli": "^5.0.1"
+  },
+  "extensionDependencies": [
+    "intersystems-community.vscode-objectscript"
+  ]
 }
