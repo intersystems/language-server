@@ -109,13 +109,13 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
         if: env.VSCE_PAT != null
-        run: npx vsce publish --packagePath $(find . -iname *.vsix)
+        run: vsce publish --packagePath $(find . -iname "*.vsix")
       - name: Publish to Open VSX Registry
         env:
           OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
         if: env.OVSX_PAT != null
         timeout-minutes: 5
-        run: npx ovsx publish $(find . -iname *.vsix)
+        run: ovsx publish $(find . -iname "*.vsix")
   bump_version:
     runs-on: ubuntu-latest
     needs: [build, publish]
