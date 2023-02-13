@@ -115,7 +115,7 @@ jobs:
           OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
         if: env.OVSX_PAT != null
         timeout-minutes: 5
-        run: npx ovsx publish --skip-duplicate $(find . -iname "*.vsix" -type f)
+        run: find . -iname "*.vsix" -type f -exec npx ovsx publish --skip-duplicate {} \;
   bump_version:
     runs-on: ubuntu-latest
     needs: [build, publish]
