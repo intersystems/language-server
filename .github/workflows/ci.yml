@@ -27,20 +27,9 @@ jobs:
     strategy:
       matrix:
         platarch: [win32-x64, linux-x64, linux-arm64, alpine-x64, alpine-arm64, darwin-x64, darwin-arm64]
-    outputs:
-      taggedbranch: ${{ steps.find-branch.outputs.taggedbranch }}
     steps:
       - uses: actions/checkout@v3
-      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
-      - name: Find which branch the release tag points to
-        id: find-branch
-        if: github.event_name == 'release'
-        shell: bash
-        run: |
-          git fetch --depth=1 origin +refs/heads/*:refs/heads/*
-          set -x
-          TAGGEDBRANCH=$(git for-each-ref --points-at=${{github.sha}} --format='%(refname:lstrip=2)' refs/heads/)
-          echo "taggedbranch=$TAGGEDBRANCH" >> $GITHUB_OUTPUT
+      - run: git fetch --depth=1 origin
       - name: Set package name and version
         id: set-version
         run: |
@@ -100,7 +89,7 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     needs: build
-    if: success() && github.event_name == 'release' && needs.build.outputs.taggedbranch == 'master'
+    if: success() && github.event_name == 'release'
     steps:
       - name: Download packages
         uses: actions/download-artifact@v3
@@ -125,7 +114,7 @@ jobs:
   bump_version:
     runs-on: ubuntu-latest
     needs: [build, publish]
-    if: github.event_name == 'release' && needs.build.outputs.taggedbranch == 'master'
+    if: github.event_name == 'release'
     steps:
       - uses: actions/checkout@v3
         with:
