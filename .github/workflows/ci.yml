@@ -1,0 +1,157 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - ".vscode/**"
+      - ".github/**"
+      - "*.md"
+      - "**/*.md"
+  pull_request:
+    branches:
+      - master
+  release:
+    types:
+      - released
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.base_ref || github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    timeout-minutes: 30
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        platarch: [win32-x64, linux-x64, linux-arm64, alpine-x64, alpine-arm64, darwin-x64, darwin-arm64]
+    outputs:
+      taggedbranch: ${{ steps.find-branch.outputs.taggedbranch }}
+    steps:
+      - uses: actions/checkout@v3
+      - run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
+      - name: Find which branch the release tag points to
+        id: find-branch
+        if: github.event_name == 'release'
+        shell: bash
+        run: |
+          git fetch --depth=1 origin +refs/heads/*:refs/heads/*
+          set -x
+          TAGGEDBRANCH=$(git for-each-ref --points-at=${{github.sha}} --format='%(refname:lstrip=2)' refs/heads/)
+          echo "taggedbranch=$TAGGEDBRANCH" >> $GITHUB_OUTPUT
+      - name: Set package name and version
+        id: set-version
+        run: |
+          set -x
+          VERSION=$(jq -r '.version' package.json | cut -d- -f1)
+          [ $GITHUB_EVENT_NAME == 'release' ] && VERSION=${{ github.event.release.tag_name }} && VERSION=${VERSION/v/}
+          git tag -l | cat
+          [ $GITHUB_EVENT_NAME == 'push' ] && VERSION+=-beta && VERSION+=.$(($(git tag -l "v$VERSION.*" | sort -nt. -k4 2>/dev/null | tail -1 | cut -d. -f4)+1))
+          [ $GITHUB_EVENT_NAME == 'pull_request' ] && VERSION+=-dev.${{ github.event.pull_request.number }}
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          NAME=$(jq -r '.name' package.json)-$VERSION-${{ matrix.platarch }}
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          tmp=$(mktemp)
+          jq --arg version "$VERSION" '.version = $version' package.json > "$tmp" && mv "$tmp" package.json
+          echo $VERSION > .version
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - run: npm install
+      - name: Use correct .node binary file
+        run: cp -f ./server/lib/${{ matrix.platarch }}-isclexer.node ./server/lib/isclexer.node
+      - name: Build package
+        run: npx vsce package -o ${{ steps.set-version.outputs.name }}.vsix --target ${{ matrix.platarch }}
+      - name: Upload package
+        uses: actions/upload-artifact@v3
+        with:
+          name: ${{ steps.set-version.outputs.name }}.vsix
+          path: ${{ steps.set-version.outputs.name }}.vsix
+          retention-days: 30
+      - name: Upload metadata
+        uses: actions/upload-artifact@v3
+        with:
+          name: meta
+          retention-days: 1
+          path: .version
+  beta:
+    runs-on: ubuntu-latest
+    needs: build
+    if: success() && github.event_name == 'push'
+    steps:
+      - name: Download packages and metadata
+        uses: actions/download-artifact@v3
+      - name: Set version output
+        id: set-version
+        run: |
+          set -x
+          echo "version=`cat meta/.version`" >> $GITHUB_OUTPUT
+      - name: Create Release
+        id: create-release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v${{ steps.set-version.outputs.version }}
+          prerelease: ${{ github.event_name != 'release' }}
+          files: '**/*.vsix'
+          token: ${{ secrets.GITHUB_TOKEN }}
+  publish:
+    runs-on: ubuntu-latest
+    needs: build
+    if: success() && github.event_name == 'release' && needs.build.outputs.taggedbranch == 'master'
+    steps:
+      - name: Download packages
+        uses: actions/download-artifact@v3
+      - name: Attach packages to release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ github.event.release.tag_name }}
+          files: '**/*.vsix'
+          body: See CHANGELOG for details
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
+        if: env.VSCE_PAT != null
+        run: npx vsce publish --packagePath $(find . -iname "*.vsix")
+      - name: Publish to Open VSX Registry
+        env:
+          OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
+        if: env.OVSX_PAT != null
+        timeout-minutes: 5
+        run: npx ovsx publish $(find . -iname "*.vsix")
+  bump_version:
+    runs-on: ubuntu-latest
+    needs: [build, publish]
+    if: github.event_name == 'release' && needs.build.outputs.taggedbranch == 'master'
+    steps:
+      - uses: actions/checkout@v3
+        with:
+          ref: master
+          token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Download metadata
+        uses: actions/download-artifact@v3
+        with:
+          name: meta
+          path: .
+      - name: Use Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16
+      - name: Create commit
+        run: |
+          VERSION=`cat .version`
+          NEXT_VERSION=`cat .version | awk -F. '/[0-9]+\./{$NF++;print}' OFS=.`
+          tmp=$(mktemp)
+          git config --global user.name 'ProjectBot'
+          git config --global user.email 'bot@users.noreply.github.com'
+          jq --arg version "${NEXT_VERSION}-SNAPSHOT" '.version = $version' package.json > "$tmp" && mv "$tmp" package.json
+          jq --arg version "${NEXT_VERSION}-SNAPSHOT" '.version = $version' ./client/package.json > "$tmp" && mv "$tmp" ./client/package.json
+          jq --arg version "${NEXT_VERSION}-SNAPSHOT" '.version = $version' ./server/package.json > "$tmp" && mv "$tmp" ./server/package.json
+          git add package.json
+          git add ./client/package.json
+          git add ./server/package.json
+          git commit -m 'auto bump version with release'
+          git push
