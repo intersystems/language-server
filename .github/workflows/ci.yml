@@ -147,5 +147,5 @@ jobs:
           git add package.json
           git add ./client/package.json
           git add ./server/package.json
-          git commit -m 'auto bump version with release'
+          git commit -m 'auto bump version with release [skip ci]'
           git push

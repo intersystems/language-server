@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.3.1] - 2023-XX-XX
+- Fix issue [#261](https://github.com/intersystems/language-server/issues/261): Add parser support for CSS @keyframes rule
+
 ## [2.3.0] - 2023-02-13
 - Fix issue [#257](https://github.com/intersystems/language-server/issues/257): Property parameter intellisense does not respect `PropertyClass` keyword
 - Fix issue [#259](https://github.com/intersystems/language-server/issues/259): Correctly color DynamicObject brace syntax in Triggers and SqlComputeCodes
