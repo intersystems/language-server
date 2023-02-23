@@ -116,14 +116,14 @@ export async function computeDiagnostics(doc: TextDocument) {
 			if (settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
 				// Get all classes and routines
 				querydata = {
-					query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition UNION ALL %PARALLEL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
+					query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition UNION ALL %PARALLEL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
 					parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0]
 				};
 			}
 			else if (!settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
 				// Get all classes
 				querydata = {
-					query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition",
+					query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition",
 					parameters: []
 				};
 			}
@@ -208,6 +208,16 @@ export async function computeDiagnostics(doc: TextDocument) {
 		const parameters: Map<string, Range[]> = new Map();
 		const properties: Map<string, Range[]> = new Map();
 		const classes: Map<string, Range[]> = new Map();
+
+		// Keep track of current namespace for class/routine existence checks
+		const baseNs = server.namespace.toUpperCase();
+		let currentNs = baseNs;
+		let nsNestedBlockLevel = 0;
+		const validNsRegex = /^"[A-Za-z%]?[A-Za-z0-9-_]+"$/;
+
+		// Store the ns, name and ranges of all classes and routines from other namespaces that we see
+		// Keys are of the form "ns:::doc.ext"
+		const otherNsDocs: Map<string, Range[]> = new Map();
 
 		// Loop through the parsed document to find errors and warnings
 		for (let i = startline; i < parsed.length; i++) {
@@ -388,7 +398,7 @@ export async function computeDiagnostics(doc: TextDocument) {
 											let diagnostic: Diagnostic = {
 												severity: DiagnosticSeverity.Warning,
 												range: valrange,
-												message: "Class '"+classname+"' does not exist.",
+												message: `Class '${classname}' does not exist in namespace '${baseNs}'.`,
 												source: 'InterSystems Language Server'
 											};
 											diagnostics.push(diagnostic);
@@ -457,7 +467,6 @@ export async function computeDiagnostics(doc: TextDocument) {
 						// Get the full text of the selection
 						let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
 						let word = doc.getText(wordrange);
-						let dollarsystem = false;
 						if (word.charAt(0) === ".") {
 							// This might be $SYSTEM.ClassName
 							const prevseven = doc.getText(Range.create(
@@ -478,7 +487,7 @@ export async function computeDiagnostics(doc: TextDocument) {
 								continue;
 							}
 							else {
-								dollarsystem = true;
+								word = "%SYSTEM" + word;
 							}
 						}
 						if (word.charAt(0) === '"') {
@@ -486,39 +495,59 @@ export async function computeDiagnostics(doc: TextDocument) {
 							word = word.slice(1,-1);
 						}
 
-						// Normalize the class name if there are imports
-						var possiblecls = {num: 0};
-						let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls,inheritedpackages);
-						
-						if (normalizedname === "" && possiblecls.num > 0) {
-							// The class couldn't be resolved with the imports
-							if (settings.diagnostics.classes) {
-								let diagnostic: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: wordrange,
-									message: "Class name '"+word+"' is ambiguous.",
-									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
-							}
-						}
-						else {
-							// Check if class exists
-							const filtered = files.filter(file => file.Name === normalizedname+".cls");
-							if (filtered.length !== 1) {
-								if (settings.diagnostics.classes && !dollarsystem) {
+						if (currentNs == baseNs) {
+							// Normalize the class name if there are imports
+							var possiblecls = {num: 0};
+							let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls,inheritedpackages);
+
+							if (normalizedname === "" && possiblecls.num > 0) {
+								// The class couldn't be resolved with the imports
+								if (settings.diagnostics.classes) {
 									let diagnostic: Diagnostic = {
 										severity: DiagnosticSeverity.Error,
 										range: wordrange,
-										message: "Class '"+word+"' does not exist.",
+										message: `Class name '${word}' is ambiguous.`,
 										source: 'InterSystems Language Server'
 									};
 									diagnostics.push(diagnostic);
 								}
 							}
-							else if (settings.diagnostics.deprecation) {
-								// The class exists, so add it to the map
-								addRangeToMapVal(classes,normalizedname,wordrange);
+							else {
+								// Check if class exists
+								const filtered = files.filter(file => file.Name === normalizedname+".cls");
+								if (filtered.length !== 1) {
+									// Exempt %SYSTEM classes because some of them don't have ^oddDEF entries
+									if (settings.diagnostics.classes && !word.startsWith("%SYSTEM.")) {
+										let diagnostic: Diagnostic = {
+											severity: DiagnosticSeverity.Error,
+											range: wordrange,
+											message: `Class '${word}' does not exist in namespace '${baseNs}'.`,
+											source: 'InterSystems Language Server'
+										};
+										diagnostics.push(diagnostic);
+									}
+								}
+								else if (settings.diagnostics.deprecation) {
+									// The class exists, so add it to the map
+									addRangeToMapVal(classes,normalizedname,wordrange);
+								}
+							}
+						} else if (currentNs != "" && settings.diagnostics.classes) {
+							if (!word.includes(".") && !word.startsWith("%")) {
+								// Using a short class name when you may be in another namespace is bad
+								// TODO: report warning diagnostic?
+								diagnostics.push({
+									severity: DiagnosticSeverity.Error,
+									range: wordrange,
+									message: "Short class name used after a namespace switch.",
+									source: 'InterSystems Language Server'
+								});
+							}
+							else {
+								// Add this class to the map
+								addRangeToMapVal(otherNsDocs,`${currentNs}:::${
+									!word.includes(".") && word.startsWith("%") ? `%Library.${word.slice(1)}` : word
+								}.cls`,wordrange);
 							}
 						}
 					}
@@ -554,30 +583,34 @@ export async function computeDiagnostics(doc: TextDocument) {
 							}
 						}
 
-						// Check if the routine exists
-						if (isinc) {
-							if (!files.some(file => file.Name === (word+".inc"))) {
-								let diagnostic: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: wordrange,
-									message: "Include file '"+word+"' does not exist.",
-									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+						if (currentNs == baseNs) {
+							// Check if the routine exists
+							if (isinc) {
+								if (!files.some(file => file.Name == (word+".inc"))) {
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: wordrange,
+										message: `Include file '${word}' does not exist in namespace '${baseNs}'.`,
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
+							}
+							else {
+								if (!files.some(file => (file.Name == (word+".mac")) || (file.Name == (word+".int")))) {
+									let diagnostic: Diagnostic = {
+										severity: DiagnosticSeverity.Error,
+										range: wordrange,
+										message: `Routine '${word}' does not exist in namespace '${baseNs}'.`,
+										source: 'InterSystems Language Server'
+									};
+									diagnostics.push(diagnostic);
+								}
 							}
 						}
-						else {
-							const macexists = files.some(file => file.Name === (word+".mac"));
-							const intexists = files.some(file => file.Name === (word+".int"));
-							if (!macexists && !intexists) {
-								let diagnostic: Diagnostic = {
-									severity: DiagnosticSeverity.Error,
-									range: wordrange,
-									message: "Routine '"+word+"' does not exist.",
-									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
-							}
+						else if (currentNs != "") {
+							// Add this document to the map
+							addRangeToMapVal(otherNsDocs,`${currentNs}:::${word}${isinc ? ".inc" : ".mac"}`,wordrange);
 						}
 					}
 					else if (
@@ -687,6 +720,26 @@ export async function computeDiagnostics(doc: TextDocument) {
 												if (zutilFunctions.replace[argList] != undefined) {
 													diag.data = argList;
 												}
+												if (argList == "5,") {
+													// This is a namespace switch
+													const nsTkn = tkn == parsed[ln].length - 1 ? 0 : tkn + 1;
+													const nsLn = nsTkn == 0 ? ln + 1 : ln;
+													const nsText = doc.getText(Range.create(nsLn,parsed[nsLn][nsTkn].p,nsLn,parsed[nsLn][nsTkn].p+parsed[nsLn][nsTkn].c));
+													if (parsed[nsLn][nsTkn].s == ld.cos_str_attrindex && validNsRegex.test(nsText)) {
+														currentNs = nsText.slice(1,-1).toUpperCase();
+														if (currentNs != baseNs) {
+															nsNestedBlockLevel = 1;
+														}
+														else {
+															nsNestedBlockLevel = 0;
+														}
+													}
+													else {
+														// We can't determine what namespace we are in
+														currentNs = "";
+														nsNestedBlockLevel = 1;
+													}
+												}
 											}
 											diagnostics.push(diag);
 											brk = true;
@@ -716,6 +769,155 @@ export async function computeDiagnostics(doc: TextDocument) {
 							if (brk) {
 								break;
 							}
+						}
+					}
+					else if (
+						parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_sysv_attrindex &&
+						["$namespace","$znspace"].includes(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase())
+					) {
+						// This is a potential namespace switch
+
+						// Check if this is in a Set command
+						let isSet = false;
+						let hasPc = false;
+						let brk = false;
+						for (let ln = i; ln >= 0; ln--) {
+							if (parsed[ln] == undefined || parsed[ln].length == 0) {
+								continue;
+							}
+							for (let tkn = (ln == i ? j : parsed[ln].length - 1); tkn >= 0; tkn--) {
+								if (parsed[ln][tkn].l != ld.cos_langindex || parsed[ln][tkn].s == ld.cos_zcom_attrindex) {
+									brk = true;
+									break;
+								}
+								if (parsed[ln][tkn].s == ld.cos_command_attrindex) {
+									if (["s","set"].includes(doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)).toLowerCase())) {
+										isSet = true;
+										if (
+											tkn < parsed[ln].length - 1 && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s === ld.cos_delim_attrindex &&
+											doc.getText(Range.create(ln,parsed[ln][tkn+1].p,ln,parsed[ln][tkn+1].p+parsed[ln][tkn+1].c)) == ":"
+										) {
+											hasPc = true;
+										}
+									}
+									brk = true;
+									break;
+								}
+							}
+							if (brk) {
+								break;
+							}
+						}
+						if (isSet) {
+							if (hasPc) {
+								// We can't determine what namespace we are in
+								currentNs = "";
+								nsNestedBlockLevel = 1;
+							}
+							else {
+								// Check what we are being Set to
+								let brk = false;
+								let foundOp = false;
+								for (let ln = i; ln < parsed.length; ln++) {
+									if (parsed[ln] == undefined || parsed[ln].length == 0) {
+										continue;
+									}
+									for (let tkn = (ln == i ? j : 0); tkn < parsed[ln].length; tkn++) {
+										if (
+											parsed[ln][tkn].l != ld.cos_langindex ||
+											parsed[ln][tkn].s == ld.cos_zcom_attrindex ||
+											parsed[ln][tkn].s == ld.cos_command_attrindex
+										) {
+											brk = true;
+											break;
+										}
+										if (foundOp) {
+											const nsText = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+											if (parsed[ln][tkn].s == ld.cos_str_attrindex && validNsRegex.test(nsText)) {
+												currentNs = nsText.slice(1,-1).toUpperCase();
+												if (currentNs != baseNs) {
+													nsNestedBlockLevel = 1;
+												}
+												else {
+													nsNestedBlockLevel = 0;
+												}
+											}
+											else {
+												// We can't determine what namespace we are in
+												currentNs = "";
+												nsNestedBlockLevel = 1;
+											}
+											brk = true;
+											break;
+										}
+										if (
+											parsed[ln][tkn].s == ld.cos_oper_attrindex &&
+											doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == "="
+										) {
+											foundOp = true;
+										}
+									}
+									if (brk) {
+										break;
+									}
+								}
+							}
+						}
+					}
+					else if (
+						parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_command_attrindex &&
+						/^zn(space)?$/i.test((doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c))))
+					) {
+						// This is a potential namespace switch
+
+						if (j < parsed[i].length - 1) {
+							const nextTknText = doc.getText(Range.create(i,parsed[i][j+1].p,i,parsed[i][j+1].p+parsed[i][j+1].c));
+							if (
+								parsed[i][j+1].l == ld.cos_langindex &&
+								parsed[i][j+1].s == ld.cos_str_attrindex &&
+								validNsRegex.test(nextTknText)
+							) {
+								currentNs = nextTknText.slice(1,-1).toUpperCase();
+								if (currentNs != baseNs) {
+									nsNestedBlockLevel = 1;
+								}
+								else {
+									nsNestedBlockLevel = 0;
+								}
+							}
+							else {
+								// We can't determine what namespace we are in
+								currentNs = "";
+								nsNestedBlockLevel = 1;
+							}
+						}
+					}
+					if (nsNestedBlockLevel > 0) {
+						// Determine if we're still in the different namespace
+
+						if (parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_brace_attrindex) {
+							const brace = doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
+							if (brace == "{") {
+								nsNestedBlockLevel++;
+							}
+							else {
+								nsNestedBlockLevel--;
+								if (nsNestedBlockLevel == 0) {
+									// Ran off the end of that stack
+									currentNs = baseNs;
+								}
+							}
+						}
+						else if (
+							// Ran off the end of the implementation
+							(parsed[i][j].l == ld.cls_langindex) ||
+							// Ran off the end of the method
+							(/^objectscript(-int)?$/.test(doc.languageId) && parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_label_attrindex) ||
+							// Exited the script
+							(doc.languageId == "objectscript-csp" && parsed[i][j].l == ld.html_langindex)
+						) {
+							currentNs = baseNs;
+							nsNestedBlockLevel = 0;
 						}
 					}
 				}
@@ -772,6 +974,77 @@ export async function computeDiagnostics(doc: TextDocument) {
 							});
 						}
 					}
+				}
+			}
+		}
+		if ((settings.diagnostics.classes || settings.diagnostics.routines) && otherNsDocs.size > 0) {
+			// Query the database for the existence of documents in other namespaces
+
+			const namespaces = new Set<string>();
+			otherNsDocs.forEach((v,k) => namespaces.add(k.split(":::")[0]));
+			for (const namespace of namespaces) {
+				// Build the query
+				let querydata: QueryData;
+				const otherClasses: string[] = [];
+				const otherRtns: string[] = [];
+				otherNsDocs.forEach((v,k) => {
+					const [ns, doc] = k.split(":::");
+					if (ns == namespace) {
+						switch (doc.slice(-3)) {
+							case "cls":
+								otherClasses.push(doc.slice(0,-4));
+								break;
+							case "inc":
+								otherRtns.push(doc);
+								break;
+							default:
+								otherRtns.push(doc);
+								otherRtns.push(`${doc.slice(0,-3)}.int`);
+						}
+					}
+				});
+				if (otherClasses.length && otherRtns.length) {
+					// Check for both classes and routines
+					querydata = {
+						query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition WHERE Name %INLIST $LISTFROMSTRING(?) " +
+							"UNION ALL %PARALLEL " +
+							"SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE Name %INLIST $LISTFROMSTRING(?)",
+						parameters: [otherClasses.join(","),"*.mac,*.inc,*.int",1,1,1,1,0,0,otherRtns.join(",")]
+					};
+				}
+				else if (otherClasses.length) {
+					// Check for just classes
+					querydata = {
+						query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition WHERE Name %INLIST $LISTFROMSTRING(?)",
+						parameters: [otherClasses.join(",")]
+					};
+				}
+				else {
+					// Check for just routines
+					querydata = {
+						query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE Name %INLIST $LISTFROMSTRING(?)",
+						parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0,otherRtns.join(",")]
+					};
+				}
+
+				// Make the request
+				const respdata = await makeRESTRequest("POST",1,"/action/query",{ ...server, namespace },querydata);
+				if (respdata !== undefined && "content" in respdata.data.result) {
+					// We got data back
+
+					// Report Diagnostics for files that aren't in the returned data
+					respdata.data.result.content.forEach((e) => otherNsDocs.delete(`${namespace}:::${e.Name.endsWith(".int") ? `${e.Name.slice(0,-3)}.mac` : e.Name}`));
+					otherNsDocs.forEach((v,k) => {
+						const [ns, doc] = k.split(":::");
+						if (ns == namespace) {
+							v.forEach((range) => diagnostics.push({
+								severity: DiagnosticSeverity.Error,
+								range,
+								message: `${doc.endsWith("cls") ? "Class" : doc.endsWith("inc") ? "Include file" : "Routine"} '${doc.slice(0,-4)}' does not exist in namespace '${ns}'.`,
+								source: 'InterSystems Language Server'
+							}));
+						}
+					});
 				}
 			}
 		}

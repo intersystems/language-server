@@ -44,7 +44,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 	if (settings.formatting.expandClassNames) {
 		// Get all classes
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
-			query: "SELECT {fn CONCAT(Name,'.cls')} AS Name FROM %Dictionary.ClassDefinition",
+			query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition",
 			parameters: []
 		});
 		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content !== undefined) {

@@ -14,6 +14,7 @@ export const normal_attrindex = 0x01;
 export const cos_label_attrindex = 0x03;
 export const cos_dots_attrindex = 0x04;
 export const cos_clsobj_attrindex = 0x05;
+export const cos_str_attrindex = 0x06;
 export const cos_comment_attrindex = 0x07;
 export const cos_objdot_attrindex = 0x08;
 export const cos_ppf_attrindex = 0x0A;
