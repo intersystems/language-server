@@ -30,6 +30,7 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v3
+      - name: Fetch tags
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Set package name and version
         id: set-version
