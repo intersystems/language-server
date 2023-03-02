@@ -17,6 +17,7 @@ import parameterTypes = require("../documentation/parameterTypes.json");
 const TurndownService = require('turndown-ext').default;
 const turndown = new TurndownService({codeBlockStyle: "fenced"});
 turndown.remove("style");
+turndown.keep(["table", "tr", "td"]);
 turndown.addRule("pre",{
 	filter: "pre",
 	replacement: function (content: string, node: HTMLElement) {

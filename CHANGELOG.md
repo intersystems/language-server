@@ -4,6 +4,7 @@
 - Fix issue [#77](https://github.com/intersystems/language-server/issues/77): Incorrect 'Class/Routine/Include file does not exist' Diagnostics after namespace switch
 - Fix issue [#261](https://github.com/intersystems/language-server/issues/261): Add parser support for CSS @keyframes rule
 - Fix issue [#263](https://github.com/intersystems/language-server/issues/263): Add parser support for JavaScript Null Coalescing Operator (??)
+- Fix issue [#264](https://github.com/intersystems/language-server/issues/264): Support HTML tables in intellisense from class descriptions
 
 ## [2.3.0] - 2023-02-13
 - Fix issue [#257](https://github.com/intersystems/language-server/issues/257): Property parameter intellisense does not respect `PropertyClass` keyword

@@ -108,7 +108,11 @@ export async function activate(context: ExtensionContext) {
 		// Register the server for InterSystems files handled by vscode-objectscript extension
 		documentSelector: documentSelector,
 		// Register middleware for embedded language request forwarding
-		middleware: requestForwardingMiddleware
+		middleware: requestForwardingMiddleware,
+		// Allow the rendering of HTML tags like <table>, <tr> and <td>
+		markdown: {
+			supportHtml: true
+		}
 	};
 
 	// Create the language client and start the client.
