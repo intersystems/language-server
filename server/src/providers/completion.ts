@@ -1829,7 +1829,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						documentation: {
 							kind: "markdown",
-							value: dir.documentation + "\n\n" + `[Online documentation](${"https://docs.intersystems.com/irislatest"}${dir.link})`
+							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${dir.link})`
 						},
 						insertText: dir.label.slice(2),
 						data: "Preprocessor"
@@ -1847,7 +1847,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						documentation: {
 							kind: "markdown",
-							value: dir.documentation + "\n\n" + `[Online documentation](${"https://docs.intersystems.com/irislatest"}${dir.link})`
+							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${dir.link})`
 						},
 						insertText: dir.label.slice(2),
 						data: "Preprocessor"
@@ -1869,7 +1869,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						documentation: {
 							kind: "markdown",
-							value: dir.documentation + "\n\n" + `[Online documentation](${"https://docs.intersystems.com/irislatest"}${dir.link})`
+							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${dir.link})`
 						},
 						insertText: dir.label.slice(1),
 						data: "Preprocessor"
@@ -1887,7 +1887,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						documentation: {
 							kind: "markdown",
-							value: dir.documentation + "\n\n" + `[Online documentation](${"https://docs.intersystems.com/irislatest"}${dir.link})`
+							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${dir.link})`
 						},
 						insertText: dir.label.slice(1),
 						data: "Preprocessor"

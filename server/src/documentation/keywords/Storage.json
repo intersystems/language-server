@@ -80,6 +80,25 @@
       "type": "KW_TYPE_SUBNODE"
     },
     {
+      "name": "Sharded",
+      "type": "KW_TYPE_STRING",
+      "description": "Value of the Sharded keyword"
+    },
+    {
+      "name": "ShardKey",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
+      "name": "ShardLocalClassName",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the shard-local class"
+    },
+    {
+      "name": "ShardLocalTableName",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the shard-local table"
+    },
+    {
       "name": "SqlChildSub",
       "type": "KW_TYPE_STRING"
     },
@@ -224,6 +243,23 @@
     {
       "name": "StreamLocation",
       "type": "KW_TYPE_STRING"
+    }
+  ],
+  "STORAGESHARDKEY": [
+    {
+      "name": "CoshardWith",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the class with which to coshard this class"
+    },
+    {
+      "name": "Name",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the shard key"
+    },
+    {
+      "name": "Properties",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the properties of the shard key"
     }
   ],
   "STORAGESQLMAP": [

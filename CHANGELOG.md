@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.3.1] - 2023-XX-XX
+## [2.3.1] - 2023-03-02
 - Fix issue [#77](https://github.com/intersystems/language-server/issues/77): Incorrect 'Class/Routine/Include file does not exist' Diagnostics after namespace switch
 - Fix issue [#261](https://github.com/intersystems/language-server/issues/261): Add parser support for CSS @keyframes rule
 - Fix issue [#263](https://github.com/intersystems/language-server/issues/263): Add parser support for JavaScript Null Coalescing Operator (??)

@@ -293,7 +293,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 						}
 						else {
 							return {
-								contents: [sysfdoc.documentation.join(""),`[Online documentation](${"https://docs.intersystems.com/irislatest"}${sysfdoc.link})`],
+								contents: [sysfdoc.documentation.join(""),`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link})`],
 								range: sysfrange
 							};
 						}
@@ -360,7 +360,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const ssysvdoc = structuredSystemVariables.find((el) => el.label === ssysvtext || el.alias.includes(ssysvtext));
 				if (ssysvdoc !== undefined) {
 					return {
-						contents: [ssysvdoc.documentation.join(""),`[Online documentation](${"https://docs.intersystems.com/irislatest"}${ssysvdoc.link})`],
+						contents: [ssysvdoc.documentation.join(""),`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${ssysvdoc.link})`],
 						range: ssysvrange
 					};
 				}
@@ -372,7 +372,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const sysvdoc = systemVariables.find((el) => el.label === sysvtext || el.alias.includes(sysvtext));
 				if (sysvdoc !== undefined) {
 					return {
-						contents: [sysvdoc.documentation.join(""),`[Online documentation](${"https://docs.intersystems.com/irislatest"}${sysvdoc.link})`],
+						contents: [sysvdoc.documentation.join(""),`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysvdoc.link})`],
 						range: sysvrange
 					};
 				}
@@ -391,7 +391,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 				}
 				if (commanddoc !== undefined) {
 					return {
-						contents: [commanddoc.documentation.join(""),`[Online documentation](${"https://docs.intersystems.com/irislatest"}${commanddoc.link})`],
+						contents: [commanddoc.documentation.join(""),`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${commanddoc.link})`],
 						range: commandrange
 					};
 				}
@@ -854,7 +854,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const ppobj = preprocessorDirectives.find((el) => el.label.toLowerCase().replace(/\s+/g,'') === pp.toLowerCase());
 				if (ppobj !== undefined) {
 					return {
-						contents: [ppobj.documentation,`[Online documentation](${"https://docs.intersystems.com/irislatest"}${ppobj.link})`],
+						contents: [ppobj.documentation,`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${ppobj.link})`],
 						range: pprange
 					};
 				}

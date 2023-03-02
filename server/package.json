@@ -7,9 +7,9 @@
     "node": "*"
   },
   "dependencies": {
-    "node-html-parser": "^6.1.4",
+    "node-html-parser": "^6.1.5",
     "turndown-ext": "^7.0.5",
-    "vscode-languageserver": "^8.0.2",
+    "vscode-languageserver": "^8.1.0",
     "vscode-languageserver-textdocument": "^1.0.8",
     "vscode-uri": "^3.0.7"
   }

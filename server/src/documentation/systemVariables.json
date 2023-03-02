@@ -12,7 +12,7 @@
       "$D  \n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vdevice"
+    "link": "vdevice"
   },
   {
     "label": "$ECODE",
@@ -27,7 +27,7 @@
       "$EC\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vecode"
+    "link": "vecode"
   },
   {
     "label": "$ESTACK",
@@ -42,7 +42,7 @@
       "$ES\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vestack"
+    "link": "vestack"
   },
   {
     "label": "$ETRAP",
@@ -57,7 +57,7 @@
       "$ET\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vetrap"
+    "link": "vetrap"
   },
   {
     "label": "$HALT",
@@ -70,7 +70,7 @@
       "$HALT\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vhalt"
+    "link": "vhalt"
   },
   {
     "label": "$HOROLOG",
@@ -85,7 +85,7 @@
       "$H\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vhorolog"
+    "link": "vhorolog"
   },
   {
     "label": "$IO",
@@ -100,7 +100,7 @@
       "$I\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vio"
+    "link": "vio"
   },
   {
     "label": "$JOB",
@@ -115,7 +115,7 @@
       "$J\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vjob"
+    "link": "vjob"
   },
   {
     "label": "$KEY",
@@ -130,7 +130,7 @@
       "$K\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vkey"
+    "link": "vkey"
   },
   {
     "label": "$NAMESPACE",
@@ -144,7 +144,7 @@
       "SET $NAMESPACE=namespace\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vnamespace"
+    "link": "vnamespace"
   },
   {
     "label": "$PRINCIPAL",
@@ -159,7 +159,7 @@
       "$P\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vprincipal"
+    "link": "vprincipal"
   },
   {
     "label": "$QUIT",
@@ -174,7 +174,7 @@
       "$Q\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vquit"
+    "link": "vquit"
   },
   {
     "label": "$ROLES",
@@ -187,7 +187,7 @@
       "$ROLES\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vroles"
+    "link": "vroles"
   },
   {
     "label": "$STACK",
@@ -202,7 +202,7 @@
       "$ST\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vstack"
+    "link": "vstack"
   },
   {
     "label": "$STORAGE",
@@ -217,7 +217,7 @@
       "$S\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vstorage"
+    "link": "vstorage"
   },
   {
     "label": "$SYSTEM",
@@ -234,7 +234,7 @@
       "$SYSTEM.class.method()\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vsystem"
+    "link": "vsystem"
   },
   {
     "label": "$TEST",
@@ -249,7 +249,7 @@
       "$T\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vtest"
+    "link": "vtest"
   },
   {
     "label": "$THIS",
@@ -262,7 +262,7 @@
       "$THIS\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vthis"
+    "link": "vthis"
   },
   {
     "label": "$THROWOBJ",
@@ -275,7 +275,7 @@
       "$THROWOBJ\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vthrowobj"
+    "link": "vthrowobj"
   },
   {
     "label": "$TLEVEL",
@@ -290,7 +290,7 @@
       "$TL\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vtlevel"
+    "link": "vtlevel"
   },
   {
     "label": "$USERNAME",
@@ -303,7 +303,7 @@
       "$USERNAME\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vusername"
+    "link": "vusername"
   },
   {
     "label": "$X",
@@ -316,7 +316,7 @@
       "$X\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vx"
+    "link": "vx"
   },
   {
     "label": "$Y",
@@ -329,7 +329,7 @@
       "$Y\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vy"
+    "link": "vy"
   },
   {
     "label": "$ZA",
@@ -342,7 +342,7 @@
       "$ZA\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vza"
+    "link": "vza"
   },
   {
     "label": "$ZB",
@@ -355,7 +355,7 @@
       "$ZB\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzb"
+    "link": "vzb"
   },
   {
     "label": "$ZCHILD",
@@ -370,7 +370,7 @@
       "$ZC \n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzchild"
+    "link": "vzchild"
   },
   {
     "label": "$ZEOF",
@@ -383,7 +383,7 @@
       "$ZEOF\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzeof"
+    "link": "vzeof"
   },
   {
     "label": "$ZEOS",
@@ -396,7 +396,7 @@
       "$ZEOS\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzeos"
+    "link": "vzeos"
   },
   {
     "label": "$ZERROR",
@@ -411,7 +411,7 @@
       "$ZE \n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzerror"
+    "link": "vzerror"
   },
   {
     "label": "$ZHOROLOG",
@@ -426,7 +426,7 @@
       "$ZH\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzhorolog"
+    "link": "vzhorolog"
   },
   {
     "label": "$ZIO",
@@ -441,7 +441,7 @@
       "$ZI\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzio"
+    "link": "vzio"
   },
   {
     "label": "$ZJOB",
@@ -456,7 +456,7 @@
       "$ZJ\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzjob"
+    "link": "vzjob"
   },
   {
     "label": "$ZMODE",
@@ -471,7 +471,7 @@
       "$ZM\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzmode"
+    "link": "vzmode"
   },
   {
     "label": "$ZNAME",
@@ -486,7 +486,7 @@
       "$ZN\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzname"
+    "link": "vzname"
   },
   {
     "label": "$ZNSPACE",
@@ -499,7 +499,7 @@
       "$ZNSPACE\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vznspace"
+    "link": "vznspace"
   },
   {
     "label": "$ZORDER",
@@ -514,7 +514,7 @@
       "$ZO\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzorder"
+    "link": "vzorder"
   },
   {
     "label": "$ZPARENT",
@@ -529,7 +529,7 @@
       "$ZP\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzparent"
+    "link": "vzparent"
   },
   {
     "label": "$ZPI",
@@ -542,7 +542,7 @@
       "$ZPI  \n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzpi"
+    "link": "vzpi"
   },
   {
     "label": "$ZPOS",
@@ -555,7 +555,7 @@
       "$ZPOS\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzpos"
+    "link": "vzpos"
   },
   {
     "label": "$ZREFERENCE",
@@ -570,7 +570,7 @@
       "$ZR\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzreference"
+    "link": "vzreference"
   },
   {
     "label": "$ZSTORAGE",
@@ -585,7 +585,7 @@
       "$ZS\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzstorage"
+    "link": "vzstorage"
   },
   {
     "label": "$ZTIMESTAMP",
@@ -600,7 +600,7 @@
       "$ZTS\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vztimestamp"
+    "link": "vztimestamp"
   },
   {
     "label": "$ZTIMEZONE",
@@ -615,7 +615,7 @@
       "$ZTZ\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vztimezone"
+    "link": "vztimezone"
   },
   {
     "label": "$ZTRAP",
@@ -630,7 +630,7 @@
       "$ZT\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vztrap"
+    "link": "vztrap"
   },
   {
     "label": "$ZVERSION",
@@ -645,6 +645,6 @@
       "$ZV\n",
       "```\n"
     ],
-    "link": "/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_vzversion"
+    "link": "vzversion"
   }
 ]
