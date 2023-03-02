@@ -111,13 +111,13 @@ jobs:
         env:
           VSCE_PAT: ${{ secrets.VSCE_TOKEN }}
         if: env.VSCE_PAT != null
-        run: vsce publish --skip-duplicate --packagePath $(find . -iname "*.vsix" -type f)
+        run: vsce publish --packagePath $(find . -iname "*.vsix" -type f)
       - name: Publish to Open VSX Registry
         env:
           OVSX_PAT: ${{ secrets.OVSX_TOKEN }}
         if: env.OVSX_PAT != null
         timeout-minutes: 5
-        run: find . -iname "*.vsix" -type f -exec npx ovsx publish --skip-duplicate {} \;
+        run: find . -iname "*.vsix" -type f -exec npx ovsx publish {} \;
   bump_version:
     runs-on: ubuntu-latest
     needs: [build, publish]
