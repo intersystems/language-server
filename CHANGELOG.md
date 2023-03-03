@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.3.2] - 2023-XX-XX
+- Fix issue [#265](https://github.com/intersystems/language-server/issues/265): Support HTML spans in intellisense from class descriptions
+
 ## [2.3.1] - 2023-03-02
 - Fix issue [#77](https://github.com/intersystems/language-server/issues/77): Incorrect 'Class/Routine/Include file does not exist' Diagnostics after namespace switch
 - Fix issue [#261](https://github.com/intersystems/language-server/issues/261): Add parser support for CSS @keyframes rule
