@@ -15,7 +15,10 @@ import parameterTypes = require("../documentation/parameterTypes.json");
 
 // Initialize turndown and tune it for Documatic HTML
 const TurndownService = require('turndown-ext').default;
-const turndown = new TurndownService({codeBlockStyle: "fenced"});
+const turndown = new TurndownService({
+	codeBlockStyle: "fenced",
+	blankReplacement: (content, node: HTMLElement) => node.nodeName == 'SPAN' ? node.outerHTML : ''
+});
 turndown.remove("style");
 turndown.keep(["span", "table", "tr", "td"]);
 turndown.addRule("pre",{
