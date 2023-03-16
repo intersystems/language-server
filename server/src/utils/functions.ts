@@ -536,10 +536,9 @@ export async function computeDiagnostics(doc: TextDocument) {
 									addRangeToMapVal(classes,normalizedname,wordrange);
 								}
 							}
-						} else if (currentNs != "" && settings.diagnostics.classes) {
+						} else if (currentNs != "" && settings.diagnostics.classes && !word.startsWith("%SYSTEM.")) {
 							if (!word.includes(".") && !word.startsWith("%")) {
 								// Using a short class name when you may be in another namespace is bad
-								// TODO: report warning diagnostic?
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
