@@ -1032,7 +1032,7 @@ export async function computeDiagnostics(doc: TextDocument) {
 
 				// Make the request
 				const respdata = await makeRESTRequest("POST",1,"/action/query",{ ...server, namespace },querydata);
-				if (respdata !== undefined && "content" in respdata.data.result) {
+				if (respdata !== undefined && typeof respdata.data == "object" && "content" in respdata.data.result) {
 					// We got data back
 
 					// Report Diagnostics for files that aren't in the returned data
