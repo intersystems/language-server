@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.3.2] - 2023-XX-XX
+## [2.3.2] - 2023-03-22
 - Fix issue [#265](https://github.com/intersystems/language-server/issues/265): Support HTML spans in intellisense from class descriptions
 - Fix issue [#266](https://github.com/intersystems/language-server/issues/266): Preserve empty HTML spans in intellisense from class descriptions
 - Fix issue [#268](https://github.com/intersystems/language-server/issues/268): Exempt %SYSTEM classes from existence checking after namespace switch
