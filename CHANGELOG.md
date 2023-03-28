@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.3.3] - 2023-XX-XX
+- Fix issue [#271](https://github.com/intersystems/language-server/issues/271): Add setting to suppress syntax error Diagnostics for specific languages
+
 ## [2.3.2] - 2023-03-22
 - Fix issue [#265](https://github.com/intersystems/language-server/issues/265): Support HTML spans in intellisense from class descriptions
 - Fix issue [#266](https://github.com/intersystems/language-server/issues/266): Preserve empty HTML spans in intellisense from class descriptions

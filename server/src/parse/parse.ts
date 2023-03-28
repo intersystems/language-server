@@ -1,7 +1,8 @@
 import { compressedresult, compressedline } from '../utils/types'
 import { colorRoutineLine, isRoutineHeader, routineheadertype } from './routineheader/parseroutineheader';
 import { SemanticTokensLegend } from 'vscode-languageserver';
-import { GetLanguageAttributes, GetLanguages, Tokenize } from '../../lib/isclexer.node';
+import { GetLanguageAttributes, Tokenize } from '../../lib/isclexer.node';
+import { lexerLanguages } from '../utils/variables';
 
 // Set this to false if routines stop using the ROUTINE header line
 const acceptroutineheaderline = true;
@@ -76,8 +77,7 @@ let languageoffsets: {[index:number] : number} = {};
 export function getLegend(): SemanticTokensLegend {
 	const legend: string[] = [];
 	let legendoffset = 0;
-	const langs: { moniker: string; index: number; }[] = GetLanguages().filter(l => l.moniker !== "INT");
-	for (const lang of langs) {
+	for (const lang of lexerLanguages) {
 		languageoffsets[lang.index] = legendoffset;
 		const attrs: string[] = GetLanguageAttributes(lang.moniker);
 		for (const attr of attrs) {

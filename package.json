@@ -201,6 +201,18 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Controls whether diagnostics are provided when a deprecated or superseded `$ZUTIL` function is being called."
+        },
+        "intersystems.language-server.diagnostics.suppressSyntaxErrors": {
+          "scope": "resource",
+          "type": "array",
+          "maxItems": 9,
+          "default": [],
+          "uniqueItems": true,
+          "items": {
+            "type": "string",
+            "enum": ["COS","SQL","CLS","HTML","PYTHON","XML","JAVA","JAVASCRIPT","CSS"]
+          },
+          "description": "Controls the languages that syntax error diagnosics will be suppressed for."
         }
       }
     },

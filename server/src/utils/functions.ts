@@ -4,7 +4,7 @@ import { URI } from 'vscode-uri';
 import { parse } from 'node-html-parser';
 
 import { ServerSpec, StudioOpenDialogFile, QueryData, compressedline, CommandDoc, LanguageServerConfiguration, MacroContext, DimResult, PossibleClasses, ClassMemberContext } from './types';
-import { parsedDocuments, connection, serverSpecs, languageServerSettings, zutilFunctions } from './variables';
+import { parsedDocuments, connection, serverSpecs, languageServerSettings, zutilFunctions, lexerLanguages } from './variables';
 import * as ld from './languageDefinitions';
 
 import commands = require("../documentation/commands.json");
@@ -112,6 +112,11 @@ export async function computeDiagnostics(doc: TextDocument) {
 		const server: ServerSpec = await getServerSpec(doc.uri);
 		const settings = await getLanguageServerSettings(doc.uri);
 		let diagnostics: Diagnostic[] = [];
+
+		/** Check if syntax errors should be reported for `language`. */
+		const reportSyntaxErrors = (language: number): boolean => {
+			return !(<string[]>settings.diagnostics.suppressSyntaxErrors).includes(<string>lexerLanguages.find(ll => ll.index == language)?.moniker);
+		};
 
 		var files: StudioOpenDialogFile[] = [];
 		var inheritedpackages: string[] | undefined = undefined;
@@ -234,8 +239,8 @@ export async function computeDiagnostics(doc: TextDocument) {
 				if (j > 0 && parsed[i][j].l === parsed[i][j-1].l && parsed[i][j].s === parsed[i][j-1].s) {
 					// This token is the same as the last
 
-					if (parsed[i][j].s === ld.error_attrindex) {
-						if (doc.getText(Range.create(Position.create(i,symbolstart-1),Position.create(i,symbolstart))) !== " ") {
+					if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
+						if (!doc.getText(Range.create(Position.create(i,symbolstart-1),Position.create(i,symbolstart))).trim()) {
 							// This is an error token without a space in between, so extend the existing syntax error Diagnostic to cover this token
 							diagnostics[diagnostics.length-1].range.end = Position.create(i,symbolend);
 						}
@@ -254,7 +259,7 @@ export async function computeDiagnostics(doc: TextDocument) {
 					}
 				}
 				else {
-					if (parsed[i][j].s === ld.error_attrindex) {
+					if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
 						// This is an error token
 						let diagnostic: Diagnostic = {
 							severity: DiagnosticSeverity.Error,
@@ -414,12 +419,12 @@ export async function computeDiagnostics(doc: TextDocument) {
 
 						// Loop through the line to capture any syntax errors
 						for (let ptkn = 1; ptkn < parsed[i].length; ptkn++) {
-							if (parsed[i][ptkn].s == ld.error_attrindex) {
+							if (parsed[i][ptkn].s == ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
 								if (
-									parsed[i][ptkn-1].s == ld.error_attrindex && doc.getText(Range.create(
+									parsed[i][ptkn-1].s == ld.error_attrindex && !doc.getText(Range.create(
 										Position.create(i,parsed[i][ptkn].p-1),
 										Position.create(i,parsed[i][ptkn].p)
-									)) !== " "
+									)).trim()
 								) {
 									// The previous token is an error without a space in between, so extend the existing syntax error Diagnostic to cover this token
 									diagnostics[diagnostics.length-1].range.end = Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c);
