@@ -102,75 +102,20 @@ export async function onHover(params: TextDocumentPositionParams) {
 				if (macrotext.slice(0,3) === "$$$") {
 					macrotext = macrotext.slice(3);
 				}
-				
-				// Check if the macro definition appears in the current file
-				const macrodefline = isMacroDefinedAbove(doc,parsed,params.position.line,macrotext);
-				
-				if (macrodefline !== -1) {
-					// The macro definition is in the current file
 
-					var defstr = "";
-					for (let ln = macrodefline; ln < parsed.length; ln++) {
-						const deflinetext = doc.getText(Range.create(
-							Position.create(ln,0),
-							Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
-						));
-						const parts = deflinetext.trim().split(/[ ]+/);
-						
-						if (
-							parsed[ln][parsed[ln].length-1].l == ld.cos_langindex &&
-							parsed[ln][parsed[ln].length-1].s == ld.cos_ppf_attrindex &&
-							doc.getText(Range.create(
-								Position.create(ln,parsed[ln][parsed[ln].length-1].p),
-								Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
-							)).toLowerCase() === "continue"
-						) {
-							// This is one line of a multi-line macro definition
-
-							if (ln == macrodefline) {
-								// This is the first line of a multi-line macro definition
-
-								defstr = parts.slice(2).join(" ").slice(0,-10) + "  \n";
-							}
-							else {
-								defstr = defstr + deflinetext.trim().slice(0,-10) + "  \n";
-							}
-						}
-						else {
-							if (ln == macrodefline) {
-								// This is a one line macro definition
-
-								defstr = parts.slice(2).join(" ");
-							}
-							else {
-								// This is the last line of a multi-line macro definition
-
-								defstr = defstr + deflinetext.trim();
-							}
-							// We've captured all the lines of this macro definition
-							break;
-						}
-					}
-					
-					return {
-						contents: defstr,
-						range: macrorange
-					};
-				}
-				else {
-					// The macro is defined in another file
-
+				/** Helper function for getting the arguments passed to this macro. */
+				const getMacroArgs = (): string => {
 					// Get the rest of the line following the macro
 					const restofline = doc.getText(Range.create(
-						Position.create(params.position.line,macrorange.end.character),
-						Position.create(params.position.line,parsed[params.position.line][parsed[params.position.line].length-1].p+parsed[params.position.line][parsed[params.position.line].length-1].c)
+						params.position.line,macrorange.end.character,
+						params.position.line,parsed[params.position.line][parsed[params.position.line].length-1].p+parsed[params.position.line][parsed[params.position.line].length-1].c
 					));
 					
 					// If this macro takes arguments, send them in the request body
-					var macroargs = "";
+					let macroargs = "";
 					if (restofline.charAt(0) === "(") {
-						var opencount: number = 1;
-						var closeidx: number = -1;
+						let opencount: number = 1;
+						let closeidx: number = -1;
 						for (let rlidx = 1; rlidx < restofline.length; rlidx++) {
 							if (restofline.charAt(rlidx) === ")") {
 								opencount--;
@@ -192,6 +137,128 @@ export async function onHover(params: TextDocumentPositionParams) {
 							macroargs = "incomplete";
 						}
 					}
+					return macroargs;
+				};
+				
+				// Check if the macro definition appears in the current file
+				const macrodefline = isMacroDefinedAbove(doc,parsed,params.position.line,macrotext);
+				
+				if (macrodefline != -1) {
+					// The macro definition is in the current file
+
+					let definition = "";
+					let formalspec = "";
+					let onearg = false;
+					let definitionendtkn = 2;
+					for (let ln = macrodefline; ln < parsed.length; ln++) {
+						if (ln == macrodefline) {
+							// Capture the formal spec (if present) and if this is a #Def1arg macro
+
+							onearg = doc.getText(Range.create(ln,parsed[ln][1].p,ln,parsed[ln][1].p+parsed[ln][1].c)).toLowerCase() == "def1arg";
+							if (
+								parsed[ln].length > 3 && parsed[ln][3].s == ld.cos_delim_attrindex &&
+								doc.getText(Range.create(ln,parsed[ln][3].p,ln,parsed[ln][3].p+parsed[ln][3].c)) == "("
+							) {
+								// Capture the formal spec
+
+								for (let tkn = 3; tkn < parsed[ln].length; tkn++) {
+									formalspec += doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+									if (parsed[ln][tkn].s == ld.cos_delim_attrindex && formalspec.endsWith(")")) {
+										definitionendtkn = tkn;
+										break;
+									}
+								}
+							}
+						}
+						
+						if (
+							parsed[ln][parsed[ln].length-1].l == ld.cos_langindex &&
+							parsed[ln][parsed[ln].length-1].s == ld.cos_ppf_attrindex &&
+							doc.getText(Range.create(
+								Position.create(ln,parsed[ln][parsed[ln].length-1].p),
+								Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+							)).toLowerCase() === "continue"
+						) {
+							// This is one line of a multi-line macro definition
+
+							if (ln == macrodefline) {
+								// This is the first line of a multi-line macro definition
+
+								definition = doc.getText(Range.create(ln,parsed[ln][definitionendtkn+1].p,ln,parsed[ln][parsed[ln].length-3].p+parsed[ln][parsed[ln].length-3].c)).trim() + "  \n";
+							}
+							else {
+								definition += doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][parsed[ln].length-3].p+parsed[ln][parsed[ln].length-3].c)).trim() + "  \n";
+							}
+						}
+						else {
+							if (ln == macrodefline) {
+								// This is a one line macro definition
+
+								definition = doc.getText(Range.create(ln,parsed[ln][definitionendtkn+1].p,ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)).trim();
+							}
+							else {
+								// This is the last line of a multi-line macro definition
+
+								definition += doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)).trim();
+							}
+							// We've captured all the lines of this macro definition
+							break;
+						}
+					}
+
+					// If this macro has a formal spec, attempt to replace the parameters with the arguments from the usage
+					if (formalspec.endsWith(")")) {
+						let macroargs = getMacroArgs();
+						if (!["","incomplete"].includes(macroargs)) {
+							formalspec = formalspec.slice(1,-1).replace(/\s+/g,"");
+							macroargs = macroargs.slice(1,-1);
+							if (onearg) {
+								// This is a #Def1arg macro, so perform the single replacement
+								definition = definition.replace(new RegExp(formalspec,"g"),macroargs);
+							}
+							else {
+								// Build lists for the parameters and passed arguments
+								const paramslist = formalspec.split(",");
+								const argslist = [""];
+								let doublequotes = 0;
+								let parenlevel = 0;
+								for (const char of macroargs) {
+									if (char == '"') {
+										doublequotes++;
+									}
+									if (char == "(") {
+										parenlevel++;
+									}
+									if (char == ")") {
+										parenlevel--;
+									}
+									if (char == "," && doublequotes % 2 == 0 && parenlevel == 0) {
+										argslist.push("");
+									}
+									else {
+										argslist[argslist.length-1] += char;
+									}
+								}
+								if (paramslist.length == argslist.length) {
+									// Perform the replacement for each argument
+									for (let argidx = 0; argidx < paramslist.length; argidx++) {
+										definition = definition.replace(new RegExp(paramslist[argidx].trim(),"g"),argslist[argidx]);
+									}
+								}
+							}
+						}
+					}
+					
+					return {
+						contents: definition,
+						range: macrorange
+					};
+				}
+				else {
+					// The macro is defined in another file
+					
+					// If this macro takes arguments, send them in the request body
+					const macroargs = getMacroArgs();
 
 					// If the arguments list is either not needed or complete, get the macro expansion
 					if (macroargs !== "incomplete") {
@@ -224,7 +291,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 								const defrespdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,defquerydata);
 								if (defrespdata !== undefined && defrespdata.data.result.content.definition.length > 0) {
 									// The macro definition was found
-									const parts = defrespdata.data.result.content.definition[0].trim().split(/[ ]+/);
+									const parts = defrespdata.data.result.content.definition[0].trim().split(/\s+/);
 									var defstr = "";
 									if (parts[0].charAt(0) === "#") {
 										defstr = parts.slice(2).join(" ");
@@ -262,7 +329,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 						const respdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,inputdata);
 						if (respdata !== undefined && respdata.data.result.content.definition.length > 0) {
 							// The macro definition was found
-							const parts = respdata.data.result.content.definition[0].trim().split(/[ ]+/);
+							const parts = respdata.data.result.content.definition[0].trim().split(/\s+/);
 							var defstr = "";
 							if (parts[0].charAt(0) === "#") {
 								defstr = parts.slice(2).join(" ");

@@ -2017,7 +2017,7 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 		const respdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,querydata);
 		if (respdata !== undefined && respdata.data.result.content.definition.length > 0) {
 			// The macro definition was found
-			const parts = respdata.data.result.content.definition[0].trim().split(/[ ]+/);
+			const parts = respdata.data.result.content.definition[0].trim().split(/\s+/);
 			var defstr = "";
 			if (parts[0].charAt(0) === "#") {
 				defstr = defstr.concat(parts[1],"\n",parts.slice(2).join());
