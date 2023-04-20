@@ -387,30 +387,31 @@ export async function computeDiagnostics(doc: TextDocument) {
 										(thistypedoc.name === "INTEGER" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_num_attrindex)) ||
 										(thistypedoc.name === "BOOLEAN" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_num_attrindex || (valtext !== "1" && valtext !== "0")))
 									) {
-										let diagnostic: Diagnostic = {
-											severity: DiagnosticSeverity.Warning,
-											range: valrange,
-											message: "Parameter value and type do not match.",
-											source: 'InterSystems Language Server'
-										};
-										diagnostics.push(diagnostic);
+										// Allow curly brace syntax for all types but COSEXPRESSION
+										if (thistypedoc.name == "COSEXPRESSION" || !valtext.startsWith("{")) {
+											diagnostics.push({
+												severity: DiagnosticSeverity.Warning,
+												range: valrange,
+												message: "Parameter value and type do not match.",
+												source: 'InterSystems Language Server'
+											});
+										}
 									}
 									else if (thistypedoc.name === "CLASSNAME" && settings.diagnostics.classes) {
 										// Validate the class name in the string
-										var classname: string = valtext.slice(1,-1);
-										if (classname.indexOf("%") === 0 && classname.indexOf(".") === -1) {
-											classname = "%Library.".concat(classname.slice(1));
+										let classname: string = valtext.slice(1,-1);
+										if (classname.startsWith("%") && !classname.includes(".")) {
+											classname = `%Library.${classname.slice(1)}`;
 										}
 										// Check if class exists
 										const filtered = files.filter(file => file.Name === classname+".cls");
-										if (filtered.length !== 1) {
-											let diagnostic: Diagnostic = {
+										if (filtered.length !== 1 && !classname.startsWith("%SYSTEM.")) {
+											diagnostics.push({
 												severity: DiagnosticSeverity.Warning,
 												range: valrange,
 												message: `Class '${classname}' does not exist in namespace '${baseNs}'.`,
 												source: 'InterSystems Language Server'
-											};
-											diagnostics.push(diagnostic);
+											});
 										}
 									}
 								}

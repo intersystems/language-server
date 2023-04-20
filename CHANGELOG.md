@@ -3,6 +3,7 @@
 ## [2.3.3] - 2023-XX-XX
 - Fix issue [#271](https://github.com/intersystems/language-server/issues/271): Add setting to suppress syntax error Diagnostics for specific languages
 - Fix issue [#272](https://github.com/intersystems/language-server/issues/272): Expand arguments when hovering over macro defined in the current file
+- Fix issue [#273](https://github.com/intersystems/language-server/issues/273): False "Parameter value and type do not match" warning when value is a curly brace enclosed expression
 
 ## [2.3.2] - 2023-03-22
 - Fix issue [#265](https://github.com/intersystems/language-server/issues/265): Support HTML spans in intellisense from class descriptions
