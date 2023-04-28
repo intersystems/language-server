@@ -83,7 +83,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 					// The class was found
 					return {
 						contents: [
-							`[${normalizedname}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%CSP.Documatic.cls?LIBRARY=${server.namespace.toUpperCase()}&CLASSNAME=${normalizedname})`,
+							`[${normalizedname}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?`.concat(
+								`LIBRARY=${encodeURIComponent(server.namespace.toUpperCase())}&CLASSNAME=${encodeURIComponent(normalizedname)})`),
 							documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
 						],
 						range: wordrange
