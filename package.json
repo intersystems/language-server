@@ -4,7 +4,7 @@
   "description": "A language server for InterSystems ObjectScript.",
   "author": "InterSystems Corporation",
   "license": "SEE LICENSE IN LICENSE.txt",
-  "version": "2.3.3-SNAPSHOT",
+  "version": "2.3.4-SNAPSHOT",
   "publisher": "intersystems",
   "repository": {
     "type": "github",
@@ -210,7 +210,17 @@
           "uniqueItems": true,
           "items": {
             "type": "string",
-            "enum": ["COS","SQL","CLS","HTML","PYTHON","XML","JAVA","JAVASCRIPT","CSS"]
+            "enum": [
+              "COS",
+              "SQL",
+              "CLS",
+              "HTML",
+              "PYTHON",
+              "XML",
+              "JAVA",
+              "JAVASCRIPT",
+              "CSS"
+            ]
           },
           "description": "Controls the languages that syntax error diagnosics will be suppressed for."
         }
