@@ -88,14 +88,10 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 					parameters: [clsname]
 				};
 				const pkgrespdata = await makeRESTRequest("POST",1,"/action/query",server,pkgquerydata);
-				if (pkgrespdata !== undefined && pkgrespdata.data.result.content.length === 1) {
+				if (pkgrespdata?.data?.result?.content?.length == 1) {
 					// We got data back
-					if (pkgrespdata.data.result.content[0].Importall !== "") {
-						inheritedpackages = pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',');
-					}
-					else {
-						inheritedpackages = [];
-					}
+					inheritedpackages = pkgrespdata.data.result.content[0].Importall != "" ?
+						pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',') : [];
 				}
 			}
 		}

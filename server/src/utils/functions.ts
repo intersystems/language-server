@@ -119,7 +119,7 @@ export async function computeDiagnostics(doc: TextDocument) {
 		};
 
 		var files: StudioOpenDialogFile[] = [];
-		var inheritedpackages: string[] | undefined = undefined;
+		var inheritedpackages: string[] = [];
 		var querydata: QueryData;
 		if (settings.diagnostics.routines || settings.diagnostics.classes || settings.diagnostics.deprecation) {
 			if (settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
@@ -186,14 +186,10 @@ export async function computeDiagnostics(doc: TextDocument) {
 					parameters: [clsname]
 				};
 				const pkgrespdata = await makeRESTRequest("POST",1,"/action/query",server,pkgquerydata);
-				if (pkgrespdata !== undefined && pkgrespdata.data.result.content.length === 1) {
+				if (pkgrespdata?.data?.result?.content?.length == 1) {
 					// We got data back
-					if (pkgrespdata.data.result.content[0].Importall !== "") {
-						inheritedpackages = pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',');
-					}
-					else {
-						inheritedpackages = [];
-					}
+					inheritedpackages = pkgrespdata.data.result.content[0].Importall != "" ?
+						pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',') : [];
 				}
 			}
 		}
@@ -451,7 +447,40 @@ export async function computeDiagnostics(doc: TextDocument) {
 						j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
 						doc.getText(Range.create(Position.create(i,0),Position.create(i,6))).toLowerCase() === "import"
 					) {
-						// Don't validate import packages
+						// This is the UDL Import line
+
+						// Loop through the line and update the inheritedpackages list
+						for (let imptkn = 1; imptkn < parsed[i].length; imptkn++) {
+							if (parsed[i][imptkn].s == ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
+								if (
+									parsed[i][imptkn-1].s == ld.error_attrindex && !doc.getText(Range.create(
+										Position.create(i,parsed[i][imptkn].p-1),
+										Position.create(i,parsed[i][imptkn].p)
+									)).trim()
+								) {
+									// The previous token is an error without a space in between, so extend the existing syntax error Diagnostic to cover this token
+									diagnostics[diagnostics.length-1].range.end = Position.create(i,parsed[i][imptkn].p+parsed[i][imptkn].c);
+								}
+								else {
+									diagnostics.push({
+										severity: DiagnosticSeverity.Error,
+										range: {
+											start: Position.create(i,parsed[i][imptkn].p),
+											end: Position.create(i,parsed[i][imptkn].p+parsed[i][imptkn].c)
+										},
+										message: "Syntax error.",
+										source: 'InterSystems Language Server'
+									});
+								}
+							}
+							if (parsed[i][imptkn].l == ld.cls_langindex && parsed[i][imptkn].s == ld.cls_clsname_attrindex) {
+								const pkg = doc.getText(findFullRange(i,parsed,imptkn,parsed[i][imptkn].p,parsed[i][imptkn].p + parsed[i][imptkn].c));
+								if (!inheritedpackages.includes(pkg)) {
+									inheritedpackages.push(pkg);
+								}
+							}
+						}
+
 						break;
 					}
 					else if (
@@ -1567,9 +1596,9 @@ export async function getImports(doc: TextDocument, parsed: compressedline[], li
 					parameters: [clsname]
 				};
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-				if (respdata !== undefined && respdata.data.result.content.length === 1) {
+				if (respdata?.data?.result?.content?.length == 1) {
 					// We got data back
-					if (respdata.data.result.content[0].Importall !== "") {
+					if (respdata.data.result.content[0].Importall != "") {
 						const pkgs = respdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',');
 						for (let pkg of pkgs) {
 							if (!result.includes(pkg)) {

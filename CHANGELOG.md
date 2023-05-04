@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.3.4] - 2023-XX-XX
+- Fix issue [#276](https://github.com/intersystems/language-server/issues/276): TypeError causes crash when getting inherited Import list fails
+
 ## [2.3.3] - 2023-05-03
 - Fix issue [#271](https://github.com/intersystems/language-server/issues/271): Add setting to suppress syntax error Diagnostics for specific languages
 - Fix issue [#272](https://github.com/intersystems/language-server/issues/272): Expand arguments when hovering over macro defined in the current file
