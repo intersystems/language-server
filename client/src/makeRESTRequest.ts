@@ -57,7 +57,6 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 	}
 	if (!server.active) {
 		// Server connection is inactive
-		client.warn("Cannot make required REST request because the configured server connection is inactive.");
 		return undefined;
 	}
 	if (api > server.apiVersion) {
