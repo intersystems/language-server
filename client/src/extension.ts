@@ -136,6 +136,7 @@ export async function activate(context: ExtensionContext) {
 		});
 	}
 
+	const textDecoder = new TextDecoder();
 	context.subscriptions.push(
 		// Register custom request handlers
 		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
@@ -179,14 +180,14 @@ export async function activate(context: ExtensionContext) {
 			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
 			return newuri.toString();
 		}),
-		client.onRequest("intersystems/uri/forDocument", (document: string): string => {
+		client.onRequest("intersystems/uri/forDocument", (document: string): string | null => {
 			if (lte(objectScriptExt.packageJSON.version,"1.0.10")) {
 				// If the active version of vscode-objectscript doesn't expose
 				// DocumentContentProvider.getUri(), just return the empty string.
 				return "";
 			}
-			const uri: Uri = objectScriptApi.getUriForDocument(document);
-			return uri.toString();
+			const uri: Uri | null = objectScriptApi.getUriForDocument(document);
+			return uri == null ? null : uri.toString();
 		}),
 		client.onRequest("intersystems/uri/forTypeHierarchyClasses", (classes: string[]): string[] => {
 			// vscode-objectscript version 1.0.11+ has been available for long enough that
@@ -208,6 +209,31 @@ export async function activate(context: ExtensionContext) {
 					return undefined;
 				}
 			});
+		}),
+		client.onRequest("intersystems/uri/getText", async (params: { uri: string, server: ServerSpec }): Promise<string[]> => {
+			try {
+				const uri = Uri.parse(params.uri);
+				if (uri.scheme == "objectscript") {
+					// Can't use the FileSystem with a DocumentContentProvider, so fetch the text directly from the server
+					const uriParams = new URLSearchParams(uri.query);
+					const fileName =
+						uriParams.has("csp") && ["", "1"].includes(uriParams.get("csp"))
+							? uri.path.slice(1)
+							: uri.path.split("/").slice(1).join(".");
+					const docParams = 
+						workspace.getConfiguration("objectscript",uri).get<boolean>("multilineMethodArgs") && params.server.apiVersion >= 4
+							? { format: "udl-multiline" }
+							: undefined;
+					const resp = await makeRESTRequest("GET",1,`/doc/${fileName}`,params.server,undefined,undefined,docParams);
+					return resp?.data?.result?.content || [];
+				} else {
+					// Read the contents of the file at uri
+					return textDecoder.decode(await workspace.fs.readFile(uri)).split(/\r?\n/);
+				}
+			} catch {
+				// The file wasn't found or wasn't valid utf-8
+				return [];
+			}
 		}),
 
 		// Register commands

@@ -2108,7 +2108,7 @@ export async function getServerSpec(uri: string): Promise<ServerSpec> {
  */
 export async function createDefinitionUri(paramsUri: string, filename: string, ext: string): Promise<string> {
 	try {
-		var newuri: string = await connection.sendRequest("intersystems/uri/forDocument",filename+ext);
+		let newuri: string | null = await connection.sendRequest("intersystems/uri/forDocument",filename+ext);
 		if (newuri === "") {
 			// The active version of the main extension doesn't expose DocumentContentProvider.getUri().
 			// Therefore, we need to use the old functionality.
@@ -2132,10 +2132,13 @@ export async function createDefinitionUri(paramsUri: string, filename: string, e
 
 			newuri = URI.from(urijson).toString();
 		}
+		else if (newuri == null) {
+			// The main extension failed to create the URI
+			newuri = "";
+		}
 		return newuri;
 	}
 	catch (error) {
-		console.log(error);
 		return "";
 	}
 };
@@ -2942,21 +2945,6 @@ export function beautifyFormalSpec(FormalSpec: string): string {
 }
 
 /**
- * Generate the Atelier API GET /doc/ format parameter using the 
- * `objectscript.multilineMethodArgs` setting for this document.
- * 
- * @param uri The URI of the document that we will scope the setting to.
- * @param apiVersion The Atelier API version of the server that document `uri` is associated with.
- */
-export async function getGetDocFormatParam(uri: string, apiVersion: number): Promise<any> {
-	const settingArr = await connection.workspace.getConfiguration([{
-		scopeUri: uri,
-		section: "objectscript.multilineMethodArgs"
-	}]);
-	return (((settingArr[0] === null ? false : settingArr[0]) && apiVersion >= 4 ? true : false) ? {format: "udl-multiline"} : undefined);
-}
-
-/**
  * Helper method for `computeDiagnostics()` that appends `range` to value of `key` in `map`
  * if it exists, or creates a new entry for `key` in `map` if it doesn't.
  * 
@@ -3315,4 +3303,14 @@ export function currentClass(doc: TextDocument, parsed: compressedline[]): strin
 		}
 	}
 	return result;
+}
+
+/**
+ * Ask the client for the text of the file at `uri`.
+ * 
+ * @param uri The uri of the file.
+ * @param server The server that doc `uri` is associated with.
+ */
+export async function getTextForUri(uri: string, server: ServerSpec): Promise<string[]> {
+	return connection.sendRequest("intersystems/uri/getText", { uri, server });
 }

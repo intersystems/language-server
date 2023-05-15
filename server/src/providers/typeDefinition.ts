@@ -1,5 +1,5 @@
 import { TextDocumentPositionParams, Position, Range } from 'vscode-languageserver';
-import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, getGetDocFormatParam, determineDeclaredLocalVarClass, determineParameterClass, getClassMemberContext, getParsedDocument, determineUndeclaredLocalVarClass } from '../utils/functions';
+import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, determineDeclaredLocalVarClass, determineParameterClass, getClassMemberContext, getParsedDocument, determineUndeclaredLocalVarClass, getTextForUri } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -10,7 +10,6 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
-	const getDocParams = await getGetDocFormatParam(params.textDocument.uri,server.apiVersion);
 
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file
@@ -166,25 +165,24 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 			}
 
 			if (targetcls !== "") {
-				// Get the full text of the target class
-				const respdata = await makeRESTRequest("GET",1,"/doc/".concat(targetcls,".cls"),server,undefined,undefined,getDocParams);
-				if (respdata !== undefined && respdata.data.result.status === "") {
-					// The class was found
-
-					// Loop through the file contents to find the class definition
-					var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
-					var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
-					for (let j = 0; j < respdata.data.result.content.length; j++) {
-						if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
-							// This line is the class definition
-							const namestart = respdata.data.result.content[j].indexOf(targetcls);
-							targetrange = Range.create(Position.create(j,0),Position.create(j+1,0));
-							targetselrange = Range.create(Position.create(j,namestart),Position.create(j,namestart+targetcls.length));
-							break;
+				// Get the uri of the target class
+				const newuri = await createDefinitionUri(params.textDocument.uri,targetcls,".cls");
+				if (newuri != "") {
+					// Get the full text of the target class
+					const classText: string[] = await getTextForUri(newuri,server);
+					if (classText.length) {
+						// Loop through the file contents to find the class definition
+						let targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+						let targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+						for (let j = 0; j < classText.length; j++) {
+							if (classText[j].slice(0,5).toLowerCase() === "class") {
+								// This line is the class definition
+								const namestart = classText[j].indexOf(targetcls);
+								targetrange = Range.create(Position.create(j,0),Position.create(j+1,0));
+								targetselrange = Range.create(Position.create(j,namestart),Position.create(j,namestart+targetcls.length));
+								break;
+							}
 						}
-					}
-					const newuri = await createDefinitionUri(params.textDocument.uri,targetcls,".cls");
-					if (newuri !== "") {
 						return [{
 							targetUri: newuri,
 							targetRange: targetrange,

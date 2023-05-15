@@ -1,5 +1,5 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getGetDocFormatParam, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineNormalizedPropertyClass, getParsedDocument, currentClass } from '../utils/functions';
+import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineNormalizedPropertyClass, getParsedDocument, currentClass, getTextForUri } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -21,7 +21,6 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
-	const getDocParams = await getGetDocFormatParam(params.textDocument.uri,server.apiVersion);
 
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file
@@ -62,33 +61,34 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				}
 
 				// Normalize the class name if there are imports
-				let normalizedname = await normalizeClassname(doc,parsed,word,server,params.position.line);
+				const normalizedname = await normalizeClassname(doc,parsed,word,server,params.position.line);
 
-				// Get the full text of this class
-				const respdata = await makeRESTRequest("GET",1,"/doc/".concat(normalizedname,".cls"),server,undefined,undefined,getDocParams);
-				if (respdata !== undefined && respdata.data.result.status === "") {
-					// The class was found
-
-					// Loop through the file contents to find the class definition
-					var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
-					var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
-					for (let j = 0; j < respdata.data.result.content.length; j++) {
-						if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
-							// This line is the class definition
-							const namestart = respdata.data.result.content[j].indexOf(normalizedname);
-							targetrange = Range.create(Position.create(j,0),Position.create(j+1,0));
-							targetselrange = Range.create(Position.create(j,namestart),Position.create(j,namestart+normalizedname.length));
-							break;
-						}
-					}
+				if (normalizedname != "") {
+					// Get the uri of the target class
 					const newuri = await createDefinitionUri(params.textDocument.uri,normalizedname,".cls");
-					if (newuri !== "") {
-						return [{
-							targetUri: newuri,
-							targetRange: targetrange,
-							originSelectionRange: wordrange,
-							targetSelectionRange: targetselrange
-						}];
+					if (newuri != "") {
+						// Get the full text of the target class
+						const classText: string[] = await getTextForUri(newuri,server);
+						if (classText.length) {
+							// Loop through the file contents to find the class definition
+							let targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+							let targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+							for (let j = 0; j < classText.length; j++) {
+								if (classText[j].slice(0,5).toLowerCase() === "class") {
+									// This line is the class definition
+									const namestart = classText[j].indexOf(normalizedname);
+									targetrange = Range.create(Position.create(j,0),Position.create(j+1,0));
+									targetselrange = Range.create(Position.create(j,namestart),Position.create(j,namestart+normalizedname.length));
+									break;
+								}
+							}
+							return [{
+								targetUri: newuri,
+								targetRange: targetrange,
+								originSelectionRange: wordrange,
+								targetSelectionRange: targetselrange
+							}];
+						}
 					}
 				}
 			}
@@ -310,7 +310,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				}
 				else {
 					// This is a generic member
-					if (membercontext.baseclass.substr(0,7) === "%SYSTEM") {
+					if (membercontext.baseclass.slice(0,7) === "%SYSTEM") {
 						// This is always a method
 						data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
@@ -322,13 +322,15 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
 					}
 				}
+				let originclass = membercontext.baseclass;
+				let membernameinfile = member;
 				const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 				if (queryrespdata !== undefined) {
 					if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 						// We got data back
 
-						var originclass = queryrespdata.data.result.content[0].Origin;
-						var membernameinfile = member;
+						originclass = queryrespdata.data.result.content[0].Origin;
+						membernameinfile = member;
 						if (queryrespdata.data.result.content[0].Stub !== "") {
 							// This is a method generated by member inheritance, so we need to get its Origin from the proper subtable
 
@@ -362,42 +364,46 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 								}
 							}
 						}
-						if (originclass !== "") {
-							// Get the full text of the origin class
-							const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
-							if (docrespdata !== undefined && docrespdata.data.result.status === "") {
-								// The class was found
-	
-								// Loop through the file contents to find this member
-								var linect = 0;
-								const regex = new RegExp(`^(?:Method|ClassMethod|ClientMethod|Property|Parameter|Relationship) ${membernameinfile}(?:\\(|;| )`);
-								for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-									if (linect > 0) {
-										linect++;
-										if (linect === definitionTargetRangeMaxLines) {
-											// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
-											targetrange.end = Position.create(j+1,0);
-											break;
-										}
-										if (classMemberTypes.indexOf(docrespdata.data.result.content[j].split(" ",1)[0]) !== -1) {
-											// This is the first class member following the one we needed the definition for, so cut off the preview range here
-											targetrange.end = Position.create(j,0);
-											break;
-										}
+					}
+				}
+				if (originclass !== "") {
+					// Get the uri of the origin class
+					const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
+					if (newuri !== "") {
+						// Get the full text of the target class
+						const classText: string[] = await getTextForUri(newuri,server);
+						if (classText.length) {
+							// Loop through the file contents to find this member
+							var linect = 0;
+							const regex = new RegExp(`^(?:Method|ClassMethod|ClientMethod|Property|Parameter|Relationship) ${membernameinfile}(?:\\(|;| )`);
+							for (let j = 0; j < classText.length; j++) {
+								if (linect > 0) {
+									linect++;
+									if (linect === definitionTargetRangeMaxLines) {
+										// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+										targetrange.end = Position.create(j+1,0);
+										break;
 									}
-									else if (regex.test(docrespdata.data.result.content[j])) {
-										// This is the right class member
-										const memberlineidx = docrespdata.data.result.content[j].indexOf(membernameinfile);
-										if (memberlineidx !== -1) {
-											targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+membernameinfile.length));
-											targetrange.start = Position.create(j,0);
-											linect++;
-										}
+									if (classMemberTypes.indexOf(classText[j].split(" ",1)[0]) !== -1) {
+										// This is the first class member following the one we needed the definition for, so cut off the preview range here
+										targetrange.end = Position.create(j,0);
+										break;
 									}
 								}
+								else if (regex.test(classText[j])) {
+									// This is the right class member
+									const memberlineidx = classText[j].indexOf(membernameinfile);
+									if (memberlineidx !== -1) {
+										targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+membernameinfile.length));
+										targetrange.start = Position.create(j,0);
+										linect++;
+									}
+								}
+							}
+							if (linect > 0) {
 								// Remove any blank lines or comments from the end of the preview range
 								for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
-									const trimmed = docrespdata.data.result.content[pvrln].trim();
+									const trimmed = classText[pvrln].trim();
 									if (trimmed === "") {
 										targetrange.end.line = pvrln;
 									}
@@ -411,22 +417,14 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 										break;
 									}
 								}
-								const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
-								if (newuri !== "") {
-									return [{
-										targetUri: newuri,
-										targetRange: targetrange,
-										originSelectionRange: memberrange,
-										targetSelectionRange: targetselrange
-									}];
-								}
+								return [{
+									targetUri: newuri,
+									targetRange: targetrange,
+									originSelectionRange: memberrange,
+									targetSelectionRange: targetselrange
+								}];
 							}
 						}
-					}
-					else {
-						// Query completed successfully but we got back no data.
-						// This likely means that the base class hasn't been compiled yet or the member had the wrong token type.
-						return null;
 					}
 				}
 			}
@@ -571,69 +569,68 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							ext = ".mac";
 						}
 
-						// Get the full text of the other routine
-						const respdata = await makeRESTRequest("GET",1,"/doc/".concat(routine,ext),server,undefined,undefined,getDocParams);
-						if (respdata !== undefined && respdata.data.result.status === "") {
-							// The routine was found
-
-							// Loop through the file contents to find this label
-							var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
-							var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
-							var linect = 0;
-							for (let k = 0; k < respdata.data.result.content.length; k++) {
-								if (linect > 0) {
-									linect++;
-									if (linect === definitionTargetRangeMaxLines) {
-										// We've seen the maximum number of lines without hitting the next label so cut off the preview range here
-										targetrange.end = Position.create(k+1,0);
-										break;
+						// Get the uri of the other routine
+						const newuri = await createDefinitionUri(params.textDocument.uri,routine,ext);
+						if (newuri !== "") {
+							// Get the full text of the other routine
+							const rtnText: string[] = await getTextForUri(newuri,server);
+							if (rtnText.length) {
+								// Loop through the file contents to find this label
+								var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+								var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+								var linect = 0;
+								for (let k = 0; k < rtnText.length; k++) {
+									if (linect > 0) {
+										linect++;
+										if (linect === definitionTargetRangeMaxLines) {
+											// We've seen the maximum number of lines without hitting the next label so cut off the preview range here
+											targetrange.end = Position.create(k+1,0);
+											break;
+										}
+										const firstcharcode = rtnText[k].charCodeAt(0);
+										if (
+											(firstcharcode > 47 && firstcharcode < 58) || (firstcharcode > 64 && firstcharcode < 91) ||
+											(firstcharcode > 96 && firstcharcode < 123) || (firstcharcode === 37)
+										) {
+											// This is the first label following the one we needed the definition for, so cut off the preview range here
+											targetrange.end = Position.create(k,0);
+											break;
+										}
 									}
-									const firstcharcode = respdata.data.result.content[k].charCodeAt(0);
-									if (
-										(firstcharcode > 47 && firstcharcode < 58) || (firstcharcode > 64 && firstcharcode < 91) ||
-										(firstcharcode > 96 && firstcharcode < 123) || (firstcharcode === 37)
+									else if (
+										rtnText[k].slice(0,label.length) === label &&
+										(
+											rtnText[k].trim().length === label.length || // The label is the whole line
+											/ |\t|\(/.test(rtnText[k].charAt(label.length)) || // The label is followed by space, tab or (
+											// The label is followed by a comment
+											rtnText[k].slice(label.length).startsWith(";") ||
+											rtnText[k].slice(label.length).startsWith("##;") ||
+											rtnText[k].slice(label.length).startsWith("//") ||
+											rtnText[k].slice(label.length).startsWith("/*")
+										)
 									) {
-										// This is the first label following the one we needed the definition for, so cut off the preview range here
-										targetrange.end = Position.create(k,0);
+										// This is the label definition
+										targetselrange = Range.create(Position.create(k,0),Position.create(k,label.length));
+										targetrange.start = Position.create(k,0);
+										linect++;
+									}
+								}
+								// Remove any blank lines or comments from the end of the preview range
+								for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+									const trimmed = rtnText[pvrln].trim();
+									if (trimmed === "") {
+										targetrange.end.line = pvrln;
+									}
+									else if (
+										trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+										trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+									) {
+										targetrange.end.line = pvrln;
+									}
+									else {
 										break;
 									}
 								}
-								else if (
-									respdata.data.result.content[k].slice(0,label.length) === label &&
-									(
-										respdata.data.result.content[k].trim().length === label.length || // The label is the whole line
-										/ |\t|\(/.test(respdata.data.result.content[k].charAt(label.length)) || // The label is followed by space, tab or (
-										// The label is followed by a comment
-										respdata.data.result.content[k].slice(label.length).startsWith(";") ||
-										respdata.data.result.content[k].slice(label.length).startsWith("##;") ||
-										respdata.data.result.content[k].slice(label.length).startsWith("//") ||
-										respdata.data.result.content[k].slice(label.length).startsWith("/*")
-									)
-								) {
-									// This is the label definition
-									targetselrange = Range.create(Position.create(k,0),Position.create(k,label.length));
-									targetrange.start = Position.create(k,0);
-									linect++;
-								}
-							}
-							// Remove any blank lines or comments from the end of the preview range
-							for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
-								const trimmed = respdata.data.result.content[pvrln].trim();
-								if (trimmed === "") {
-									targetrange.end.line = pvrln;
-								}
-								else if (
-									trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
-									trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
-								) {
-									targetrange.end.line = pvrln;
-								}
-								else {
-									break;
-								}
-							}
-							const newuri = await createDefinitionUri(params.textDocument.uri,routine,ext);
-							if (newuri !== "") {
 								return [{
 									targetUri: newuri,
 									targetRange: targetrange,
@@ -762,65 +759,64 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 								if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 									// We got data back
 
-									// Get the full text of the origin class
+									// Get the uri of the origin class
 									const originclass = queryrespdata.data.result.content[0].Origin;
-									const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
-									if (docrespdata !== undefined && docrespdata.data.result.status === "") {
-										// The class was found
-			
-										// Loop through the file contents to find this member
-										var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
-										var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
-										var linect = 0;
-										for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-											if (linect > 0) {
-												linect++;
-												if (linect === definitionTargetRangeMaxLines) {
-													// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
-													targetrange.end = Position.create(j+1,0);
-													break;
-												}
-												if (
-													docrespdata.data.result.content[j].slice(0,1).trim() !== '' &&  docrespdata.data.result.content[j].slice(0,1) !== "}" &&
-													docrespdata.data.result.content[j].slice(0,1) !== "{"
-												) {
-													// This is the first class member following the one we needed the definition for, so cut off the preview range here
-													targetrange.end = Position.create(j,0);
-													break;
-												}
-											}
-											else if (
-												docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1 ||
-												docrespdata.data.result.content[j].split(" ",1)[0].toLowerCase().indexOf("relationship") !== -1
-											) {
-												// This is the right type of class member
-												const memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
-												if (memberlineidx !== -1) {
-													// This is the right member
-													targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length));
-													targetrange.start = Position.create(j,0);
+									const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
+									if (newuri !== "") {
+										// Get the full text of the origin class
+										const classText: string[] = await getTextForUri(newuri,server);
+										if (classText.length) {
+											// Loop through the file contents to find this member
+											var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+											var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+											var linect = 0;
+											for (let j = 0; j < classText.length; j++) {
+												if (linect > 0) {
 													linect++;
+													if (linect === definitionTargetRangeMaxLines) {
+														// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+														targetrange.end = Position.create(j+1,0);
+														break;
+													}
+													if (
+														classText[j].slice(0,1).trim() !== '' &&  classText[j].slice(0,1) !== "}" &&
+														classText[j].slice(0,1) !== "{"
+													) {
+														// This is the first class member following the one we needed the definition for, so cut off the preview range here
+														targetrange.end = Position.create(j,0);
+														break;
+													}
+												}
+												else if (
+													classText[j].split(" ",1)[0].toLowerCase().indexOf("property") !== -1 ||
+													classText[j].split(" ",1)[0].toLowerCase().indexOf("relationship") !== -1
+												) {
+													// This is the right type of class member
+													const memberlineidx = classText[j].indexOf(propname);
+													if (memberlineidx !== -1) {
+														// This is the right member
+														targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length));
+														targetrange.start = Position.create(j,0);
+														linect++;
+													}
 												}
 											}
-										}
-										// Remove any blank lines or comments from the end of the preview range
-										for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
-											const trimmed = docrespdata.data.result.content[pvrln].trim();
-											if (trimmed === "") {
-												targetrange.end.line = pvrln;
+											// Remove any blank lines or comments from the end of the preview range
+											for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+												const trimmed = classText[pvrln].trim();
+												if (trimmed === "") {
+													targetrange.end.line = pvrln;
+												}
+												else if (
+													trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+													trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+												) {
+													targetrange.end.line = pvrln;
+												}
+												else {
+													break;
+												}
 											}
-											else if (
-												trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
-												trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
-											) {
-												targetrange.end.line = pvrln;
-											}
-											else {
-												break;
-											}
-										}
-										const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
-										if (newuri !== "") {
 											return [{
 												targetUri: newuri,
 												targetRange: targetrange,
@@ -844,25 +840,24 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						// Normalize the class name if there are imports
 						const normalizedname = await normalizeClassname(doc,parsed,iden.replace(/_/g,"."),server,params.position.line);
 						if (normalizedname !== "") {
-							// Get the full text of this class
-							const respdata = await makeRESTRequest("GET",1,"/doc/".concat(normalizedname,".cls"),server,undefined,undefined,getDocParams);
-							if (respdata !== undefined && respdata.data.result.status === "") {
-								// The class was found
-
+							// Get the uri of the class
+							const newuri = await createDefinitionUri(params.textDocument.uri,normalizedname,".cls");
+							if (newuri !== "") {
+								// Get the full text of the class
+								const classText: string[] = await getTextForUri(newuri,server);
 								// Loop through the file contents to find the class definition
 								var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
 								var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
-								for (let j = 0; j < respdata.data.result.content.length; j++) {
-									if (respdata.data.result.content[j].substr(0,5).toLowerCase() === "class") {
+								for (let j = 0; j < classText.length; j++) {
+									if (classText[j].slice(0,5).toLowerCase() === "class") {
 										// This line is the class definition
-										const namestart = respdata.data.result.content[j].indexOf(normalizedname);
+										const namestart = classText[j].indexOf(normalizedname);
 										targetrange = Range.create(Position.create(j,0),Position.create(j+1,0));
 										targetselrange = Range.create(Position.create(j,namestart),Position.create(j,namestart+normalizedname.length));
 										break;
 									}
 								}
-								const newuri = await createDefinitionUri(params.textDocument.uri,normalizedname,".cls");
-								if (newuri !== "") {
+								if (classText.length) {
 									return [{
 										targetUri: newuri,
 										targetRange: targetrange,
@@ -894,62 +889,61 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						if (queryrespdata !== undefined && "content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 							// We got data back
 
-							// Get the full text of the origin class
+							// Get the uri of the origin class
 							const originclass = queryrespdata.data.result.content[0].Origin;
-							const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
-							if (docrespdata !== undefined && docrespdata.data.result.status === "") {
-								// The class was found
-	
-								// Loop through the file contents to find this member
-								var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
-								var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
-								var linect = 0;
-								const regex = new RegExp(`^(?:ClassMethod|Query) ${procname}\\(`);
-								for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-									if (linect > 0) {
-										linect++;
-										if (linect === definitionTargetRangeMaxLines) {
-											// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
-											targetrange.end = Position.create(j+1,0);
-											break;
-										}
-										if (
-											docrespdata.data.result.content[j].slice(0,1).trim() !== '' &&  docrespdata.data.result.content[j].slice(0,1) !== "}" &&
-											docrespdata.data.result.content[j].slice(0,1) !== "{"
-										) {
-											// This is the first class member following the one we needed the definition for, so cut off the preview range here
-											targetrange.end = Position.create(j,0);
-											break;
-										}
-									}
-									else if (regex.test(docrespdata.data.result.content[j])) {
-										// This is the right class member
-										const memberlineidx = docrespdata.data.result.content[j].indexOf(procname);
-										if (memberlineidx !== -1) {
-											targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+procname.length));
-											targetrange.start = Position.create(j,0);
+							const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
+							if (newuri !== "") {
+								// Get the full text of the origin class
+								const classText: string[] = await getTextForUri(newuri,server);
+								if (classText.length) {
+									// Loop through the file contents to find this member
+									var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+									var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+									var linect = 0;
+									const regex = new RegExp(`^(?:ClassMethod|Query) ${procname}\\(`);
+									for (let j = 0; j < classText.length; j++) {
+										if (linect > 0) {
 											linect++;
+											if (linect === definitionTargetRangeMaxLines) {
+												// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+												targetrange.end = Position.create(j+1,0);
+												break;
+											}
+											if (
+												classText[j].slice(0,1).trim() !== '' &&  classText[j].slice(0,1) !== "}" &&
+												classText[j].slice(0,1) !== "{"
+											) {
+												// This is the first class member following the one we needed the definition for, so cut off the preview range here
+												targetrange.end = Position.create(j,0);
+												break;
+											}
+										}
+										else if (regex.test(classText[j])) {
+											// This is the right class member
+											const memberlineidx = classText[j].indexOf(procname);
+											if (memberlineidx !== -1) {
+												targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+procname.length));
+												targetrange.start = Position.create(j,0);
+												linect++;
+											}
 										}
 									}
-								}
-								// Remove any blank lines or comments from the end of the preview range
-								for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
-									const trimmed = docrespdata.data.result.content[pvrln].trim();
-									if (trimmed === "") {
-										targetrange.end.line = pvrln;
+									// Remove any blank lines or comments from the end of the preview range
+									for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+										const trimmed = classText[pvrln].trim();
+										if (trimmed === "") {
+											targetrange.end.line = pvrln;
+										}
+										else if (
+											trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+											trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+										) {
+											targetrange.end.line = pvrln;
+										}
+										else {
+											break;
+										}
 									}
-									else if (
-										trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
-										trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
-									) {
-										targetrange.end.line = pvrln;
-									}
-									else {
-										break;
-									}
-								}
-								const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
-								if (newuri !== "") {
 									return [{
 										targetUri: newuri,
 										targetRange: targetrange,
@@ -985,62 +979,61 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 									if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 										// We got data back
 
-										// Get the full text of the origin class
+										// Get the uri of the origin class
 										const originclass = queryrespdata.data.result.content[0].Origin;
-										const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
-										if (docrespdata !== undefined && docrespdata.data.result.status === "") {
-											// The class was found
-				
-											// Loop through the file contents to find this member
-											var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
-											var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
-											var linect = 0;
-											const regex = new RegExp(`^(?:Property|Relationship) ${propname}(?:;| )`);
-											for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-												if (linect > 0) {
-													linect++;
-													if (linect === definitionTargetRangeMaxLines) {
-														// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
-														targetrange.end = Position.create(j+1,0);
-														break;
-													}
-													if (
-														docrespdata.data.result.content[j].slice(0,1).trim() !== '' &&  docrespdata.data.result.content[j].slice(0,1) !== "}" &&
-														docrespdata.data.result.content[j].slice(0,1) !== "{"
-													) {
-														// This is the first class member following the one we needed the definition for, so cut off the preview range here
-														targetrange.end = Position.create(j,0);
-														break;
-													}
-												}
-												else if (regex.test(docrespdata.data.result.content[j])) {
-													// This is the right class member
-													const memberlineidx = docrespdata.data.result.content[j].indexOf(propname);
-													if (memberlineidx !== -1) {
-														targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length));
-														targetrange.start = Position.create(j,0);
+										const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
+										if (newuri !== "") {
+											// Get the full text of the origin class
+											const classText: string[] = await getTextForUri(newuri,server);
+											if (classText.length) {
+												// Loop through the file contents to find this member
+												var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+												var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+												var linect = 0;
+												const regex = new RegExp(`^(?:Property|Relationship) ${propname}(?:;| )`);
+												for (let j = 0; j < classText.length; j++) {
+													if (linect > 0) {
 														linect++;
+														if (linect === definitionTargetRangeMaxLines) {
+															// We've seen the maximum number of lines without hitting the next class member so cut off the preview range here
+															targetrange.end = Position.create(j+1,0);
+															break;
+														}
+														if (
+															classText[j].slice(0,1).trim() !== '' && classText[j].slice(0,1) !== "}" &&
+															classText[j].slice(0,1) !== "{"
+														) {
+															// This is the first class member following the one we needed the definition for, so cut off the preview range here
+															targetrange.end = Position.create(j,0);
+															break;
+														}
+													}
+													else if (regex.test(classText[j])) {
+														// This is the right class member
+														const memberlineidx = classText[j].indexOf(propname);
+														if (memberlineidx !== -1) {
+															targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+propname.length));
+															targetrange.start = Position.create(j,0);
+															linect++;
+														}
 													}
 												}
-											}
-											// Remove any blank lines or comments from the end of the preview range
-											for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
-												const trimmed = docrespdata.data.result.content[pvrln].trim();
-												if (trimmed === "") {
-													targetrange.end.line = pvrln;
+												// Remove any blank lines or comments from the end of the preview range
+												for (let pvrln = targetrange.end.line-1; pvrln > targetrange.start.line; pvrln--) {
+													const trimmed = classText[pvrln].trim();
+													if (trimmed === "") {
+														targetrange.end.line = pvrln;
+													}
+													else if (
+														trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
+														trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
+													) {
+														targetrange.end.line = pvrln;
+													}
+													else {
+														break;
+													}
 												}
-												else if (
-													trimmed.slice(0,3) === "##;" || trimmed.slice(0,2) === "//" || trimmed.slice(0,1) === ";" ||
-													trimmed.slice(0,2) === "#;" || trimmed.slice(0,2) === "/*"
-												) {
-													targetrange.end.line = pvrln;
-												}
-												else {
-													break;
-												}
-											}
-											const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
-											if (newuri !== "") {
 												return [{
 													targetUri: newuri,
 													targetRange: targetrange,
@@ -1127,27 +1120,26 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
 						// We got data back
 
-						var originclass = queryrespdata.data.result.content[0].Origin;
+						const originclass = queryrespdata.data.result.content[0].Origin;
 						if (originclass !== "") {
-							// Get the full text of the origin class
-							const docrespdata = await makeRESTRequest("GET",1,"/doc/".concat(originclass,".cls"),server,undefined,undefined,getDocParams);
-							if (docrespdata !== undefined && docrespdata.data.result.status === "") {
-								// The class was found
-	
-								// Loop through the file contents to find this parameter
-								const regex = new RegExp(`^Parameter ${param}(?:;| )`);
-								for (let j = 0; j < docrespdata.data.result.content.length; j++) {
-									if (regex.test(docrespdata.data.result.content[j])) {
-										// This is the right parameter
-										const memberlineidx = docrespdata.data.result.content[j].indexOf(param);
-										if (memberlineidx !== -1) {
-											targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+param.length));
-											targetrange = Range.create(j,0,j+1,0);
+							// Get the uri of the origin class
+							const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
+							if (newuri !== "") {
+								// Get the full text of the origin class
+								const classText: string[] = await getTextForUri(newuri,server);
+								if (classText.length) {
+									// Loop through the file contents to find this parameter
+									const regex = new RegExp(`^Parameter ${param}(?:;| )`);
+									for (let j = 0; j < classText.length; j++) {
+										if (regex.test(classText[j])) {
+											// This is the right parameter
+											const memberlineidx = classText[j].indexOf(param);
+											if (memberlineidx !== -1) {
+												targetselrange = Range.create(Position.create(j,memberlineidx),Position.create(j,memberlineidx+param.length));
+												targetrange = Range.create(j,0,j+1,0);
+											}
 										}
 									}
-								}
-								const newuri = await createDefinitionUri(params.textDocument.uri,originclass,".cls");
-								if (newuri !== "") {
 									return [{
 										targetUri: newuri,
 										targetRange: targetrange,

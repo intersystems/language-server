@@ -110,17 +110,22 @@ export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<Typ
 		let normalizedname = await normalizeClassname(doc,parsed,cls,server,params.position.line);
 
 		// Get the uri for this class
-		const uri: string[] = await connection.sendRequest("intersystems/uri/forTypeHierarchyClasses",[normalizedname]);
+		const uri: string | null = await connection.sendRequest("intersystems/uri/forDocument",`${normalizedname}.cls`);
 
-		// Create and return the TypeHierarchyItem
-		return [{
-			name: normalizedname,
-			kind: SymbolKind.Class,
-			range: Range.create(Position.create(0,0),Position.create(0,0)),
-			selectionRange: Range.create(Position.create(0,0),Position.create(0,0)),
-			uri: uri[0],
-			data: server
-		}];
+		if (uri != null && uri != "") {
+			// Create and return the TypeHierarchyItem
+			return [{
+				name: normalizedname,
+				kind: SymbolKind.Class,
+				range: Range.create(Position.create(0,0),Position.create(0,0)),
+				selectionRange: Range.create(Position.create(0,0),Position.create(0,0)),
+				uri,
+				data: server
+			}];
+		}
+		else {
+			return null;
+		}
 	}
 	else {
 		return null;
