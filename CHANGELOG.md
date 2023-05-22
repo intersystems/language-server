@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.3.5] - 2023-05-22
+- Fix issue [#281](https://github.com/intersystems/language-server/issues/281): "Right hand side of instanceof is not an object" error when rendering class reference HTML
+
 ## [2.3.4] - 2023-05-22
 - Fix issue [#276](https://github.com/intersystems/language-server/issues/276): TypeError causes crash when getting inherited Import list fails
 - Fix issue [#277](https://github.com/intersystems/language-server/issues/277): Don't log warnings when server connection is inactive

@@ -14,7 +14,7 @@ import systemVariables = require("../documentation/systemVariables.json");
 import parameterTypes = require("../documentation/parameterTypes.json");
 
 // Initialize turndown and tune it for Documatic HTML
-const TurndownService = require('turndown').default;
+const TurndownService = require('turndown-ext').default;
 const turndown = new TurndownService({
 	codeBlockStyle: "fenced",
 	blankReplacement: (content, node: HTMLElement) => node.nodeName == 'SPAN' ? node.outerHTML : ''
