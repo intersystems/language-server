@@ -1423,8 +1423,7 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 
 	if (doc.languageId != "objectscript-csp") {
 		// This is not a CSP file so look for #Include lines
-		var foundinc = false;
-		for (let i = 0; i < parsed.length; i++) {
+		for (let i = 0; i < line; i++) {
 			if (i === 0 && doc.languageId != "objectscript-class") {
 				// Get the routine name from the ROUTINE header line
 				const fullline = doc.getText(Range.create(Position.create(0,0),Position.create(0,parsed[0][parsed[0].length-1].p+parsed[0][parsed[0].length-1].c)));
@@ -1437,17 +1436,8 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 				// This is a preprocessor command
 				const command = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][1].p+parsed[i][1].c)));
 				if (command.toLowerCase() === "#include") {
-					foundinc = true;
 					result.includes.push(doc.getText(Range.create(Position.create(i,parsed[i][2].p),Position.create(i,parsed[i][2].p+parsed[i][2].c))));
 				} 
-				else if (command.toLowerCase() !== "#include" && foundinc) {
-					break;
-				}
-			}
-			else {
-				if (foundinc) {
-					break;
-				}
 			}
 		}
 	}
