@@ -450,6 +450,7 @@ export async function computeDiagnostics(doc: TextDocument) {
 						// This is the UDL Import line
 
 						// Loop through the line and update the inheritedpackages list
+						let lastpkgend: number = 0;
 						for (let imptkn = 1; imptkn < parsed[i].length; imptkn++) {
 							if (parsed[i][imptkn].s == ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
 								if (
@@ -474,10 +475,24 @@ export async function computeDiagnostics(doc: TextDocument) {
 								}
 							}
 							if (parsed[i][imptkn].l == ld.cls_langindex && parsed[i][imptkn].s == ld.cls_clsname_attrindex) {
-								const pkg = doc.getText(findFullRange(i,parsed,imptkn,parsed[i][imptkn].p,parsed[i][imptkn].p + parsed[i][imptkn].c));
+								const pkgrange = findFullRange(i,parsed,imptkn,parsed[i][imptkn].p,parsed[i][imptkn].p + parsed[i][imptkn].c);
+								const pkg = doc.getText(pkgrange);
 								if (!inheritedpackages.includes(pkg)) {
 									inheritedpackages.push(pkg);
 								}
+								if (
+									files.length > 0 && settings.diagnostics.classes && lastpkgend != pkgrange.end.character &&
+									!files.some(f => f.Name.startsWith(pkg+".") && f.Name.endsWith(".cls"))
+								) {
+									// This package does not exist
+									diagnostics.push({
+										severity: DiagnosticSeverity.Error,
+										range: pkgrange,
+										message: `No classes with package '${pkg}' exist in namespace '${baseNs}'.`,
+										source: 'InterSystems Language Server'
+									});
+								}
+								lastpkgend = pkgrange.end.character;
 							}
 						}
 

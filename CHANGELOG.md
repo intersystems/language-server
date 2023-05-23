@@ -2,6 +2,7 @@
 
 ## [2.3.6] - 2023-XX-XX
 - Fix issue [#283](https://github.com/intersystems/language-server/issues/283): Use all include files for macro intellisense in routines
+- Fix issue [#284](https://github.com/intersystems/language-server/issues/284): Create Diagnostics for packages in the class Import statement that don't exist
 
 ## [2.3.5] - 2023-05-22
 - Fix issue [#281](https://github.com/intersystems/language-server/issues/281): "Right hand side of instanceof is not an object" error when rendering class reference HTML
