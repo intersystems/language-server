@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.3.6] - 2023-XX-XX
+## [2.3.6] - 2023-07-05
 - Fix issue [#283](https://github.com/intersystems/language-server/issues/283): Use all include files for macro intellisense in routines
 - Fix issue [#284](https://github.com/intersystems/language-server/issues/284): Create Diagnostics for packages in the class Import statement that don't exist
 - Fix issue [#286](https://github.com/intersystems/language-server/issues/286): Error thrown when range formatting is triggered automatically on save
