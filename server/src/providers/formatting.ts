@@ -99,6 +99,10 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 
 	// Loop through the tokens in the range
 	for (let line = range.start.line; line <= range.end.line; line++) {
+		if (parsed[line] == undefined || parsed[line].length == 0) {
+			// Nothing to format on this line
+			continue;
+		}
 		for (let token = 0; token < parsed[line].length; token++) {
 			if (line === range.start.line && parsed[line][token].p < range.start.character) {
 				continue;
