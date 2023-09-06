@@ -1,5 +1,11 @@
 # Changelog
 
+## [2.3.7] - 2023-XX-XX
+- Parser changes:
+  - DP-424189: Fix syntax coloring of complex Index definitions on Properties with quoted names
+  - DP-425003: Add parser support for /POLL and /POLLDISCON OPEN/USE keywords
+  - DP-425015: Fix coloring of JavaScript for...in and for...of loops
+
 ## [2.3.6] - 2023-07-05
 - Fix issue [#283](https://github.com/intersystems/language-server/issues/283): Use all include files for macro intellisense in routines
 - Fix issue [#284](https://github.com/intersystems/language-server/issues/284): Create Diagnostics for packages in the class Import statement that don't exist
