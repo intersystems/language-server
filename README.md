@@ -1,6 +1,6 @@
 # InterSystems Language Server
 
-> **Note:** The best way to install and use this extension is by installing the [InterSystems ObjectScript Extension Pack](https://marketplace.visualstudio.com/items?itemName=intersystems-community.objectscript-pack) and following the [documentation here](https://intersystems-community.github.io/vscode-objectscript/).
+> **Note:** The best way to install and use this extension is by installing the [InterSystems ObjectScript Extension Pack](https://marketplace.visualstudio.com/items?itemName=intersystems-community.objectscript-pack) and following the [documentation here](https://docs.intersystems.com/components/csp/docbook/DocBook.UI.Page.cls?KEY=GVSCO).
 
 This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant language server for [InterSystems](http://www.intersystems.com/our-products/) ObjectScript powered by Node.js and written primarily in TypeScript. It is maintained by InterSystems.
 
@@ -102,7 +102,7 @@ GRANT SELECT ON SCHEMA %Dictionary TO xxx
 
 ## Configuration Settings
 
-Visit the [Settings Reference page](https://intersystems-community.github.io/vscode-objectscript/settings/#language-server) of the documentation for a list of all configuration settings provided by this extension. Changes to these settings can be made in the [Visual Studio Code user settings editor](https://code.visualstudio.com/docs/getstarted/settings#_edit-settings).
+Visit the [Settings Reference page](https://docs.intersystems.com/components/csp/docbook/DocBook.UI.Page.cls?KEY=GVSCO_settings#GVSCO_settings_langserv) of the documentation for a list of all configuration settings provided by this extension. Changes to these settings can be made in the [Visual Studio Code user settings editor](https://code.visualstudio.com/docs/getstarted/settings#_edit-settings).
 
 ## Syntax Color Customization
 
