@@ -5,6 +5,7 @@
   - DP-424189: Fix syntax coloring of complex Index definitions on Properties with quoted names
   - DP-425003: Add parser support for /POLL and /POLLDISCON OPEN/USE keywords
   - DP-425015: Fix coloring of JavaScript for...in and for...of loops
+  - DP-425498: Properly color & embeddings that use marker syntax and follow a command's expression argument
 
 ## [2.3.6] - 2023-07-05
 - Fix issue [#283](https://github.com/intersystems/language-server/issues/283): Use all include files for macro intellisense in routines
