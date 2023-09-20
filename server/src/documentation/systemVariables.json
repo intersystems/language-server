@@ -545,17 +545,19 @@
     "link": "vzpi"
   },
   {
-    "label": "$ZPOS",
+    "label": "$ZPOSITION",
     "alias": [
+      "$ZPOSITION",
       "$ZPOS"
     ],
     "documentation": [
       "Contains the current file position during the reading of a sequential file.\n",
       "```objectscript\n",
+      "$ZPOSITION\n",
       "$ZPOS\n",
       "```\n"
     ],
-    "link": "vzpos"
+    "link": "vzposition"
   },
   {
     "label": "$ZREFERENCE",

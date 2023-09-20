@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2.3.7] - 2023-XX-XX
+- Fix issue [#288](https://github.com/intersystems/language-server/issues/288): Intellisense for `$ZPOS` system variable doesn't suggest full name `$ZPOSITION`
 - Parser changes:
   - DP-424189: Fix syntax coloring of complex Index definitions on Properties with quoted names
   - DP-425003: Add parser support for /POLL and /POLLDISCON OPEN/USE keywords
