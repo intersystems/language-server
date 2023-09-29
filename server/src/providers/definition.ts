@@ -293,18 +293,22 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					query: "",
 					parameters: []
 				};
+				let memberKeywords: string;
 				if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 					// This is a parameter
+					memberKeywords = "Parameter";
 					data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
 					// This is a method
+					memberKeywords = "Method|ClassMethod|ClientMethod";
 					data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
 					// This is a property
+					memberKeywords = "Property|Relationship";
 					data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
@@ -312,11 +316,13 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					// This is a generic member
 					if (membercontext.baseclass.slice(0,7) === "%SYSTEM") {
 						// This is always a method
+						memberKeywords = "Method|ClassMethod|ClientMethod";
 						data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else {
 						// This can be a method or property
+						memberKeywords = "Method|ClassMethod|ClientMethod|Property|Relationship";
 						data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
 						data.query = data.query.concat("SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
 						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
@@ -336,6 +342,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 							const stubarr = queryrespdata.data.result.content[0].Stub.split(".");
 							var stubquery = "";
+							memberKeywords = "Method|ClassMethod|ClientMethod";
 							if (stubarr[2] === "i") {
 								// This is a method generated from an index
 								stubquery = "SELECT Origin FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
@@ -375,7 +382,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						if (classText.length) {
 							// Loop through the file contents to find this member
 							var linect = 0;
-							const regex = new RegExp(`^(?:Method|ClassMethod|ClientMethod|Property|Parameter|Relationship) ${membernameinfile}(?:\\(|;| )`);
+							const regex = new RegExp(`^(?:${memberKeywords}) ${membernameinfile}(?:\\(|;| )`);
 							for (let j = 0; j < classText.length; j++) {
 								if (linect > 0) {
 									linect++;
