@@ -259,9 +259,7 @@ export async function activate(context: ExtensionContext) {
 			"intersystems.language-server",
 			workspace.workspaceFolders != undefined ? workspace.workspaceFolders[0] : undefined
 		).get("suggestTheme") === true &&
-		!["InterSystems Default Dark", "InterSystems Default Light"].includes(
-			workbenchConfig.get("colorTheme")
-		)
+		!workbenchConfig.get<string>("colorTheme").startsWith("InterSystems Default ")
 	) {
 		// Suggest an InterSystems default theme depending on the current active theme type
 		if (window.activeColorTheme.kind === ColorThemeKind.Light) {
@@ -272,7 +270,7 @@ export async function activate(context: ExtensionContext) {
 					"Don't Ask Again"
 				).then((answer) => {
 					if (answer === "Yes") {
-						workbenchConfig.update("colorTheme","InterSystems Default Light",true);
+						workbenchConfig.update("colorTheme","InterSystems Default Light Modern",true);
 					}
 					else if (answer === "Don't Ask Again") {
 						workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
@@ -288,10 +286,10 @@ export async function activate(context: ExtensionContext) {
 					"Don't Ask Again"
 				).then((answer) => {
 					if (answer === "Globally") {
-						workbenchConfig.update("colorTheme","InterSystems Default Light",true);
+						workbenchConfig.update("colorTheme","InterSystems Default Light Modern",true);
 					}
 					else if (answer === "Only This Workspace") {
-						workbenchConfig.update("colorTheme","InterSystems Default Light",false);
+						workbenchConfig.update("colorTheme","InterSystems Default Light Modern",false);
 					}
 					else if (answer === "Don't Ask Again") {
 						workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
@@ -307,7 +305,7 @@ export async function activate(context: ExtensionContext) {
 					"Don't Ask Again"
 				).then((answer) => {
 					if (answer === "Yes") {
-						workbenchConfig.update("colorTheme","InterSystems Default Dark",true);
+						workbenchConfig.update("colorTheme","InterSystems Default Dark Modern",true);
 					}
 					else if (answer === "Don't Ask Again") {
 						workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
@@ -323,10 +321,10 @@ export async function activate(context: ExtensionContext) {
 					"Don't Ask Again"
 				).then((answer) => {
 					if (answer === "Globally") {
-						workbenchConfig.update("colorTheme","InterSystems Default Dark",true);
+						workbenchConfig.update("colorTheme","InterSystems Default Dark Modern",true);
 					}
 					else if (answer === "Only This Workspace") {
-						workbenchConfig.update("colorTheme","InterSystems Default Dark",false);
+						workbenchConfig.update("colorTheme","InterSystems Default Dark Modern",false);
 					}
 					else if (answer === "Don't Ask Again") {
 						workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);

@@ -4,7 +4,7 @@
   "description": "A language server for InterSystems ObjectScript.",
   "author": "InterSystems Corporation",
   "license": "SEE LICENSE IN LICENSE.txt",
-  "version": "2.3.7-SNAPSHOT",
+  "version": "2.4.0-SNAPSHOT",
   "publisher": "intersystems",
   "repository": {
     "type": "github",
@@ -26,7 +26,7 @@
     "multi-root ready"
   ],
   "engines": {
-    "vscode": "^1.67.0"
+    "vscode": "^1.78.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.cls",
@@ -1745,6 +1745,16 @@
         "label": "InterSystems Default Light",
         "uiTheme": "vs",
         "path": "./themes/isc-default-light.json"
+      },
+      {
+        "label": "InterSystems Default Dark Modern",
+        "uiTheme": "vs-dark",
+        "path": "./themes/isc-default-dark-modern.json"
+      },
+      {
+        "label": "InterSystems Default Light Modern",
+        "uiTheme": "vs",
+        "path": "./themes/isc-default-light-modern.json"
       }
     ]
   },

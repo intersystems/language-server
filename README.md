@@ -94,10 +94,10 @@ All InterSystems products that include the Atelier APIs (Caché/Ensemble from 20
 
 ## Setup Notes
 
-If the configured user "xxx" for connection to a server does NOT have the `%All` Role, execute the following query on the server to enable all of this extension's features.
+If the configured user "abc" for connection to a server does NOT have the `%All` Role, execute the following query on the server to enable all of this extension's features.
 
 ```SQL
-GRANT SELECT ON SCHEMA %Dictionary TO xxx
+GRANT SELECT ON SCHEMA %Dictionary TO abc
 ```
 
 ## Configuration Settings
@@ -106,7 +106,7 @@ Visit the [Settings Reference page](https://docs.intersystems.com/components/csp
 
 ## Syntax Color Customization
 
-This extension is packaged with two [Web Content Accessibility Guidelines](https://www.w3.org/WAI/standards-guidelines/wcag/) (WCAG) 2.0 AAA compliant default themes (one light and one dark) maintained by InterSystems. They have been developed with usability and accessibility in mind and are recommened for all users. Users may also use any VS Code theme downloaded from the marketplace or included by default. While the coloring provided by those themes will be syntactically correct, not all themes provide support for advanced features, such as coloring method arguments differently than local variables. If you wish to customize the colors assigned to InterSystems semantic tokens, there are two approaches, which are detailed below.
+This extension is packaged with four default themes, two light and two dark, that are [Web Content Accessibility Guidelines](https://www.w3.org/WAI/standards-guidelines/wcag/) (WCAG) 2.0 AAA compliant when editing InterSystems files. They have been developed with usability and accessibility in mind and are recommended for all users. Users may also use any VS Code theme downloaded from the marketplace or included by default. While the coloring provided by those themes will be syntactically correct, not all themes provide support for advanced features, such as coloring method arguments differently than local variables. If you wish to customize the colors assigned to InterSystems semantic tokens, there are two approaches, which are detailed below.
 
 ### Custom Styling Rules
 
@@ -125,7 +125,7 @@ Note that setting `"enabled": false` in the object shown above does not merely d
 
 ### Custom Themes
 
-To create your own custom color theme that provides coloring for InterSystems semantic tokens or modify your exisiting theme to do so, use the [semanticHighlighting and semanticTokenColors settings](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide#theming) in your theme definition json file. For example:
+To create your own custom color theme that provides coloring for InterSystems semantic tokens or modify your existing theme to do so, use the [semanticHighlighting and semanticTokenColors settings](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide#theming) in your theme definition json file. For example:
 
 ```json
 "semanticHighlighting": true,

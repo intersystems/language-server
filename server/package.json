@@ -1,6 +1,6 @@
 {
   "name": "language-server-server",
-  "version": "2.3.7-SNAPSHOT",
+  "version": "2.4.0-SNAPSHOT",
   "author": "InterSystems Corporation",
   "private": true,
   "engines": {
