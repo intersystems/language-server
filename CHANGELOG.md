@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.4.0] - 2023-XX-XX
+## [2.4.0] - 2023-10-17
 - Fix issue [#282](https://github.com/intersystems/language-server/issues/282): Syntax error in SQL query using PARTITION or OVER
 - Fix issue [#288](https://github.com/intersystems/language-server/issues/288): Intellisense for `$ZPOS` system variable doesn't suggest full name `$ZPOSITION`
 - Fix issue [#289](https://github.com/intersystems/language-server/issues/289): Go To Definition confuses properties and methods with the same name
