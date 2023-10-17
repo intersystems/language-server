@@ -1,7 +1,7 @@
 {
   "name": "language-server-client",
   "author": "InterSystems Corporation",
-  "version": "2.4.0-SNAPSHOT",
+  "version": "2.4.1-SNAPSHOT",
   "private": true,
   "engines": {
     "vscode": "^1.82.0"
