@@ -1,14 +1,20 @@
 # Changelog
 
 ## [2.4.0] - 2023-XX-XX
+- Fix issue [#282](https://github.com/intersystems/language-server/issues/282): Syntax error in SQL query using PARTITION or OVER
 - Fix issue [#288](https://github.com/intersystems/language-server/issues/288): Intellisense for `$ZPOS` system variable doesn't suggest full name `$ZPOSITION`
 - Fix issue [#289](https://github.com/intersystems/language-server/issues/289): Go To Definition confuses properties and methods with the same name
 - Fix issue [#290](https://github.com/intersystems/language-server/issues/290): Add themes based on VS Code's new Modern default themes
+- Fix issue [#291](https://github.com/intersystems/language-server/issues/291): Adopt Diagnostic pull model
 - Parser changes:
   - DP-424189: Fix syntax coloring of complex Index definitions on Properties with quoted names
   - DP-425003: Add parser support for /POLL and /POLLDISCON OPEN/USE keywords
   - DP-425015: Fix coloring of JavaScript for...in and for...of loops
   - DP-425498: Properly color & embeddings that use marker syntax and follow a command's expression argument
+  - DP-425560: Coloring for BUILD INDEX
+  - DP-425908: Coloring for LOAD DATA
+  - DP-426025: Coloring for SQL Window functions
+  - DP-426213: Coloring for CREATE & DROP SCHEMA
 
 ## [2.3.6] - 2023-07-05
 - Fix issue [#283](https://github.com/intersystems/language-server/issues/283): Use all include files for macro intellisense in routines

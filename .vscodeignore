@@ -16,3 +16,4 @@ server/lib/**
 node_modules/**
 images/*.gif
 **/*.vsix
+**/package-lock.json

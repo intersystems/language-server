@@ -6,7 +6,8 @@
   },
   {
     "name": "ClientName",
-    "type": "KW_TYPE_STRING"
+    "type": "KW_TYPE_STRING",
+    "description": "An alias used by client projections of this method."
   },
   {
     "name": "CodeMode",

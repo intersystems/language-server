@@ -1,12 +1,13 @@
 [
   {
     "name": "Abstract",
-    "type": "KW_TYPE_BOOLEAN"
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "Specifies whether this is an abstract parameter."
   },
   {
     "name": "Constraint",
     "type": "KW_TYPE_STRING",
-    "description": "Specifies a constraint value is used by Studio to provide input validation for the parameter. Its value is not used nor enforced by the Class Compiler."
+    "description": "Specifies a constraint value used by Studio to provide input validation for the parameter. Its value is not used nor enforced by the Class Compiler."
   },
   {
     "name": "Deprecated",

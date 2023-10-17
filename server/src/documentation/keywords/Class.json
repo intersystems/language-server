@@ -143,7 +143,8 @@
   },
   {
     "name": "NoContext",
-    "type": "KW_TYPE_BOOLEAN"
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "If true, datatype methods have access to the current instance instead of providing their own context."
   },
   {
     "name": "NoExtent",
@@ -210,7 +211,8 @@
       "",
       "0",
       "1"
-    ]
+    ],
+    "description": "Specifies whether this class is projected to Java clients."
   },
   {
     "name": "Sharded",

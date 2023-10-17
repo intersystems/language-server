@@ -11,7 +11,8 @@
   },
   {
     "name": "NoCheck",
-    "type": "KW_TYPE_BOOLEAN"
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "Specifies whether InterSystems IRIS should check this foreign key constraint."
   },
   {
     "name": "OnDelete",

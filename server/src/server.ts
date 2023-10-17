@@ -25,7 +25,7 @@ import { onHover } from './providers/hover';
 import { onCompletion, onCompletionResolve, schemaCaches } from './providers/completion';
 import { onSignatureHelp } from './providers/signatureHelp';
 import { onDocumentFormatting, onDocumentRangeFormatting } from './providers/formatting';
-import { computeDiagnostics } from './utils/functions';
+import { onDiagnostics } from './providers/diagnostic';
 import { onSemanticTokens, onSemanticTokensDelta } from './providers/semanticTokens';
 
 import { LanguageServerConfiguration, ServerSpec } from './utils/types';
@@ -72,7 +72,11 @@ connection.onInitialize(() => {
 			documentLinkProvider: {
 				resolveProvider: true
 			},
-			typeHierarchyProvider: true
+			typeHierarchyProvider: true,
+			diagnosticProvider: {
+				interFileDependencies: false,
+				workspaceDiagnostics: false
+			}
 		}
 	};
 });
@@ -101,7 +105,7 @@ connection.onDidChangeConfiguration(async () => {
 	configs.forEach((config, index) => languageServerSettings.set(uris[index], config));
 
 	// Update diagnostics for all open documents
-	documents.all().forEach(computeDiagnostics);
+	connection.languages.diagnostics.refresh();
 });
 
 documents.onDidClose(e => {
@@ -126,7 +130,6 @@ documents.onDidChangeContent(async change => {
 			change.document.getText()
 		).compressedlinearray
 	);
-	await computeDiagnostics(change.document);
 });
 
 connection.onDocumentFormatting(onDocumentFormatting);
@@ -222,6 +225,8 @@ connection.languages.typeHierarchy.onSupertypes(onSupertypes);
 connection.onRequest("intersystems/embedded/languageAtPosition",languageAtPosition);
 
 connection.onRequest("intersystems/embedded/isolateEmbeddedLanguage",isolateEmbeddedLanguage);
+
+connection.languages.diagnostics.on(onDiagnostics);
 
 documents.listen(connection);
 

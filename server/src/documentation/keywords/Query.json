@@ -1,7 +1,8 @@
 [
   {
     "name": "ClientName",
-    "type": "KW_TYPE_STRING"
+    "type": "KW_TYPE_STRING",
+    "description": "An alias used by client projections of this query."
   },
   {
     "name": "Deprecated",
@@ -38,7 +39,8 @@
   },
   {
     "name": "SoapNameSpace",
-    "type": "KW_TYPE_STRING"
+    "type": "KW_TYPE_STRING",
+    "description": "Specifies the namespace at the binding operation level in the WSDL. Applies only in a class that is defined as a web service or web client."
   },
   {
     "name": "SqlName",
