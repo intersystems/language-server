@@ -178,7 +178,8 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
 				parsed[params.position.line][i].s == ld.cos_method_attrindex ||
 				parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
-				parsed[params.position.line][i].s == ld.cos_mem_attrindex)
+				parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
+				parsed[params.position.line][i].s == ld.cos_instvar_attrindex)
 			) {
 				// This is a class member (property/parameter/method)
 
@@ -187,42 +188,42 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				var member = doc.getText(memberrange);
 				if (member.charAt(0) === "#") {
 					member = member.slice(1);
+				} else if (parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
+					member = member.slice(2);
 				}
 				const unquotedname = quoteUDLIdentifier(member,0);
 
-				// Find the dot token
-				var dottkn = 0;
-				for (let tkn = 0; tkn < parsed[params.position.line].length; tkn ++) {
-					if (parsed[params.position.line][tkn].p >= memberrange.start.character) {
-						break;
-					}
-					dottkn = tkn;
+				// If this is a class file, determine what class we're in
+				let thisclass = "";
+				if (doc.languageId === "objectscript-class") {
+					thisclass = currentClass(doc,parsed);
 				}
 
-				// Get the base class that this member is in
-				const membercontext = await getClassMemberContext(doc,parsed,dottkn,params.position.line,server);
+				let membercontext = {
+					baseclass: "",
+					context: ""
+				};
+				if (parsed[params.position.line][i].s != ld.cos_instvar_attrindex) {
+					// Find the dot token
+					var dottkn = 0;
+					for (let tkn = 0; tkn < parsed[params.position.line].length; tkn ++) {
+						if (parsed[params.position.line][tkn].p >= memberrange.start.character) {
+							break;
+						}
+						dottkn = tkn;
+					}
+
+					// Get the base class that this member is in
+					membercontext = await getClassMemberContext(doc,parsed,dottkn,params.position.line,server);
+				} else {
+					membercontext = {
+						baseclass: thisclass,
+						context: ""
+					};
+				}
 				if (membercontext.baseclass === "") {
 					// If we couldn't determine the class, don't return anything
 					return null;
-				}
-
-				// If this is a class file, determine what class we're in
-				var thisclass = "";
-				if (doc.languageId === "objectscript-class") {
-					for (let ln = 0; ln < parsed.length; ln++) {
-						if (parsed[ln].length === 0) {
-							continue;
-						}
-						else if (parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
-							// This line starts with a UDL keyword
-				
-							var keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
-							if (keyword === "class") {
-								thisclass = doc.getText(findFullRange(ln,parsed,1,parsed[ln][1].p,parsed[ln][1].p+parsed[ln][1].c));
-								break;
-							}
-						}
-					}
 				}
 
 				var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
@@ -306,7 +307,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
-				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
+				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex || parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
 					// This is a property
 					memberKeywords = "Property|Relationship";
 					data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
@@ -1158,6 +1159,26 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						}
 					}
 				}
+			}
+			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
+				// This is an instance variable
+
+				// Get the full text of the instance variable
+				const memberrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const member = doc.getText(memberrange).slice(2);
+				const unquotedname = quoteUDLIdentifier(member,0);
+
+				// Find the name of the current class
+				const thisclass = currentClass(doc,parsed);
+				if (thisclass == "") {
+					// If we couldn't determine the class, don't return anything
+					return null;
+				}
+
+				// Check if the property is defined in this class
+
+				// Query the server to get the origin class of this property
+
 			}
 			break;
 		}

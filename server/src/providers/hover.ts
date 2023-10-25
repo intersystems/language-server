@@ -469,7 +469,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 				parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
 				parsed[params.position.line][i].s == ld.cos_method_attrindex ||
 				parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
-				parsed[params.position.line][i].s == ld.cos_mem_attrindex)
+				parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
+				parsed[params.position.line][i].s == ld.cos_instvar_attrindex)
 			) {
 				// This is a class member (property/parameter/method)
 
@@ -478,20 +479,33 @@ export async function onHover(params: TextDocumentPositionParams) {
 				var member = doc.getText(memberrange);
 				if (member.charAt(0) === "#") {
 					member = member.slice(1);
+				} else if (parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
+					member = member.slice(2);
 				}
 				const unquotedname = quoteUDLIdentifier(member,0);
 
-				// Find the dot token
-				var dottkn = 0;
-				for (let tkn = 0; tkn < parsed[params.position.line].length; tkn++) {
-					if (parsed[params.position.line][tkn].p >= memberrange.start.character) {
-						break;
+				let membercontext = {
+					baseclass: "",
+					context: ""
+				};
+				if (parsed[params.position.line][i].s != ld.cos_instvar_attrindex) {
+					// Find the dot token
+					var dottkn = 0;
+					for (let tkn = 0; tkn < parsed[params.position.line].length; tkn++) {
+						if (parsed[params.position.line][tkn].p >= memberrange.start.character) {
+							break;
+						}
+						dottkn = tkn;
 					}
-					dottkn = tkn;
-				}
 
-				// Get the base class that this member is in
-				const membercontext = await getClassMemberContext(doc,parsed,dottkn,params.position.line,server);
+					// Get the base class that this member is in
+					membercontext = await getClassMemberContext(doc,parsed,dottkn,params.position.line,server);
+				} else {
+					membercontext = {
+						baseclass: currentClass(doc,parsed),
+						context: ""
+					};
+				}
 				if (membercontext.baseclass === "") {
 					// If we couldn't determine the class, don't return anything
 					return null;
@@ -512,14 +526,14 @@ export async function onHover(params: TextDocumentPositionParams) {
 					data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
-				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex) {
+				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex || parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
 					// This is a property
 					data.query = "SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else {
 					// This is a generic member
-					if (membercontext.baseclass.substr(0,7) === "%SYSTEM") {
+					if (membercontext.baseclass.startsWith("%SYSTEM")) {
 						// This is always a method
 						data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];

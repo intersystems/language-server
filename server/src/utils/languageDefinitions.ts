@@ -36,6 +36,7 @@ export const cos_html_attrindex = 0x1D;
 export const cos_prop_attrindex = 0x1E;
 export const cos_clsname_attrindex = 0x1F;
 export const cos_command_attrindex = 0x20;
+export const cos_instvar_attrindex = 0x21;
 export const cos_method_attrindex = 0x23;
 export const cos_attr_attrindex = 0x24;
 export const cos_brace_attrindex = 0x2a;

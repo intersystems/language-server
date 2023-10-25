@@ -1982,6 +1982,56 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
+	else if (prevline.slice(-2) === "i%" && triggerlang === ld.cos_langindex) {
+		// This is instance variable syntax
+
+		// Find the name of the current class
+		const thisclass = currentClass(doc,parsed);
+		if (thisclass == "") {
+			// If we couldn't determine the class, don't return anything
+			return null;
+		}
+
+		// Query the server to get the names and descriptions of all non-calculated properties
+		const data: QueryData = {
+			query: "SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND Calculated = 0",
+			parameters: [thisclass]
+		}
+		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
+		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+			// We got data back
+
+			for (let memobj of respdata.data.result.content) {
+				const quotedname = quoteUDLIdentifier(memobj.Name,1);
+				var item: CompletionItem = {
+					label: ""
+				};
+				item = {
+					label: quotedname,
+					kind: CompletionItemKind.Property,
+					data: "member",
+					documentation: {
+						kind: "markdown",
+						value: documaticHtmlToMarkdown(memobj.Description)
+					}
+				};
+				if (memobj.ReturnType !== "") {
+					item.detail = memobj.ReturnType;
+				}
+				if (memobj.Origin === thisclass) {
+					// Members from the base class should appear first
+					item.sortText = "##" + quotedname;
+				}
+				else {
+					item.sortText = item.label;
+				}
+				if (memobj.Deprecated) {
+					item.tags = [CompletionItemTag.Deprecated];
+				}
+				result.push(item);
+			}
+		}
+	}
 	return result;
 }
 
