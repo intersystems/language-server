@@ -2,6 +2,7 @@
 
 ## [2.4.1] - 2023-XX-XX
 - Fix issue [#292](https://github.com/intersystems/language-server/issues/292): Add intellisense for instance variable (i%PropertyName) syntax
+- Fix issue [#296](https://github.com/intersystems/language-server/issues/296): Code completion doesn't appear when typing dot in a class name at the class level
 
 ## [2.4.0] - 2023-10-17
 - Fix issue [#282](https://github.com/intersystems/language-server/issues/282): Syntax error in SQL query using PARTITION or OVER

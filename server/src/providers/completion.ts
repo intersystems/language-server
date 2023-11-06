@@ -990,7 +990,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	else if (
 		(prevline.slice(-6).toLowerCase() === "class(" && triggerlang === ld.cos_langindex) ||
 		(prevline.slice(-3).toLowerCase() === "as " && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
-		(prevline.slice(-3).toLowerCase() === "of "  && triggerlang === ld.cos_langindex) ||
+		(prevline.slice(-3).toLowerCase() === "of " && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
 		classregex.test(prevline)
 	) {
 		// This is a full class name
@@ -998,7 +998,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		result = await completionFullClassName(doc,parsed,server,params.position.line);
 	}
 	else if (
-		(prevline.slice(-1) === "." && prevline.slice(-2,-1) !== "," && prevline.slice(-2,-1) !== " "  &&
+		(prevline.slice(-1) === "." && prevline.slice(-2,-1) !== "," && prevline.slice(-2,-1) !== " " &&
 		thistoken !== 0 && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
 		(prevline.slice(-2) === ".#" && triggerlang === ld.cos_langindex)
 	) {
@@ -1017,6 +1017,24 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		else if (parsed[params.position.line][thistoken-1].l == ld.cos_langindex && parsed[params.position.line][thistoken-1].s == ld.cos_sysv_attrindex && prevtokentext.toLowerCase() === "$system") {
 			// This is $SYSTEM
 			prevtokentype = "system";
+		}
+		else if (prevline.slice(-1) === "." && triggerlang === ld.cls_langindex && parsed[params.position.line][thistoken].s == ld.error_attrindex) {
+			// Check if this is a dotted portion of a classname in UDL (e.g. "Property p As User.")
+			let isCls = false;
+			for (let tkn = thistoken - 1; tkn >= 0; tkn--) {
+				if (parsed[params.position.line][tkn].s != ld.error_attrindex) {
+					// This is the first non-error token looking back on the line
+					if (
+						parsed[params.position.line][tkn].l == ld.cls_langindex &&
+						[ld.cls_clsname_attrindex,ld.cls_keyword_attrindex].includes(parsed[params.position.line][tkn].s)
+					) {
+						// The previous token is a keyword ("As" or "Of") or part of a class name
+						isCls = true;
+					}
+					break;
+				}
+			}
+			if (isCls) prevtokentype = "class";
 		}
 		if (prevtokentype === "class" || prevtokentype === "system") {
 			// This is a partial class name
