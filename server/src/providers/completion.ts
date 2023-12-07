@@ -1,5 +1,5 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, Position, Range, TextEdit } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineNormalizedPropertyClass, storageKeywordsKeyForToken, getParsedDocument, currentClass } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, normalizeClassname } from '../utils/functions';
 import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -1279,15 +1279,15 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	}
 	else if (
 		triggerlang === ld.cls_langindex &&
-		firsttwotokens.toLowerCase().split(" ")[0] === "property" &&
 		openparencount > closeparencount &&
 		(prevline.slice(-2) === ", " || prevline.slice(-1) === "(") &&
-		prevline.slice(firsttwotokens.length).indexOf("[") === -1
+		prevline.slice(firsttwotokens.length).indexOf("[") === -1 &&
+		determineClassNameParameterClass(doc,parsed,params.position.line,thistoken,true) != ""
 	) {
-		// This is a Property data type parameter
+		// This is a class name parameter
 
-		// Determine the normalized class name of this Property
-		const normalizedcls = await determineNormalizedPropertyClass(doc,parsed,params.position.line,server);
+		// Determine the normalized class name
+		const normalizedcls = await normalizeClassname(doc,parsed,determineClassNameParameterClass(doc,parsed,params.position.line,thistoken,true),server,params.position.line);
 		if (normalizedcls === "") {
 			// If we couldn't determine the class, don't return anything
 			return null;
@@ -1295,15 +1295,30 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Find all parameters that are already used
 		const existingparams: string[] = [];
-		for (let i = 5; i < parsed[params.position.line].length; i++) {
-			const symbolstart: number = parsed[params.position.line][i].p;
-			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
-			if (params.position.character <= symbolstart) {
-				break;
-			}
-			const symboltext = doc.getText(Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend)));
-			if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_cparam_attrindex) {
-				existingparams.push(symboltext);
+		if (prevline.slice(-2) == ", ") {
+			let openCount = 1;
+			for (let tkn = thistoken; tkn >= 0; tkn--) {
+				if (parsed[params.position.line][tkn].l == ld.cls_langindex && parsed[params.position.line][tkn].s == ld.cls_delim_attrindex) {
+					const delimText = doc.getText(Range.create(
+						params.position.line,
+						parsed[params.position.line][tkn].p,
+						params.position.line,
+						parsed[params.position.line][tkn].p+parsed[params.position.line][tkn].c
+					));
+					if (delimText == ")") {
+						openCount++;
+					} else if (delimText == "(") {
+						openCount--;
+						if (openCount == 0) break;
+					}
+				} else if (parsed[params.position.line][tkn].l == ld.cls_langindex && parsed[params.position.line][tkn].s == ld.cls_cparam_attrindex) {
+					existingparams.push(doc.getText(Range.create(
+						params.position.line,
+						parsed[params.position.line][tkn].p,
+						params.position.line,
+						parsed[params.position.line][tkn].p+parsed[params.position.line][tkn].c
+					)));
+				}
 			}
 		}
 
@@ -1322,12 +1337,22 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			};
 		});
 		result = coreParams.filter(e => !existingparams.includes(e.label));
+		const isProperty: boolean = 
+			parsed[params.position.line][0].l == ld.cls_langindex &&
+			parsed[params.position.line][0].s == ld.cls_keyword_attrindex &&
+			["property","relationship"].includes(doc.getText(Range.create(
+				params.position.line,
+				parsed[params.position.line][0].p,
+				params.position.line,
+				parsed[params.position.line][0].p+parsed[params.position.line][0].c
+			)).toLowerCase());
 
 		// Query the server to get the names and descriptions of all class-specific parameters
 		const data: QueryData = {
-			query: "SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ? OR " +
-			"parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)",
-			parameters: [normalizedcls,currentClass(doc,parsed)]
+			query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${
+				isProperty ? " OR parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)" : ""
+			}`,
+			parameters: isProperty ? [normalizedcls,currentClass(doc,parsed)] : [normalizedcls]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {

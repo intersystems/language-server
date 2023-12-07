@@ -1,5 +1,5 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineNormalizedPropertyClass, storageKeywordsKeyForToken, getParsedDocument, currentClass } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass } from '../utils/functions';
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -942,7 +942,11 @@ export async function onHover(params: TextDocumentPositionParams) {
 				}
 			}
 			else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_cparam_attrindex) {
-				// This is a Property data type parameter
+				// This is a class name parameter
+
+				// Verify that is is a parameter for a class name and not a method argument
+				const clsName = determineClassNameParameterClass(doc,parsed,params.position.line,i);
+				if (clsName == "") return;
 
 				// Get the full text of the selection
 				const paramrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
@@ -957,8 +961,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 					};
 				}
 
-				// Determine the normalized class name of this Property
-				const normalizedcls = await determineNormalizedPropertyClass(doc,parsed,params.position.line,server);
+				// Determine the normalized class name
+				const normalizedcls = await normalizeClassname(doc,parsed,clsName,server,params.position.line);
 				if (normalizedcls !== "") {
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
 						query: "SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (parent->ID = ? OR " +

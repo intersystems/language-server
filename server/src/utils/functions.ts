@@ -2008,25 +2008,66 @@ export function documaticHtmlToMarkdown(html: string): string {
 }
 
 /**
- * Determine the normalized class name of the Property definition starting on `line` of `doc`,
- * or the empty string if it can't be determined.
- * Used for Property data type parameter intellisense.
+ * If this class parameter is is a parameter for a class name,
+ * return the raw name of that class. If the class couldn't be
+ * determined, or this parameter is a method, query or trigger
+ * argument, the empty string is returned.
  * 
- * @param doc The TextDocument that the Property definition is in.
- * @param parsed The tokenized representation of doc.
- * @param line The line that the Property definition starts on.
- * @param server The server that doc is associated with.
+ * @param doc The TextDocument that the class parameter is in.
+ * @param parsed The tokenized representation of `doc`.
+ * @param line The line that the class parameter is on.
+ * @param token The offset of the class parameter in the line.
+ * @param completion `true` if called from the completion provider.
  */
-export async function determineNormalizedPropertyClass(doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec): Promise<string> {
-	let firstclstkn = 3;
-	if (parsed[line][3].l == ld.cls_langindex && parsed[line][3].s == ld.cls_keyword_attrindex) {
-		// This is a collection Property
-		firstclstkn = 5;
+export function determineClassNameParameterClass(doc: TextDocument, parsed: compressedline[], line: number, token: number, completion = false): string {
+	if (
+		completion &&
+		parsed[line][token].l == ld.cls_langindex &&
+		parsed[line][token].s == ld.error_attrindex &&
+		["(","()"].includes(doc.getText(Range.create(
+			line,
+			parsed[line][token].p,
+			line,
+			parsed[line][token].p+parsed[line][token].c
+		))) && token > 0 &&
+		parsed[line][token-1].l == ld.cls_langindex &&
+		parsed[line][token-1].s == ld.cls_clsname_attrindex
+	) {
+		// When doing completion for (, the ( may be an
+		// error token so we need to handle that special case
+		return doc.getText(findFullRange(
+			line,parsed,token-1,
+			parsed[line][token-1].p,
+			parsed[line][token-1].p+parsed[line][token-1].c
+		));
 	}
-	const clsstart = parsed[line][firstclstkn].p;
-	const clsend = parsed[line][firstclstkn].p+parsed[line][firstclstkn].c;
-	const clsname = doc.getText(findFullRange(line,parsed,firstclstkn,clsstart,clsend));
-	return normalizeClassname(doc,parsed,clsname,server,line);
+	let openCount = 1, clsName = "";
+	for (let tkn = token; tkn >= 0; tkn--) {
+		if (parsed[line][tkn].l == ld.cls_langindex && parsed[line][tkn].s == ld.cls_delim_attrindex) {
+			const delimText = doc.getText(Range.create(
+				line,
+				parsed[line][tkn].p,
+				line,
+				parsed[line][tkn].p+parsed[line][tkn].c
+			));
+			if (delimText == ")") {
+				openCount++;
+			} else if (delimText == "(") {
+				openCount--;
+				if (openCount == 0) {
+					if (tkn > 0 && parsed[line][tkn-1].l == ld.cls_langindex && parsed[line][tkn-1].s == ld.cls_clsname_attrindex) {
+						clsName = doc.getText(findFullRange(
+							line,parsed,tkn-1,
+							parsed[line][tkn-1].p,
+							parsed[line][tkn-1].p+parsed[line][tkn-1].c
+						));
+					}
+					break;
+				}
+			}
+		}
+	}
+	return clsName;
 }
 
 /**
