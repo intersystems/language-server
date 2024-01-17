@@ -141,13 +141,16 @@ export async function activate(context: ExtensionContext) {
 		// Register custom request handlers
 		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
 			let serverSpec = objectScriptApi.serverForUri(Uri.parse(uri));
+			if (serverSpec.username.toLowerCase() == "unknownuser" && typeof serverSpec.password === "undefined") {
+				// UnknownUser without a password means "unauthenticated"
+				serverSpec.username = undefined;
+			}
 			if (
 				// Server was resolved
 				serverSpec.host !== "" &&
-				// Connection isn't unauthenticated (i.e. UnknownUser)
+				// Connection isn't unauthenticated
 				serverSpec.username != undefined &&
 				serverSpec.username != "" &&
-				serverSpec.username.toLowerCase() != "unknownuser" &&
 				// A password is missing
 				typeof serverSpec.password === "undefined" &&
 				// A supported version of the Server Manager is installed
