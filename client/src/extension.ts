@@ -174,7 +174,7 @@ export async function activate(context: ExtensionContext) {
 					}
 				}
 			}
-			if (serverSpec.username.toLowerCase() == "unknownuser" && typeof serverSpec.password === "undefined") {
+			if (typeof serverSpec.username == "string" && serverSpec.username.toLowerCase() == "unknownuser" && typeof serverSpec.password == "undefined") {
 				// UnknownUser without a password means "unauthenticated"
 				serverSpec.username = undefined;
 			}

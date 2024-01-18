@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.4.2] - 2024-01-18
+- Fix issue [#301](https://github.com/intersystems/language-server/issues/301): Error thrown when not using a server connection
+
 ## [2.4.1] - 2024-01-18
 - Fix issue [#292](https://github.com/intersystems/language-server/issues/292): Add intellisense for instance variable (i%PropertyName) syntax
 - Fix issue [#296](https://github.com/intersystems/language-server/issues/296): Code completion doesn't appear when typing dot in a class name at the class level
