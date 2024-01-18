@@ -1,10 +1,24 @@
 # Changelog
 
-## [2.4.1] - 2023-XX-XX
+## [2.4.1] - 2024-01-18
 - Fix issue [#292](https://github.com/intersystems/language-server/issues/292): Add intellisense for instance variable (i%PropertyName) syntax
 - Fix issue [#296](https://github.com/intersystems/language-server/issues/296): Code completion doesn't appear when typing dot in a class name at the class level
 - Fix issue [#299](https://github.com/intersystems/language-server/issues/299): Add intellisense for class name parameters
 - Fix issue [#300](https://github.com/intersystems/language-server/issues/300): Allow `UnknownUser` to not have a password
+- Parser changes:
+  - DP-426315: Coloring for FREEZE & UNFREEZE PLAN
+  - DP-426334: Correct syntax coloring when a parenthesis-enclosed dollar function is used as an oref
+  - DP-426396: Coloring for PURGE QUERIES
+  - DP-426989: Coloring for CREATE INDEX ... AS ...
+  - DP-427139: Coloring for COMPUTECODE [PYTHON | OBJECTSCRIPT]
+  - DP-427233: Coloring for EXPLAIN
+  - DP-427413: Coloring for CREATE MODEL
+  - DP-427471: Coloring for ALTER MODEL
+  - DP-427478: Coloring for DROP MODEL
+  - DP-427665: Coloring for TRAIN MODEL
+  - DP-427729: Coloring for VALIDATE MODEL
+  - DP-427985: Coloring for new ML Admin Privileges
+  - DP-428056: Coloring for SET ML CONFIGURATION
 
 ## [2.4.0] - 2023-10-17
 - Fix issue [#282](https://github.com/intersystems/language-server/issues/282): Syntax error in SQL query using PARTITION or OVER
