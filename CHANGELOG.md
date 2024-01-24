@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.4.3] - 2024-XX-XX
+- Fix issue [#302](https://github.com/intersystems/language-server/issues/302): Intellisense is garbled for macros with Markdown characters in their definition
+
 ## [2.4.2] - 2024-01-18
 - Fix issue [#301](https://github.com/intersystems/language-server/issues/301): Error thrown when not using a server connection
 

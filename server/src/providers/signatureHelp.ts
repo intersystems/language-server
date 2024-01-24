@@ -1,5 +1,5 @@
-import { Position, SignatureHelp, SignatureHelpParams, SignatureHelpTriggerKind, SignatureInformation, Range } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, emphasizeArgument, makeRESTRequest, getMacroContext, findFullRange, getClassMemberContext, beautifyFormalSpec, documaticHtmlToMarkdown, findOpenParen, getParsedDocument } from '../utils/functions';
+import { Position, SignatureHelp, SignatureHelpParams, SignatureHelpTriggerKind, SignatureInformation, Range, MarkupKind } from 'vscode-languageserver/node';
+import { getServerSpec, getLanguageServerSettings, makeRESTRequest, getMacroContext, findFullRange, getClassMemberContext, beautifyFormalSpec, documaticHtmlToMarkdown, findOpenParen, getParsedDocument } from '../utils/functions';
 import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from '../utils/types';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -50,6 +50,79 @@ function determineActiveParam(text: string): number {
 	return activeparam;
 }
 
+/** Placeholder for the Markdown emphasis characters before an argument. */
+const emphasizePrefix: string = "%%%%%";
+
+/** Placeholder for the Markdown emphasis characters after an argument. */
+const emphasizeSuffix: string = "@@@@@";
+
+/**
+ * Edit the macro argument list to markdown-emphasize a given argument in the list.
+ * 
+ * @param arglist The list of arguments.
+ * @param arg The one-indexed number of the argument to emphasize.
+ */
+function emphasizeArgument(arglist: string, arg: number): string {
+	var numargs: number = arglist.split(" ").length;
+	if (arg > numargs) {
+		// The given argument doesn't exist in the list
+		return arglist.replace(/\s+/g,"");
+	}
+
+	var start: number = -1; // inclusive
+	var end: number = -1; // exclusive
+	var spacesfound: number = 0;
+	var lastspace: number = 0;
+	if (arg === numargs) {
+		// The last argument always ends at the second-to-last position
+		end = arglist.length - 1;
+		if (numargs > 1) start = arglist.lastIndexOf(" ") + 1;
+	}
+	if (arg === 1) {
+		// The first argument always starts at position 1
+		start = 1;
+		if (end === -1) {
+			// Find the first space
+			end = arglist.indexOf(" ") - 1;
+		}
+	}
+	if (start !== -1 && end !== -1) {
+		// Do the replacement
+		return (arglist.slice(0,start) + emphasizePrefix + arglist.slice(start,end) + emphasizeSuffix + arglist.slice(end)).replace(/\s+/g,"");
+	}
+	else {
+		// Find the unknown positions
+		var result = arglist;
+		while (arglist.indexOf(" ",lastspace+1) !== -1) {
+			const thisspace = arglist.indexOf(" ",lastspace);
+			spacesfound++;
+			if (arg === spacesfound + 1) {
+				// This is the space before the argument
+				start = thisspace + 1;
+				if (end === -1) {
+					// Look for the next space
+					end = arglist.indexOf(" ",start) - 1;
+				}
+				result = arglist.slice(0,start) + emphasizePrefix + arglist.slice(start,end) + emphasizeSuffix + arglist.slice(end);
+				break;
+			}
+			lastspace = thisspace;
+		}
+		return result.replace(/\s+/g,"");
+	}
+};
+
+/**
+ * Escape Markdown formatting characters in `exp` so they are displayed literally.
+ * Also, replace placeholders for emphasized argument with Markdown.
+ */
+function markdownifyExpansion(exp: string[]): string {
+	return exp.join("\n")
+		.replace(/(\*|_|\||<|>|{|}|\\|`|\[|\]|\(|\)|#|\+|-|!){1}/g,"\\$1")
+		.replace(new RegExp(emphasizePrefix,"g"),"_**")
+		.replace(new RegExp(emphasizeSuffix,"g"),"**_");
+}
+
 export async function onSignatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null> {
 	if (params.context === undefined) {return null;}
 	const doc = documents.get(params.textDocument.uri);
@@ -86,8 +159,8 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 					const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expinputdata)
 					if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
 						signatureHelpDocumentationCache.doc = {
-							kind: "markdown",
-							value: exprespdata.data.result.content.expansion.join("\n")
+							kind: MarkupKind.Markdown,
+							value: markdownifyExpansion(exprespdata.data.result.content.expansion)
 						};
 						params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
 					}
@@ -152,7 +225,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				const sigtext = respdata.data.result.content.signature.replace(/\s+/g,"");
 				const paramsarr: string[] = sigtext.slice(1,-1).split(",");
 				var sig: SignatureInformation = {
-					label: sigtext.replace(",",", "),
+					label: sigtext.replace(/,/g,", "),
 					parameters: []
 				};
 				var startidx: number = 0;
@@ -185,8 +258,8 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 					signatureHelpDocumentationCache = {
 						type: "macro",
 						doc: {
-							kind: "markdown",
-							value: exprespdata.data.result.content.expansion.join("\n")
+							kind: MarkupKind.Markdown,
+							value: markdownifyExpansion(exprespdata.data.result.content.expansion)
 						}
 					};
 					sig.documentation = signatureHelpDocumentationCache.doc;
@@ -270,7 +343,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 						signatureHelpDocumentationCache = {
 							type: "method",
 							doc: {
-								kind: "markdown",
+								kind: MarkupKind.Markdown,
 								value: documaticHtmlToMarkdown(memobj.Description)
 							}
 						};
@@ -349,7 +422,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 					const sigtext = respdata.data.result.content.signature.replace(/\s+/g,"");
 					const paramsarr: string[] = sigtext.slice(1,-1).split(",");
 					var sig: SignatureInformation = {
-						label: sigtext.replace(",",", "),
+						label: sigtext.replace(/,/g,", "),
 						parameters: []
 					};
 					var startidx: number = 0;
@@ -385,8 +458,8 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 						signatureHelpDocumentationCache = {
 							type: "macro",
 							doc: {
-								kind: "markdown",
-								value: exprespdata.data.result.content.expansion.join("\n")
+								kind: MarkupKind.Markdown,
+								value: markdownifyExpansion(exprespdata.data.result.content.expansion)
 							}
 						};
 						sig.documentation = signatureHelpDocumentationCache.doc;
@@ -470,7 +543,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							signatureHelpDocumentationCache = {
 								type: "method",
 								doc: {
-									kind: "markdown",
+									kind: MarkupKind.Markdown,
 									value: documaticHtmlToMarkdown(memobj.Description)
 								}
 							};

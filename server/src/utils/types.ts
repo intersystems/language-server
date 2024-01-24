@@ -98,7 +98,7 @@ export type ClassMemberContext = {
  */
 export type KeywordDoc = {
 	name: string,
-	description?: string,
+	description: string,
 	type: string,
 	constraint?: string | string[]
 };

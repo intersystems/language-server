@@ -1141,61 +1141,6 @@ export async function createDefinitionUri(paramsUri: string, filename: string, e
 };
 
 /**
- * Edit the macro argument list to markdown-emphasize a given argument in the list.
- * 
- * @param arglist The list of arguments.
- * @param arg The one-indexed number of the argument to emphasize.
- */
-export function emphasizeArgument(arglist: string, arg: number): string {
-	var numargs: number = arglist.split(" ").length;
-	if (arg > numargs) {
-		// The given argument doesn't exist in the list
-		return arglist;
-	}
-
-	var start: number = -1; // inclusive
-	var end: number = -1; // exclusive
-	var spacesfound: number = 0;
-	var lastspace: number = 0;
-	if (arg === numargs) {
-		// The last argument alwasy ends at the second-to-last position
-		end = arglist.length - 1;
-	}
-	if (arg === 1) {
-		// The first argument always starts at position 1
-		start = 1;
-		if (end === -1) {
-			// Find the first space
-			end = arglist.indexOf(" ") - 1;
-		}
-	}
-	if (start !== -1 && end !== -1) {
-		// Do the replacement
-		return arglist.slice(0,start) + "_**" + arglist.slice(start,end) + "**_" + arglist.slice(end);
-	}
-	else {
-		// Find the unknown positions
-		var result = arglist;
-		while (arglist.indexOf(" ",lastspace+1) !== -1) {
-			const thisspace = arglist.indexOf(" ",lastspace);
-			spacesfound++;
-			if (arg === spacesfound + 1) {
-				// This is the space before the argument
-				start = thisspace + 1;
-				if (end === -1) {
-					// Look for the next space
-					end = arglist.indexOf(" ",start) - 1;
-				}
-				result = arglist.slice(0,start) + "_**" + arglist.slice(start,end) + "**_" + arglist.slice(end);
-				break;
-			}
-			lastspace = thisspace;
-		}
-		return result;
-	}
-};
-
-/**
  * Determine if the selected macro is defined in the current file.
  * Returns the line number of the macro definition if it was found or -1 if it wasn't.
  * 

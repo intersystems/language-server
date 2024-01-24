@@ -1,4 +1,4 @@
-import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
+import { Position, TextDocumentPositionParams, Range, MarkupKind } from 'vscode-languageserver/node';
 import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass } from '../utils/functions';
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
@@ -251,7 +251,10 @@ export async function onHover(params: TextDocumentPositionParams) {
 					}
 					
 					return {
-						contents: definition,
+						contents: {
+							kind: MarkupKind.PlainText,
+							value: definition
+						},
 						range: macrorange
 					};
 				}
@@ -301,7 +304,10 @@ export async function onHover(params: TextDocumentPositionParams) {
 										defstr = parts.slice(1).join(" ");
 									}
 									return {
-										contents: defstr,
+										contents: {
+											kind: MarkupKind.PlainText,
+											value: defstr
+										},
 										range: macrorange
 									};
 								}
@@ -309,7 +315,10 @@ export async function onHover(params: TextDocumentPositionParams) {
 							else {
 								// The expansion was generated successfully
 								return {
-									contents: exprespdata.data.result.content.expansion.join("  \n"),
+									contents: {
+										kind: MarkupKind.PlainText,
+										value: exprespdata.data.result.content.expansion.join("  \n")
+									},
 									range: macrorange
 								};
 							}
@@ -339,7 +348,10 @@ export async function onHover(params: TextDocumentPositionParams) {
 								defstr = parts.slice(1).join(" ");
 							}
 							return {
-								contents: defstr,
+								contents: {
+									kind: MarkupKind.PlainText,
+									value: defstr
+								},
 								range: macrorange
 							};
 						}
