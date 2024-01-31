@@ -4,7 +4,7 @@ import { URI } from 'vscode-uri';
 import { parse } from 'node-html-parser';
 
 import { ServerSpec, StudioOpenDialogFile, QueryData, compressedline, CommandDoc, LanguageServerConfiguration, MacroContext, DimResult, PossibleClasses, ClassMemberContext } from './types';
-import { parsedDocuments, connection, serverSpecs, languageServerSettings } from './variables';
+import { parsedDocuments, connection, serverSpecs, languageServerSettings, documents } from './variables';
 import * as ld from './languageDefinitions';
 
 import commands = require("../documentation/commands.json");
@@ -2276,5 +2276,6 @@ export function currentClass(doc: TextDocument, parsed: compressedline[]): strin
  * @param server The server that doc `uri` is associated with.
  */
 export async function getTextForUri(uri: string, server: ServerSpec): Promise<string[]> {
-	return connection.sendRequest("intersystems/uri/getText", { uri, server });
+	const doc = documents.get(uri);
+	return doc ? doc.getText().split(/\r?\n/) : connection.sendRequest("intersystems/uri/getText", { uri, server });
 }
