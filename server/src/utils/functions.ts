@@ -88,7 +88,7 @@ turndown.addRule("documaticArg",{
 	replacement: function (content: string, node: HTMLElement) {
 		let attrVal = node.getAttribute("name");
 		if (attrVal !== null) {
-			return `\n- \`${attrVal}\` &#151; ${content}`;
+			return `\n- \`${attrVal}\` - ${content}`;
 		}
 	}
 });

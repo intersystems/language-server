@@ -12,7 +12,7 @@
       "^$|nspace|G(global_name)\n",
       "```\n",
       "Parameters:\n\n",
-      " |`nspace`| or[`nspace`]  _Optional_ &#151; An _extended SSVN reference_, either an explicit namespace name or an implied namespace. Must evaluate to a quoted string, which is enclosed in either square brackets ([&quot;nspace&quot;]) or vertical bars (|&quot;nspace&quot;|). Namespace names are not case-sensitive; they are stored and displayed in uppercase letters. You may also specify ^$GLOBAL as a _process-private global_ as either ^||$GLOBAL or ^|&quot;^&quot;|$GLOBAL.\n\n`global_name` - An expression that evaluates to a string containing an unsubscripted global name.\n"
+      " |`nspace`| or[`nspace`]  _Optional_ - An _extended SSVN reference_, either an explicit namespace name or an implied namespace. Must evaluate to a quoted string, which is enclosed in either square brackets ([&quot;nspace&quot;]) or vertical bars (|&quot;nspace&quot;|). Namespace names are not case-sensitive; they are stored and displayed in uppercase letters. You may also specify ^$GLOBAL as a _process-private global_ as either ^||$GLOBAL or ^|&quot;^&quot;|$GLOBAL.\n\n`global_name` - An expression that evaluates to a string containing an unsubscripted global name.\n"
     ],
     "link": "sglobal"
   },
@@ -46,7 +46,7 @@
       "^$|nspace|L(lock_name,info_type,pid)\n",
       "```\n",
       "Parameters:\n\n",
-      " |`nspace`| or[`nspace`] _Optional_ &#151; An _extended SSVN reference_, either an explicit namespace name or an implied namespace. Must evaluate to a quoted string, which is enclosed in either square brackets ([&quot;nspace&quot;]) or vertical bars (|&quot;nspace&quot;|). Namespace names are not case-sensitive; they are stored and displayed in uppercase letters.\n\n`lock_name` - An expression that evaluates to a string containing a lock variable name, either subscripted or unsubscripted. If a literal, must be specified as a quoted string.\n\n`info_type` _Optional_ &#151; A keyword specifying what type of information about `lock_name` to return. Must be specified as a quoted string. The available options are &quot;OWNER&quot;, &quot;FLAGS&quot;, &quot;MODE&quot;, and &quot;COUNTS&quot;.\n\n`pid` _Optional_ &#151; For use with the &quot;COUNTS&#148; keyword. An integer that specifies the process ID of the owner of the lock. If specified, at most one list element is returned for &quot;COUNTS&#148;. If omitted (or specified as 0), a list element is returned for each owner holding the specified lock. `pid` has no effect on the other `info_type` keywords.\n"
+      " |`nspace`| or[`nspace`] _Optional_ - An _extended SSVN reference_, either an explicit namespace name or an implied namespace. Must evaluate to a quoted string, which is enclosed in either square brackets ([&quot;nspace&quot;]) or vertical bars (|&quot;nspace&quot;|). Namespace names are not case-sensitive; they are stored and displayed in uppercase letters.\n\n`lock_name` - An expression that evaluates to a string containing a lock variable name, either subscripted or unsubscripted. If a literal, must be specified as a quoted string.\n\n`info_type` _Optional_ - A keyword specifying what type of information about `lock_name` to return. Must be specified as a quoted string. The available options are &quot;OWNER&quot;, &quot;FLAGS&quot;, &quot;MODE&quot;, and &quot;COUNTS&quot;.\n\n`pid` _Optional_ - For use with the &quot;COUNTS&#148; keyword. An integer that specifies the process ID of the owner of the lock. If specified, at most one list element is returned for &quot;COUNTS&#148;. If omitted (or specified as 0), a list element is returned for each owner holding the specified lock. `pid` has no effect on the other `info_type` keywords.\n"
     ],
     "link": "slock"
   },
@@ -63,7 +63,7 @@
       "^$|nspace|R(routine_name)\n",
       "```\n",
       "Parameters:\n\n",
-      " |`nspace`| or[`nspace`] _Optional_ &#151; An _extended SSVN reference_, either an explicit namespace name or an implied namespace. Must evaluate to a quoted string, which is enclosed in either square brackets ([&quot;nspace&quot;]) or vertical bars (|&quot;nspace&quot;|). Namespace names are not case-sensitive; they are stored and displayed in uppercase letters.\n\n`routine_name` - An expression that evaluates to a string containing the name of a routine.\n"
+      " |`nspace`| or[`nspace`] _Optional_ - An _extended SSVN reference_, either an explicit namespace name or an implied namespace. Must evaluate to a quoted string, which is enclosed in either square brackets ([&quot;nspace&quot;]) or vertical bars (|&quot;nspace&quot;|). Namespace names are not case-sensitive; they are stored and displayed in uppercase letters.\n\n`routine_name` - An expression that evaluates to a string containing the name of a routine.\n"
     ],
     "link": "sroutine"
   }

@@ -12,7 +12,7 @@
       "$A(expression,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`expression` - The character to be converted.\n\n`position` _Optional_ &#151; The position of a character within a character string, counting from 1. The default is 1.\n"
+      "`expression` - The character to be converted.\n\n`position` _Optional_ - The position of a character within a character string, counting from 1. The default is 1.\n"
     ],
     "link": "fascii"
   },
@@ -42,7 +42,7 @@
       "$BITCOUNT(bitstring,bitvalue)\n",
       "```\n",
       "Parameters:\n\n",
-      "`bitstring` - An expression that evaluates to a bitstring. Can be a variable of any type, `$FACTOR`, a user-defined function, or an oref.prop, ..prop, or i%prop (_instance variable_) property reference.\n\n`bitvalue` _Optional_ &#151; The value (0 or 1) to count within the bitstring.\n"
+      "`bitstring` - An expression that evaluates to a bitstring. Can be a variable of any type, `$FACTOR`, a user-defined function, or an oref.prop, ..prop, or i%prop (_instance variable_) property reference.\n\n`bitvalue` _Optional_ - The value (0 or 1) to count within the bitstring.\n"
     ],
     "link": "fbitcount"
   },
@@ -57,7 +57,7 @@
       "$BITFIND(bitstring,bitvalue,position,direction)\n",
       "```\n",
       "Parameters:\n\n",
-      "`bitstring` - An expression that evaluates to a bitstring. Can be a variable of any type, `$FACTOR`, a user-defined function, or an oref.prop, ..prop, or i%prop (_instance variable_) property reference.\n\n`bitvalue` - The value (0 or 1) to search for within the bitstring.\n\n`position` _Optional_ &#151; The bit position from which the search begins, specified as a positive integer. Bit positions are counted from 1 from the beginning of the bit string. Search is inclusive of this position. A `position` value of 0 is treated as specifying position 1.\n\n`direction` _Optional_ &#151; A direction flag. Available values are 1 and -1. 1 = Search forward (left to right) from the beginning of the bitstring (or from `position`) towards the end (this is the default). -1 = Search backward from the end of the bitstring (or from `position`) towards the beginning.\n"
+      "`bitstring` - An expression that evaluates to a bitstring. Can be a variable of any type, `$FACTOR`, a user-defined function, or an oref.prop, ..prop, or i%prop (_instance variable_) property reference.\n\n`bitvalue` - The value (0 or 1) to search for within the bitstring.\n\n`position` _Optional_ - The bit position from which the search begins, specified as a positive integer. Bit positions are counted from 1 from the beginning of the bit string. Search is inclusive of this position. A `position` value of 0 is treated as specifying position 1.\n\n`direction` _Optional_ - A direction flag. Available values are 1 and -1. 1 = Search forward (left to right) from the beginning of the bitstring (or from `position`) towards the end (this is the default). -1 = Search backward from the end of the bitstring (or from `position`) towards the beginning.\n"
     ],
     "link": "fbitfind"
   },
@@ -72,7 +72,7 @@
       "$BITLOGIC(bitstring_expression,length)\n",
       "```\n",
       "Parameters:\n\n",
-      "`bitstring_expression` - A logical expression consisting of one or more bitstring variables and the logical operators &amp;, |, ^, and ~. A bitstring can be specified as a local variable, a process-private global, a global, an object property, or the constant &quot;&quot;. The null string (&quot;&quot;) has a bitstring length of 0. A bitstring cannot be specified using a function (such as `$FACTOR`) that returns a bitstring.\n\n`length` _Optional_ &#151; The length, in bits, of the resulting bitstring. If `length` is not specified it defaults to the length of the longest bitstring in `bitstring_expression`.\n"
+      "`bitstring_expression` - A logical expression consisting of one or more bitstring variables and the logical operators &amp;, |, ^, and ~. A bitstring can be specified as a local variable, a process-private global, a global, an object property, or the constant &quot;&quot;. The null string (&quot;&quot;) has a bitstring length of 0. A bitstring cannot be specified using a function (such as `$FACTOR`) that returns a bitstring.\n\n`length` _Optional_ - The length, in bits, of the resulting bitstring. If `length` is not specified it defaults to the length of the longest bitstring in `bitstring_expression`.\n"
     ],
     "link": "fbitlogic"
   },
@@ -87,7 +87,7 @@
       "$CASE(target,case:value,case:value,...,:default)\n",
       "```\n",
       "Parameters:\n\n",
-      "`target` - A literal or expression the value of which is to be matched against cases.\n\n`case` - A literal or expression the value of which is to be matched with the results of the evaluation of `target`.\n\n`value` - The value to be returned upon a successful match of the corresponding `case`.\n\n`default` _Optional_ &#151; The value to be returned if no `case` matches `target`.\n"
+      "`target` - A literal or expression the value of which is to be matched against cases.\n\n`case` - A literal or expression the value of which is to be matched with the results of the evaluation of `target`.\n\n`value` - The value to be returned upon a successful match of the corresponding `case`.\n\n`default` _Optional_ - The value to be returned if no `case` matches `target`.\n"
     ],
     "link": "fcase"
   },
@@ -119,7 +119,7 @@
       "$CLASSMETHOD(classname, methodname, arg1, arg2, arg3, ... )\n",
       "```\n",
       "Parameters:\n\n",
-      "`classname` _Optional_ &#151; An expression that evaluates to a string. The content of the string must match exactly the name of an existing, accessible, previously compiled class. In the case of references to InterSystems IRIS classes, the name may be either in its canonical form (_%Library.String_), or its abbreviated form (_%String_). If `classname` is omitted, the current class context is used. (You can use _$THIS_ to determine the current class context.) Note that when `classname` is omitted the placeholder comma must be specified.\n\n`methodname` - An expression which evaluates to a string. The value of the string must match the name of an existing class method in the class identified by `classname`.\n\n`arg1`, `arg2`, `arg3`, ..._Optional_ &#151; A series of expressions to be substituted sequentially for the arguments to the designated method. The values of the expressions can be of any type. It is the responsibility of the implementor to make sure that the type of the supplied expressions match what the method expects, and have values within the bounds declared. (If the specified method expects no arguments then no arguments beyond the `methodname` need be given in the function invocation. If the method requires arguments, the rules that govern what must be supplied are those of the target method.)\n"
+      "`classname` _Optional_ - An expression that evaluates to a string. The content of the string must match exactly the name of an existing, accessible, previously compiled class. In the case of references to InterSystems IRIS classes, the name may be either in its canonical form (_%Library.String_), or its abbreviated form (_%String_). If `classname` is omitted, the current class context is used. (You can use _$THIS_ to determine the current class context.) Note that when `classname` is omitted the placeholder comma must be specified.\n\n`methodname` - An expression which evaluates to a string. The value of the string must match the name of an existing class method in the class identified by `classname`.\n\n`arg1`, `arg2`, `arg3`, ..._Optional_ - A series of expressions to be substituted sequentially for the arguments to the designated method. The values of the expressions can be of any type. It is the responsibility of the implementor to make sure that the type of the supplied expressions match what the method expects, and have values within the bounds declared. (If the specified method expects no arguments then no arguments beyond the `methodname` need be given in the function invocation. If the method requires arguments, the rules that govern what must be supplied are those of the target method.)\n"
     ],
     "link": "fclassmethod"
   },
@@ -134,7 +134,7 @@
       "$CLASSNAME(n)\n",
       "```\n",
       "Parameters:\n\n",
-      "`n` _Optional_ &#151; An object reference (OREF) to an class instance. If omitted, the class name of the current class is returned.\n"
+      "`n` _Optional_ - An object reference (OREF) to an class instance. If omitted, the class name of the current class is returned.\n"
     ],
     "link": "fclassname"
   },
@@ -149,7 +149,7 @@
       "$COMPILE(source,language,errors,object) \n",
       "```\n",
       "Parameters:\n\n",
-      "`source` - An array variable containing the source code to be compiled.\n\n`language` - An integer flag specifying the programming language of the source code.\n\n`errors` - A local variable that receives any errors that occur during compilation. This variable is a List structure, with one element for each error reported. Each error is itself a List structure, specifying error location and type (see below).\n\n`object` _Optional_ &#151; An array used to hold the compiled object code.\n\n`rname` _Optional_ &#151; (Second syntactic form only) a string specifying a routine name used to store the compiled object code in the ^rOBJ global.\n"
+      "`source` - An array variable containing the source code to be compiled.\n\n`language` - An integer flag specifying the programming language of the source code.\n\n`errors` - A local variable that receives any errors that occur during compilation. This variable is a List structure, with one element for each error reported. Each error is itself a List structure, specifying error location and type (see below).\n\n`object` _Optional_ - An array used to hold the compiled object code.\n\n`rname` _Optional_ - (Second syntactic form only) a string specifying a routine name used to store the compiled object code in the ^rOBJ global.\n"
     ],
     "link": "fcompile"
   },
@@ -166,7 +166,7 @@
       "$D(variable,target)\n",
       "```\n",
       "Parameters:\n\n",
-      "`variable` - The variable whose status is to be checked. A local or global variable, subscripted or unsubscripted. The variable may be undefined. You cannot specify a simple object property reference as `variable`; you can specify a multidimensional property reference as `variable` with the syntax obj.property.\n\n`target` _Optional_ &#151; A variable into which `$DATA` returns the current value of `variable`.\n"
+      "`variable` - The variable whose status is to be checked. A local or global variable, subscripted or unsubscripted. The variable may be undefined. You cannot specify a simple object property reference as `variable`; you can specify a multidimensional property reference as `variable` with the syntax obj.property.\n\n`target` _Optional_ - A variable into which `$DATA` returns the current value of `variable`.\n"
     ],
     "link": "fdata"
   },
@@ -181,7 +181,7 @@
       "$DECIMAL(num,digits)\n",
       "```\n",
       "Parameters:\n\n",
-      "`num` - The numeric value to be converted. Commonly this is an IEEE floating point number.\n\n`digits` _Optional_ &#151; An integer that specifies the number of significant digits to return. `$DECIMAL` rounds the return value to that number of digits, using the IEEE floating point rounding algorithm. Valid values are 1 through 38, and 0. If `digits` is greater than the number of digits the value is returned unchanged. If `digits` is 0, no rounding is performed on `num` unless it has more than 20 significant digits (see below for details on 0 value).\n"
+      "`num` - The numeric value to be converted. Commonly this is an IEEE floating point number.\n\n`digits` _Optional_ - An integer that specifies the number of significant digits to return. `$DECIMAL` rounds the return value to that number of digits, using the IEEE floating point rounding algorithm. Valid values are 1 through 38, and 0. If `digits` is greater than the number of digits the value is returned unchanged. If `digits` is 0, no rounding is performed on `num` unless it has more than 20 significant digits (see below for details on 0 value).\n"
     ],
     "link": "fdecimal"
   },
@@ -213,7 +213,7 @@
       "$E(string,from,to)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The target string in which substrings are identified. Specify `string` as an expression that evaluates to a quoted string or a numeric value. In _SET $EXTRACT_ syntax, `string` must be a variable or a multi-dimensional property.\n\n`from` _Optional_ &#151; Specifies the starting position within the target `string`. Characters are counted from 1. Permitted values are `n` (a positive integer specifying the character count from the beginning of `string`), * (specifying the last character in `string`), and *-`n` (offset integer count of characters backwards from end of `string`). _SET $EXTRACT_ syntax also supports *+`n` (offset integer count of characters to append beyond the end of `string`). A `from` without a `to` specifies a single character. A `from` with a `to` specifies a range of characters. If `from` is not specified, it defaults to 1.\n\n`to` _Optional_ &#151; Specifies the end position (inclusive) for a range of characters. Must be used with `from`. Permitted values are `n` (a positive integer specifying the character count from the beginning of `string`), * (specifying the last character in `string`), and *-`n` (offset integer count of characters backwards from end of `string`). _SET $EXTRACT_ syntax also supports *+`n` (offset integer count of the end of a range of characters to append beyond the end of `string`).\n"
+      "`string` - The target string in which substrings are identified. Specify `string` as an expression that evaluates to a quoted string or a numeric value. In _SET $EXTRACT_ syntax, `string` must be a variable or a multi-dimensional property.\n\n`from` _Optional_ - Specifies the starting position within the target `string`. Characters are counted from 1. Permitted values are `n` (a positive integer specifying the character count from the beginning of `string`), * (specifying the last character in `string`), and *-`n` (offset integer count of characters backwards from end of `string`). _SET $EXTRACT_ syntax also supports *+`n` (offset integer count of characters to append beyond the end of `string`). A `from` without a `to` specifies a single character. A `from` with a `to` specifies a range of characters. If `from` is not specified, it defaults to 1.\n\n`to` _Optional_ - Specifies the end position (inclusive) for a range of characters. Must be used with `from`. Permitted values are `n` (a positive integer specifying the character count from the beginning of `string`), * (specifying the last character in `string`), and *-`n` (offset integer count of characters backwards from end of `string`). _SET $EXTRACT_ syntax also supports *+`n` (offset integer count of the end of a range of characters to append beyond the end of `string`).\n"
     ],
     "link": "fextract"
   },
@@ -228,7 +228,7 @@
       "$FACTOR(num,scale)\n",
       "```\n",
       "Parameters:\n\n",
-      "`num` - An expression that evaluates to a number. `num` is converted to a positive integer before bitstring conversion. A negative number is converted to a positive number (its absolute value). A fractional number is rounded to an integer.\n\n`scale` _Optional_ &#151; An integer used as a power-of-ten exponent (scientific notation) multiplier for `num`. The default is 0.\n"
+      "`num` - An expression that evaluates to a number. `num` is converted to a positive integer before bitstring conversion. A negative number is converted to a positive number (its absolute value). A fractional number is rounded to an integer.\n\n`scale` _Optional_ - An integer used as a power-of-ten exponent (scientific notation) multiplier for `num`. The default is 0.\n"
     ],
     "link": "ffactor"
   },
@@ -245,7 +245,7 @@
       "$F(string,substring,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The target string that is to be searched. It can be a variable name, a numeric value, a string literal, or any valid ObjectScript expression that resolves to a string.\n\n`substring` - The substring that is to be searched for. It can be a variable name, a numeric value, a string literal, or any valid ObjectScript expression that resolves to a string.\n\n`position` _Optional _&#151; A position within the target string at which to start the search. It must be a positive integer.\n"
+      "`string` - The target string that is to be searched. It can be a variable name, a numeric value, a string literal, or any valid ObjectScript expression that resolves to a string.\n\n`substring` - The substring that is to be searched for. It can be a variable name, a numeric value, a string literal, or any valid ObjectScript expression that resolves to a string.\n\n`position` _Optional _- A position within the target string at which to start the search. It must be a positive integer.\n"
     ],
     "link": "ffind"
   },
@@ -262,7 +262,7 @@
       "$FN(inumber,format,decimal)\n",
       "```\n",
       "Parameters:\n\n",
-      "`inumber` - The number to be formatted. It can be a numeric literal, a variable, or any valid ObjectScript expression that evaluates to a numeric value.\n\n`format` _Optional_ &#151; Specifies how the number is to be formatted. Specified as a quoted string consisting of zero or more format codes, in any order. Format codes are described below. Note that some format codes are incompatible and result in an error. For default formatting, with or without the `decimal` parameter, you can specify the empty string (&quot;&quot;). If omitted, defaults to the empty string (&quot;&quot;).\n\n`decimal` _Optional_ &#151; The number of fractional decimal digits to be included in the returned number. If `format` is omitted, include a placeholder comma before specifying `decimal`.\n"
+      "`inumber` - The number to be formatted. It can be a numeric literal, a variable, or any valid ObjectScript expression that evaluates to a numeric value.\n\n`format` _Optional_ - Specifies how the number is to be formatted. Specified as a quoted string consisting of zero or more format codes, in any order. Format codes are described below. Note that some format codes are incompatible and result in an error. For default formatting, with or without the `decimal` parameter, you can specify the empty string (&quot;&quot;). If omitted, defaults to the empty string (&quot;&quot;).\n\n`decimal` _Optional_ - The number of fractional decimal digits to be included in the returned number. If `format` is omitted, include a placeholder comma before specifying `decimal`.\n"
     ],
     "link": "ffnumber"
   },
@@ -279,7 +279,7 @@
       "$G(variable,default)\n",
       "```\n",
       "Parameters:\n\n",
-      "`variable` - A local variable, global variable, or process-private global variable, subscripted or unsubscripted. The variable may be undefined. `variable` may be specified as a multidimensional object property with the syntax obj.property.\n\n`default` _Optional_ &#151; The value to be returned if the variable is undefined. If a variable, it must be defined.\n"
+      "`variable` - A local variable, global variable, or process-private global variable, subscripted or unsubscripted. The variable may be undefined. `variable` may be specified as a multidimensional object property with the syntax obj.property.\n\n`default` _Optional_ - The value to be returned if the variable is undefined. If a variable, it must be defined.\n"
     ],
     "link": "fget"
   },
@@ -296,7 +296,7 @@
       "$I(variable,num)\n",
       "```\n",
       "Parameters:\n\n",
-      "`variable` - The variable whose value is to be incremented. It can specify a local variable, a process-private global, or a global variable and can be either subscripted or unsubscripted. The variable need not be defined. If the variable is not defined, or is set to the null string (&quot;&quot;), `$INCREMENT` treats it as having an initial value of zero and increments accordingly. A literal value cannot be specified here. You cannot specify a simple object property reference as `variable`; you can specify a multidimensional property reference as `variable` with the syntax obj.property.\n\n`num` _Optional_ &#151; The numeric increment you want to add to `variable`. The value can be a number (integer or non-integer, positive or negative), a string containing a number, or any expression which evaluates to a number. Leading and trailing blanks and multiple signs are evaluated. A string is evaluated until the first nonnumeric character is encountered. The null string (&quot;&quot;) is evaluated as zero. If you do not specify `num` for the second argument, InterSystems IRIS defaults to incrementing `variable` by 1. \n"
+      "`variable` - The variable whose value is to be incremented. It can specify a local variable, a process-private global, or a global variable and can be either subscripted or unsubscripted. The variable need not be defined. If the variable is not defined, or is set to the null string (&quot;&quot;), `$INCREMENT` treats it as having an initial value of zero and increments accordingly. A literal value cannot be specified here. You cannot specify a simple object property reference as `variable`; you can specify a multidimensional property reference as `variable` with the syntax obj.property.\n\n`num` _Optional_ - The numeric increment you want to add to `variable`. The value can be a number (integer or non-integer, positive or negative), a string containing a number, or any expression which evaluates to a number. Leading and trailing blanks and multiple signs are evaluated. A string is evaluated until the first nonnumeric character is encountered. The null string (&quot;&quot;) is evaluated as zero. If you do not specify `num` for the second argument, InterSystems IRIS defaults to incrementing `variable` by 1. \n"
     ],
     "link": "fincrement"
   },
@@ -313,7 +313,7 @@
       "$IN(fnumber,format,erropt)\n",
       "```\n",
       "Parameters:\n\n",
-      "`fnumber` - The numeric value to be converted to the internal format. It can be a numeric or string value, a variable name, or any valid ObjectScript expression.\n\n`format` - A format specification indicating which external numeric formats are valid representations of numbers. Specified as a quoted string consisting of zero or more format codes, in any order. _Format codes_ are described below. Note that some format codes are incompatible and result in an error. For default formatting, with or without the `erropt` parameter, you can specify the empty string (&quot;&quot;).\n\n`erropt` _Optional_ &#151; The expression returned if `fnumber` is considered invalid based on `format`.\n"
+      "`fnumber` - The numeric value to be converted to the internal format. It can be a numeric or string value, a variable name, or any valid ObjectScript expression.\n\n`format` - A format specification indicating which external numeric formats are valid representations of numbers. Specified as a quoted string consisting of zero or more format codes, in any order. _Format codes_ are described below. Note that some format codes are incompatible and result in an error. For default formatting, with or without the `erropt` parameter, you can specify the empty string (&quot;&quot;).\n\n`erropt` _Optional_ - The expression returned if `fnumber` is considered invalid based on `format`.\n"
     ],
     "link": "finumber"
   },
@@ -343,7 +343,7 @@
       "$ISVALIDDOUBLE(num,scale,min,max)\n",
       "```\n",
       "Parameters:\n\n",
-      "`num` - The numeric value to be validated. It can be a numeric or string value, a variable name, or any valid ObjectScript expression. If a valid number, `num` is converted to a IEEE double-precision floating point type.\n\n`scale` _Optional_ &#151; The number of significant decimal digits for `min` and `max` range comparisons.\n\n`min` _Optional_ &#151; The minimum permitted numeric value. The value you supply is converted to a IEEE double-precision floating point type. If not specified, `min` defaults to `$DOUBLE(&#147;-INF&#148;)`.\n\n`max` _Optional_ &#151; The maximum permitted numeric value. The value you supply is converted to a IEEE double-precision floating point type. If not specified, `max` defaults to `$DOUBLE(&#147;INF&#148;)`.\n"
+      "`num` - The numeric value to be validated. It can be a numeric or string value, a variable name, or any valid ObjectScript expression. If a valid number, `num` is converted to a IEEE double-precision floating point type.\n\n`scale` _Optional_ - The number of significant decimal digits for `min` and `max` range comparisons.\n\n`min` _Optional_ - The minimum permitted numeric value. The value you supply is converted to a IEEE double-precision floating point type. If not specified, `min` defaults to `$DOUBLE(&#147;-INF&#148;)`.\n\n`max` _Optional_ - The maximum permitted numeric value. The value you supply is converted to a IEEE double-precision floating point type. If not specified, `max` defaults to `$DOUBLE(&#147;INF&#148;)`.\n"
     ],
     "link": "fisvaliddouble"
   },
@@ -358,7 +358,7 @@
       "$ISVALIDNUM(num,scale,min,max)\n",
       "```\n",
       "Parameters:\n\n",
-      "`num` - The numeric value to be validated. It can be a numeric or string value, a variable name, or any valid ObjectScript expression.\n\n`scale` _Optional_ &#151; The number of significant fractional digits for `min` and `max` range comparisons.\n\n`min` _Optional_ &#151; The minimum permitted numeric value.\n\n`max` _Optional_ &#151; The maximum permitted numeric value.\n"
+      "`num` - The numeric value to be validated. It can be a numeric or string value, a variable name, or any valid ObjectScript expression.\n\n`scale` _Optional_ - The number of significant fractional digits for `min` and `max` range comparisons.\n\n`min` _Optional_ - The minimum permitted numeric value.\n\n`max` _Optional_ - The maximum permitted numeric value.\n"
     ],
     "link": "fisvalidnum"
   },
@@ -367,7 +367,15 @@
     "alias": [
       "$ISVECTOR"
     ],
-    "documentation": []
+    "documentation": [
+      "Validates a vector value and returns a boolean.\n",
+      "```objectscript\n",
+      "$ISVECTOR(expr)\n",
+      "```\n",
+      "Parameters:\n\n",
+      "`expr` - Any ObjectScript expression.\n"
+    ],
+    "link": "fisvector"
   },
   {
     "label": "$JUSTIFY",
@@ -382,7 +390,7 @@
       "$J(expression,width,decimal)\n",
       "```\n",
       "Parameters:\n\n",
-      "`expression` - The value that is to be right-aligned. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression.\n\n`width` - The number of characters within which `expression` is to be right-aligned. A positive integer or an expression that evaluates to a positive integer.\n\n`decimal` _Optional_ &#151; The number of fractional digits.  A positive integer or an expression that evaluates to a positive integer. InterSystems IRIS rounds or pads the number of fractional digits in `expression` to this value. If you specify `decimal`, InterSystems IRIS treats `expression` as a numeric.\n"
+      "`expression` - The value that is to be right-aligned. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression.\n\n`width` - The number of characters within which `expression` is to be right-aligned. A positive integer or an expression that evaluates to a positive integer.\n\n`decimal` _Optional_ - The number of fractional digits.  A positive integer or an expression that evaluates to a positive integer. InterSystems IRIS rounds or pads the number of fractional digits in `expression` to this value. If you specify `decimal`, InterSystems IRIS treats `expression` as a numeric.\n"
     ],
     "link": "fjustify"
   },
@@ -399,7 +407,7 @@
       "$L(expression,delimiter)\n",
       "```\n",
       "Parameters:\n\n",
-      "`expression` - The target string. It can be a numeric value, a string literal, a variable name, or any valid expression that resolves to a string.\n\n`delimiter` _Optional_ &#151; A string that demarcates separate substrings in the target string. It can be a variable name, a numeric value, a string literal, or any valid expression that resolves to a string.\n"
+      "`expression` - The target string. It can be a numeric value, a string literal, a variable name, or any valid expression that resolves to a string.\n\n`delimiter` _Optional_ - A string that demarcates separate substrings in the target string. It can be a variable name, a numeric value, a string literal, or any valid expression that resolves to a string.\n"
     ],
     "link": "flength"
   },
@@ -416,7 +424,7 @@
       "$LI(list,position,end)  \n",
       "```\n",
       "Parameters:\n\n",
-      "`list` - An expression that evaluates to a valid list. Because lists contain encoding, `list` must be created using _$LISTBUILD_ or _$LISTFROMSTRING_, or extracted from another list using `$LIST`. In _SET $LIST_ syntax, `list` must be a variable or a multi-dimensional property.\n\n`position` _Optional_ &#151; An integer code specifying the starting position in `list`. Permitted values are `n` (count from beginning of `list`), * (last element in `list`), and *-`n` (relative offset count backwards from end of `list`). _SET $LIST_ syntax also supports *+`n` (relative offset integer count of elements to append beyond the end of `list`). Thus, the first element in the list is 1, the second element is 2, the last element in the list is *, and the next-to-last element is *-1. If `position` is a fractional number, it is truncated to its integer part. If `position` is omitted, it defaults to 1.-1 may be used in older code to specify the last element in the list. This deprecated use of -1 should not be combined with *, *-`n`, or *+`n` relative offset syntax.\n\n`end` _Optional_ &#151; An integer code specifying the ending position of a sublist of `list`. Used with `position`. Uses the same values as `position`.\n"
+      "`list` - An expression that evaluates to a valid list. Because lists contain encoding, `list` must be created using _$LISTBUILD_ or _$LISTFROMSTRING_, or extracted from another list using `$LIST`. In _SET $LIST_ syntax, `list` must be a variable or a multi-dimensional property.\n\n`position` _Optional_ - An integer code specifying the starting position in `list`. Permitted values are `n` (count from beginning of `list`), * (last element in `list`), and *-`n` (relative offset count backwards from end of `list`). _SET $LIST_ syntax also supports *+`n` (relative offset integer count of elements to append beyond the end of `list`). Thus, the first element in the list is 1, the second element is 2, the last element in the list is *, and the next-to-last element is *-1. If `position` is a fractional number, it is truncated to its integer part. If `position` is omitted, it defaults to 1.-1 may be used in older code to specify the last element in the list. This deprecated use of -1 should not be combined with *, *-`n`, or *+`n` relative offset syntax.\n\n`end` _Optional_ - An integer code specifying the ending position of a sublist of `list`. Used with `position`. Uses the same values as `position`.\n"
     ],
     "link": "flist"
   },
@@ -450,7 +458,7 @@
       "$LD(list,position,var)\n",
       "```\n",
       "Parameters:\n\n",
-      "`list` - An expression that evaluates to a valid list.\n\n`position` _Optional_ &#151; An expression interpreted as a position in the specified list. Either a positive, non-zero integer or -1.\n\n`var` _Optional_ &#151; A variable that contains the element value at the specified list position. If `$LISTDATA` returns a value of a 1, `var` is written; if `$LISTDATA` returns a value of a 0, `var` is unchanged.\n"
+      "`list` - An expression that evaluates to a valid list.\n\n`position` _Optional_ - An expression interpreted as a position in the specified list. Either a positive, non-zero integer or -1.\n\n`var` _Optional_ - A variable that contains the element value at the specified list position. If `$LISTDATA` returns a value of a 1, `var` is written; if `$LISTDATA` returns a value of a 0, `var` is unchanged.\n"
     ],
     "link": "flistdata"
   },
@@ -467,7 +475,7 @@
       "$LF(list,value,startafter)\n",
       "```\n",
       "Parameters:\n\n",
-      "`list` - An expression that evaluates to a valid list. A list is an encoded string containing one or more elements. A list must be created using _$LISTBUILD_ or _$LISTFROMSTRING_, or extracted from another list using `$LIST`.\n\n`value` - An expression containing the desired element value.\n\n`startafter` _Optional_ &#151; An integer expression interpreted as a list position. The search starts with the element after this position; thus 0 means to start with position 1, 1 means to start with position 2. `startafter`=-1 is a valid value, but always returns no match. Only the integer portion of the `startafter` value is used.\n"
+      "`list` - An expression that evaluates to a valid list. A list is an encoded string containing one or more elements. A list must be created using _$LISTBUILD_ or _$LISTFROMSTRING_, or extracted from another list using `$LIST`.\n\n`value` - An expression containing the desired element value.\n\n`startafter` _Optional_ - An integer expression interpreted as a list position. The search starts with the element after this position; thus 0 means to start with position 1, 1 means to start with position 2. `startafter`=-1 is a valid value, but always returns no match. Only the integer portion of the `startafter` value is used.\n"
     ],
     "link": "flistfind"
   },
@@ -484,7 +492,7 @@
       "$LFS(string,delimiter,flag)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - A string to be converted into an InterSystems IRIS list. This string contains one or more elements, separated by a `delimiter`. The `delimiter` does not become part of the resulting InterSystems IRIS list.\n\n`delimiter` _Optional_ &#151; The delimiter used to separate substrings (elements) in `string`. Specify `delimiter` as a quoted string. If no `delimiter` is specified, the default is the comma (,) character.\n\n`flag` _Optional_ &#151; A two-bit binary bit flag. Available values are 0 (00), 1 (01), 2 (10), and 3 (11). The default is 0.\n"
+      "`string` - A string to be converted into an InterSystems IRIS list. This string contains one or more elements, separated by a `delimiter`. The `delimiter` does not become part of the resulting InterSystems IRIS list.\n\n`delimiter` _Optional_ - The delimiter used to separate substrings (elements) in `string`. Specify `delimiter` as a quoted string. If no `delimiter` is specified, the default is the comma (,) character.\n\n`flag` _Optional_ - A two-bit binary bit flag. Available values are 0 (00), 1 (01), 2 (10), and 3 (11). The default is 0.\n"
     ],
     "link": "flistfromstring"
   },
@@ -501,7 +509,7 @@
       "$LG(list,position,default)\n",
       "```\n",
       "Parameters:\n\n",
-      "`list` - An expression that evaluates to a valid list.\n\n`position` _Optional_ &#151; An integer code specifying the starting position in `list`. Permitted values are `n` (count from beginning of `list`), * (last element in `list`), and *-`n` (relative offset count backwards from end of `list`). Thus, the first element in the list is 1, the second element is 2, the last element in the list is *, and the next-to-last element is *-1. If `position` is a fractional number, it is truncated to its integer part. If `position` is omitted, it defaults to 1.-1 may be used in older code to specify the last element in the list. This deprecated use of -1 should not be combined with * or *-`n` relative offset syntax.\n\n`default` _Optional_ &#151; An expression that provides the value to return if the list element has an undefined value. If `default` is omitted, it defaults to the null string (&#147;&#147;). You must specify a `position` parameter value to specify a `default` value.\n"
+      "`list` - An expression that evaluates to a valid list.\n\n`position` _Optional_ - An integer code specifying the starting position in `list`. Permitted values are `n` (count from beginning of `list`), * (last element in `list`), and *-`n` (relative offset count backwards from end of `list`). Thus, the first element in the list is 1, the second element is 2, the last element in the list is *, and the next-to-last element is *-1. If `position` is a fractional number, it is truncated to its integer part. If `position` is omitted, it defaults to 1.-1 may be used in older code to specify the last element in the list. This deprecated use of -1 should not be combined with * or *-`n` relative offset syntax.\n\n`default` _Optional_ - An expression that provides the value to return if the list element has an undefined value. If `default` is omitted, it defaults to the null string (&#147;&#147;). You must specify a `position` parameter value to specify a `default` value.\n"
     ],
     "link": "flistget"
   },
@@ -567,7 +575,7 @@
       "$LTS(list,delimiter,flag)\n",
       "```\n",
       "Parameters:\n\n",
-      "`list` - An InterSystems IRIS list, created using `$LISTBUILD` or `$LISTFROMSTRING`, or extracted from another list using `$LIST`.\n\n`delimiter` _Optional_ &#151; A delimiter used to separate substrings. Specify `delimiter` as a quoted string. If no `delimiter` is specified, the default is the comma (,) character.\n\n`flag` _Optional_ &#151; A boolean value that specifies how to handle an omitted list element. 0 issues a &lt;NULL VALUE&gt; error. 1 inserts an empty string for the element. The default is 0.\n"
+      "`list` - An InterSystems IRIS list, created using `$LISTBUILD` or `$LISTFROMSTRING`, or extracted from another list using `$LIST`.\n\n`delimiter` _Optional_ - A delimiter used to separate substrings. Specify `delimiter` as a quoted string. If no `delimiter` is specified, the default is the comma (,) character.\n\n`flag` _Optional_ - A boolean value that specifies how to handle an omitted list element. 0 issues a &lt;NULL VALUE&gt; error. 1 inserts an empty string for the element. The default is 0.\n"
     ],
     "link": "flisttostring"
   },
@@ -584,7 +592,7 @@
       "$LU(list,position,bool:val...)\n",
       "```\n",
       "Parameters:\n\n",
-      "`list` - Any expression that evaluates to a list. A list can be created using `$LISTBUILD` or `$LISTFROMSTRING`, or extracted from another list using `$LIST`. The null string (&quot;&quot;) is also treated as a valid list.\n\n`position` - A positive integer specifying the position in `list` to update, counting from 1. If `position` is larger than the number of elements in `list`, `$LISTUPDATE` appends the element, padding if necessary.\n\n`bool`:_Optional_ &#151; A boolean variable specifying whether or not to update the specified `list` element. If omitted, `bool` defaults to 1, causing this element to be updated.\n\n`value` - The value used to update the `list` at the specified `position`. You can specify a comma-separated list of `value` parameters or `bool`:`value` pair parameters in any combination. \n"
+      "`list` - Any expression that evaluates to a list. A list can be created using `$LISTBUILD` or `$LISTFROMSTRING`, or extracted from another list using `$LIST`. The null string (&quot;&quot;) is also treated as a valid list.\n\n`position` - A positive integer specifying the position in `list` to update, counting from 1. If `position` is larger than the number of elements in `list`, `$LISTUPDATE` appends the element, padding if necessary.\n\n`bool`:_Optional_ - A boolean variable specifying whether or not to update the specified `list` element. If omitted, `bool` defaults to 1, causing this element to be updated.\n\n`value` - The value used to update the `list` at the specified `position`. You can specify a comma-separated list of `value` parameters or `bool`:`value` pair parameters in any combination. \n"
     ],
     "link": "flistupdate"
   },
@@ -616,7 +624,7 @@
       "$LOCATE(string,regexp,start,end,val)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The string to be matched.\n\n`regexp` - A regular expression to match against `string`. A regular expression consists of one or more meta-characters, and may also contain literal characters.\n\n`start` _Optional_ &#151; An integer specifying the starting position within `string` from which to match the `regexp`. If you omit `start`, matching begins at the beginning of `string`. If you omit `start` and specify `end` and/or `val`, you must specify the place-holder comma.\n\n`end` _Optional_ &#151; `$LOCATE` assigns an integer value to this variable if the match is successful. This integer is the next character position after the matched string. InterSystems IRIS passes `end` _by reference_. This parameter must be a local variable. It cannot be an array, a global variable, or a reference to an object property.\n\n`val` _Optional_ &#151; `$LOCATE` assigns a string value to this variable if the match is successful. This string consists of the matched substring. InterSystems IRIS passes `val` _by reference_. This parameter must be a local variable. It cannot be an array, a global variable, or a reference to an object property.\n"
+      "`string` - The string to be matched.\n\n`regexp` - A regular expression to match against `string`. A regular expression consists of one or more meta-characters, and may also contain literal characters.\n\n`start` _Optional_ - An integer specifying the starting position within `string` from which to match the `regexp`. If you omit `start`, matching begins at the beginning of `string`. If you omit `start` and specify `end` and/or `val`, you must specify the place-holder comma.\n\n`end` _Optional_ - `$LOCATE` assigns an integer value to this variable if the match is successful. This integer is the next character position after the matched string. InterSystems IRIS passes `end` _by reference_. This parameter must be a local variable. It cannot be an array, a global variable, or a reference to an object property.\n\n`val` _Optional_ - `$LOCATE` assigns a string value to this variable if the match is successful. This string consists of the matched substring. InterSystems IRIS passes `val` _by reference_. This parameter must be a local variable. It cannot be an array, a global variable, or a reference to an object property.\n"
     ],
     "link": "flocate"
   },
@@ -663,7 +671,7 @@
       "$NA(variable,integer)\n",
       "```\n",
       "Parameters:\n\n",
-      "`variable` - The variable whose name value is to be returned. It can specify a local or global variable, which can be either subscripted or unsubscripted. It does not need to be a defined variable. However, it may not be a defined private variable. If `variable` is a subscripted global, you can specify a _naked global reference_.\n\n`integer` _Optional_ &#151; A numeric value that specifies which portion (level) of a subscript reference to return. It can be a positive integer, the name of a variable, or an expression. When used, `variable` must be a subscripted reference.\n"
+      "`variable` - The variable whose name value is to be returned. It can specify a local or global variable, which can be either subscripted or unsubscripted. It does not need to be a defined variable. However, it may not be a defined private variable. If `variable` is a subscripted global, you can specify a _naked global reference_.\n\n`integer` _Optional_ - A numeric value that specifies which portion (level) of a subscript reference to return. It can be a positive integer, the name of a variable, or an expression. When used, `variable` must be a subscripted reference.\n"
     ],
     "link": "fname"
   },
@@ -680,7 +688,7 @@
       "$NC(n,format,endian)\n",
       "```\n",
       "Parameters:\n\n",
-      "`n` - Any number, which can be specified as a value, a variable, or an expression. Additional limitations on valid values are imposed by the `format` selected.\n\n`format` - One of the following format codes, specified as a quoted string: S1, S2, S4, S8, U1, U2, U4, F4, or F8.\n\n`endian` _Optional_ &#151; A boolean value, where 0 = little-endian and 1 = big-endian. The default is 0.\n"
+      "`n` - Any number, which can be specified as a value, a variable, or an expression. Additional limitations on valid values are imposed by the `format` selected.\n\n`format` - One of the following format codes, specified as a quoted string: S1, S2, S4, S8, U1, U2, U4, F4, or F8.\n\n`endian` _Optional_ - A boolean value, where 0 = little-endian and 1 = big-endian. The default is 0.\n"
     ],
     "link": "fnconvert"
   },
@@ -710,7 +718,7 @@
       "$NOW(tzmins)\n",
       "```\n",
       "Parameters:\n\n",
-      "`tzmins` _Optional_ &#151; A positive or negative integer value that specifies the desired time zone offset from the Greenwich meridian, in minutes. A value of 0 corresponds to the Greenwich meridian. Positive integers correspond to time zones west of Greenwich; negative integers correspond to time zones east of Greenwich. For example, a value of 300 corresponds to United States Eastern Standard Time, 5 hours (300 minutes) west of Greenwich. The range of permitted values is -1440 through 1440; values beyond this range result in an &lt;ILLEGAL VALUE&gt; error.  If you omit `tzmins`, the `$NOW` function returns the local date and time based on the `$ZTIMEZONE` special variable value. The range of `$ZTIMEZONE` values that the `$NOW` function supports is -1440 through 1440; values beyond this range result in an &lt;ILLEGAL VALUE&gt; error. \n"
+      "`tzmins` _Optional_ - A positive or negative integer value that specifies the desired time zone offset from the Greenwich meridian, in minutes. A value of 0 corresponds to the Greenwich meridian. Positive integers correspond to time zones west of Greenwich; negative integers correspond to time zones east of Greenwich. For example, a value of 300 corresponds to United States Eastern Standard Time, 5 hours (300 minutes) west of Greenwich. The range of permitted values is -1440 through 1440; values beyond this range result in an &lt;ILLEGAL VALUE&gt; error.  If you omit `tzmins`, the `$NOW` function returns the local date and time based on the `$ZTIMEZONE` special variable value. The range of `$ZTIMEZONE` values that the `$NOW` function supports is -1440 through 1440; values beyond this range result in an &lt;ILLEGAL VALUE&gt; error. \n"
     ],
     "link": "fnow"
   },
@@ -727,7 +735,7 @@
       "$NUM(num,format,min,max)\n",
       "```\n",
       "Parameters:\n\n",
-      "`num` - The numeric value to be validated and then converted to InterSystems IRIS canonical form. It can be a numeric or string value, a variable name, or any valid ObjectScript expression.\n\n`format` _Optional_ &#151; Specifies which processing options to apply to `num`. These processing options dictate primarily how to recognize and handle numbers containing decimal points.\n\n`min` _Optional_ &#151; The minimum acceptable numeric value.\n\n`max` _Optional_ &#151; The maximum acceptable numeric value.\n"
+      "`num` - The numeric value to be validated and then converted to InterSystems IRIS canonical form. It can be a numeric or string value, a variable name, or any valid ObjectScript expression.\n\n`format` _Optional_ - Specifies which processing options to apply to `num`. These processing options dictate primarily how to recognize and handle numbers containing decimal points.\n\n`min` _Optional_ - The minimum acceptable numeric value.\n\n`max` _Optional_ - The maximum acceptable numeric value.\n"
     ],
     "link": "fnumber"
   },
@@ -744,7 +752,7 @@
       "$O(variable,direction,target)\n",
       "```\n",
       "Parameters:\n\n",
-      "`variable` - A subscripted local, process-private global, or global variable. If an array, the subscript is required. You cannot specify just the array name. You can specify an unsubscripted local variable using indirection (see example below). You cannot specify a simple object property reference as `variable`; you can specify a _multidimensional property_ reference as `variable` with the syntax obj.property.\n\n`direction` _Optional_ &#151; The subscript order in which to traverse the target array. Values for subscripted variables can be: 1 = ascending subscript order (the default) or &#150;1 = descending subscript order. For unsubscripted local variables, 1 (the default) is the only permitted value.\n\n`target` _Optional_ &#151; Returns the current data value of the next or previous node of `variable`. Whether it is the next or previous depends on the setting of `direction`. You must specify a `direction` value to specify a `target`. For unsubscripted local variables, `direction` must be set to 1. If `variable` is undefined, the `target` value remains unchanged. The `target` parameter cannot be used with structured system variables (SSVNs) such as `^$ROUTINE`.\n"
+      "`variable` - A subscripted local, process-private global, or global variable. If an array, the subscript is required. You cannot specify just the array name. You can specify an unsubscripted local variable using indirection (see example below). You cannot specify a simple object property reference as `variable`; you can specify a _multidimensional property_ reference as `variable` with the syntax obj.property.\n\n`direction` _Optional_ - The subscript order in which to traverse the target array. Values for subscripted variables can be: 1 = ascending subscript order (the default) or &#150;1 = descending subscript order. For unsubscripted local variables, 1 (the default) is the only permitted value.\n\n`target` _Optional_ - Returns the current data value of the next or previous node of `variable`. Whether it is the next or previous depends on the setting of `direction`. You must specify a `direction` value to specify a `target`. For unsubscripted local variables, `direction` must be set to 1. If `variable` is undefined, the `target` value remains unchanged. The `target` parameter cannot be used with structured system variables (SSVNs) such as `^$ROUTINE`.\n"
     ],
     "link": "forder"
   },
@@ -759,7 +767,7 @@
       "$PARAMETER(class,parameter)\n",
       "```\n",
       "Parameters:\n\n",
-      "`class` _Optional_ &#151; Either a class name or an _object reference (OREF)_ to a class instance. If omitted, uses the object reference of the current class instance. When omitted, you must specify the placeholder comma.\n\n`parameter` - The name of a parameter. An expression which evaluates to a string. The value of the string must match the name of an existing parameter of the class identified by `class`.\n"
+      "`class` _Optional_ - Either a class name or an _object reference (OREF)_ to a class instance. If omitted, uses the object reference of the current class instance. When omitted, you must specify the placeholder comma.\n\n`parameter` - The name of a parameter. An expression which evaluates to a string. The value of the string must match the name of an existing parameter of the class identified by `class`.\n"
     ],
     "link": "fparameter"
   },
@@ -776,7 +784,7 @@
       "$P(string,delimiter,from,to)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The target string in which delimited substrings are identified. Specify `string` as an expression that evaluates to a quoted string or a numeric value. In _SET $PIECE_ syntax, `string` must be a variable or a multi-dimensional property.\n\n`delimiter` - A delimiter used to identify substrings within `string`. Specify `delimiter` as an expression that evaluates to a quoted string containing one or more characters.\n\n`from` _Optional_ &#151; An expression that evaluates to a code specifying the location of a substring, or the beginning of a range of substrings, within `string`. Substrings are separated by a `delimiter`, and counted from 1. Permitted values are `n` (a positive integer specifying the substring count from the beginning of `string`), * (specifying the last substring in `string`), and *-`n` (offset integer count of substrings counting backwards from end of `string`). _SET $PIECE_ syntax also supports *+`n` (offset integer count of substrings to append beyond the end of `string`). Thus, the first delimited substring is 1, the second delimited substring is 2, the last delimited substring is *, and the next-to-last delimited substring is *-1. If `from` is omitted, it defaults to the first delimited substring.\n\n`to` _Optional_ &#151; An expression that evaluates to a code specifying the ending substring for a range of substrings within `string`. Must be used with `from`. Permitted values are `n` (a positive integer specifying the substring count from the beginning of `string`), * (specifying the last substring in `string`), and *-`n` (offset integer count of substrings from end of `string`). _SET $PIECE_ syntax also supports *+`n` (offset integer for a range of substrings to append beyond the end of `string`). If `to` is prior to `from` in `string`, no operation is performed and no error is generated.\n"
+      "`string` - The target string in which delimited substrings are identified. Specify `string` as an expression that evaluates to a quoted string or a numeric value. In _SET $PIECE_ syntax, `string` must be a variable or a multi-dimensional property.\n\n`delimiter` - A delimiter used to identify substrings within `string`. Specify `delimiter` as an expression that evaluates to a quoted string containing one or more characters.\n\n`from` _Optional_ - An expression that evaluates to a code specifying the location of a substring, or the beginning of a range of substrings, within `string`. Substrings are separated by a `delimiter`, and counted from 1. Permitted values are `n` (a positive integer specifying the substring count from the beginning of `string`), * (specifying the last substring in `string`), and *-`n` (offset integer count of substrings counting backwards from end of `string`). _SET $PIECE_ syntax also supports *+`n` (offset integer count of substrings to append beyond the end of `string`). Thus, the first delimited substring is 1, the second delimited substring is 2, the last delimited substring is *, and the next-to-last delimited substring is *-1. If `from` is omitted, it defaults to the first delimited substring.\n\n`to` _Optional_ - An expression that evaluates to a code specifying the ending substring for a range of substrings within `string`. Must be used with `from`. Permitted values are `n` (a positive integer specifying the substring count from the beginning of `string`), * (specifying the last substring in `string`), and *-`n` (offset integer count of substrings from end of `string`). _SET $PIECE_ syntax also supports *+`n` (offset integer for a range of substrings to append beyond the end of `string`). If `to` is prior to `from` in `string`, no operation is performed and no error is generated.\n"
     ],
     "link": "fpiece"
   },
@@ -791,7 +799,7 @@
       "$PREFETCHOFF(gref,gref2)\n",
       "```\n",
       "Parameters:\n\n",
-      "`gref` _Optional_ &#151; A global reference.\n\n`gref2` _Optional_ &#151; A global reference used to establish a range.\n"
+      "`gref` _Optional_ - A global reference.\n\n`gref2` _Optional_ - A global reference used to establish a range.\n"
     ],
     "link": "fprefetchoff"
   },
@@ -806,7 +814,7 @@
       "$PREFETCHON(gref,gref2)\n",
       "```\n",
       "Parameters:\n\n",
-      "`gref`A global reference.\n\n`gref2` _Optional_ &#151; A global reference used to establish a range.\n"
+      "`gref`A global reference.\n\n`gref2` _Optional_ - A global reference used to establish a range.\n"
     ],
     "link": "fprefetchon"
   },
@@ -828,7 +836,7 @@
       "$PROPERTY(instance, propertyname, index1, index2, index3... )\n",
       "```\n",
       "Parameters:\n\n",
-      "`instance` - An expression that evaluates to an _object instance reference (OREF)_. The value of the expression must be that of an in-memory instance of the desired class.\n\n`propertyname` - An expression that evaluates to a string. The value of the string must match the name of an existing property defined in the class identified by `instance`.\n\n`index1`, `index2`, `index3`, ... _Optional_ &#151; If `propertyname` is a multidimensional value, then this series of expressions is treated as indices into the array represented by the property. (If the specified property is not multidimensional, the presence of extra arguments causes an error at runtime.)\n"
+      "`instance` - An expression that evaluates to an _object instance reference (OREF)_. The value of the expression must be that of an in-memory instance of the desired class.\n\n`propertyname` - An expression that evaluates to a string. The value of the string must match the name of an existing property defined in the class identified by `instance`.\n\n`index1`, `index2`, `index3`, ... _Optional_ - If `propertyname` is a multidimensional value, then this series of expressions is treated as indices into the array represented by the property. (If the specified property is not multidimensional, the presence of extra arguments causes an error at runtime.)\n"
     ],
     "link": "fproperty"
   },
@@ -879,7 +887,7 @@
       "$Q(reference,direction,target)\n",
       "```\n",
       "Parameters:\n\n",
-      "`reference` - A reference that evaluates to the name (and optionally subscripts) of a public local or global variable.\n\n`direction` _Optional_ &#151; The direction (forwards or backwards) to traverse the array.\n\n`target` _Optional_ &#151; Returns the current data value of the local or global variable specified in `reference`.\n"
+      "`reference` - A reference that evaluates to the name (and optionally subscripts) of a public local or global variable.\n\n`direction` _Optional_ - The direction (forwards or backwards) to traverse the array.\n\n`target` _Optional_ - Returns the current data value of the local or global variable specified in `reference`.\n"
     ],
     "link": "fquery"
   },
@@ -911,7 +919,7 @@
       "$REPLACE(string,oldsub,newsub,start,count,case)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The source string. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression. If `string` is an empty string (&quot;&quot;), `$REPLACE` returns an empty string.\n\n`oldsub` - The substring to search for in `string`. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression. If `oldsub` is an empty string (&quot;&quot;), `$REPLACE` returns `string`.\n\n`newsub` - The replacement substring substituted for instances of `oldsub` in `string`. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression. If `newsub` is an empty string (&quot;&quot;), `$REPLACE` returns `string` with the occurrences of `oldsub` removed.\n\n`start` _Optional_ &#151; Character count position within `string` where substring search is to begin. String characters are counted from 1. A value of 0, a negative number, a nonnumeric string or an empty string are equivalent to 1. If omitted, 1 is assumed. If `start` &gt; 1, the substring of `string` beginning with that character is returned, with substring substitutions (if any) performed. If `start` &gt; $LENGTH(`string`), `$REPLACE` returns the empty string (&quot;&quot;).\n\n`count` _Optional_ &#151; Number of substring substitutions to perform. If omitted, the default value is -1, which means perform all possible substitutions. A value of 0, a negative number other than -1, a nonnumeric string or an empty string are equivalent to 0 which means perform no substitutions. `count` must be used in conjunction with `start`.\n\n`case` _Optional_ &#151; Boolean flag indicating whether matching of `oldsub` in `string` is to be case-sensitive. 0 = case-sensitive (the default). 1 = not case-sensitive. Any nonzero number is equivalent to 1. Any nonnumeric value is equivalent to 0. Placeholder commas can be supplied when `start` or `count` are not specified.\n"
+      "`string` - The source string. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression. If `string` is an empty string (&quot;&quot;), `$REPLACE` returns an empty string.\n\n`oldsub` - The substring to search for in `string`. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression. If `oldsub` is an empty string (&quot;&quot;), `$REPLACE` returns `string`.\n\n`newsub` - The replacement substring substituted for instances of `oldsub` in `string`. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression. If `newsub` is an empty string (&quot;&quot;), `$REPLACE` returns `string` with the occurrences of `oldsub` removed.\n\n`start` _Optional_ - Character count position within `string` where substring search is to begin. String characters are counted from 1. A value of 0, a negative number, a nonnumeric string or an empty string are equivalent to 1. If omitted, 1 is assumed. If `start` &gt; 1, the substring of `string` beginning with that character is returned, with substring substitutions (if any) performed. If `start` &gt; $LENGTH(`string`), `$REPLACE` returns the empty string (&quot;&quot;).\n\n`count` _Optional_ - Number of substring substitutions to perform. If omitted, the default value is -1, which means perform all possible substitutions. A value of 0, a negative number other than -1, a nonnumeric string or an empty string are equivalent to 0 which means perform no substitutions. `count` must be used in conjunction with `start`.\n\n`case` _Optional_ - Boolean flag indicating whether matching of `oldsub` in `string` is to be case-sensitive. 0 = case-sensitive (the default). 1 = not case-sensitive. Any nonzero number is equivalent to 1. Any nonnumeric value is equivalent to 0. Placeholder commas can be supplied when `start` or `count` are not specified.\n"
     ],
     "link": "freplace"
   },
@@ -945,7 +953,7 @@
       "$SC(s,format,endian,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`s` - A string of 8-bit bytes which encode for a number. Limitations on valid values are imposed by the `format` selected.\n\n`format` - One of the following format codes, specified as a quoted string: S1, S2, S4, S8, U1, U2, U4, F4, or F8.\n\n`endian` _Optional_ &#151; A boolean value, where 0 = little-endian and 1 = big-endian. The default is 0.\n\n`position` _Optional_ &#151; The character position in the string of 8-bit bytes at which to begin conversion. Character positions are counted from 1. The default value is 1. If you specify `position`, you must either specify `endian` or a placeholder comma.\n"
+      "`s` - A string of 8-bit bytes which encode for a number. Limitations on valid values are imposed by the `format` selected.\n\n`format` - One of the following format codes, specified as a quoted string: S1, S2, S4, S8, U1, U2, U4, F4, or F8.\n\n`endian` _Optional_ - A boolean value, where 0 = little-endian and 1 = big-endian. The default is 0.\n\n`position` _Optional_ - The character position in the string of 8-bit bytes at which to begin conversion. Character positions are counted from 1. The default value is 1. If you specify `position`, you must either specify `endian` or a placeholder comma.\n"
     ],
     "link": "fsconvert"
   },
@@ -1009,7 +1017,7 @@
       "$SORTEND(set_global,dosort)\n",
       "```\n",
       "Parameters:\n\n",
-      "`set_global` _Optional_ &#151; A global variable that was specified in a corresponding `$SORTBEGIN`. If omitted, `$SORTEND` concludes all `$SORTBEGIN` operations for the current process.\n\n`dosort` _Optional_ &#151; A flag parameter. If 1, InterSystems IRIS performs the sort operation initiated by `$SORTBEGIN` and copies the sorted data into `set_global`. If 0, InterSystems IRIS terminates the sort operation without copying any data. The default is 1.\n"
+      "`set_global` _Optional_ - A global variable that was specified in a corresponding `$SORTBEGIN`. If omitted, `$SORTEND` concludes all `$SORTBEGIN` operations for the current process.\n\n`dosort` _Optional_ - A flag parameter. If 1, InterSystems IRIS performs the sort operation initiated by `$SORTBEGIN` and copies the sorted data into `set_global`. If 0, InterSystems IRIS terminates the sort operation without copying any data. The default is 1.\n"
     ],
     "link": "fsortend"
   },
@@ -1026,7 +1034,7 @@
       "$ST(context_level,code_string)\n",
       "```\n",
       "Parameters:\n\n",
-      "`context_level` - An integer specifying the zero-based context level number of the context for which information is requested. Supported values include 0, positive integers, and -1.\n\n`code_string` _Optional_ &#151; A keyword string that specifies the kind of context information that is requested. supported values are &#147;PLACE&#148;, &#147;MCODE&#148;, and &#147;ECODE&#148;\n"
+      "`context_level` - An integer specifying the zero-based context level number of the context for which information is requested. Supported values include 0, positive integers, and -1.\n\n`code_string` _Optional_ - A keyword string that specifies the kind of context information that is requested. supported values are &#147;PLACE&#148;, &#147;MCODE&#148;, and &#147;ECODE&#148;\n"
     ],
     "link": "fstack"
   },
@@ -1043,7 +1051,7 @@
       "$T(label+offset^routine)\n",
       "```\n",
       "Parameters:\n\n",
-      "`label` _Optional_ &#151; A line label in a routine. Must be a literal value; a variable cannot be used to specify `label`. Line labels are case-sensitive. If omitted, `+offset` is counted from the beginning of the routine.\n\n`+offset` _Optional_ &#151; An expression that resolves to a positive integer that identifies the line to be returned as an offset number of lines. If omitted, the line identified by `label` is returned.\n\n`^routine` _Optional_ &#151; The name of a routine that resides on disk. The system loads the routine from disk and begins execution at the first executable line of the routine. Must be a literal value; a variable cannot be used to specify `routine`. (Note that the ^ character is a separator character, not part of the routine name.) If the routine is not in the current namespace, you can specify the namespace that contains the routine using an _extended routine reference_, as follows: ^|&quot;namespace&quot;|routine. If omitted, defaults to the currently loaded routine.`@expr_atom`An expression atom that uses indirection to supply a location. Resolves to some form of label+offset^routine.\n"
+      "`label` _Optional_ - A line label in a routine. Must be a literal value; a variable cannot be used to specify `label`. Line labels are case-sensitive. If omitted, `+offset` is counted from the beginning of the routine.\n\n`+offset` _Optional_ - An expression that resolves to a positive integer that identifies the line to be returned as an offset number of lines. If omitted, the line identified by `label` is returned.\n\n`^routine` _Optional_ - The name of a routine that resides on disk. The system loads the routine from disk and begins execution at the first executable line of the routine. Must be a literal value; a variable cannot be used to specify `routine`. (Note that the ^ character is a separator character, not part of the routine name.) If the routine is not in the current namespace, you can specify the namespace that contains the routine using an _extended routine reference_, as follows: ^|&quot;namespace&quot;|routine. If omitted, defaults to the currently loaded routine.`@expr_atom`An expression atom that uses indirection to supply a location. Resolves to some form of label+offset^routine.\n"
     ],
     "link": "ftext"
   },
@@ -1053,7 +1061,25 @@
       "$VECTOR",
       "$VE"
     ],
-    "documentation": []
+    "documentation": [
+      "Assigns, returns, and deletes vector data at specified positions.\n\n",
+      "**Assign Vector Data:**\n",
+      "```objectscript\n",
+      "Set $VECTOR(vector,position,type) = value\n",
+      "```\n",
+      "**Return Vector Data:**\n",
+      "```objectscript\n",
+      "$VECTOR(vector,position)\n",
+      "$VECTOR(vector,startPosition,endPosition)\n",
+      "$VECTOR(vector,startPosition,*)\n",
+      "$VECTOR(vector,startPosition,* - offset) \n",
+      "```\n",
+      "**Delete Vector Data:**\n",
+      "```objectscript\n",
+      "Kill $VECTOR(vector,position)\n",
+      "```\n"
+    ],
+    "link": "fvector"
   },
   {
     "label": "$VECTORDEFINED",
@@ -1061,7 +1087,18 @@
       "$VECTORDEFINED",
       "$VD"
     ],
-    "documentation": []
+    "documentation": [
+      "Determines if vector element at specified position is defined.\n",
+      "```objectscript\n",
+      "$VECTORDEFINED(vector,position,value)\n",
+      "$VD(vector,position,value)\n",
+      "```\n",
+      "Parameters:\n\n",
+      "`vector` - Global or local variable specifying the input vector. If `vector` is not a vector, then `$VECTORDEFINED` raises a **&lt;VECTOR&gt;** error. If vector is undefined or holds an empty string, then `$VECTORDEFINED` returns 0 and `value` (if specified) is set to the empty string.\n\n",
+      "`position` - Positive integer specifying the vector element position to check. If `position` is less than 1, then `$VECTORDEFINED` raises a **&lt;VECTOR&gt;** error.\n\n",
+      "`value` _Optional_ - Local variable that stores the value of the vector element located at `position`. If the element is defined, then `value` is set to the element value. If the element is undefined, then `value` is set to the empty string. If the value variable did not previously exist, then `$VECTORDEFINED` creates it.\n\n"
+    ],
+    "link": "fvectordefined"
   },
   {
     "label": "$VECTOROP",
@@ -1069,7 +1106,10 @@
       "$VECTOROP",
       "$VOP"
     ],
-    "documentation": []
+    "documentation": [
+      "Performs various operations on vectors defined through ObjectScript."
+    ],
+    "link": "fvectorop"
   },
   {
     "label": "$TRANSLATE",
@@ -1084,7 +1124,7 @@
       "$TR(string,identifier,associator)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The source string. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression.\n\n`identifier` - A string consisting of one or more characters to search for in `string`. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression.\n\n`associator` _Optional_ &#151; A string consisting of one or more replacement characters that correspond positionally to each character in `identifier`. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression.\n"
+      "`string` - The source string. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression.\n\n`identifier` - A string consisting of one or more characters to search for in `string`. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression.\n\n`associator` _Optional_ - A string consisting of one or more replacement characters that correspond positionally to each character in `identifier`. It can be a numeric value, a string literal, the name of a variable, or any valid ObjectScript expression.\n"
     ],
     "link": "ftranslate"
   },
@@ -1101,7 +1141,7 @@
       "$V(offset,mode,length)\n",
       "```\n",
       "Parameters:\n\n",
-      "`offset` - An offset, in bytes, from a base address within the memory region specified by `mode`. Interpretation is mode-dependent (see below.)\n\n`mode` _Optional_ &#151; The memory region whose base address will be used to locate the data. Default is -1.\n\n`length` _Optional_ &#151; The length of the data to be returned, in bytes. May also contain a letter &#147;O&#148; reverse order suffix. Default is 1.\n"
+      "`offset` - An offset, in bytes, from a base address within the memory region specified by `mode`. Interpretation is mode-dependent (see below.)\n\n`mode` _Optional_ - The memory region whose base address will be used to locate the data. Default is -1.\n\n`length` _Optional_ - The length of the data to be returned, in bytes. May also contain a letter &#147;O&#148; reverse order suffix. Default is 1.\n"
     ],
     "link": "fview"
   },
@@ -1118,7 +1158,7 @@
       "$WA(expression,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`expression` - The character to be converted.\n\n`position` _Optional_ &#151; The position of a character within a character string, counting from 1. The default is 1.\n"
+      "`expression` - The character to be converted.\n\n`position` _Optional_ - The position of a character within a character string, counting from 1. The default is 1.\n"
     ],
     "link": "fwascii"
   },
@@ -1152,7 +1192,7 @@
       "$WE(string,from,to)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The target string in which substrings are identified. Specify `string` as an expression that evaluates to a quoted string or a numeric value. In _SET $WEXTRACT_ syntax, `string` must be a variable or a multi-dimensional property.\n\n`from` _Optional_ &#151; The starting position within the target string. Characters are counted from 1. A surrogate pair is counted as a single character. Permitted values are `n` (a positive integer specifying the start position as a character count from the beginning of `string`), * (specifying the last character in `string`), and *-`n` (offset integer count of characters backwards from end of `string`). _SET $WEXTRACT_ syntax also supports *+`n` (offset integer count of characters to append beyond the end of `string`). If not specified, the default is 1. Different values are used for the two-parameter form $WEXTRACT(string,from), and the three-parameter form $WEXTRACT(string,from,to): Without `to`: Specifies a single character. To count from the beginning of `string`, specify an expression that evaluates to a positive integer (counting from 1); a zero (0) or negative number returns the empty string. To count from the end of `string` specify  *, or *-`n`. If `from` is omitted it defaults to 1.  With `to`: Specifies the start of a range of characters. To count from the beginning of `string`, specify an expression that evaluates to a positive integer (counting from 1). A zero (0) or negative number evaluates as 1. To count from the end of `string` specify  *, or *-`n`.\n\n`to` _Optional_ &#151; Specifies the end position (inclusive) for a range of characters. Must be used with `from`. Permitted values are `n` (a positive integer equal to or larger than `from` that specifies the end position as a character count from the beginning of `string`), * (specifying the last character in `string`), and *-`n` (offset integer count of characters backwards from end of `string`).  A surrogate pair is counted as a single character. You can specify a `to` value that is beyond the end of the string.   _SET $WEXTRACT_ syntax also supports *+`n` (offset integer count of the end of a range of characters to append beyond the end of `string`).   \n"
+      "`string` - The target string in which substrings are identified. Specify `string` as an expression that evaluates to a quoted string or a numeric value. In _SET $WEXTRACT_ syntax, `string` must be a variable or a multi-dimensional property.\n\n`from` _Optional_ - The starting position within the target string. Characters are counted from 1. A surrogate pair is counted as a single character. Permitted values are `n` (a positive integer specifying the start position as a character count from the beginning of `string`), * (specifying the last character in `string`), and *-`n` (offset integer count of characters backwards from end of `string`). _SET $WEXTRACT_ syntax also supports *+`n` (offset integer count of characters to append beyond the end of `string`). If not specified, the default is 1. Different values are used for the two-parameter form $WEXTRACT(string,from), and the three-parameter form $WEXTRACT(string,from,to): Without `to`: Specifies a single character. To count from the beginning of `string`, specify an expression that evaluates to a positive integer (counting from 1); a zero (0) or negative number returns the empty string. To count from the end of `string` specify  *, or *-`n`. If `from` is omitted it defaults to 1.  With `to`: Specifies the start of a range of characters. To count from the beginning of `string`, specify an expression that evaluates to a positive integer (counting from 1). A zero (0) or negative number evaluates as 1. To count from the end of `string` specify  *, or *-`n`.\n\n`to` _Optional_ - Specifies the end position (inclusive) for a range of characters. Must be used with `from`. Permitted values are `n` (a positive integer equal to or larger than `from` that specifies the end position as a character count from the beginning of `string`), * (specifying the last character in `string`), and *-`n` (offset integer count of characters backwards from end of `string`).  A surrogate pair is counted as a single character. You can specify a `to` value that is beyond the end of the string.   _SET $WEXTRACT_ syntax also supports *+`n` (offset integer count of the end of a range of characters to append beyond the end of `string`).   \n"
     ],
     "link": "fwextract"
   },
@@ -1169,7 +1209,7 @@
       "$WF(string,substring,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The target string that is to be searched. It can be a variable name, a numeric value, a string literal, or any valid ObjectScript expression that resolves to a string.\n\n`substring` - The substring that is to be searched for. It can be a variable name, a numeric value, a string literal, or any valid ObjectScript expression that resolves to a string.\n\n`position` _Optional _&#151; A position within the target string at which to start the search. It must be a positive integer.\n"
+      "`string` - The target string that is to be searched. It can be a variable name, a numeric value, a string literal, or any valid ObjectScript expression that resolves to a string.\n\n`substring` - The substring that is to be searched for. It can be a variable name, a numeric value, a string literal, or any valid ObjectScript expression that resolves to a string.\n\n`position` _Optional _- A position within the target string at which to start the search. It must be a positive integer.\n"
     ],
     "link": "fwfind"
   },
@@ -1233,7 +1273,7 @@
       "$XECUTE(code,paramlist)\n",
       "```\n",
       "Parameters:\n\n",
-      "`code` - An expression that resolves to a valid ObjectScript command line, specified as a quoted string. A command line can contain one or more ObjectScript commands. The final command must be an argumented _QUIT_.\n\n`paramlist` _Optional_ &#151; A list of parameters to be passed to `code`. Multiple parameters are separated by commas.\n"
+      "`code` - An expression that resolves to a valid ObjectScript command line, specified as a quoted string. A command line can contain one or more ObjectScript commands. The final command must be an argumented _QUIT_.\n\n`paramlist` _Optional_ - A list of parameters to be passed to `code`. Multiple parameters are separated by commas.\n"
     ],
     "link": "fxecute"
   },
@@ -1304,7 +1344,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – AND\n",
+      "Legacy, Bitstring function - AND\n",
       "```objectscript\n",
       "$ZBITAND(bitstring1,bitstring2)",
       "```\n\n",
@@ -1319,7 +1359,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – COUNT\n",
+      "Legacy, Bitstring function - COUNT\n",
       "```objectscript\n",
       "$ZBITCOUNT(bitstring)",
       "```\n\n",
@@ -1334,7 +1374,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – FIND\n",
+      "Legacy, Bitstring function - FIND\n",
       "```objectscript\n",
       "$ZBITFIND(bitstring, truthval, position)",
       "```\n\n",
@@ -1349,7 +1389,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – GET\n",
+      "Legacy, Bitstring function - GET\n",
       "```objectscript\n",
       "$ZBITGET(bitstring, position)",
       "```\n",
@@ -1367,7 +1407,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – LEN\n",
+      "Legacy, Bitstring function - LEN\n",
       "```objectscript\n",
       "$ZBITLEN(bitstring)",
       "```\n\n",
@@ -1382,7 +1422,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – NOT\n",
+      "Legacy, Bitstring function - NOT\n",
       "```objectscript\n",
       "$ZBITNOT(bitstring)",
       "```\n\n",
@@ -1397,7 +1437,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – OR\n",
+      "Legacy, Bitstring function - OR\n",
       "```objectscript\n",
       "$ZBITOR(bitstring1,bitstring2)",
       "```\n\n",
@@ -1412,7 +1452,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – SET\n",
+      "Legacy, Bitstring function - SET\n",
       "```objectscript\n",
       "$ZBITSET(bitstring,position,truthval)",
       "```\n\n",
@@ -1427,7 +1467,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – STR\n",
+      "Legacy, Bitstring function - STR\n",
       "```objectscript\n",
       "$ZBITSTR(size,truthval)",
       "```\n\n",
@@ -1442,7 +1482,7 @@
     ],
     "deprecated": true,
     "documentation": [
-      "Legacy, Bitstring function – XOR\n",
+      "Legacy, Bitstring function - XOR\n",
       "```objectscript\n",
       "$ZBITXOR(bitstring1,bitstring2)",
       "```\n\n",
@@ -1480,7 +1520,7 @@
       "$ZCVT(string,mode,trantable,handle)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The string to convert, specified as a quoted string. This string can be specified as a value, a variable, or an expression.\n\n`mode` - A letter code specifying the conversion mode, either the type of case conversion or input/output encoding. Specify `mode` as a quoted string.\n\n`trantable` _Optional_ &#151; The _translation table to use_, specified as either an integer or a quoted string.\n\n`handle` _Optional_ &#151; An unsubscripted local variable that holds a string value. Used for multiple invocations of `$ZCONVERT`. The _handle parameter_ contains the remaining portion of `string` that could not be converted at the end of `$ZCONVERT`, and supplies this remaining portion to the next invocation of `$ZCONVERT`.\n"
+      "`string` - The string to convert, specified as a quoted string. This string can be specified as a value, a variable, or an expression.\n\n`mode` - A letter code specifying the conversion mode, either the type of case conversion or input/output encoding. Specify `mode` as a quoted string.\n\n`trantable` _Optional_ - The _translation table to use_, specified as either an integer or a quoted string.\n\n`handle` _Optional_ - An unsubscripted local variable that holds a string value. Used for multiple invocations of `$ZCONVERT`. The _handle parameter_ contains the remaining portion of `string` that could not be converted at the end of `$ZCONVERT`, and supplies this remaining portion to the next invocation of `$ZCONVERT`.\n"
     ],
     "link": "fzconvert"
   },
@@ -1525,7 +1565,7 @@
       "$ZCRC(string,mode,expression)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - A string on which a checksum operation is performed.\n\n`mode` - An integer code specifying the checksum mode to use.\n\n`expression` _Optional_ &#151; The initial &quot;seed&quot; value, specified as an integer. If omitted, defaults to zero (0).\n"
+      "`string` - A string on which a checksum operation is performed.\n\n`mode` - An integer code specifying the checksum mode to use.\n\n`expression` _Optional_ - The initial &quot;seed&quot; value, specified as an integer. If omitted, defaults to zero (0).\n"
     ],
     "link": "fzcrc"
   },
@@ -1574,7 +1614,7 @@
       "$ZDA(string,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - A string or number. It can be a value, a variable, or an expression. It must be a minimum of eight bytes in length. A number is converted to canonical form by removing a leading plus sign, and leading and trailing zeros before it is supplied to `$ZDASCII`; the resulting canonical number must be a minimum of eight bytes in length.\n\n`position` _Optional_ &#151; A starting position in the string, expressed as a positive, non-zero integer. The default is 1. Position is counted in single bytes, _not_ eight-byte strings. There must exist at least eight bytes of `string` from the specified `position` (inclusive). A numeric `position` value is parsed as an integer by truncating decimal digits, removing leading zeros and plus signs, etc.\n"
+      "`string` - A string or number. It can be a value, a variable, or an expression. It must be a minimum of eight bytes in length. A number is converted to canonical form by removing a leading plus sign, and leading and trailing zeros before it is supplied to `$ZDASCII`; the resulting canonical number must be a minimum of eight bytes in length.\n\n`position` _Optional_ - A starting position in the string, expressed as a positive, non-zero integer. The default is 1. Position is counted in single bytes, _not_ eight-byte strings. There must exist at least eight bytes of `string` from the specified `position` (inclusive). A numeric `position` value is parsed as an integer by truncating decimal digits, removing leading zeros and plus signs, etc.\n"
     ],
     "link": "fzdascii"
   },
@@ -1591,7 +1631,7 @@
       "$ZD(hdate,dformat,monthlist,yearopt,startwin,endwin,mindate,maxdate,erropt,localeopt)\n",
       "```\n",
       "Parameters:\n\n",
-      "`hdate` - An integer specifying an internal date format value. This integer represents the number of days elapsed since December 31, 1840. If `$HOROLOG` is specified for `hdate`, only the date portion of `$HOROLOG` is used. See _hdate_ below.\n\n`dformat` _Optional_ &#151; An integer code specifying the format for the returned date. See _dformat_ below.\n\n`monthlist` _Optional_ &#151; A string or the name of a variable that specifies a set of month names. This string must begin with a delimiter character, and its 12 entries must be separated by this delimiter character. See _monthlist_ below.\n\n`yearopt` _Optional_ &#151; An integer code that specifies whether to represent years as two- or four-digit values. See _yearopt_ below.\n\n`startwin` _Optional_ &#151; The start of the sliding window during which dates must be represented with two-digit years.  See _startwin_ below.\n\n`endwin` _Optional_ &#151; The end of the sliding window during which dates are represented with two-digit years. See _endwin_ below.\n\n`mindate` _Optional_ &#151; The lower limit of the range of valid dates. Specified as a `$HOROLOG` integer date count, with 0 representing December 31, 1840. Can be specified as a positive or negative integer. See _mindate_ below.\n\n`maxdate` _Optional_ &#151; The upper limit of the range of valid dates. Specified as a `$HOROLOG` integer date count. See _maxdate_ below.\n\n`erropt` _Optional_ &#151; An expression to return when `hdate` is invalid. Specifying a value for this parameter suppresses error codes associated with invalid or out of range `hdate` values.  Instead of issuing an error message, `$ZDATE` returns `erropt`. See _erropt_ below.\n\n`localeopt` _Optional_ &#151; A boolean flag that specifies which locale to use for the `dformat`, `monthlist`, `yearopt`, `mindate` and `maxdate` default values, and other date characteristics, such as the date separator character:`localeopt`=0: the current locale property settings determine these parameter defaults.`localeopt`=1: the ODBC standard locale determines these parameter defaults.`localeopt` not specified: the `dformat` value determines these parameter defaults. If `dformat`=3, ODBC defaults are used. Japanese and Islamic date `dformat`values use their own defaults. For all other `dformat` values, current locale property settings are used as defaults. See _localeopt_ below.\n"
+      "`hdate` - An integer specifying an internal date format value. This integer represents the number of days elapsed since December 31, 1840. If `$HOROLOG` is specified for `hdate`, only the date portion of `$HOROLOG` is used. See _hdate_ below.\n\n`dformat` _Optional_ - An integer code specifying the format for the returned date. See _dformat_ below.\n\n`monthlist` _Optional_ - A string or the name of a variable that specifies a set of month names. This string must begin with a delimiter character, and its 12 entries must be separated by this delimiter character. See _monthlist_ below.\n\n`yearopt` _Optional_ - An integer code that specifies whether to represent years as two- or four-digit values. See _yearopt_ below.\n\n`startwin` _Optional_ - The start of the sliding window during which dates must be represented with two-digit years.  See _startwin_ below.\n\n`endwin` _Optional_ - The end of the sliding window during which dates are represented with two-digit years. See _endwin_ below.\n\n`mindate` _Optional_ - The lower limit of the range of valid dates. Specified as a `$HOROLOG` integer date count, with 0 representing December 31, 1840. Can be specified as a positive or negative integer. See _mindate_ below.\n\n`maxdate` _Optional_ - The upper limit of the range of valid dates. Specified as a `$HOROLOG` integer date count. See _maxdate_ below.\n\n`erropt` _Optional_ - An expression to return when `hdate` is invalid. Specifying a value for this parameter suppresses error codes associated with invalid or out of range `hdate` values.  Instead of issuing an error message, `$ZDATE` returns `erropt`. See _erropt_ below.\n\n`localeopt` _Optional_ - A boolean flag that specifies which locale to use for the `dformat`, `monthlist`, `yearopt`, `mindate` and `maxdate` default values, and other date characteristics, such as the date separator character:`localeopt`=0: the current locale property settings determine these parameter defaults.`localeopt`=1: the ODBC standard locale determines these parameter defaults.`localeopt` not specified: the `dformat` value determines these parameter defaults. If `dformat`=3, ODBC defaults are used. Japanese and Islamic date `dformat`values use their own defaults. For all other `dformat` values, current locale property settings are used as defaults. See _localeopt_ below.\n"
     ],
     "link": "fzdate"
   },
@@ -1608,7 +1648,7 @@
       "$ZDH(date,dformat,monthlist,yearopt,startwin,endwin,mindate,maxdate,erropt,localeopt)\n",
       "```\n",
       "Parameters:\n\n",
-      "`date` - An expression that evaluates to a date string in display format. `$ZDATEH` converts this date string to `$HOROLOG` format. This can be either an explicit date (specified in various formats) or the string &#147;T&#148; or &#147;t&#148;, representing the current date. The &#147;T&#148; or &#147;t&#148; string can optionally include a signed integer offset. For example &#147;T-7&#148; meaning seven days before the current date. See _date_ below.\n\n`dformat` _Optional_ &#151; An integer code that specifies a date format option for `date`. If `date` is &#147;T&#148;, `dformat` must be 5, 6, 7, 8, 9, or 15. See _dformat_ below.\n\n`monthlist` _Optional_ &#151; A string or the name of a variable that specifies a set of month names. This string must begin with a delimiter character, and its 12 entries must be separated by this delimiter character. See _monthlist_ below.\n\n`yearopt` _Optional_ &#151; An integer code that specifies whether to represent years as two- or four-digit values. See _yearopt_ below.\n\n`startwin` _Optional_ &#151; The start of the sliding window during which dates must be represented with two-digit years. See _startwin_ below.\n\n`endwin` _Optional_ &#151; The end of the sliding window during which dates are represented with two-digit years. See _endwin_ below.\n\n`mindate` _Optional_ &#151; The lower limit of the range of valid `date` dates. Specified as a `$HOROLOG` integer date count, with 0 representing December 31, 1840. Can be specified as a positive or negative integer. See _mindate_ below.\n\n`maxdate` _Optional_ &#151; The upper limit of the range of valid dates. Specified as a `$HOROLOG` integer date count. See _maxdate_ below.\n\n`erropt` _Optional_ &#151; An expression to return when `date` is invalid. Specifying a value for this parameter suppresses error codes associated with invalid or out of range `date` values. Instead of issuing an error message, `$ZDATEH` returns `erropt`. See _erropt_ below.\n\n`localeopt` _Optional_ &#151; A boolean flag that specifies which locale to use for the `dformat`, `monthlist`, `yearopt`, `mindate` and `maxdate` default values, and other date characteristics, such as the date separator character:`localeopt`=0: the current locale property settings determine these parameter defaults.`localeopt`=1: the ODBC standard locale determines these parameter defaults.`localeopt` not specified: the `dformat` value determines these parameter defaults. If `dformat`=3, ODBC defaults are used. Japanese and Islamic date `dformat`values use their own defaults. For all other `dformat` values, current locale property settings are used as defaults. See _localeopt_ below.\n"
+      "`date` - An expression that evaluates to a date string in display format. `$ZDATEH` converts this date string to `$HOROLOG` format. This can be either an explicit date (specified in various formats) or the string &#147;T&#148; or &#147;t&#148;, representing the current date. The &#147;T&#148; or &#147;t&#148; string can optionally include a signed integer offset. For example &#147;T-7&#148; meaning seven days before the current date. See _date_ below.\n\n`dformat` _Optional_ - An integer code that specifies a date format option for `date`. If `date` is &#147;T&#148;, `dformat` must be 5, 6, 7, 8, 9, or 15. See _dformat_ below.\n\n`monthlist` _Optional_ - A string or the name of a variable that specifies a set of month names. This string must begin with a delimiter character, and its 12 entries must be separated by this delimiter character. See _monthlist_ below.\n\n`yearopt` _Optional_ - An integer code that specifies whether to represent years as two- or four-digit values. See _yearopt_ below.\n\n`startwin` _Optional_ - The start of the sliding window during which dates must be represented with two-digit years. See _startwin_ below.\n\n`endwin` _Optional_ - The end of the sliding window during which dates are represented with two-digit years. See _endwin_ below.\n\n`mindate` _Optional_ - The lower limit of the range of valid `date` dates. Specified as a `$HOROLOG` integer date count, with 0 representing December 31, 1840. Can be specified as a positive or negative integer. See _mindate_ below.\n\n`maxdate` _Optional_ - The upper limit of the range of valid dates. Specified as a `$HOROLOG` integer date count. See _maxdate_ below.\n\n`erropt` _Optional_ - An expression to return when `date` is invalid. Specifying a value for this parameter suppresses error codes associated with invalid or out of range `date` values. Instead of issuing an error message, `$ZDATEH` returns `erropt`. See _erropt_ below.\n\n`localeopt` _Optional_ - A boolean flag that specifies which locale to use for the `dformat`, `monthlist`, `yearopt`, `mindate` and `maxdate` default values, and other date characteristics, such as the date separator character:`localeopt`=0: the current locale property settings determine these parameter defaults.`localeopt`=1: the ODBC standard locale determines these parameter defaults.`localeopt` not specified: the `dformat` value determines these parameter defaults. If `dformat`=3, ODBC defaults are used. Japanese and Islamic date `dformat`values use their own defaults. For all other `dformat` values, current locale property settings are used as defaults. See _localeopt_ below.\n"
     ],
     "link": "fzdateh"
   },
@@ -1625,7 +1665,7 @@
       "$ZDT(hdatetime,dformat,tformat,precision,monthlist,yearopt,startwin,endwin,mindate,maxdate,erropt,localeopt)\n",
       "```\n",
       "Parameters:\n\n",
-      "`hdatetime` - The date and time value, specified in internal date and time format. See _hdatetime_ below.\n\n`dformat` _Optional_ &#151; An integer code specifying the format for the returned date value. See _dformat_ below.\n\n`tformat` _Optional_ &#151; An integer code specifying the format for the returned time value. See _tformat_ below.\n\n`precision` _Optional_ &#151; An integer specifying the number of decimal places of precision (fractional seconds) for the returned time value. See _precision_ below.\n\n`monthlist` _Optional_ &#151; A string or the name of a variable that specifies a set of month names. This string must begin with a delimiter character, and its 12 entries must be separated by this delimiter character. See _monthlist_ below.\n\n`yearopt` _Optional_ &#151; An integer code that specifies whether to represent years as two- or four-digit values. See _yearopt_ below.\n\n`startwin` _Optional_ &#151; The start of the sliding window during which dates are represented with two-digit years. See _startwin_ below.\n\n`endwin` _Optional_ &#151; The end of the sliding window during which dates are represented with two-digit years. See _endwin_ below.\n\n`mindate` _Optional_ &#151; The lower limit of the range of valid dates. Specified as a `$HOROLOG` integer date count, with 0 representing December 31, 1840. Can be specified as a positive or negative integer. See _mindate_ below.\n\n`maxdate` _Optional_ &#151; The upper limit of the range of valid dates, specified as an integer `$HOROLOG` date count. See _maxdate_ below.\n\n`erropt` _Optional_ &#151; An expression to return when `hdatetime` is invalid. Specifying a value for this parameter suppresses error codes associated with invalid or out of range `hdatetime` values. Instead of issuing an error message, `$ZDATETIME` returns `erropt`. See _erropt_ below.\n\n`localeopt` _Optional_ &#151; A boolean flag that specifies which locale to use for the `dformat`, `tformat`, `monthlist`, `yearopt`, `mindate` and `maxdate` default values, and other date and time characteristics:`localeopt`=0: the current locale property settings determine these parameter defaults.`localeopt`=1: the ODBC standard locale determines these parameter defaults.`localeopt` not specified: the `dformat` value determines these parameter defaults. If `dformat`=3, ODBC defaults are used; otherwise current locale property settings are used. See _localeopt_ below.\n"
+      "`hdatetime` - The date and time value, specified in internal date and time format. See _hdatetime_ below.\n\n`dformat` _Optional_ - An integer code specifying the format for the returned date value. See _dformat_ below.\n\n`tformat` _Optional_ - An integer code specifying the format for the returned time value. See _tformat_ below.\n\n`precision` _Optional_ - An integer specifying the number of decimal places of precision (fractional seconds) for the returned time value. See _precision_ below.\n\n`monthlist` _Optional_ - A string or the name of a variable that specifies a set of month names. This string must begin with a delimiter character, and its 12 entries must be separated by this delimiter character. See _monthlist_ below.\n\n`yearopt` _Optional_ - An integer code that specifies whether to represent years as two- or four-digit values. See _yearopt_ below.\n\n`startwin` _Optional_ - The start of the sliding window during which dates are represented with two-digit years. See _startwin_ below.\n\n`endwin` _Optional_ - The end of the sliding window during which dates are represented with two-digit years. See _endwin_ below.\n\n`mindate` _Optional_ - The lower limit of the range of valid dates. Specified as a `$HOROLOG` integer date count, with 0 representing December 31, 1840. Can be specified as a positive or negative integer. See _mindate_ below.\n\n`maxdate` _Optional_ - The upper limit of the range of valid dates, specified as an integer `$HOROLOG` date count. See _maxdate_ below.\n\n`erropt` _Optional_ - An expression to return when `hdatetime` is invalid. Specifying a value for this parameter suppresses error codes associated with invalid or out of range `hdatetime` values. Instead of issuing an error message, `$ZDATETIME` returns `erropt`. See _erropt_ below.\n\n`localeopt` _Optional_ - A boolean flag that specifies which locale to use for the `dformat`, `tformat`, `monthlist`, `yearopt`, `mindate` and `maxdate` default values, and other date and time characteristics:`localeopt`=0: the current locale property settings determine these parameter defaults.`localeopt`=1: the ODBC standard locale determines these parameter defaults.`localeopt` not specified: the `dformat` value determines these parameter defaults. If `dformat`=3, ODBC defaults are used; otherwise current locale property settings are used. See _localeopt_ below.\n"
     ],
     "link": "fzdatetime"
   },
@@ -1642,7 +1682,7 @@
       "$ZDTH(datetime,dformat,tformat,monthlist,yearopt,startwin,endwin,mindate,maxdate,erropt,localeopt)\n",
       "```\n",
       "Parameters:\n\n",
-      "`datetime` - The date and time input value. A date/time string specified in display format. `$ZDATETIMEH` converts this date/time string to `$HOROLOG` format. The `datetime` value can be either an explicit date and time (specified in various formats), an explicit date (specified in various formats) with the time value defaulting to 0, or the string &#147;T&#148; or &#147;t&#148;, representing the current date, with the time value either specified or defaulting to 0. The &#147;T&#148; or &#147;t&#148; string can optionally include a signed integer offset.  See _datetime_ below.\n\n`dformat` _Optional_ &#151; An integer code specifying the date format for the date portion of `datetime`. If `datetime` is &#147;T&#148;, `dformat` must be 5, 6, 7, 8, 9, or 15. See _dformat_ below.\n\n`tformat` _Optional_ &#151;  An integer code specifying the time format for the time portion of `datetime`. See _tformat_ below.\n\n`monthlist` _Optional_ &#151; A string or the name of a variable that specifies a set of month names. This string must begin with a delimiter character, and its 12 entries must be separated by this delimiter character. See _monthlist_ below.\n\n`yearopt` _Optional_ &#151; An integer code that specifies whether to represent years as two- or four-digit values. See _yearopt_ below.\n\n`startwin` _Optional_ &#151; The start of the sliding window during which dates must be represented with two-digit years. See _startwin_ below.\n\n`endwin` _Optional_ &#151; The end of the sliding window during which dates are represented with two-digit years. See _endwin_ below.\n\n`mindate` _Optional_ &#151; The lower limit of the range of valid dates. Specified as a `$HOROLOG` integer date count, with 0 representing December 31, 1840. Can be specified as a positive or negative integer. See _mindate_ below.\n\n`maxdate` _Optional_ &#151; The upper limit of the range of valid dates. Specified as a `$HOROLOG` integer date count. See _maxdate_ below.\n\n`erropt` _Optional_ &#151; An expression to return when `datetime` is invalid. Specifying a value for this parameter suppresses error codes associated with invalid or out of range `datetime` values. Instead of issuing an error message, `$ZDATETIMEH` returns `erropt`. See _erropt_ below.\n\n`localeopt` _Optional_ &#151; A boolean flag that specifies which locale to use for the `dformat`, `tformat`, `monthlist`, `yearopt`, `mindate` and `maxdate` default values, and other date and time characteristics, such as the DateSeparator character:`localeopt`=0: the current locale property settings determine these parameter defaults.`localeopt`=1: the ODBC standard locale determines these parameter defaults.`localeopt` not specified: the `dformat` value determines these parameter defaults. If `dformat`=3, ODBC defaults are used. Japanese and Islamic date `dformat`values use their own defaults. For all other `dformat` values, current locale property settings are used as defaults. See _localeopt_ below._Optional_ &#151; A boolean flag that specifies which locale to use. When 0, the current locale determines the date separator, time separator, and the other characters, strings, and options used to format dates and times. When 1, the ODBC locale determines these characters, strings, and options. The default is 0, unless `dformat`=3, in which case the default is 1. See below.\n"
+      "`datetime` - The date and time input value. A date/time string specified in display format. `$ZDATETIMEH` converts this date/time string to `$HOROLOG` format. The `datetime` value can be either an explicit date and time (specified in various formats), an explicit date (specified in various formats) with the time value defaulting to 0, or the string &#147;T&#148; or &#147;t&#148;, representing the current date, with the time value either specified or defaulting to 0. The &#147;T&#148; or &#147;t&#148; string can optionally include a signed integer offset.  See _datetime_ below.\n\n`dformat` _Optional_ - An integer code specifying the date format for the date portion of `datetime`. If `datetime` is &#147;T&#148;, `dformat` must be 5, 6, 7, 8, 9, or 15. See _dformat_ below.\n\n`tformat` _Optional_ -  An integer code specifying the time format for the time portion of `datetime`. See _tformat_ below.\n\n`monthlist` _Optional_ - A string or the name of a variable that specifies a set of month names. This string must begin with a delimiter character, and its 12 entries must be separated by this delimiter character. See _monthlist_ below.\n\n`yearopt` _Optional_ - An integer code that specifies whether to represent years as two- or four-digit values. See _yearopt_ below.\n\n`startwin` _Optional_ - The start of the sliding window during which dates must be represented with two-digit years. See _startwin_ below.\n\n`endwin` _Optional_ - The end of the sliding window during which dates are represented with two-digit years. See _endwin_ below.\n\n`mindate` _Optional_ - The lower limit of the range of valid dates. Specified as a `$HOROLOG` integer date count, with 0 representing December 31, 1840. Can be specified as a positive or negative integer. See _mindate_ below.\n\n`maxdate` _Optional_ - The upper limit of the range of valid dates. Specified as a `$HOROLOG` integer date count. See _maxdate_ below.\n\n`erropt` _Optional_ - An expression to return when `datetime` is invalid. Specifying a value for this parameter suppresses error codes associated with invalid or out of range `datetime` values. Instead of issuing an error message, `$ZDATETIMEH` returns `erropt`. See _erropt_ below.\n\n`localeopt` _Optional_ - A boolean flag that specifies which locale to use for the `dformat`, `tformat`, `monthlist`, `yearopt`, `mindate` and `maxdate` default values, and other date and time characteristics, such as the DateSeparator character:`localeopt`=0: the current locale property settings determine these parameter defaults.`localeopt`=1: the ODBC standard locale determines these parameter defaults.`localeopt` not specified: the `dformat` value determines these parameter defaults. If `dformat`=3, ODBC defaults are used. Japanese and Islamic date `dformat`values use their own defaults. For all other `dformat` values, current locale property settings are used as defaults. See _localeopt_ below._Optional_ - A boolean flag that specifies which locale to use. When 0, the current locale determines the date separator, time separator, and the other characters, strings, and options used to format dates and times. When 1, the ODBC locale determines these characters, strings, and options. The default is 0, unless `dformat`=3, in which case the default is 1. See below.\n"
     ],
     "link": "fzdatetimeh"
   },
@@ -1689,7 +1729,7 @@
       "$ZF(&quot;function_name&quot;,args)\n",
       "```\n",
       "Parameters:\n\n",
-      "`function_name` - The name of the function you want to call.\n\n`args` _Optional_ &#151; A set of argument values passed to the function.\n"
+      "`function_name` - The name of the function you want to call.\n\n`args` _Optional_ - A set of argument values passed to the function.\n"
     ],
     "link": "fzf"
   },
@@ -1738,7 +1778,7 @@
       "$ZLA(string,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - A string that can be specified as a value, a variable, or an expression. It must be a minimum of four bytes in length.\n\n`position` _Optional_ &#151; A starting position in the string. The default is 1.\n"
+      "`string` - A string that can be specified as a value, a variable, or an expression. It must be a minimum of four bytes in length.\n\n`position` _Optional_ - A starting position in the string. The default is 1.\n"
     ],
     "link": "fzlascii"
   },
@@ -1800,7 +1840,7 @@
       "$ZNAME(string,type,lang)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The name to evaluate, specified as a quoted string.\n\n`type` _Optional_ &#151; An integer code specifying the type of name validation to perform. Valid values are 0 through 6. The default is 0.\n\n`lang` _Optional_ &#151; An integer code specifying the language mode to use when validating `string`. Valid values are 0 through 12. The default is to use the current language mode.\n"
+      "`string` - The name to evaluate, specified as a quoted string.\n\n`type` _Optional_ - An integer code specifying the type of name validation to perform. Valid values are 0 through 6. The default is 0.\n\n`lang` _Optional_ - An integer code specifying the language mode to use when validating `string`. Valid values are 0 through 12. The default is to use the current language mode.\n"
     ],
     "link": "fzname"
   },
@@ -1859,7 +1899,7 @@
       "$ZPOSITION(expression,field,pitch)\n",
       "```\n",
       "Parameters:\n\n",
-      "`expression`\n\nA string expression.\n\n`field` - An integer expression that specifies field width.\n\n`pitch` _Optional_ &#151; A numeric expression that specifies the pitch value to use for full-width characters. The default is 2. Other permissible values are 1, 1.25, and 1.5.\n"
+      "`expression`\n\nA string expression.\n\n`field` - An integer expression that specifies field width.\n\n`pitch` _Optional_ - A numeric expression that specifies the pitch value to use for full-width characters. The default is 2. Other permissible values are 1, 1.25, and 1.5.\n"
     ],
     "link": "fzposition"
   },
@@ -1891,7 +1931,7 @@
       "$ZQA(string,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - A string. It can be a value, a variable, or an expression. It must be a minimum of eight bytes in length.\n\n`position` _Optional_ &#151; A starting position in the string, expressed as a positive integer. The default is 1. Position is counted in single bytes, _not_ eight-byte strings. The `position` cannot be the last byte in the string, or beyond the end of the string. A numeric `position` value is parsed as an integer by truncating decimal digits, removing leading zeros and plus signs, etc.\n"
+      "`string` - A string. It can be a value, a variable, or an expression. It must be a minimum of eight bytes in length.\n\n`position` _Optional_ - A starting position in the string, expressed as a positive integer. The default is 1. Position is counted in single bytes, _not_ eight-byte strings. The `position` cannot be the last byte in the string, or beyond the end of the string. A numeric `position` value is parsed as an integer by truncating decimal digits, removing leading zeros and plus signs, etc.\n"
     ],
     "link": "fzqascii"
   },
@@ -1955,7 +1995,7 @@
       "$ZSEEK(offset,mode)\n",
       "```\n",
       "Parameters:\n\n",
-      "`offset` - The offset into the current file.\n\n`mode` _Optional_ &#151; An integer value that determines the relative position of the offset. The default is 0.\n"
+      "`offset` - The offset into the current file.\n\n`mode` _Optional_ - An integer value that determines the relative position of the offset. The default is 0.\n"
     ],
     "link": "fzseek"
   },
@@ -2000,7 +2040,7 @@
       "$ZSTRIP(string,action,remchar,keepchar)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - The string to be stripped.\n\n`action` - What to strip from `string`. An `action` consists of an action code followed by a one or more mask codes. The mask code is optional when specifying `remchar`. An `action` is specified as a quoted string.\n\n`remchar` _Optional_ &#151; A string of specific character values to remove. If `action` does not contain a mask code, `remchar` lists the characters to remove. If `action` contains a mask code, `remchar` lists additional characters to remove that are not covered by the `action` parameter&rsquo;s mask code.\n\n`keepchar` _Optional_ &#151; A string of specific character values to _not_ remove that are designated for removal by the `action` parameter&rsquo;s mask code. A mask code must be specified to specify `keepchar`.\n"
+      "`string` - The string to be stripped.\n\n`action` - What to strip from `string`. An `action` consists of an action code followed by a one or more mask codes. The mask code is optional when specifying `remchar`. An `action` is specified as a quoted string.\n\n`remchar` _Optional_ - A string of specific character values to remove. If `action` does not contain a mask code, `remchar` lists the characters to remove. If `action` contains a mask code, `remchar` lists additional characters to remove that are not covered by the `action` parameter&rsquo;s mask code.\n\n`keepchar` _Optional_ - A string of specific character values to _not_ remove that are designated for removal by the `action` parameter&rsquo;s mask code. A mask code must be specified to specify `keepchar`.\n"
     ],
     "link": "fzstrip"
   },
@@ -2032,7 +2072,7 @@
       "$ZT(htime,tformat,precision,erropt,localeopt)\n",
       "```\n",
       "Parameters:\n\n",
-      "`htime` - The internal system time that can be specified as a numeric value, the name of a variable, or as an expression.\n\n`tformat` _Optional_ &#151; An integer value that specifies the format in which you want to return the time value.\n\n`precision` _Optional_ &#151; A numeric value that specifies the number of decimal places of precision in which you want to express the time. If omitted, fractional seconds are truncated.\n\n`erropt` _Optional_ &#151; The expression returned if the `htime` parameter is considered invalid.\n\n`localeopt` _Optional_ &#151; A boolean flag that specifies which locale to use. When 0, the current locale determines the time separator, and the other characters, strings, and options used to format times. When 1, the ODBC locale determines these characters, strings, and options. The ODBC locale cannot be changed; it is used to format date and time strings that are portable between InterSystems IRIS processes that have made different National Language Support (NLS) choices. The default is 0.\n"
+      "`htime` - The internal system time that can be specified as a numeric value, the name of a variable, or as an expression.\n\n`tformat` _Optional_ - An integer value that specifies the format in which you want to return the time value.\n\n`precision` _Optional_ - A numeric value that specifies the number of decimal places of precision in which you want to express the time. If omitted, fractional seconds are truncated.\n\n`erropt` _Optional_ - The expression returned if the `htime` parameter is considered invalid.\n\n`localeopt` _Optional_ - A boolean flag that specifies which locale to use. When 0, the current locale determines the time separator, and the other characters, strings, and options used to format times. When 1, the ODBC locale determines these characters, strings, and options. The ODBC locale cannot be changed; it is used to format date and time strings that are portable between InterSystems IRIS processes that have made different National Language Support (NLS) choices. The default is 0.\n"
     ],
     "link": "fztime"
   },
@@ -2049,7 +2089,7 @@
       "$ZTH(time,tformat,erropt,localeopt)\n",
       "```\n",
       "Parameters:\n\n",
-      "`time` - The time value to be converted.\n\n`tformat` _Optional_ &#151; A numeric value that specifies the time format from which you are converting.\n\n`erropt` _Optional_ &#151; The expression returned if the `time` parameter is considered invalid.\n\n`localeopt` _Optional_ &#151; A boolean flag that specifies which locale to use. When 0, the current locale determines the time separator, and the other characters, strings, and options used to format times. When 1, the ODBC locale determines these characters, strings, and options. The ODBC locale cannot be changed; it is used to format date and time strings that are portable between InterSystems IRIS processes that have made different National Language Support (NLS) choices. The default is 0.\n"
+      "`time` - The time value to be converted.\n\n`tformat` _Optional_ - A numeric value that specifies the time format from which you are converting.\n\n`erropt` _Optional_ - The expression returned if the `time` parameter is considered invalid.\n\n`localeopt` _Optional_ - A boolean flag that specifies which locale to use. When 0, the current locale determines the time separator, and the other characters, strings, and options used to format times. When 1, the ODBC locale determines these characters, strings, and options. The ODBC locale cannot be changed; it is used to format date and time strings that are portable between InterSystems IRIS processes that have made different National Language Support (NLS) choices. The default is 0.\n"
     ],
     "link": "fztimeh"
   },
@@ -2089,7 +2129,7 @@
       "$ZWA(string,position)\n",
       "```\n",
       "Parameters:\n\n",
-      "`string` - A string. It can be a value, a variable, or an expression. It must be a minimum of two bytes in length.\n\n`position` _Optional_ &#151; A starting position in the string, expressed as a positive integer. The default is 1. Position is counted in single bytes, _not_ two-byte strings. The `position` cannot be the last byte in the string, or beyond the end of the string. A numeric `position` value is parsed as an integer by truncating decimal digits, removing leading zeros and plus signs, etc.\n"
+      "`string` - A string. It can be a value, a variable, or an expression. It must be a minimum of two bytes in length.\n\n`position` _Optional_ - A starting position in the string, expressed as a positive integer. The default is 1. Position is counted in single bytes, _not_ two-byte strings. The `position` cannot be the last byte in the string, or beyond the end of the string. A numeric `position` value is parsed as an integer by truncating decimal digits, removing leading zeros and plus signs, etc.\n"
     ],
     "link": "fzwascii"
   },
@@ -2121,7 +2161,7 @@
       "$ZWIDTH(expression,pitch)\n",
       "```\n",
       "Parameters:\n\n",
-      "`expression` - A string expression.\n\n`pitch` _Optional_ &#151; The numeric pitch value to use for full-width characters. The default is 2. Other permissible values are 1, 1.25, and 1.5. (These values with any number of trailing zeros are permissible.) All other `pitch` values result in a &lt;FUNCTION&gt; error.\n"
+      "`expression` - A string expression.\n\n`pitch` _Optional_ - The numeric pitch value to use for full-width characters. The default is 2. Other permissible values are 1, 1.25, and 1.5. (These values with any number of trailing zeros are permissible.) All other `pitch` values result in a &lt;FUNCTION&gt; error.\n"
     ],
     "link": "fzwidth"
   },
@@ -2196,7 +2236,7 @@
       "$ZZENKAKU(expression,flag1,flag2)\n",
       "```\n",
       "Parameters:\n\n",
-      "`expression` - A string containing half-width characters. These characters may be katakana characters, Roman alphabet letters, or numbers.\n\n`flag1` _Optional_ &#151; A boolean flag to indicate whether to convert half-with katakana to full-width hiragana (0) or full-width katakana (1).\n\n`flag2` _Optional_ &#151; A boolean flag to indicate whether voiced sound processing is required (1) or not required (0).\n"
+      "`expression` - A string containing half-width characters. These characters may be katakana characters, Roman alphabet letters, or numbers.\n\n`flag1` _Optional_ - A boolean flag to indicate whether to convert half-with katakana to full-width hiragana (0) or full-width katakana (1).\n\n`flag2` _Optional_ - A boolean flag to indicate whether voiced sound processing is required (1) or not required (0).\n"
     ],
     "link": "fzzenkaku"
   }
