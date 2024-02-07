@@ -252,7 +252,8 @@
       "POSIXTS",
       "STRING",
       "TIME",
-      "TIMESTAMP"
+      "TIMESTAMP",
+      "VECTOR"
     ],
     "description": "In the case of a datatype class, specifies a type to use for calculations in SQL. Datatype classes must specify an SQL Category."
   },
