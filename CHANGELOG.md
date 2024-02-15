@@ -4,6 +4,7 @@
 - Fix issue [#302](https://github.com/intersystems/language-server/issues/302): Intellisense is garbled for macros with Markdown characters in their definition
 - Fix issue [#303](https://github.com/intersystems/language-server/issues/303): Use cached text of file instead of always reading from disk for computing locations
 - Fix issue [#304](https://github.com/intersystems/language-server/issues/304): Add documentation for vector functions
+- Fix issue [#305](https://github.com/intersystems/language-server/issues/305): Remove #Dim line from `Wrap in Try/Catch` refactor
 
 ## [2.4.2] - 2024-01-18
 - Fix issue [#301](https://github.com/intersystems/language-server/issues/301): Error thrown when not using a server connection

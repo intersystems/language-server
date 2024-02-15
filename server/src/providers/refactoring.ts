@@ -1747,18 +1747,10 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 			whitespace += tab;
 			addtab += tab;
 		}
-	
-		// Add "#Dim ex As %Exception.AbstractException" before Try/Catch block
-		const ext = data[0].substring(data[0].lastIndexOf(".")).toLowerCase(); // File extension
-		var dimline = "";
-		const exname = settings.refactor.exceptionVariable;
-		if (ext === ".cls" || ext === ".mac") {
-			dimline = "#Dim " + exname + " As %Exception.AbstractException\n" + whitespace;
-		}
 		
 		edits.push({ // Open try block
-			range: Range.create(Position.create(lnstart,0),Position.create(lnstart,0)),
-			newText: whitespace + dimline + trycommandtext + " {\n" 
+			range: Range.create(lnstart,0,lnstart,0),
+			newText: whitespace  + trycommandtext + " {\n" 
 		});
 		for (let ln = lnstart; ln <= lnend; ln++) { // Indent the selection block
 			if (parsed[ln].length === 0) {
@@ -1767,7 +1759,7 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 			if (!(parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_label_attrindex)) {
 				// This is not a line with a label
 				edits.push({
-					range: Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p)),
+					range: Range.create(ln,parsed[ln][0].p,ln,parsed[ln][0].p),
 					newText: addtab 
 				});
 			}
@@ -1775,7 +1767,7 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 		const insertposend = Position.create(lnend,parsed[lnend][parsed[lnend].length-1].p+parsed[lnend][parsed[lnend].length-1].c);
 		edits.push({ // Close Try block and add Catch block
 			range: Range.create(insertposend,insertposend), 
-			newText: "\n" + whitespace + "} " + catchcommandtext + " " + exname + " {\n" + whitespace + "" + tab + "\n" + whitespace + "} "
+			newText: "\n" + whitespace + "} " + catchcommandtext + " " + settings.refactor.exceptionVariable + " {\n" + whitespace + "" + tab + "\n" + whitespace + "} "
 		});	
 		codeAction.edit = {
 			changes: {
