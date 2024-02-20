@@ -1,10 +1,17 @@
 # Changelog
 
-## [2.4.3] - 2024-XX-XX
+## [2.4.3] - 2024-02-20
 - Fix issue [#302](https://github.com/intersystems/language-server/issues/302): Intellisense is garbled for macros with Markdown characters in their definition
 - Fix issue [#303](https://github.com/intersystems/language-server/issues/303): Use cached text of file instead of always reading from disk for computing locations
 - Fix issue [#304](https://github.com/intersystems/language-server/issues/304): Add documentation for vector functions
 - Fix issue [#305](https://github.com/intersystems/language-server/issues/305): Remove #Dim line from `Wrap in Try/Catch` refactor
+- Parser changes:
+  - DP-428278: Coloring for PREDICT / PROBABILITY functions
+  - DP-428564: Coloring for CREATE PROCEDURE/FUNCTION external rotuine support
+  - DP-428959: Allow for SQL keywords in table names
+  - DP-429078: Coloring for WITH PASSWORD clause of CREATE USER
+  - DP-429107: Coloring for CANCEL QUERY
+  - DP-429175: Coloring for %DORUNTIME keyword option
 
 ## [2.4.2] - 2024-01-18
 - Fix issue [#301](https://github.com/intersystems/language-server/issues/301): Error thrown when not using a server connection
