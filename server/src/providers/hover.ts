@@ -540,8 +540,10 @@ export async function onHover(params: TextDocumentPositionParams) {
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex || parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
 					// This is a property
-					data.query = "SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
-					data.parameters = [membercontext.baseclass,unquotedname];
+					data.query = 
+						"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
+						"FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+					data.parameters = [membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 				}
 				else {
 					// This is a generic member
@@ -552,9 +554,11 @@ export async function onHover(params: TextDocumentPositionParams) {
 					}
 					else {
 						// This can be a method or property
-						data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-						data.query = data.query.concat("SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
-						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname];
+						data.query = 
+							"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL " +
+							"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
+							"FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 					}
 				}
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);

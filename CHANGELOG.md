@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.4.4] - 2024-XX-XX
+- Fix issue [#307](https://github.com/intersystems/language-server/issues/307): Add intellisense for property Aliases
+
 ## [2.4.3] - 2024-02-20
 - Fix issue [#302](https://github.com/intersystems/language-server/issues/302): Intellisense is garbled for macros with Markdown characters in their definition
 - Fix issue [#303](https://github.com/intersystems/language-server/issues/303): Use cached text of file instead of always reading from disk for computing locations

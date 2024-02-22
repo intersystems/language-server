@@ -1009,7 +1009,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		if ((parsed[params.position.line][thistoken-1].l == ld.cls_langindex && parsed[params.position.line][thistoken-1].s == ld.cls_clsname_attrindex) ||
 		(parsed[params.position.line][thistoken-1].l == ld.cos_langindex && parsed[params.position.line][thistoken-1].s == ld.cos_clsname_attrindex)) {
 			// This is a class name
-			const prevchar = doc.getText(Range.create(Position.create(params.position.line,prevtokenrange.start.character-1),Position.create(params.position.line,prevtokenrange.start.character)));
+			const prevchar = doc.getText(Range.create(params.position.line,prevtokenrange.start.character-1,params.position.line,prevtokenrange.start.character));
 			if (prevchar === " " || prevchar === "(" || prevchar === ",") {
 				prevtokentype = "class";
 			}
@@ -1152,17 +1152,17 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					data.parameters = new Array(6).fill(membercontext.baseclass);
 				}
 				else if (membercontext.context === "instance") {
-					data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+					data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
 						"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 0 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL %PARALLEL " +
-						"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+						"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
 						"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL %PARALLEL " +
-						"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+						"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
 						"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL %PARALLEL " +
-						"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+						"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
 						"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL %PARALLEL " +
-						"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+						"SELECT {fn CONCAT(parent->name,Name)} AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
 						"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND classmethod = 0 UNION ALL %PARALLEL " +
-						"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ?";
+						"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated, Aliases FROM %Dictionary.CompiledProperty WHERE parent->ID = ?";
 					data.parameters = new Array(6).fill(membercontext.baseclass);
 				}
 				else {
@@ -1231,17 +1231,28 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							}
 						}
 						else {
+							const markdownDesc = documaticHtmlToMarkdown(memobj.Description);
 							item = {
 								label: quotedname,
 								kind: CompletionItemKind.Property,
 								data: "member",
+								detail: memobj.Type != "" ? memobj.Type : undefined,
 								documentation: {
 									kind: "markdown",
-									value: documaticHtmlToMarkdown(memobj.Description)
+									value: markdownDesc
 								}
 							};
-							if (memobj.Type !== "") {
-								item.detail = memobj.Type;
+							if (memobj.Aliases && memobj.Aliases != "") {
+								// Add items for aliases
+								memobj.Aliases.trim().split(/\s*,\s*/).forEach((alias: string) => {
+									const quoted = quoteUDLIdentifier(alias,1);
+									result.push({
+										...item,
+										label: quoted,
+										sortText: memobj.Origin == membercontext.baseclass ? "##" + quoted : quoted,
+										tags: memobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined
+									});
+								});
 							}
 						}
 						if (memobj.Origin === membercontext.baseclass) {
@@ -1395,28 +1406,39 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		(prevline.slice(-2) === "[ " || (prevline.slice(-2) === ", " &&
 		openparencount <= closeparencount)) && triggerlang === ld.cls_langindex
 	) {
-		var foundopenbrace = false;
-		var foundclosingbrace = false;
-		var existingkeywords: string[] = [];
+		let foundopenbracket = false;
+		let foundclosebracket = false;
+		let bracelevel = 0;
+		const existingkeywords: string[] = [];
 		for (let i = 1; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
 			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
 			if (params.position.character <= symbolstart) {
 				break;
 			}
-			const symboltext = doc.getText(Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend)));
-			if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_delim_attrindex && symboltext === "[") {
-				foundopenbrace = true;
-			}
-			else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_delim_attrindex && symboltext === "]") {
-				foundclosingbrace = true;
+			const symboltext = doc.getText(Range.create(params.position.line,symbolstart,params.position.line,symbolend));
+			if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_delim_attrindex) {
+				switch (symboltext) {
+					case "[":
+						foundopenbracket = true;
+						break;
+					case "]":
+						foundclosebracket = true;
+						break;
+					case "{":
+						bracelevel++;
+						break;
+					case "}":
+						bracelevel--;
+						break;
+				}
 			}
 			else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_keyword_attrindex && symboltext.toLowerCase() !== "not") {
 				// If this keyword has already been specified, don't suggest it
 				existingkeywords.push(symboltext.toLowerCase());
 			}
 		}
-		if (foundopenbrace && !foundclosingbrace) {
+		if (foundopenbracket && !foundclosebracket && bracelevel == 0) {
 			// This is a UDL keyword
 
 			// Find the type of this member
@@ -1504,8 +1526,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		triggerlang === ld.cls_langindex &&
 		(prevline.slice(-2) === "= " || (prevline.slice(-2) === ", " && openparencount > closeparencount) || prevline.slice(-3) === "= (")
 	) {
-		var foundopenbrace = false;
-		var foundclosingbrace = false;
+		var foundopenbracket = false;
+		var foundclosebracket = false;
 		var thiskeyword = "";
 		for (let i = 1; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
@@ -1515,16 +1537,16 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 			const symboltext = doc.getText(Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend))).toLowerCase();
 			if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_delim_attrindex && symboltext === "[") {
-				foundopenbrace = true;
+				foundopenbracket = true;
 			}
 			else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_delim_attrindex && symboltext === "]") {
-				foundclosingbrace = true;
+				foundclosebracket = true;
 			}
 			else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_keyword_attrindex) {
 				thiskeyword = symboltext;
 			}
 		}
-		if (foundopenbrace && !foundclosingbrace) {
+		if (foundopenbracket && !foundclosebracket) {
 			// This is a value for a UDL keyword
 
 			// Find the type of this member
