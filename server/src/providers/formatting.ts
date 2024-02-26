@@ -47,7 +47,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 			query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition",
 			parameters: []
 		});
-		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content !== undefined) {
+		if (Array.isArray(respdata?.data?.result?.content)) {
 			classes = respdata.data.result.content;
 		}
 		if (doc.languageId === "objectscript-class") {

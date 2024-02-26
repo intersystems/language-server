@@ -563,7 +563,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 				}
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 				if (respdata !== undefined) {
-					if ("content" in respdata.data.result && respdata.data.result.content.length > 0) {
+					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 						// We got data back
 
 						var header = membercontext.baseclass.concat("::",member);
@@ -594,7 +594,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 									query: stubquery,
 									parameters: [stubarr[1],membercontext.baseclass,stubarr[0]]
 								});
-								if (stubrespdata !== undefined && "content" in stubrespdata.data.result && stubrespdata.data.result.content.length > 0) {
+								if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 									// We got data back
 									if (nextchar === "(") {
 										header = header + beautifyFormalSpec(stubrespdata.data.result.content[0].FormalSpec);
@@ -836,7 +836,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 								parameters: [normalizedname,propname]
 							};
 							const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-							if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 								// We got data back
 
 								let type: string = respdata.data.result.content[0].DisplayType;
@@ -888,7 +888,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 							parameters: [normalizedname,procname,normalizedname,procname]
 						};
 						const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-						if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 							var header = normalizedname.concat("::",procname);
 							const nextchar = doc.getText(Range.create(Position.create(params.position.line,idenrange.end.character),Position.create(params.position.line,idenrange.end.character+1)));
@@ -925,7 +925,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 									parameters: [normalizedname,propname]
 								};
 								const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-								if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+								if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 									// We got data back
 
 									let type: string = respdata.data.result.content[0].DisplayType;
@@ -986,7 +986,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 						parameters: [param,normalizedcls,currentClass(doc,parsed)]
 					});
 					if (respdata !== undefined) {
-						if ("content" in respdata.data.result && respdata.data.result.content.length > 0) {
+						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
 							const header = `${normalizedcls}::${param}${

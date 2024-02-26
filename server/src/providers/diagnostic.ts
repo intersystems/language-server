@@ -87,7 +87,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			};
 		}
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content !== undefined) {
+		if (Array.isArray(respdata?.data?.result?.content)) {
 			files = respdata.data.result.content;
 		}
 	}
@@ -939,7 +939,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 		// Make the request
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
 
 			for (const row of respdata.data.result.content) {
@@ -1025,7 +1025,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 			// Make the request
 			const respdata = await makeRESTRequest("POST",1,"/action/query",{ ...server, namespace },querydata);
-			if (respdata !== undefined && typeof respdata.data == "object" && "content" in respdata.data.result) {
+			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
 
 				// Report Diagnostics for files that aren't in the returned data

@@ -685,7 +685,7 @@ export async function normalizeClassname(
 				parameters: [clsname]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-			if (respdata !== undefined && "content" in respdata.data.result) {
+			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				if (respdata.data.result.content.length === 1) {
 					// We got back exactly one class
 
@@ -909,7 +909,7 @@ export async function getClassMemberContext(
 							parameters: [membercontext.baseclass,member]
 						};
 						const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-						if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
 							let memobj = respdata.data.result.content[0];
@@ -939,7 +939,7 @@ export async function getClassMemberContext(
 										query: stubquery,
 										parameters: [stubarr[1],membercontext.baseclass,stubarr[0]]
 									});
-									if (stubrespdata !== undefined && "content" in stubrespdata.data.result && stubrespdata.data.result.content.length > 0) {
+									if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 										// We got data back
 										memobj = stubrespdata.data.result.content[0];
 									}

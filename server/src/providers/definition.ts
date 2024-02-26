@@ -334,7 +334,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				let membernameinfile = member;
 				const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 				if (queryrespdata !== undefined) {
-					if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
+					if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
 						// We got data back
 
 						const result = queryrespdata.data.result.content[0];
@@ -367,7 +367,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 									query: stubquery,
 									parameters: [stubarr[1],membercontext.baseclass,stubarr[0]]
 								});
-								if (stubrespdata !== undefined && "content" in stubrespdata.data.result && stubrespdata.data.result.content.length > 0) {
+								if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 									// We got data back
 									originclass = stubrespdata.data.result.content[0].Origin;
 									membernameinfile = stubarr[1];
@@ -766,7 +766,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							};
 							const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 							if (queryrespdata !== undefined) {
-								if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
+								if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
 									// We got data back
 
 									// Get the uri of the origin class
@@ -896,7 +896,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							parameters: [normalizedname,procname,normalizedname,procname]
 						};
 						const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-						if (queryrespdata !== undefined && "content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
+						if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
 							// We got data back
 
 							// Get the uri of the origin class
@@ -986,7 +986,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 								};
 								const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 								if (queryrespdata !== undefined) {
-									if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
+									if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
 										// We got data back
 
 										// Get the uri of the origin class
@@ -1127,7 +1127,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					parameters: [param,normalizedcls,thisclass]
 				});
 				if (queryrespdata !== undefined) {
-					if ("content" in queryrespdata.data.result && queryrespdata.data.result.content.length > 0) {
+					if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
 						// We got data back
 
 						const originclass = queryrespdata.data.result.content[0].Origin;

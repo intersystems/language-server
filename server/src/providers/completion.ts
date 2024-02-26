@@ -1088,7 +1088,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					parameters: [membercontext.baseclass]
 				}
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-				if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 					// We got data back
 
 					for (let memobj of respdata.data.result.content) {
@@ -1366,7 +1366,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			parameters: isProperty ? [normalizedcls,currentClass(doc,parsed)] : [normalizedcls]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
 
 			for (let memobj of respdata.data.result.content) {
@@ -1658,7 +1658,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						parameters:[thisclass]
 					};
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-					if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 						// We got data back
 						
 						for (let method of respdata.data.result.content) {
@@ -2063,7 +2063,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			parameters: [thisclass]
 		}
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-		if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
 
 			for (let memobj of respdata.data.result.content) {

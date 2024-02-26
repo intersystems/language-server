@@ -108,7 +108,7 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 					}
 				}
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
-				if (respdata !== undefined && "content" in respdata.data.result && respdata.data.result.content.length > 0) {
+				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 					// We got data back
 
 					let memobj = respdata.data.result.content[0];
@@ -138,7 +138,7 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 								query: stubquery,
 								parameters: [stubarr[1],membercontext.baseclass,stubarr[0]]
 							});
-							if (stubrespdata !== undefined && "content" in stubrespdata.data.result && stubrespdata.data.result.content.length > 0) {
+							if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 								// We got data back
 								memobj = stubrespdata.data.result.content[0];
 							}
