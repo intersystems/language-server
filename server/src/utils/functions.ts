@@ -1570,6 +1570,12 @@ export async function determineDeclaredLocalVarClass(
 			context: "instance"
 		};
 	}
+	else if (thisvar === "%SourceControl") {
+		result = {
+			baseclass: "%Studio.Extension.Base",
+			context: "instance"
+		};
+	}
 	else {
 		// Scan to the top of the method to find the #Dim
 		let founddim = false;
