@@ -2,6 +2,7 @@
 
 ## [2.4.4] - 2024-XX-XX
 - Fix issue [#307](https://github.com/intersystems/language-server/issues/307): Add intellisense for property Aliases
+- Fix issue [#308](https://github.com/intersystems/language-server/issues/308): Enhance intellisense for %New when %OnNew is defined
 - Fix issue [#309](https://github.com/intersystems/language-server/issues/309): Fix coloring of CSS urls that contain a right parenthesis
 - Parser changes:
   - DP-429226: Coloring for User Defined Aggregate Functions (UDAF)

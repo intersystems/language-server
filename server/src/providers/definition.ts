@@ -191,7 +191,8 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				} else if (parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
 					member = member.slice(2);
 				}
-				const unquotedname = quoteUDLIdentifier(member,0);
+				let unquotedname = quoteUDLIdentifier(member,0);
+				if (unquotedname == "%New") unquotedname = "%OnNew", member = "%OnNew";
 
 				// If this is a class file, determine what class we're in
 				let thisclass = "";
@@ -301,7 +302,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
-				else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
+				else if (parsed[params.position.line][i].s == ld.cos_method_attrindex || unquotedname == "%OnNew") {
 					// This is a method
 					memberKeywords = "Method|ClassMethod|ClientMethod";
 					data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
@@ -330,7 +331,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 					}
 				}
-				let originclass = membercontext.baseclass;
+				let originclass = "";
 				let membernameinfile = member;
 				const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 				if (queryrespdata !== undefined) {
@@ -375,6 +376,10 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							}
 						}
 					}
+				}
+				if (unquotedname == "%OnNew" && ["","%Library.RegisteredObject"].includes(originclass)) {
+					originclass = "%Library.SystemBase";
+					membernameinfile = "%New";
 				}
 				if (originclass !== "") {
 					// Get the uri of the origin class
