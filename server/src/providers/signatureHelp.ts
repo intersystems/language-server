@@ -406,8 +406,10 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 								});
 							}
 						}
-						if (memobj.ReturnType !== "") {
-							sig.label = sig.label.concat(" As ",memobj.ReturnType);
+						if (["%Open","%OpenId"].includes(member)) {
+							sig.label += ` As ${membercontext.baseclass}`;
+						} else if (memobj.ReturnType != "") {
+							sig.label += ` As ${memobj.ReturnType}`;
 						}
 						signatureHelpStartPosition = params.position;
 						newsignature = {
@@ -653,8 +655,10 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 									});
 								}
 							}
-							if (memobj.ReturnType !== "") {
-								sig.label = sig.label.concat(" As ",memobj.ReturnType);
+							if (["%Open","%OpenId"].includes(member)) {
+								sig.label += ` As ${membercontext.baseclass}`;
+							} else if (memobj.ReturnType != "") {
+								sig.label += ` As ${memobj.ReturnType}`;
 							}
 
 							signatureHelpStartPosition = Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1);
