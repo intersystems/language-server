@@ -988,7 +988,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		}
 	}
 	else if (
-		(prevline.slice(-6).toLowerCase() === "class(" && triggerlang === ld.cos_langindex) ||
+		(prevline.slice(-8).toLowerCase() === "##class(" && triggerlang === ld.cos_langindex) ||
 		(prevline.slice(-3).toLowerCase() === "as " && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
 		(prevline.slice(-3).toLowerCase() === "of " && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
 		classregex.test(prevline)
@@ -1894,7 +1894,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						documentation: {
 							kind: "markdown",
-							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${dir.link})`
+							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros__${dir.link})`
 						},
 						insertText: dir.label.slice(2),
 						data: "Preprocessor"
@@ -1912,7 +1912,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						documentation: {
 							kind: "markdown",
-							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${dir.link})`
+							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros__${dir.link})`
 						},
 						insertText: dir.label.slice(2),
 						data: "Preprocessor"
@@ -1934,7 +1934,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						documentation: {
 							kind: "markdown",
-							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${dir.link})`
+							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros__${dir.link})`
 						},
 						insertText: dir.label.slice(1),
 						data: "Preprocessor"
@@ -1952,7 +1952,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						documentation: {
 							kind: "markdown",
-							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${dir.link})`
+							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros__${dir.link})`
 						},
 						insertText: dir.label.slice(1),
 						data: "Preprocessor"

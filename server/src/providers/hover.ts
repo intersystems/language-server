@@ -971,7 +971,7 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const ppobj = preprocessorDirectives.find((el) => el.label.toLowerCase().replace(/\s+/g,'') === pp.toLowerCase());
 				if (ppobj !== undefined) {
 					return {
-						contents: [ppobj.documentation,`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GCOS_macros#GCOS_macros_${ppobj.link})`],
+						contents: [ppobj.documentation,`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros_${ppobj.link})`],
 						range: pprange
 					};
 				}

@@ -4,12 +4,13 @@
 - Fix issue [#307](https://github.com/intersystems/language-server/issues/307): Add intellisense for property Aliases
 - Fix issue [#308](https://github.com/intersystems/language-server/issues/308): Enhance intellisense for %New when %OnNew is defined
 - Fix issue [#309](https://github.com/intersystems/language-server/issues/309): Fix coloring of CSS urls that contain a right parenthesis
+- Fix issue [#310](https://github.com/intersystems/language-server/issues/310): Update documentation links for preprocessor directives
 - Parser changes:
   - DP-429226: Coloring for User Defined Aggregate Functions (UDAF)
   - DP-429298: Coloring support for new SQL Scalar function DATE_TRUNC()
   - DP-429328: Fix coloring for POSIXTIME, SQL_POSIXTIME
   - DP-429425: Correctly color %NOCHECK, %NOINDEX, %NOTRIGGER, and %NOLOCK as valid SQL keys
-  - DP-429426: Coloring for for INTERSECT/EXCEPT
+  - DP-429426: Coloring for INTERSECT/EXCEPT
 
 ## [2.4.3] - 2024-02-20
 - Fix issue [#302](https://github.com/intersystems/language-server/issues/302): Intellisense is garbled for macros with Markdown characters in their definition
