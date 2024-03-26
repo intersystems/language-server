@@ -1,4 +1,4 @@
-import { Position, SignatureHelp, SignatureHelpParams, SignatureHelpTriggerKind, SignatureInformation, Range, MarkupKind } from 'vscode-languageserver/node';
+import { Position, SignatureHelp, SignatureHelpParams, SignatureHelpTriggerKind, SignatureInformation, Range, MarkupKind, ParameterInformation } from 'vscode-languageserver/node';
 import { getServerSpec, getLanguageServerSettings, makeRESTRequest, getMacroContext, findFullRange, getClassMemberContext, beautifyFormalSpec, documaticHtmlToMarkdown, findOpenParen, getParsedDocument, quoteUDLIdentifier } from '../utils/functions';
 import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from '../utils/types';
 import { documents } from '../utils/variables';
@@ -21,33 +21,35 @@ var signatureHelpStartPosition: Position | undefined = undefined;
 
 /** Determine the active parameter number */
 function determineActiveParam(text: string): number {
-	let activeparam = 0;
-	let openparencount = 0;
-	let instring = false;
-	let incomment = false;
-	for (let i = 0; i < text.length; i++) {
-		const char = text.charAt(i);
-		if (char === "(") {
-			openparencount++;
+	let activeParam = 0, openParenCount = 0, openBraceCount = 0, inQuote = false, inComment = false;
+	Array.from(text).forEach((char: string, idx: number) => {
+		switch (char) {
+			case "{":
+				if (!inQuote && !inComment) openBraceCount++;
+				break;
+			case "}":
+				if (!inQuote && !inComment) openBraceCount--;
+				break;
+			case "(":
+				if (!inQuote && !inComment) openParenCount++;
+				break;
+			case ")":
+				if (!inQuote && !inComment) openParenCount--;
+				break;
+			case "\"":
+				if (!inComment) inQuote = !inQuote;
+				break;
+			case "/":
+				if (!inQuote && !inComment && (idx < text.length - 1) && text[idx+1] == "*") inComment = true;
+				break;
+			case "*":
+				if (inComment && (idx < text.length - 1) && text[idx+1] == "/") inComment = false;
+				break;
+			case ",":
+				if (!inQuote && !inComment && !openBraceCount && !openParenCount) activeParam++;
 		}
-		else if (char === ")") {
-			openparencount--;
-		}
-		else if (char === '"') {
-			instring = !instring;
-		}
-		else if (char === "/" && (i < text.length - 1) && text.charAt(i + 1) == "*" && !incomment) {
-			incomment = true;
-		}
-		else if (char === "*" && (i < text.length - 1) && text.charAt(i + 1) == "/" && incomment) {
-			incomment = false;
-		}
-		else if (char === "," && openparencount === 0 && !instring && !incomment) {
-			// Only increment parameter number if comma isn't inside nested parentheses, a string literal or a multiline-style comment
-			activeparam++;
-		}
-	}
-	return activeparam;
+	});
+	return activeParam;
 }
 
 /** Placeholder for the Markdown emphasis characters before an argument. */
@@ -121,6 +123,39 @@ function markdownifyExpansion(exp: string[]): string {
 		.replace(/(\*|_|\||<|>|{|}|\\|`|\[|\]|\(|\)|#|\+|-|!){1}/g,"\\$1")
 		.replace(new RegExp(emphasizePrefix,"g"),"_**")
 		.replace(new RegExp(emphasizeSuffix,"g"),"**_");
+}
+
+/** Returns the [start,end] tuples for all parameters in `formalSpec` */
+function formalSpecToParamsArr(formalSpec: string): ParameterInformation[] {
+	const result: ParameterInformation[] = [];
+	if (formalSpec.replace(/\s+/g,"") == "()") return result; // No parameters
+	let currentParamStart = 1, openParenCount = 0, openBraceCount = 0, inQuote = false;
+	Array.from(formalSpec).forEach((char: string, idx: number) => {
+		switch (char) {
+			case "{":
+				if (!inQuote) openBraceCount++;
+				break;
+			case "}":
+				if (!inQuote) openBraceCount--;
+				break;
+			case "(":
+				if (!inQuote) openParenCount++;
+				break;
+			case ")":
+				if (!inQuote) openParenCount--;
+				break;
+			case "\"":
+				inQuote = !inQuote;
+				break;
+			case ",":
+				if (!inQuote && !openBraceCount && openParenCount == 1) {
+					result.push(ParameterInformation.create([currentParamStart,idx]));
+					currentParamStart = idx + 1;
+				}
+		}
+	});
+	result.push(ParameterInformation.create([currentParamStart,formalSpec.length - 1]));
+	return result;
 }
 
 export async function onSignatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null> {
@@ -222,23 +257,11 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			const respdata = await makeRESTRequest("POST",2,"/action/getmacrosignature",server,inputdata);
 			if (respdata !== undefined && respdata.data.result.content.signature !== "") {
 				// The macro signature was found
-				const sigtext = respdata.data.result.content.signature.replace(/\s+/g,"");
-				const paramsarr: string[] = sigtext.slice(1,-1).split(",");
-				var sig: SignatureInformation = {
-					label: sigtext.replace(/,/g,", "),
-					parameters: []
+				const sigtext = respdata.data.result.content.signature.replace(/\s+/g,"").replace(/,/g,", ");
+				const sig: SignatureInformation = {
+					label: sigtext,
+					parameters: formalSpecToParamsArr(sigtext)
 				};
-				var startidx: number = 0;
-				for (let i = 0; i < paramsarr.length; i++) {
-					const start = sig.label.indexOf(paramsarr[i],startidx);
-					const end = start + paramsarr[i].length;
-					startidx = end;
-					if (sig.parameters !== undefined) {
-						sig.parameters.push({
-							label: [start,end]
-						});
-					}
-				}
 
 				// Get the macro expansion with the first parameter emphasized
 				signatureHelpMacroCache = {
@@ -325,16 +348,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							sig.documentation = signatureHelpDocumentationCache.doc;
 						}
 						
-						const paramsarr: string[] = sig.label.slice(1,-1).split(", ");
-						for (let i = 0; i < paramsarr.length; i++) {
-							if (sig.parameters !== undefined) {
-								const start = sig.label.indexOf(paramsarr[i]);
-								const end = start + paramsarr[i].length;
-								sig.parameters.push({
-									label: [start,end]
-								});
-							}
-						}
+						sig.parameters = formalSpecToParamsArr(sig.label);
 						sig.label += ` As ${membercontext.baseclass}`;
 						signatureHelpStartPosition = params.position;
 						newsignature = {
@@ -396,16 +410,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							sig.documentation = signatureHelpDocumentationCache.doc;
 						}
 						
-						const paramsarr: string[] = sig.label.slice(1,-1).split(", ");
-						for (let i = 0; i < paramsarr.length; i++) {
-							if (sig.parameters !== undefined) {
-								const start = sig.label.indexOf(paramsarr[i]);
-								const end = start + paramsarr[i].length;
-								sig.parameters.push({
-									label: [start,end]
-								});
-							}
-						}
+						sig.parameters = formalSpecToParamsArr(sig.label);
 						if (["%Open","%OpenId"].includes(member)) {
 							sig.label += ` As ${membercontext.baseclass}`;
 						} else if (memobj.ReturnType != "") {
@@ -468,23 +473,11 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				const respdata = await makeRESTRequest("POST",2,"/action/getmacrosignature",server,inputdata);
 				if (respdata !== undefined && respdata.data.result.content.signature !== "") {
 					// The macro signature was found
-					const sigtext = respdata.data.result.content.signature.replace(/\s+/g,"");
-					const paramsarr: string[] = sigtext.slice(1,-1).split(",");
-					var sig: SignatureInformation = {
-						label: sigtext.replace(/,/g,", "),
-						parameters: []
+					const sigtext = respdata.data.result.content.signature.replace(/\s+/g,"").replace(/,/g,", ");
+					const sig: SignatureInformation = {
+						label: sigtext,
+						parameters: formalSpecToParamsArr(sigtext)
 					};
-					var startidx: number = 0;
-					for (let i = 0; i < paramsarr.length; i++) {
-						const start = sig.label.indexOf(paramsarr[i],startidx);
-						const end = start + paramsarr[i].length;
-						startidx = end;
-						if (sig.parameters !== undefined) {
-							sig.parameters.push({
-								label: [start,end]
-							});
-						}
-					}
 
 					// Determine the active parameter
 					var activeparam = determineActiveParam(doc.getText(Range.create(Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1),params.position)));
@@ -574,16 +567,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 								sig.documentation = signatureHelpDocumentationCache.doc;
 							}
 							
-							const paramsarr: string[] = sig.label.slice(1,-1).split(", ");
-							for (let i = 0; i < paramsarr.length; i++) {
-								if (sig.parameters !== undefined) {
-									const start = sig.label.indexOf(paramsarr[i]);
-									const end = start + paramsarr[i].length;
-									sig.parameters.push({
-										label: [start,end]
-									});
-								}
-							}
+							sig.parameters = formalSpecToParamsArr(sig.label);
 							sig.label += ` As ${membercontext.baseclass}`;
 							signatureHelpStartPosition = Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1);
 							newsignature = {
@@ -645,16 +629,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 								sig.documentation = signatureHelpDocumentationCache.doc;
 							}
 							
-							const paramsarr: string[] = sig.label.slice(1,-1).split(", ");
-							for (let i = 0; i < paramsarr.length; i++) {
-								if (sig.parameters !== undefined) {
-									const start = sig.label.indexOf(paramsarr[i]);
-									const end = start + paramsarr[i].length;
-									sig.parameters.push({
-										label: [start,end]
-									});
-								}
-							}
+							sig.parameters = formalSpecToParamsArr(sig.label);
 							if (["%Open","%OpenId"].includes(member)) {
 								sig.label += ` As ${membercontext.baseclass}`;
 							} else if (memobj.ReturnType != "") {

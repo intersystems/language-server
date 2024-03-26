@@ -5,6 +5,7 @@
 - Fix issue [#308](https://github.com/intersystems/language-server/issues/308): Enhance intellisense for %New when %OnNew is defined
 - Fix issue [#309](https://github.com/intersystems/language-server/issues/309): Fix coloring of CSS urls that contain a right parenthesis
 - Fix issue [#310](https://github.com/intersystems/language-server/issues/310): Update documentation links for preprocessor directives
+- Fix issue [#311](https://github.com/intersystems/language-server/issues/311): Fix SignatureHelp parameter highlighting for parameters with default values that contain a comma
 - Parser changes:
   - DP-429226: Coloring for User Defined Aggregate Functions (UDAF)
   - DP-429298: Coloring support for new SQL Scalar function DATE_TRUNC()
