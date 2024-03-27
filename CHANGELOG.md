@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.4.4] - 2024-XX-XX
+## [2.4.4] - 2024-03-27
 - Fix issue [#307](https://github.com/intersystems/language-server/issues/307): Add intellisense for property Aliases
 - Fix issue [#308](https://github.com/intersystems/language-server/issues/308): Enhance intellisense for %New when %OnNew is defined
 - Fix issue [#309](https://github.com/intersystems/language-server/issues/309): Fix coloring of CSS urls that contain a right parenthesis
@@ -12,6 +12,12 @@
   - DP-429328: Fix coloring for POSIXTIME, SQL_POSIXTIME
   - DP-429425: Correctly color %NOCHECK, %NOINDEX, %NOTRIGGER, and %NOLOCK as valid SQL keys
   - DP-429426: Coloring for INTERSECT/EXCEPT
+  - DP-429457: Coloring for %PARTITION BY
+  - DP-429466: Coloring for TRIM(keyword 'string') syntax
+  - DP-429498: Coloring for private properties in DDL
+  - DP-429632: Enhance coloring for date part abbreviations
+  - DP-429811: Coloring for JSON_TABLE
+  - DP-430131: Fix coloring of SELECT statement in parentheses
 
 ## [2.4.3] - 2024-02-20
 - Fix issue [#302](https://github.com/intersystems/language-server/issues/302): Intellisense is garbled for macros with Markdown characters in their definition

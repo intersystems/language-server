@@ -121,8 +121,8 @@ function emphasizeArgument(arglist: string, arg: number): string {
 function markdownifyExpansion(exp: string[]): string {
 	return exp.join("\n")
 		.replace(/(\*|_|\||<|>|{|}|\\|`|\[|\]|\(|\)|#|\+|-|!){1}/g,"\\$1")
-		.replace(new RegExp(emphasizePrefix,"g"),"_**")
-		.replace(new RegExp(emphasizeSuffix,"g"),"**_");
+		.replace(new RegExp(emphasizePrefix,"g"),"***")
+		.replace(new RegExp(emphasizeSuffix,"g"),"***");
 }
 
 /** Returns the [start,end] tuples for all parameters in `formalSpec` */
