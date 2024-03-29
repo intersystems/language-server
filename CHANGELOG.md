@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.4.5] - 2024-XX-XX
+- Parser changes:
+  - DP-430347: Track variables in routine procedure blocks
+
 ## [2.4.4] - 2024-03-27
 - Fix issue [#307](https://github.com/intersystems/language-server/issues/307): Add intellisense for property Aliases
 - Fix issue [#308](https://github.com/intersystems/language-server/issues/308): Enhance intellisense for %New when %OnNew is defined
