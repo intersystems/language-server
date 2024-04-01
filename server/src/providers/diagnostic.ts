@@ -19,7 +19,7 @@ import {
 	normalizeClassname,
 	quoteUDLIdentifier
 } from '../utils/functions';
-import { zutilFunctions, lexerLanguages, documents } from '../utils/variables';
+import { zutilFunctions, lexerLanguages, documents, connection } from '../utils/variables';
 import { ServerSpec, StudioOpenDialogFile, QueryData } from '../utils/types';
 import * as ld from '../utils/languageDefinitions';
 import parameterTypes = require("../documentation/parameterTypes.json");
@@ -51,7 +51,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	if (doc === undefined) throw new Error("Unknown document");
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) throw new Error("Document not parsed");
-
+	connection.console.warn("got doc and parsed");
 	const server: ServerSpec = await getServerSpec(doc.uri);
 	const settings = await getLanguageServerSettings(doc.uri);
 	let diagnostics: Diagnostic[] = [];
@@ -68,8 +68,10 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		if (settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
 			// Get all classes and routines
 			querydata = {
-				query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition UNION ALL %PARALLEL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
-				parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0]
+				query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition UNION ALL %PARALLEL " +
+					"SELECT DISTINCT BY ($PIECE(Name,'.',1,$LENGTH(Name,'.')-1)) Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) " +
+					"UNION ALL %PARALLEL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
+				parameters: ["*.mac,*.int,*.obj",1,1,1,1,1,0,"NOT (Name %PATTERN '.E1\".\"0.1\"G\"1N1\".obj\"' AND $LENGTH(Name,'.') > 3)","*.inc",1,1,1,1,0,0]
 			};
 		}
 		else if (!settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
@@ -82,10 +84,12 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		else {
 			// Get all routines
 			querydata = {
-				query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
-				parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0]
+				query: "SELECT DISTINCT BY ($PIECE(Name,'.',1,$LENGTH(Name,'.')-1)) Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) " +
+					"UNION ALL %PARALLEL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
+				parameters: ["*.mac,*.int,*.obj",1,1,1,1,1,0,"NOT (Name %PATTERN '.E1\".\"0.1\"G\"1N1\".obj\"' AND $LENGTH(Name,'.') > 3)","*.inc",1,1,1,1,0,0]
 			};
 		}
+		connection.console.warn("about to send REST request");
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 		if (Array.isArray(respdata?.data?.result?.content)) {
 			files = respdata.data.result.content;
@@ -593,7 +597,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							}
 						}
 						else {
-							if (!files.some(file => (file.Name == (word+".mac")) || (file.Name == (word+".int")))) {
+							const regex = new RegExp(`^${word}\.(mac|int|obj)$`);
+							if (!files.some(file => regex.test(file.Name))) {
 								let diagnostic: Diagnostic = {
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
@@ -995,7 +1000,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							break;
 						default:
 							otherRtns.push(doc);
-							otherRtns.push(`${doc.slice(0,-3)}.int`);
+							otherRtns.push(`${doc.slice(0,-3)}int`);
+							otherRtns.push(`${doc.slice(0,-3)}obj`);
 					}
 				}
 			});
@@ -1005,7 +1011,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition WHERE Name %INLIST $LISTFROMSTRING(?) " +
 						"UNION ALL %PARALLEL " +
 						"SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE Name %INLIST $LISTFROMSTRING(?)",
-					parameters: [otherClasses.join(","),"*.mac,*.inc,*.int",1,1,1,1,0,0,otherRtns.join(",")]
+					parameters: [otherClasses.join(","),"*.mac,*.inc,*.int,*.obj",1,1,1,1,1,0,otherRtns.join(",")]
 				};
 			}
 			else if (otherClasses.length) {
@@ -1019,7 +1025,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				// Check for just routines
 				querydata = {
 					query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE Name %INLIST $LISTFROMSTRING(?)",
-					parameters: ["*.mac,*.inc,*.int",1,1,1,1,0,0,otherRtns.join(",")]
+					parameters: ["*.mac,*.inc,*.int,*.obj",1,1,1,1,1,0,otherRtns.join(",")]
 				};
 			}
 
@@ -1029,7 +1035,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				// We got data back
 
 				// Report Diagnostics for files that aren't in the returned data
-				respdata.data.result.content.forEach((e) => otherNsDocs.delete(`${namespace}:::${e.Name.endsWith(".int") ? `${e.Name.slice(0,-3)}.mac` : e.Name}`));
+				respdata.data.result.content.forEach((e) => otherNsDocs.delete(`${namespace}:::${(e.Name.endsWith(".int") || e.Name.endsWith(".obj")) ? `${e.Name.slice(0,-3)}mac` : e.Name}`));
 				otherNsDocs.forEach((v,k) => {
 					const [ns, doc] = k.split(":::");
 					if (ns == namespace) {

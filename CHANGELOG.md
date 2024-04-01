@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2.4.5] - 2024-XX-XX
+- Fix issue [#312](https://github.com/intersystems/language-server/issues/312): Fix routine existence diagnostics for routines that only exist in OBJ form
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
 
