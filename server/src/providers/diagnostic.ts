@@ -19,7 +19,7 @@ import {
 	normalizeClassname,
 	quoteUDLIdentifier
 } from '../utils/functions';
-import { zutilFunctions, lexerLanguages, documents, connection } from '../utils/variables';
+import { zutilFunctions, lexerLanguages, documents } from '../utils/variables';
 import { ServerSpec, StudioOpenDialogFile, QueryData } from '../utils/types';
 import * as ld from '../utils/languageDefinitions';
 import parameterTypes = require("../documentation/parameterTypes.json");
@@ -51,7 +51,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	if (doc === undefined) throw new Error("Unknown document");
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) throw new Error("Document not parsed");
-	connection.console.warn("got doc and parsed");
+
 	const server: ServerSpec = await getServerSpec(doc.uri);
 	const settings = await getLanguageServerSettings(doc.uri);
 	let diagnostics: Diagnostic[] = [];
@@ -89,7 +89,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				parameters: ["*.mac,*.int,*.obj",1,1,1,1,1,0,"NOT (Name %PATTERN '.E1\".\"0.1\"G\"1N1\".obj\"' AND $LENGTH(Name,'.') > 3)","*.inc",1,1,1,1,0,0]
 			};
 		}
-		connection.console.warn("about to send REST request");
+
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 		if (Array.isArray(respdata?.data?.result?.content)) {
 			files = respdata.data.result.content;
