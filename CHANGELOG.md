@@ -4,6 +4,7 @@
 - Fix issue [#312](https://github.com/intersystems/language-server/issues/312): Fix routine existence diagnostics for routines that only exist in OBJ form
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
+  - DP-430473: Fix variable tracking with embedded SQL in routine procedure blocks
 
 ## [2.4.4] - 2024-03-27
 - Fix issue [#307](https://github.com/intersystems/language-server/issues/307): Add intellisense for property Aliases
