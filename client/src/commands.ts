@@ -8,7 +8,9 @@ import {
 	Position,
 	DocumentSymbol,
 	TextEditorRevealType,
-	Selection
+	Selection,
+	TextEditor,
+	TextEditorEdit
 } from 'vscode';
 
 import { WorkspaceEdit, TextEdit } from 'vscode-languageclient/node';
@@ -306,4 +308,13 @@ export async function showSymbolInClass(uri: string, memberType: string, memberN
 		editor.selection = new Selection(symbol.selectionRange.start, symbol.selectionRange.end);
     	editor.revealRange(symbol.selectionRange, TextEditorRevealType.InCenter);
 	}
+}
+
+/**
+ * Callback function for the `intersystems.language-server.setSelection` command.
+ */
+export function setSelection(editor: TextEditor, _edit: TextEditorEdit, startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
+	const range = new Range(startLine,startCharacter,endLine,endCharacter);
+	editor.selection = new Selection(range.start, range.end);
+	editor.revealRange(range, TextEditorRevealType.InCenter);
 }

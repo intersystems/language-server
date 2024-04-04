@@ -28,7 +28,8 @@ import {
 	showSymbolInClass,
 	overrideClassMembers,
 	selectImportPackage,
-	selectParameterType
+	selectParameterType,
+	setSelection
 } from './commands';
 import { makeRESTRequest, ServerSpec } from './makeRESTRequest';
 import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from './requestForwarding';
@@ -246,6 +247,7 @@ export async function activate(context: ExtensionContext) {
 		commands.registerCommand("intersystems.language-server.selectImportPackage",selectImportPackage),
 		commands.registerCommand("intersystems.language-server.extractMethod",extractMethod),
 		commands.registerCommand("intersystems.language-server.showSymbolInClass",showSymbolInClass),
+		commands.registerTextEditorCommand("intersystems.language-server.setSelection",setSelection),
 
 		// Register EvaluatableExpressionProvider
 		languages.registerEvaluatableExpressionProvider(documentSelector,new ObjectScriptEvaluatableExpressionProvider()),

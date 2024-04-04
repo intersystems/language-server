@@ -152,6 +152,16 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		// The document begins with "ROUTINE" (case-insensitive)
 		doc.getText(Range.create(Position.create(0,parsed[0][0].p),Position.create(0,parsed[0][0].p+parsed[0][0].c))).toLowerCase() === "routine";
 
+	if (!firstlineisroutine && ["objectscript","objectscript-int","objectscript-macros"].includes(doc.languageId)) {
+		// The ROUTINE header is required
+		diagnostics.push({
+			severity: DiagnosticSeverity.Error,
+			range: Range.create(0,0,0,0),
+			message: "ROUTINE header is required",
+			source: "InterSystems Language Server"
+		});
+	}
+
 	const startline: number = (firstlineisroutine) ? 1 : 0;
 
 	// Store the name, class and ranges for all class members that we see if settings.diagnostics.deprecation is true

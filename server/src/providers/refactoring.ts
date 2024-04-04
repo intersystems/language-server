@@ -1441,7 +1441,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 	const settings = await getLanguageServerSettings(doc.uri);
 
 	var result: CodeAction[] = [];
-	if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.Refactor)) {
+	if (!Array.isArray(params.context.only) || params.context.only.includes(CodeActionKind.Refactor)) {
 		result.push({
 			title: 'Wrap in Try/Catch',
 			kind: CodeActionKind.Refactor
@@ -1606,7 +1606,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 			};
 		}
 		result[0].data = [doc.uri,lnstart,lnend];
-	} else if (params.context.only !== undefined && params.context.only.includes(CodeActionKind.QuickFix)) {
+	} else if (!Array.isArray(params.context.only) || params.context.only.includes(CodeActionKind.QuickFix)) {
 		for (const diagnostic of params.context.diagnostics) {
 			if (
 				diagnostic.message === "Invalid parameter type." || 
@@ -1670,9 +1670,33 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 								}]
 							}
 						},
+						isPreferred: true,
 						diagnostics: [diagnostic] 
 					});
 				}
+			} else if (diagnostic.message == "ROUTINE header is required") {
+				const rtnType = doc.languageId == "objectscript-int" ? "Type=INT" : doc.languageId == "objectscript-macros" ? "Type=INC" : "";
+				const rtnName = doc.uri.slice(doc.uri.lastIndexOf("/") + 1).split(".").slice(0,-1).join(".");
+				const rtnGenerated = doc.languageId == "objectscript-int" && /\.G?\d$/.test(rtnName) ? ",Generated" : "";
+				result.push({
+					title: "Add header",
+					kind: CodeActionKind.QuickFix,
+					edit: {
+						changes: {
+							[params.textDocument.uri]: [{
+								range: diagnostic.range,
+								newText: `ROUTINE ${rtnName}${rtnType != "" ? ` [${rtnType}${rtnGenerated}]` : ""}\n`
+							}]
+						}
+					},
+					command: {
+						command: "intersystems.language-server.setSelection",
+						arguments: [0, 8, 0, 8 + rtnName.length],
+						title: "Set selection"
+					},
+					isPreferred: true,
+					diagnostics: [diagnostic] 
+				});
 			}
 		}
 	}
