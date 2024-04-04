@@ -1404,7 +1404,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	}
 	else if (
 		(prevline.slice(-2) === "[ " || (prevline.slice(-2) === ", " &&
-		openparencount <= closeparencount)) && triggerlang === ld.cls_langindex
+		openparencount <= closeparencount) || prevline.slice(-4).toLowerCase() == "not ") && triggerlang === ld.cls_langindex
 	) {
 		let foundopenbracket = false;
 		let foundclosebracket = false;
@@ -1493,12 +1493,18 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			else if (keywordtype === "xdata") {
 				keywordsarr = xdataKeywords.slice();
 			}
-			for (let keydoc of keywordsarr) {
+			for (const keydoc of keywordsarr) {
 				var doctext = keydoc.description;
 				if (doctext === undefined) {
 					doctext = "";
 				}
-				if (!existingkeywords.includes(keydoc.name.toLowerCase())) {
+				if (
+					!existingkeywords.includes(keydoc.name.toLowerCase()) && !(
+						// Only boolean keywords can follow a "Not "
+						prevline.slice(-4).toLowerCase() == "not " &&
+						keydoc.type != "KW_TYPE_BOOLEAN"
+					)
+				) {
 					if ("constraint" in keydoc && keydoc.constraint instanceof Array) {
 						if (doctext !== "") {
 							doctext = doctext + "\n\n";
