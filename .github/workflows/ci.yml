@@ -29,7 +29,7 @@ jobs:
         platarch: [win32-x64, linux-x64, linux-arm64, alpine-x64, alpine-arm64, darwin-x64, darwin-arm64]
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
       - name: Fetch tags
         run: git fetch --depth=1 origin +refs/tags/*:refs/tags/*
       - name: Set package name and version
@@ -48,22 +48,22 @@ jobs:
           jq --arg version "$VERSION" '.version = $version' package.json > "$tmp" && mv "$tmp" package.json
           echo $VERSION > .version
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - run: npm install
       - name: Use correct .node binary file
         run: cp -f ./server/lib/${{ matrix.platarch }}-isclexer.node ./server/lib/isclexer.node
       - name: Build package
         run: npx vsce package -o ${{ steps.set-version.outputs.name }}.vsix --target ${{ matrix.platarch }}
       - name: Upload package
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ${{ steps.set-version.outputs.name }}.vsix
           path: ${{ steps.set-version.outputs.name }}.vsix
           retention-days: 30
       - name: Upload metadata
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: meta
           retention-days: 1
@@ -74,7 +74,7 @@ jobs:
     if: success() && github.event_name == 'push'
     steps:
       - name: Download packages and metadata
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Set version output
         id: set-version
         run: |
@@ -82,7 +82,7 @@ jobs:
           echo "version=`cat meta/.version`" >> $GITHUB_OUTPUT
       - name: Create Release
         id: create-release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.set-version.outputs.version }}
           prerelease: ${{ github.event_name != 'release' }}
@@ -94,14 +94,14 @@ jobs:
     if: success() && github.event_name == 'release'
     steps:
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - run: npm install -g @vscode/vsce
       - name: Download packages
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
       - name: Attach packages to release
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: '**/*.vsix'
@@ -124,18 +124,18 @@ jobs:
     if: github.event_name == 'release'
     steps:
       - name: Check out repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
         with:
           ref: master
       - name: Download metadata
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: meta
           path: .
       - name: Use Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v4
         with:
-          node-version: 16
+          node-version: 20
       - name: Create commit
         run: |
           VERSION=`cat .version`
