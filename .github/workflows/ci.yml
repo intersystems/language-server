@@ -68,6 +68,7 @@ jobs:
           name: meta
           retention-days: 1
           path: .version
+          overwrite: true
   beta:
     runs-on: ubuntu-latest
     needs: build
