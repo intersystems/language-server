@@ -13,8 +13,8 @@ export async function onDocumentLinks(params: DocumentLinkParams): Promise<Docum
 	let result: DocumentLink[] = [];
 
 	// Loop through the class and look for documentation comments
-	const classregex = new RegExp("<class>([^<>\/]*)<\/class>","gi");
-	const memberregex = new RegExp("(?:<method>([^<>\/]*)<\/method>)|(?:<property>([^<>\/]*)<\/property>)|(?:<query>([^<>\/]*)<\/query>)","gi");
+	const classregex = /(?:<class>([^<>/#]+)<\/class>)|(?:##class\(([^<>()]+)\))/gi;
+	const memberregex = new RegExp("(?:<method>([^<>\/]+)<\/method>)|(?:<property>([^<>\/]+)<\/property>)|(?:<query>([^<>\/]+)<\/query>)","gi");
 	for (let line = 0; line < parsed.length; line++) {
 		if (
 			parsed[line].length > 0 &&
@@ -23,15 +23,17 @@ export async function onDocumentLinks(params: DocumentLinkParams): Promise<Docum
 		) {
 			// This is a UDL documentation line
 			const linetext = doc.getText(Range.create(line,0,line+1,0));
-			let matcharr: any;
+			let matcharr: RegExpExecArray | null;
 			while ((matcharr = classregex.exec(linetext)) !== null) {
-				// This is a <CLASS> HTML tag
+				// This is a <CLASS> HTML tag or ##class()
+				const clsName = matcharr[1] ?? matcharr[2];
+				const offset = matcharr[1] ? 7 : 8;
 				result.push({
-					range: Range.create(line,matcharr.index+7,line,matcharr.index+7+matcharr[1].length),
+					range: Range.create(line,matcharr.index+offset,line,matcharr.index+offset+clsName.length),
 					tooltip: "Open this class in a new editor tab",
 					data: {
 						uri: params.textDocument.uri,
-						clsName: matcharr[1]
+						clsName
 					}
 				});
 			}
