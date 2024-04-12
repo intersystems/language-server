@@ -1,5 +1,5 @@
 import { TextDocumentPositionParams, Position, Range } from 'vscode-languageserver';
-import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, determineDeclaredLocalVarClass, determineParameterClass, getClassMemberContext, getParsedDocument, determineUndeclaredLocalVarClass, getTextForUri } from '../utils/functions';
+import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, determineVariableClass, getClassMemberContext, getParsedDocument, getTextForUri } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -23,34 +23,7 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 
 			let targetcls = "";
 			let originrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
-			if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_param_attrindex) {
-				// This token is a parameter
-
-				// Determine the class of the parameter
-				const paramcon = await determineParameterClass(doc,parsed,params.position.line,i,server);
-				if (paramcon !== undefined) {
-					// The parameter has a class
-					targetcls = paramcon.baseclass;
-				}
-			}
-			else if (
-				parsed[params.position.line][i].l == ld.cos_langindex &&
-				(parsed[params.position.line][i].s == ld.cos_localdec_attrindex || parsed[params.position.line][i].s == ld.cos_localvar_attrindex)
-			) {
-				// This token is a declared local variable or public variable
-
-				// First check if it's #Dim'd
-				let varContext = await determineDeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
-				if (varContext === undefined) {
-					// If it's not, check if it's Set using %New(), %Open() or %OpenId()
-					varContext = await determineUndeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
-				}
-				if (varContext !== undefined) {
-					// The declared local variable has a class
-					targetcls = varContext.baseclass;
-				}
-			}
-			else if (
+			if (
 				parsed[params.position.line][i].l == ld.cos_langindex && (
 					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
@@ -150,18 +123,9 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 					}
 				}
 			}
-			else if (
-				parsed[params.position.line][i].l == ld.cos_langindex &&
-				(parsed[params.position.line][i].s == ld.cos_otw_attrindex || parsed[params.position.line][i].s == ld.cos_localundec_attrindex)
-			) {
-				// This token is an undeclared local variable
-
-				// Determine the class of the undeclared local variable
-				const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,params.position.line,i,server);
-				if (localundeccon !== undefined) {
-					// The undeclared local variable has a class
-					targetcls = localundeccon.baseclass;
-				}
+			else {
+				// This token is an ObjectScript variable
+				targetcls = await determineVariableClass(doc,parsed,params.position.line,i,server);
 			}
 
 			if (targetcls !== "") {

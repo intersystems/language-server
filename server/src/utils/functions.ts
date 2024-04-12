@@ -1430,7 +1430,7 @@ export function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string
  * @param allfiles An array of all files in a database.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-export async function determineParameterClass(
+async function determineParameterClass(
 	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext | undefined> {
@@ -1503,7 +1503,7 @@ export async function determineParameterClass(
  * @param allfiles An array of all files in a database.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-export async function determineDeclaredLocalVarClass(
+async function determineDeclaredLocalVarClass(
 	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext | undefined> {
@@ -1823,7 +1823,7 @@ function parseSetCommand(doc: TextDocument, parsed: compressedline[], line: numb
  * @param allfiles An array of all files in a database.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
-export async function determineUndeclaredLocalVarClass(
+async function determineUndeclaredLocalVarClass(
 	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext | undefined> {
@@ -2284,4 +2284,56 @@ export function currentClass(doc: TextDocument, parsed: compressedline[]): strin
 export async function getTextForUri(uri: string, server: ServerSpec): Promise<string[]> {
 	const doc = documents.get(uri);
 	return doc ? doc.getText().split(/\r?\n/) : connection.sendRequest("intersystems/uri/getText", { uri, server });
+}
+
+/**
+ * Determine the normalized name of the class for the ObjectScript variable at (line,tkn).
+ * 
+ * @param doc The TextDocument that the variable is in.
+ * @param parsed The tokenized representation of doc.
+ * @param line The line that the variable is in.
+ * @param tkn The token of the variable in the line.
+ * @param server The server that doc is associated with.
+ */
+export async function determineVariableClass(
+	doc: TextDocument, parsed: compressedline[],
+	line: number, tkn: number, server: ServerSpec
+): Promise<string> {
+	let varClass = "";
+	if (parsed[line][tkn].s == ld.cos_param_attrindex) {
+		// This token is a parameter
+
+		// Determine the class of the parameter
+		const paramcon = await determineParameterClass(doc,parsed,line,tkn,server);
+		if (paramcon !== undefined) {
+			// The parameter has a class
+			varClass = paramcon.baseclass;
+		}
+	} else if (
+		parsed[line][tkn].s == ld.cos_localdec_attrindex ||
+		parsed[line][tkn].s == ld.cos_localvar_attrindex
+	) {
+		// This token is a declared local variable or public variable
+
+		// First check if it's #Dim'd
+		let varContext = await determineDeclaredLocalVarClass(doc,parsed,line,tkn,server);
+		if (varContext === undefined) {
+			// If it's not, check if it's Set using %New(), %Open() or %OpenId()
+			varContext = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,server);
+		}
+		if (varContext !== undefined) {
+			// The declared local variable has a class
+			varClass = varContext.baseclass;
+		}
+	} else {
+		// This token is an undeclared local variable
+
+		// Determine the class of the undeclared local variable
+		const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,server);
+		if (localundeccon !== undefined) {
+			// The undeclared local variable has a class
+			varClass = localundeccon.baseclass;
+		}
+	}
+	return varClass;
 }

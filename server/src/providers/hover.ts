@@ -1,5 +1,5 @@
 import { Position, TextDocumentPositionParams, Range, MarkupKind } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, determineVariableClass } from '../utils/functions';
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -1062,6 +1062,38 @@ export async function onHover(params: TextDocumentPositionParams) {
 								};
 							}
 						}
+					}
+				}
+			}
+			else if (
+				parsed[params.position.line][i].l == ld.cos_langindex && (
+					parsed[params.position.line][i].s == ld.cos_param_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_localdec_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_localvar_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_otw_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_localundec_attrindex
+				)
+			) {
+				// This is an ObjectScript variable
+
+				const varClass = await determineVariableClass(doc,parsed,params.position.line,i,server);
+				if (varClass) {
+					// Get the description for this class from the server
+					const querydata: QueryData = {
+						query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
+						parameters: [varClass]
+					};
+					const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+					if (respdata !== undefined && respdata.data.result.content !== undefined && respdata.data.result.content.length === 1) {
+						// The class was found
+						return {
+							contents: [
+								`[${varClass}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?`.concat(
+									`LIBRARY=${encodeURIComponent(server.namespace.toUpperCase())}&CLASSNAME=${encodeURIComponent(varClass)})`),
+								documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
+							],
+							range: Range.create(params.position.line,symbolstart,params.position.line,symbolend)
+						};
 					}
 				}
 			}
