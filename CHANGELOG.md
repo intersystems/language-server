@@ -9,6 +9,7 @@
 - Fix issue [#317](https://github.com/intersystems/language-server/issues/317): Add `DocumentLink` for `##class()` in class description comments
 - Fix issue [#318](https://github.com/intersystems/language-server/issues/318): Support optional chaining operator in JavaScript colorer
 - Fix issue [#319](https://github.com/intersystems/language-server/issues/319): Outline shows routine labels that don't appear in the first column
+- Fix issue [#320](https://github.com/intersystems/language-server/issues/320): Turn routine existence diagnostics on by default
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
   - DP-430473: Fix variable tracking with embedded SQL in routine procedure blocks

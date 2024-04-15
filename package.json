@@ -151,7 +151,7 @@
         "intersystems.language-server.diagnostics.routines": {
           "scope": "resource",
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Controls whether error diagnostics are provided when a routine or include file that is being referred to doesn't exist in the database."
         },
         "intersystems.language-server.diagnostics.parameters": {
