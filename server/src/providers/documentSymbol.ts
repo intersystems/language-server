@@ -200,11 +200,13 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 		// Loop through the file and look for labels
 
 		for (let line = 0; line < parsed.length; line++) {
-			if (parsed[line].length === 0) {
-				continue;
-			}
-			if (parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_label_attrindex) {
-				// This line contains a label
+			if (!parsed[line]?.length) continue;
+			if (
+				parsed[line][0].l == ld.cos_langindex &&
+				parsed[line][0].s == ld.cos_label_attrindex &&
+				parsed[line][0].p == 0
+			) {
+				// This line contains a label in the first column
 
 				const labelrange = findFullRange(line,parsed,0,parsed[line][0].p,parsed[line][0].p+parsed[line][0].c);
 				const label = doc.getText(labelrange);
