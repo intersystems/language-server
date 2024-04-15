@@ -63,7 +63,7 @@ jobs:
           path: ${{ steps.set-version.outputs.name }}.vsix
           retention-days: 30
       - name: Upload metadata
-        if: ${{ matrix.platarch }} == 'linux-arm64'
+        if: matrix.platarch == 'linux-arm64'
         uses: actions/upload-artifact@v4
         with:
           name: meta

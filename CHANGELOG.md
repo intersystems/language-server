@@ -6,6 +6,7 @@
 - Fix issue [#314](https://github.com/intersystems/language-server/issues/314): Suggest boolean class keywords for completion after typing `Not`
 - Fix issue [#316](https://github.com/intersystems/language-server/issues/316): Show class description when hovering over a typed variable
 - Fix issue [#317](https://github.com/intersystems/language-server/issues/317): Add `DocumentLink` for `##class()` in class description comments
+- Fix issue [#318](https://github.com/intersystems/language-server/issues/318): Support optional chaining operator in JavaScript colorer
 - Fix issue [#319](https://github.com/intersystems/language-server/issues/319): Outline shows routine labels that don't appear in the first column
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
