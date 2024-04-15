@@ -1,7 +1,7 @@
 import { Position, TextDocumentPositionParams, Range } from 'vscode-languageserver/node';
 import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineClassNameParameterClass, getParsedDocument, currentClass, getTextForUri } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
-import { documents, corePropertyParams } from '../utils/variables';
+import { documents, corePropertyParams, classMemberTypes } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 /**
@@ -9,11 +9,6 @@ import * as ld from '../utils/languageDefinitions';
  * of the `LocationLink` object returned by a definition request.
  */
 const definitionTargetRangeMaxLines: number = 10;
-
-/**
- * An array containing all UDL class member types.
- */
-const classMemberTypes: string[] = ["Parameter","Property","Relationship","ForeignKey","Index","Query","Storage","Trigger","XData","Projection","Method","ClassMethod","ClientMethod"];
 
 export async function onDefinition(params: TextDocumentPositionParams) {
 	const doc = documents.get(params.textDocument.uri);

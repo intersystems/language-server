@@ -25,6 +25,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Mismatches between declared UDL Parameter types and the assigned value.
   - Classes, Methods, Parameters and Properties that are [Deprecated](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_deprecated).
   - `$ZUTIL` functions that [are deprecated or have been superseded](https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_replacements).
+  - [SQL reserved words](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RSQL_reservedwords) used in class and property names of persistent classes.
 - [Folding Ranges](https://code.visualstudio.com/docs/editor/codebasics#_folding) for the following:
   - ObjectScript code blocks (If/ElseIf/Else, Try/Catch, For, While, etc.)
   - UDL class members

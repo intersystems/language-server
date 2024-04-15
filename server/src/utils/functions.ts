@@ -4,7 +4,7 @@ import { URI } from 'vscode-uri';
 import { parse } from 'node-html-parser';
 
 import { ServerSpec, StudioOpenDialogFile, QueryData, compressedline, CommandDoc, LanguageServerConfiguration, MacroContext, DimResult, PossibleClasses, ClassMemberContext } from './types';
-import { parsedDocuments, connection, serverSpecs, languageServerSettings, documents } from './variables';
+import { parsedDocuments, connection, serverSpecs, languageServerSettings, documents, classMemberTypes } from './variables';
 import * as ld from './languageDefinitions';
 
 import commands = require("../documentation/commands.json");
@@ -2336,4 +2336,10 @@ export async function determineVariableClass(
 		}
 	}
 	return varClass;
+}
+
+/** Returns `true` if `keyword` is a valid class member type. */
+export function isClassMember(keyword: string): boolean {
+	const keywordUpper = keyword.toUpperCase();
+	return classMemberTypes.some(t => t.toUpperCase() == keywordUpper);
 }

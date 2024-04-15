@@ -17,12 +17,14 @@ import {
 	getServerSpec,
 	makeRESTRequest,
 	normalizeClassname,
-	quoteUDLIdentifier
+	quoteUDLIdentifier,
+	isClassMember
 } from '../utils/functions';
 import { zutilFunctions, lexerLanguages, documents } from '../utils/variables';
 import { ServerSpec, StudioOpenDialogFile, QueryData } from '../utils/types';
 import * as ld from '../utils/languageDefinitions';
 import parameterTypes = require("../documentation/parameterTypes.json");
+import sqlReservedWords = require("../documentation/sqlReservedWords.json");
 
 /**
  * Helper method  that appends `range` to value of `key` in `map`
@@ -64,6 +66,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	var files: StudioOpenDialogFile[] = [];
 	var inheritedpackages: string[] = [];
 	var querydata: QueryData;
+	let isPersistent: boolean = false;
 	if (settings.diagnostics.routines || settings.diagnostics.classes || settings.diagnostics.deprecation) {
 		if (settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
 			// Get all classes and routines
@@ -95,9 +98,12 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			files = respdata.data.result.content;
 		}
 	}
-	if (doc.languageId === "objectscript-class" && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
+	if (doc.languageId == "objectscript-class" && (
+		settings.diagnostics.classes || settings.diagnostics.deprecation || settings.diagnostics.sqlReserved
+	)) {
 		var clsname = "";
 		var hassupers = false;
+		let supers: string[] = [""];
 
 		// Find the class name and if the class has supers
 		for (let i = 0; i < parsed.length; i++) {
@@ -113,13 +119,19 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					for (let j = 1; j < parsed[i].length; j++) {
 						if (
 							parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-							doc.getText(Range.create(
-								Position.create(i,parsed[i][j].p),
-								Position.create(i,parsed[i][j].p+parsed[i][j].c)
-							)).toLowerCase() === "extends"
+							doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase() == "extends"
 						) {
 							// The 'Extends' keyword is present
 							hassupers = true;
+							if (!settings.diagnostics.sqlReserved) break;
+						} else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex && hassupers) {
+							supers.push(supers.pop() + doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)));
+						} else if (
+							parsed[i][j].l == ld.cls_langindex &&
+							parsed[i][j].s == ld.cls_delim_attrindex &&
+							[")","[","{"].includes(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)))
+						) {
+							// This is the end of the superclass list
 							break;
 						}
 					}
@@ -127,9 +139,10 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 			}
 		}
+		isPersistent = supers.includes("%Persistent") || supers.includes("%Library.Persistent");
 		if (hassupers) {
 			const pkgquerydata = {
-				query: "SELECT $LISTTOSTRING(Importall) AS Importall FROM %Dictionary.CompiledClass WHERE Name = ?",
+				query: "SELECT $LISTTOSTRING(Importall) AS Importall, $FIND(PrimarySuper,'~%Library.Persistent~') AS IsPersistent FROM %Dictionary.CompiledClass WHERE Name = ?",
 				parameters: [clsname]
 			};
 			const pkgrespdata = await makeRESTRequest("POST",1,"/action/query",server,pkgquerydata);
@@ -137,8 +150,10 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				// We got data back
 				inheritedpackages = pkgrespdata.data.result.content[0].Importall != "" ?
 					pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',') : [];
+				isPersistent = isPersistent || pkgrespdata.data.result.content[0].IsPersistent > 0;
 			}
 		}
+		if (!settings.diagnostics.sqlReserved) isPersistent = false;
 	}
 	
 	const firstlineisroutine: boolean =
@@ -257,6 +272,51 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							message: "A package must be specified.",
 							source: 'InterSystems Language Server'
 						});
+					} else if (isPersistent) {
+						// Check if a SqlTableName is present
+						let sqlTableName: Range, hasSqlTableName = false;
+						for (let k = j + 1; k < parsed[i].length; k++) {
+							if (hasSqlTableName) {
+								if (parsed[i][k].l == ld.cls_langindex && (
+									parsed[i][k].s == ld.cls_sqliden_attrindex || 
+									parsed[i][k].s == ld.error_attrindex || (
+										parsed[i][k].s == ld.cls_delim_attrindex &&
+										[",","]"].includes(doc.getText(Range.create(i,parsed[i][k].p,i,parsed[i][k].p+parsed[i][k].c)))
+									)
+								)) {
+									if (parsed[i][k].s == ld.cls_sqliden_attrindex) {
+										sqlTableName = Range.create(i,parsed[i][k].p,i,parsed[i][k].p+parsed[i][k].c);
+									}
+									break;
+								}
+							} else if (
+								parsed[i][k].l == ld.cls_langindex &&
+								parsed[i][k].s == ld.cls_keyword_attrindex &&
+								doc.getText(Range.create(i,parsed[i][k].p,i,parsed[i][k].p+parsed[i][k].c)).toLowerCase() == "sqltablename"
+							) {
+								hasSqlTableName = true;
+							}
+						}
+						if (hasSqlTableName) {
+							if (sqlTableName && sqlReservedWords.includes(doc.getText(sqlTableName).toUpperCase())) {
+								// The SqlTableName is a reserved word
+								diagnostics.push({
+									severity: DiagnosticSeverity.Warning,
+									range: sqlTableName,
+									message: "SqlTableName is a SQL reserved word",
+									source: 'InterSystems Language Server'
+								});
+							}
+						} else if (sqlReservedWords.includes(word.split(".").pop().toUpperCase())) {
+							// The short class name is a reserved word, and it's not corrected by a SqlTableName
+							wordrange.start.character = wordrange.end.character - word.split(".").pop().length;
+							diagnostics.push({
+								severity: DiagnosticSeverity.Warning,
+								range: wordrange,
+								message: "Class name is a SQL reserved word",
+								source: 'InterSystems Language Server'
+							});
+						}
 					}
 				}
 				else if (
@@ -901,6 +961,84 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							currentNs = "";
 							nsNestedBlockLevel = 1;
 						}
+					}
+				}
+				else if (
+					j == 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
+					isPersistent && parsed[i].length > 2 && (
+						doc.getText(Range.create(i,0,i,8)).toLowerCase() == "property" ||
+						doc.getText(Range.create(i,0,i,12)).toLowerCase() == "relationship"
+					)
+				) {
+					// This is the start of a UDL Property definition
+
+					const propRange = Range.create(i,parsed[i][1].p,i,parsed[i][1].p+parsed[i][1].c);
+					const propName = quoteUDLIdentifier(doc.getText(propRange),0);
+
+					// Check if a SqlFieldName is present
+					let sqlFieldName: Range, hasSqlFieldName = false, inKeywords = false, brk = false;
+					for (let ln = i; ln < parsed.length; ln++) {
+						if (
+							ln != i && parsed[ln]?.length && parsed[ln][0].l == ld.cls_langindex && (
+								parsed[ln][0].s == ld.cls_desc_attrindex || (
+									parsed[ln][0].s == ld.cls_keyword_attrindex &&
+									isClassMember(doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][0].p+parsed[ln][0].c)))
+								)
+							)
+						) {
+							// This is the start of the next class member
+							break;
+						}
+						for (let k = 0; k < parsed[ln].length; k++) {
+							if (hasSqlFieldName) {
+								if (parsed[ln][k].l == ld.cls_langindex && (
+									parsed[ln][k].s == ld.cls_sqliden_attrindex || 
+									parsed[ln][k].s == ld.error_attrindex || (
+										parsed[ln][k].s == ld.cls_delim_attrindex &&
+										inKeywords &&
+										[",","]"].includes(doc.getText(Range.create(ln,parsed[ln][k].p,ln,parsed[ln][k].p+parsed[ln][k].c)))
+									)
+								)) {
+									if (parsed[ln][k].s == ld.cls_sqliden_attrindex) {
+										sqlFieldName = Range.create(ln,parsed[ln][k].p,ln,parsed[ln][k].p+parsed[ln][k].c);
+									}
+									brk = true;
+									break;
+								}
+							} else if (
+								parsed[ln][k].l == ld.cls_langindex &&
+								parsed[ln][k].s == ld.cls_keyword_attrindex &&
+								doc.getText(Range.create(ln,parsed[ln][k].p,ln,parsed[ln][k].p+parsed[ln][k].c)).toLowerCase() == "sqlfieldname"
+							) {
+								hasSqlFieldName = true;
+							} else if (
+								parsed[ln][k].l == ld.cls_langindex &&
+								parsed[ln][k].s == ld.cls_delim_attrindex &&
+								doc.getText(Range.create(ln,parsed[ln][k].p,ln,parsed[ln][k].p+parsed[ln][k].c)) == "["
+							) {
+								inKeywords = true;
+							}
+						}
+						if (brk) break;
+					}
+					if (hasSqlFieldName) {
+						if (sqlFieldName && sqlReservedWords.includes(doc.getText(sqlFieldName).toUpperCase())) {
+							// The SqlFieldName is a reserved word
+							diagnostics.push({
+								severity: DiagnosticSeverity.Warning,
+								range: sqlFieldName,
+								message: "SqlFieldName is a SQL reserved word",
+								source: 'InterSystems Language Server'
+							});
+						}
+					} else if (sqlReservedWords.includes(propName.toUpperCase())) {
+						// The property name is a reserved word, and it's not corrected by a SqlFieldName
+						diagnostics.push({
+							severity: DiagnosticSeverity.Warning,
+							range: propRange,
+							message: "Property name is a SQL reserved word",
+							source: 'InterSystems Language Server'
+						});
 					}
 				}
 				if (nsNestedBlockLevel > 0) {

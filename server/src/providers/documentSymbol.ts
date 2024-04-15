@@ -1,5 +1,5 @@
 import { DocumentSymbol, DocumentSymbolParams, Position, SymbolKind, Range } from 'vscode-languageserver/node';
-import { findFullRange, getParsedDocument, labelIsProcedureBlock } from '../utils/functions';
+import { findFullRange, getParsedDocument, isClassMember, labelIsProcedureBlock } from '../utils/functions';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
@@ -13,15 +13,6 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 	if (doc.languageId === "objectscript-class") {
 		// Loop through the file and look for the class definition and class members
 
-		const isValidKeyword = (keyword: string): boolean => {
-			return (
-				keyword !== "import" &&
-				keyword.indexOf("include") === -1 &&
-				keyword !== "byref" &&
-				keyword !== "byval" &&
-				keyword !== "output"
-			);
-		};
 		var cls: DocumentSymbol = {
 			name: "",
 			kind: SymbolKind.Class,
@@ -56,7 +47,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 					cls.name = doc.getText(cls.selectionRange);
 					cls.range = Range.create(Position.create(line,0),Position.create(lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c));
 				}
-				else if (isValidKeyword(keywordtextlower)) {
+				else if (isClassMember(keywordtextlower)) {
 					// This is a class member definition
 
 					// Loop through the file from this line to find the next class member
@@ -71,7 +62,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 							}
 							if (parsed[nl][0].s === ld.cls_keyword_attrindex) {
 								const nextkeytext = doc.getText(Range.create(nl,parsed[nl][0].p,nl,parsed[nl][0].p+parsed[nl][0].c)).toLowerCase();
-								if (isValidKeyword(nextkeytext)) {
+								if (isClassMember(nextkeytext)) {
 									break;
 								}
 							}

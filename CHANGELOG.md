@@ -4,6 +4,7 @@
 - Fix issue [#312](https://github.com/intersystems/language-server/issues/312): Fix routine existence diagnostics for routines that only exist in OBJ form
 - Fix issue [#313](https://github.com/intersystems/language-server/issues/313): Add Diagnostic when `ROUTINE` header is missing
 - Fix issue [#314](https://github.com/intersystems/language-server/issues/314): Suggest boolean class keywords for completion after typing `Not`
+- Fix issue [#315](https://github.com/intersystems/language-server/issues/315): Add warning diagnostics for SQL reserved words in class and property names of persistent classes
 - Fix issue [#316](https://github.com/intersystems/language-server/issues/316): Show class description when hovering over a typed variable
 - Fix issue [#317](https://github.com/intersystems/language-server/issues/317): Add `DocumentLink` for `##class()` in class description comments
 - Fix issue [#318](https://github.com/intersystems/language-server/issues/318): Support optional chaining operator in JavaScript colorer

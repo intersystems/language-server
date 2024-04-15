@@ -223,6 +223,12 @@
             ]
           },
           "description": "Controls the languages that syntax error diagnosics will be suppressed for."
+        },
+        "intersystems.language-server.diagnostics.sqlReserved": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "markdownDescription": "Controls whether diagnostics are provided when a [SQL reserved word](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RSQL_reservedwords) is used in a class or property name of a persistent class."
         }
       }
     },

@@ -133,3 +133,6 @@ export const lexerLanguages: { moniker: string; index: number; }[] = [
 	{ moniker: 'SQL', index: 2 },
 	{ moniker: 'PYTHON', index: 7 }
 ];
+
+/** All class member types */
+export const classMemberTypes: string[] = ["Parameter","Property","Relationship","ForeignKey","Index","Query","Storage","Trigger","XData","Projection","Method","ClassMethod","ClientMethod"];
