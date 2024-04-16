@@ -15,27 +15,27 @@ import { cos_label_attrindex, cos_name_attrindex, cos_number_attrindex } from '.
  */
 export function validateKeyword(linesource: LineSource, keyword: string, seenkeywords: keywordstype) {
 
-    let syntaxerror = false;
+    let syntaxerror;
     try {
 
         const uckeyword = keyword.toUpperCase();
         if (uckeyword !== UCTYPE && uckeyword !== UCLANGUAGEMODE && uckeyword !== UCGENERATED) {
-            throw Error('unknown keyword');
+            throw Error('Unknown keyword');
         }
 
         if (uckeyword in seenkeywords) {
-            throw Error('keyword \'' + uckeyword + '\' appears more than once');
+            throw Error(`${uckeyword[0] + uckeyword.slice(1).toLowerCase()} appears more than once`);
         }
     
         // note that we've seen this keyword
         seenkeywords[uckeyword] = '';
     }
     catch (error) {
-        syntaxerror = true;
+        syntaxerror = error;
     }
 
     if (syntaxerror) {
-        linesource.commitError();
+        linesource.commitError(syntaxerror);
     }
     else {
         linesource.commitToken(cos_label_attrindex);
@@ -54,7 +54,7 @@ export function validateKeywordValue(linesource: LineSource, keyword: string, va
 
     const uckeyword = keyword.toUpperCase();
 
-    let syntaxerror = false;
+    let syntaxerror;
     let attrindex = -1;
 
     try {
@@ -65,11 +65,11 @@ export function validateKeywordValue(linesource: LineSource, keyword: string, va
             case UCTYPE: {
     
                 if (typeof value === 'undefined') {
-                    throw Error('missing value for TYPE');
+                    throw Error('Missing value for Type');
                 }
         
                 if (!isValidTYPEValue(value)) {
-                    throw Error('invalid value \'' + value + '\' for TYPE');
+                    throw Error("Type must be one of MAC, INT, INC, BAS, MVB, or MVI");
                 }
 
                 routineheaderinfo.routinetype = value.toUpperCase();
@@ -83,12 +83,12 @@ export function validateKeywordValue(linesource: LineSource, keyword: string, va
             case UCLANGUAGEMODE: {
     
                 if (typeof value === 'undefined') {
-                    throw Error('missing value for LANGUAGEMODE');
+                    throw Error('Missing value for LanguageMode');
                 }
         
                 let valuemode = Number(value);
                 if (isNaN(valuemode) || valuemode < 0) {
-                    throw Error('invalid value for LANGUAGEMODE value')
+                    throw Error('LanguageMode must be an integer')
                 }
 
                 routineheaderinfo.languagemode = valuemode;
@@ -102,7 +102,7 @@ export function validateKeywordValue(linesource: LineSource, keyword: string, va
             case UCGENERATED: {
 
                 if (typeof value !== 'undefined') {
-                    throw Error('unexpected value for GENERATED');
+                    throw Error('Unexpected value for Generated');
                 }
 
                 routineheaderinfo.generated = '';
@@ -111,19 +111,19 @@ export function validateKeywordValue(linesource: LineSource, keyword: string, va
             }
     
             default: {
-                throw Error('unknown keyword'); // this shouldn't happen because the keyword should have been validated by the caller
+                throw Error('Unknown keyword'); // this shouldn't happen because the keyword should have been validated by the caller
             }
         }
     }
 
     catch (error) {
-        syntaxerror = true;
+        syntaxerror = error;
     }
     
     if (typeof value !== 'undefined') {
 
         if (syntaxerror) {
-            linesource.commitError();
+            linesource.commitError(syntaxerror);
         }
         else {
             linesource.commitToken(attrindex);
@@ -132,7 +132,7 @@ export function validateKeywordValue(linesource: LineSource, keyword: string, va
     else {
 
         if (syntaxerror) {
-            throw Error('syntax error');
+            throw syntaxerror;
         }
     }
 }
@@ -152,13 +152,11 @@ function isValidTYPEValue(value: string): boolean {
     switch (value.toUpperCase()) {
 
         case 'BAS':
-        case 'CLS':
         case 'INC':
         case 'INT':
         case 'MAC':
         case 'MVB':
-        case 'MVI':
-        case 'XML': {
+        case 'MVI': {
             return true;
         }
 

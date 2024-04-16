@@ -1,6 +1,5 @@
 
 import { compressedline, routineheaderinfotype } from '../../utils/types';
-import assert = require("assert");
 import { validInRoutineName, isValidRoutineName, isWhitespace, keywordstype } from "./routineheaderutils";
 import { LineSource } from "./linesource";
 import { validateKeywordValue, validateKeyword } from "./validate";
@@ -28,12 +27,11 @@ export type routineheadertype = {'compressedline': compressedline, 'routineheade
  */
 export function colorRoutineLine(routineline: string): routineheadertype {
 
-    assert(isRoutineHeader(routineline),'colorRoutineLine called with a line which is not a routine header');
-
     let linesource: LineSource = new LineSource(routineline);
 
     // color the routine line, catching exceptions thrown by the parser
     let routineheaderinfo: routineheaderinfotype = {'routinename': ''};
+    let rubbishError: any = new Error("Superfluous text follows correct code");
     try {
         routineheaderinfo = colorRoutineLineImpl(linesource);
     }
@@ -44,8 +42,9 @@ export function colorRoutineLine(routineline: string): routineheadertype {
         if (linesource.ended()) {
 
             // re-color the last token as an error
-            linesource.colorLastAsError();
+            linesource.colorLastAsError(error);
         }
+        rubbishError = error;
     }
 
     /// check for trailing rubbish
@@ -54,7 +53,7 @@ export function colorRoutineLine(routineline: string): routineheadertype {
 
         // color any rubbish as error
         linesource.toEnd();
-        linesource.commitError();
+        linesource.commitError(rubbishError);
     }
 
     let result: routineheadertype = {'compressedline': linesource.getColoring()};
@@ -113,7 +112,7 @@ function colorRoutineLineImpl(linesource: LineSource): routineheaderinfotype {
             linesource.commitToken(cos_delim_attrindex );
         }
         else {
-            throw Error('expected\'[\'');
+            throw Error('Expected "]"');
         }
     }
 
@@ -134,14 +133,14 @@ function parseRoutineName(linesource: LineSource): string {
     }
 
     if (!linesource.anyToken()) {
-        throw Error('missing routine name');
+        throw Error("Invalid routine name");
     }
 
     const routinename: string = linesource.getToken();
 
     // check name
     if (!isValidRoutineName(routinename)) {
-        linesource.commitError();
+        linesource.commitError(new Error("Invalid routine name"));
     }
     else {
         linesource.commitToken(cos_rtnname_attrindex);
@@ -165,7 +164,7 @@ function parseOptionsList(linesource: LineSource, routineheaderinfo: routinehead
         
         linesource.skipWhitespace();
         if (linesource.ended()) {
-            throw Error('syntax error in options list');
+            throw Error('Syntax error in options list');
         }
 
         // if it's ']' then we're done (the caller will process the ']')
@@ -175,7 +174,7 @@ function parseOptionsList(linesource: LineSource, routineheaderinfo: routinehead
 
         // we expect a ',' here
         if (linesource.currentChar() !== ',') {
-            throw Error('expected \',\' in options list');
+            throw Error('Expected "," in options list');
         }
 
         // cross and color the ','
@@ -277,7 +276,7 @@ function parseToDelimiter(linesource: LineSource, attrindex: number | undefined)
 
     // if we didn't cross anything ..
     if (linesource.getPos() === startpos) {
-        throw Error('syntax error');
+        throw Error('Syntax error');
     }
 
     // what we crossed

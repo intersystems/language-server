@@ -45,6 +45,13 @@ function addRangeToMapVal(map: Map<string, Range[]>, key: string, range: Range) 
 	map.set(key,ranges);
 };
 
+const syntaxError = "Syntax error";
+
+/** Normalize the description for this error token */
+function normalizeErrorDesc(e?: string): string {
+	return !e || e.includes("HRESULT") ? syntaxError : e[0].toUpperCase() + e.slice(1).replace(/'/g,"\"");
+}
+
 /**
  * Handler function for the `textDocument/diagnostic` request.
  */
@@ -175,6 +182,30 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			message: "ROUTINE header is required",
 			source: "InterSystems Language Server"
 		});
+	} else if (firstlineisroutine) {
+		// Check for a syntax error in the ROUTINE line
+		for (let t = 0; t < parsed[0].length; t++) {
+			if (parsed[0][t].s == 0) {
+				const errorDesc = normalizeErrorDesc(parsed[0][t].e);
+				if (
+					t > 0 && parsed[0][t-1].s == 0 &&
+					diagnostics.length &&
+					[syntaxError,diagnostics[diagnostics.length-1].message].includes(errorDesc)
+				) {
+					// This error token is a continuation of the same underlying error
+					diagnostics[diagnostics.length-1].range.end = Position.create(0,parsed[0][t].p+parsed[0][t].c);
+				}
+				else {
+					// This is a token for a new error
+					diagnostics.push({
+						severity: DiagnosticSeverity.Error,
+						range: Range.create(0,parsed[0][t].p,0,parsed[0][t].p+parsed[0][t].c),
+						message: errorDesc,
+						source: 'InterSystems Language Server'
+					});
+				}
+			}
+		}
 	}
 
 	const startline: number = (firstlineisroutine) ? 1 : 0;
@@ -207,20 +238,25 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			if (j > 0 && parsed[i][j].l === parsed[i][j-1].l && parsed[i][j].s === parsed[i][j-1].s) {
 				// This token is the same as the last
 
+				const errorDesc = normalizeErrorDesc(parsed[i][j].e);
 				if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
-					if (!doc.getText(Range.create(Position.create(i,parsed[i][j-1].p + parsed[i][j-1].c),Position.create(i,symbolstart))).trim()) {
-						// This is an error token without a space in between, so extend the existing syntax error Diagnostic to cover this token
+					if (
+						parsed[i][j].l == parsed[i][j-1].l &&
+						diagnostics.length &&
+						[syntaxError,diagnostics[diagnostics.length-1].message].includes(errorDesc)
+					) {
+						// This error token is a continuation of the same underlying error
 						diagnostics[diagnostics.length-1].range.end = Position.create(i,symbolend);
 					}
 					else {
-						// This is an error token with a space in between, so create a new syntax error Diagnostic for it
+						// This is a token for a new error
 						diagnostics.push({
 							severity: DiagnosticSeverity.Error,
 							range: {
 								start: Position.create(i,symbolstart),
 								end: Position.create(i,symbolend)
 							},
-							message: "Syntax error.",
+							message: errorDesc,
 							source: 'InterSystems Language Server'
 						});
 					}
@@ -235,7 +271,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							start: Position.create(i,symbolstart),
 							end: Position.create(i,symbolend)
 						},
-						message: "Syntax error.",
+						message: normalizeErrorDesc(parsed[i][j].e),
 						source: 'InterSystems Language Server'
 					};
 					diagnostics.push(diagnostic);
@@ -246,7 +282,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					let diagnostic: Diagnostic = {
 						severity: DiagnosticSeverity.Warning,
 						range: varrange,
-						message: "Local variable '"+doc.getText(varrange)+"' may be undefined.",
+						message: `Local variable "${doc.getText(varrange)}" may be undefined`,
 						source: 'InterSystems Language Server'
 					};
 					diagnostics.push(diagnostic);
@@ -269,7 +305,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						diagnostics.push({
 							severity: DiagnosticSeverity.Error,
 							range: wordrange,
-							message: "A package must be specified.",
+							message: "A package must be specified",
 							source: 'InterSystems Language Server'
 						});
 					} else if (isPersistent) {
@@ -339,7 +375,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							let diagnostic: Diagnostic = {
 								severity: DiagnosticSeverity.Warning,
 								range: tokenrange,
-								message: "Invalid parameter type.",
+								message: "Invalid parameter type",
 								source: 'InterSystems Language Server'
 							};
 							diagnostics.push(diagnostic);
@@ -405,7 +441,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 										diagnostics.push({
 											severity: DiagnosticSeverity.Warning,
 											range: valrange,
-											message: "Parameter value and type do not match.",
+											message: "Parameter value and type do not match",
 											source: 'InterSystems Language Server'
 										});
 									}
@@ -422,7 +458,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 										diagnostics.push({
 											severity: DiagnosticSeverity.Warning,
 											range: valrange,
-											message: `Class '${classname}' does not exist in namespace '${baseNs}'.`,
+											message: `Class "${classname}" does not exist in namespace "${baseNs}"`,
 											source: 'InterSystems Language Server'
 										});
 									}
@@ -434,26 +470,26 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					// Loop through the line to capture any syntax errors
 					for (let ptkn = 1; ptkn < parsed[i].length; ptkn++) {
 						if (parsed[i][ptkn].s == ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
+							const errorDesc = normalizeErrorDesc(parsed[i][j].e);
 							if (
-								parsed[i][ptkn-1].s == ld.error_attrindex && !doc.getText(Range.create(
-									Position.create(i,parsed[i][ptkn].p-1),
-									Position.create(i,parsed[i][ptkn].p)
-								)).trim()
+								parsed[i][ptkn].l == parsed[i][ptkn-1].l &&
+								parsed[i][ptkn-1].s == 0 &&
+								diagnostics.length &&
+								[syntaxError,diagnostics[diagnostics.length-1].message].includes(errorDesc)
 							) {
-								// The previous token is an error without a space in between, so extend the existing syntax error Diagnostic to cover this token
+								// This error token is a continuation of the same underlying error
 								diagnostics[diagnostics.length-1].range.end = Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c);
 							}
 							else {
-								let diagnostic: Diagnostic = {
+								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: {
 										start: Position.create(i,parsed[i][ptkn].p),
 										end: Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c)
 									},
-									message: "Syntax error.",
+									message: errorDesc,
 									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+								});
 							}
 						}
 					}
@@ -486,7 +522,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 										start: Position.create(i,parsed[i][imptkn].p),
 										end: Position.create(i,parsed[i][imptkn].p+parsed[i][imptkn].c)
 									},
-									message: "Syntax error.",
+									message: syntaxError,
 									source: 'InterSystems Language Server'
 								});
 							}
@@ -505,7 +541,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: pkgrange,
-									message: `No classes with package '${pkg}' exist in namespace '${baseNs}'.`,
+									message: `No classes with package "${pkg}" exist in namespace "${baseNs}"`,
 									source: 'InterSystems Language Server'
 								});
 							}
@@ -550,7 +586,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								let diagnostic: Diagnostic = {
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
-									message: "Invalid class name.",
+									message: "Invalid class name",
 									source: 'InterSystems Language Server'
 								};
 								diagnostics.push(diagnostic);
@@ -577,7 +613,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								let diagnostic: Diagnostic = {
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
-									message: `Class name '${word}' is ambiguous.`,
+									message: `Class name "${word}" is ambiguous`,
 									source: 'InterSystems Language Server'
 								};
 								diagnostics.push(diagnostic);
@@ -592,7 +628,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									let diagnostic: Diagnostic = {
 										severity: DiagnosticSeverity.Error,
 										range: wordrange,
-										message: `Class '${word}' does not exist in namespace '${baseNs}'.`,
+										message: `Class "${word}" does not exist in namespace "${baseNs}"`,
 										source: 'InterSystems Language Server'
 									};
 									diagnostics.push(diagnostic);
@@ -609,7 +645,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							diagnostics.push({
 								severity: DiagnosticSeverity.Error,
 								range: wordrange,
-								message: "Short class name used after a namespace switch.",
+								message: "Short class name used after a namespace switch",
 								source: 'InterSystems Language Server'
 							});
 						}
@@ -660,7 +696,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								let diagnostic: Diagnostic = {
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
-									message: `Include file '${word}' does not exist in namespace '${baseNs}'.`,
+									message: `Include file "${word}" does not exist in namespace "${baseNs}"`,
 									source: 'InterSystems Language Server'
 								};
 								diagnostics.push(diagnostic);
@@ -672,7 +708,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								let diagnostic: Diagnostic = {
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
-									message: `Routine '${word}' does not exist in namespace '${baseNs}'.`,
+									message: `Routine "${word}" does not exist in namespace "${baseNs}"`,
 									source: 'InterSystems Language Server'
 								};
 								diagnostics.push(diagnostic);
@@ -783,11 +819,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 											message: ""
 										};
 										if (zutilFunctions.deprecated.includes(argList)) {
-											diag.message = "Deprecated function.";
+											diag.message = "Deprecated function";
 											diag.tags = [DiagnosticTag.Deprecated];
 										}
 										else {
-											diag.message = "Function has been superseded.";
+											diag.message = "Function has been superseded";
 											if (zutilFunctions.replace[argList] != undefined) {
 												diag.data = argList;
 											}
@@ -1119,7 +1155,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							severity: DiagnosticSeverity.Warning,
 							source: 'InterSystems Language Server',
 							tags: [DiagnosticTag.Deprecated],
-							message: "Deprecated " + row.MemberType + "."
+							message: "Deprecated " + row.MemberType
 						});
 					}
 				}
@@ -1190,7 +1226,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						v.forEach((range) => diagnostics.push({
 							severity: DiagnosticSeverity.Error,
 							range,
-							message: `${doc.endsWith("cls") ? "Class" : doc.endsWith("inc") ? "Include file" : "Routine"} '${doc.slice(0,-4)}' does not exist in namespace '${ns}'.`,
+							message: `${doc.endsWith("cls") ? "Class" : doc.endsWith("inc") ? "Include file" : "Routine"} "${doc.slice(0,-4)}" does not exist in namespace "${ns}"`,
 							source: 'InterSystems Language Server'
 						}));
 					}

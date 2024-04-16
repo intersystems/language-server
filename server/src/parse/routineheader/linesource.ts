@@ -86,8 +86,9 @@ export class LineSource {
     /**
      * Color the current token as error.
      */
-    public commitError() {
+    public commitError(error) {
         this.commitToken(error_attrindex);
+        if (error instanceof Error && error.message.length) this.coloring[this.coloring.length-1].e = error.message;
     }
     
     /**
@@ -108,11 +109,12 @@ export class LineSource {
     /**
      * Re-color the most-recently-colored token as error.
      */
-    public colorLastAsError() {
+    public colorLastAsError(error) {
         if (this.coloring.length === 0) {
             throw Error('LineSource.colorLastAsError: no coloring available to change');
         }
         this.coloring[this.coloring.length-1].s = error_attrindex;
+        if (error instanceof Error && error.message.length) this.coloring[this.coloring.length-1].e = error.message;
         this.anycoloringerrors = true;
     }
 

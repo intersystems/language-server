@@ -152,10 +152,16 @@ export type PossibleClasses = {
 /// ------ Parser Types
 
 export type compresseditem = {
-    'p': number, // offset within line
-    'c': number, // count (length of source of this item)
-    'l': number, // language index
-    's': number // coloring attribute index
+	/** The numerical index of the language. */
+    l: number;
+    /** The index of the attribute within the array returned by `GetLanguageAttributes()`. */
+    s: number;
+    /** The starting position of this token in the source line. */
+    p: number;
+    /** The length of this token's source. */
+    c: number;
+    /** A short description of the syntax error. It will only be defined if `l` is `1` (ObjectScript) and `s` is `0`. */
+    e?: string;
 };
 
 export type compressedline = compresseditem[];

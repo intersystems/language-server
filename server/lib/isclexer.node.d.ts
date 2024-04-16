@@ -33,6 +33,8 @@ export interface PositionSemanticToken {
     p: number;
     /** The length of this token's source. */
     c: number;
+    /** A short description of the syntax error. It will only be defined if `l` is `1` (ObjectScript) and `s` is `0`. */
+    e?: string;
 }
 
 /**
