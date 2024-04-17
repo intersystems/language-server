@@ -16,6 +16,7 @@
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
   - DP-430473: Fix variable tracking with embedded SQL in routine procedure blocks
+  - DP-430977: Fix coloring of undefined local variables in a ZWrite argument list
 
 ## [2.4.4] - 2024-03-27
 - Fix issue [#307](https://github.com/intersystems/language-server/issues/307): Add intellisense for property Aliases
