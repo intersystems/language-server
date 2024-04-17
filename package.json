@@ -229,6 +229,12 @@
           "type": "boolean",
           "default": true,
           "markdownDescription": "Controls whether diagnostics are provided when a [SQL reserved word](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RSQL_reservedwords) is used in a class or property name of a persistent class."
+        },
+        "intersystems.language-server.diagnostics.undefinedVariables": {
+          "scope": "resource",
+          "type": "boolean",
+          "default": true,
+          "description": "Controls whether diagnostics are provided when a local variable may be undefined."
         }
       }
     },

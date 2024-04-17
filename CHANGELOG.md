@@ -11,6 +11,7 @@
 - Fix issue [#319](https://github.com/intersystems/language-server/issues/319): Outline shows routine labels that don't appear in the first column
 - Fix issue [#320](https://github.com/intersystems/language-server/issues/320): Turn routine existence diagnostics on by default
 - Fix issue [#321](https://github.com/intersystems/language-server/issues/321): Show detailed descriptions for syntax errors
+- Fix issue [#322](https://github.com/intersystems/language-server/issues/322): Add setting to disable undefined variable warning diagnostics
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
   - DP-430473: Fix variable tracking with embedded SQL in routine procedure blocks

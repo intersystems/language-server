@@ -276,7 +276,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					};
 					diagnostics.push(diagnostic);
 				}
-				else if (parsed[i][j].l == ld.cos_langindex && parsed[i][j].s === ld.cos_otw_attrindex) {
+				else if (
+					parsed[i][j].l == ld.cos_langindex &&
+					parsed[i][j].s == ld.cos_otw_attrindex &&
+					settings.diagnostics.undefinedVariables
+				) {
 					// This is an OptionTrackWarning (unset local variable)
 					const varrange = Range.create(Position.create(i,symbolstart),Position.create(i,symbolend));
 					let diagnostic: Diagnostic = {

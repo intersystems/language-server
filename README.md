@@ -19,7 +19,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Expand short class names to include packages (off by default)
 - Code linting for ObjectScript and UDL that checks for the following:
   - Syntax errors, including for embedded languages.
-  - References to local variables that are undefined.
+  - References to local variables that may be undefined.
   - Classes and routines that don't exist in the database.
   - Invalid UDL Parameter types.
   - Mismatches between declared UDL Parameter types and the assigned value.

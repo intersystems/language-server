@@ -29,7 +29,8 @@ export type LanguageServerConfiguration = {
 		deprecation: boolean,
 		zutil: boolean,
 		suppressSyntaxErrors: ("COS" | "SQL" | "CLS" | "HTML" | "PYTHON" | "XML" | "JAVA" | "JAVASCRIPT" | "CSS")[],
-		sqlReserved: boolean
+		sqlReserved: boolean,
+		undefinedVariables: boolean
 	},
 	signaturehelp: {
 		documentation: boolean
