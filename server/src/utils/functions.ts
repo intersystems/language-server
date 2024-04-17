@@ -243,8 +243,8 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 			else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 				// This line starts with a UDL keyword
 	
-				var keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c)));
-				if (keyword.toLowerCase() === "class") {
+				var keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
+				if (keyword.toLowerCase() == "class") {
 					var seenextends = false;
 					for (let j = 1; j < parsed[i].length; j++) {
 						if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
@@ -254,15 +254,18 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 									result.superclasses.push("");
 								}
 								result.superclasses[result.superclasses.length-1] = result.superclasses[result.superclasses.length-1].concat(
-									doc.getText(Range.create(Position.create(i,parsed[i][j].p),Position.create(i,parsed[i][j].p+parsed[i][j].c)))
+									doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c))
 								);
 							}
 							else {
-								result.docname = result.docname.concat(doc.getText(Range.create(Position.create(i,parsed[i][j].p),Position.create(i,parsed[i][j].p+parsed[i][j].c))));
+								result.docname = result.docname.concat(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)));
 							}
 						}
-						else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
-							// The only keyword we can see is 'Extends'
+						else if (
+							parsed[i][j].l == ld.cls_langindex &&
+							parsed[i][j].s == ld.cls_keyword_attrindex &&
+							doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase() == "extends"
+						) {
 							seenextends = true;
 						}
 						else {

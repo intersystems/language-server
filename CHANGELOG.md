@@ -12,6 +12,7 @@
 - Fix issue [#320](https://github.com/intersystems/language-server/issues/320): Turn routine existence diagnostics on by default
 - Fix issue [#321](https://github.com/intersystems/language-server/issues/321): Show detailed descriptions for syntax errors
 - Fix issue [#322](https://github.com/intersystems/language-server/issues/322): Add setting to disable undefined variable warning diagnostics
+- Fix issue [#323](https://github.com/intersystems/language-server/issues/323): Go to definition on `##super()` will open the superclass's implementation
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
   - DP-430473: Fix variable tracking with embedded SQL in routine procedure blocks

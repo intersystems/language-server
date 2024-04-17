@@ -41,6 +41,7 @@ export const cos_method_attrindex = 0x23;
 export const cos_attr_attrindex = 0x24;
 export const cos_brace_attrindex = 0x2a;
 export const cos_js_attrindex = 0x2b;
+export const cos_super_attrindex = 0x2D;
 export const cos_localdec_attrindex = 0x2E;
 export const cos_otw_attrindex = 0x2F;
 export const cos_param_attrindex = 0x30;
