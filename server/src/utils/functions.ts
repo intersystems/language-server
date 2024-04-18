@@ -1798,6 +1798,17 @@ function parseSetCommand(doc: TextDocument, parsed: compressedline[], line: numb
 						}
 					}
 				}
+				else if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_jsonb_attrindex) {
+					// This is a %DynamicObject or %DynamicArray
+					result.foundset = true;
+					switch (doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c))) {
+						case "{":
+							result.class = "%Library.DynamicObject";
+							break;
+						default:
+							result.class = "%Library.DynamicArray";
+					}
+				}
 
 				// Exit the loop because we've already found our variable
 				brk = true;
