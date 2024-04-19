@@ -33,6 +33,9 @@ export let schemaCaches: Map<ServerSpec, SchemaCache> = new Map();
  */
 var macroCompletionCache: MacroContext;
 
+/** Prefix for `sortText` used to bubble base class members to the top of the list. */
+const sortPrefix = "!!!";
+
 /**
  * Mapping between an XML prefix and namespace.
  */
@@ -1112,7 +1115,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 						if (memobj.Origin === membercontext.baseclass) {
 							// Members from the base class should appear first
-							item.sortText = "##" + quotedname;
+							item.sortText = sortPrefix + quotedname;
 						}
 						else {
 							item.sortText = item.label;
@@ -1249,7 +1252,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 									result.push({
 										...item,
 										label: quoted,
-										sortText: memobj.Origin == membercontext.baseclass ? "##" + quoted : quoted,
+										sortText: memobj.Origin == membercontext.baseclass ? sortPrefix + quoted : quoted,
 										tags: memobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined
 									});
 								});
@@ -1257,7 +1260,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 						if (memobj.Origin === membercontext.baseclass) {
 							// Members from the base class should appear first
-							item.sortText = "##" + quotedname;
+							item.sortText = sortPrefix + quotedname;
 						}
 						else {
 							item.sortText = item.label;
@@ -1393,7 +1396,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 				if (memobj.Origin === normalizedcls) {
 					// Members from the base class should appear first
-					item.sortText = "##" + memobj.Name;
+					item.sortText = sortPrefix + memobj.Name;
 				}
 				if (memobj.Deprecated) {
 					item.tags = [CompletionItemTag.Deprecated];
@@ -1679,7 +1682,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							};
 							if (method.Origin === method.baseclass) {
 								// Members from the base class should appear first
-								item.sortText = "##" + method.Name;
+								item.sortText = sortPrefix + method.Name;
 							}
 							else {
 								item.sortText = item.label;
@@ -2091,7 +2094,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 				if (memobj.Origin === thisclass) {
 					// Members from the base class should appear first
-					item.sortText = "##" + quotedname;
+					item.sortText = sortPrefix + quotedname;
 				}
 				else {
 					item.sortText = item.label;

@@ -14,6 +14,7 @@
 - Fix issue [#322](https://github.com/intersystems/language-server/issues/322): Add setting to disable undefined variable warning diagnostics
 - Fix issue [#323](https://github.com/intersystems/language-server/issues/323): Go to definition on `##super()` will open the superclass's implementation
 - Fix issue [#324](https://github.com/intersystems/language-server/issues/324): Add intellisense for variables set to JSON literal constructors
+- Fix issue [#325](https://github.com/intersystems/language-server/issues/325): Don't sort inherited `%%OID` members at the top of completion lists
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
   - DP-430473: Fix variable tracking with embedded SQL in routine procedure blocks
