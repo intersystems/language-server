@@ -16,6 +16,7 @@
 - Fix issue [#324](https://github.com/intersystems/language-server/issues/324): Add intellisense for variables set to JSON literal constructors
 - Fix issue [#325](https://github.com/intersystems/language-server/issues/325): Don't sort inherited `%%OID` members at the top of completion lists
 - Fix issue [#326](https://github.com/intersystems/language-server/issues/326): Completion lists in an instance context should include ClassMethods and Parameters
+- Fix issue [#327](https://github.com/intersystems/language-server/issues/327): Go to definition on routine label can go to the wrong location
 - Parser changes:
   - DP-430347: Track variables in routine procedure blocks
   - DP-430473: Fix variable tracking with embedded SQL in routine procedure blocks

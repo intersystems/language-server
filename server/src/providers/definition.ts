@@ -595,8 +595,8 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							const rtnText: string[] = await getTextForUri(newuri,server);
 							if (rtnText.length) {
 								// Loop through the file contents to find this label
-								var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
-								var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
+								var targetselrange = Range.create(0,0,0,0);
+								var targetrange = Range.create(0,0,0,0);
 								var linect = 0;
 								for (let k = 0; k < rtnText.length; k++) {
 									if (linect > 0) {
@@ -617,9 +617,9 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 										}
 									}
 									else if (
-										rtnText[k].slice(0,label.length) === label &&
+										rtnText[k].startsWith(label) &&
 										(
-											rtnText[k].trim().length === label.length || // The label is the whole line
+											rtnText[k].trimEnd().length == label.length || // The label is the whole line
 											/ |\t|\(/.test(rtnText[k].charAt(label.length)) || // The label is followed by space, tab or (
 											// The label is followed by a comment
 											rtnText[k].slice(label.length).startsWith(";") ||
@@ -629,7 +629,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 										)
 									) {
 										// This is the label definition
-										targetselrange = Range.create(Position.create(k,0),Position.create(k,label.length));
+										targetselrange = Range.create(k,0,k,label.length);
 										targetrange.start = Position.create(k,0);
 										linect++;
 									}
@@ -675,7 +675,10 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							targetrange.end = Position.create(line+1,0);
 							break;
 						}
-						if (parsed[line].length > 0 && parsed[line][0].l == ld.cos_langindex && parsed[line][0].s == ld.cos_label_attrindex) {
+						if (
+							parsed[line].length > 0 && parsed[line][0].l == ld.cos_langindex &&
+							parsed[line][0].s == ld.cos_label_attrindex && parsed[line][0].p == 0
+						) {
 							// This is a label
 							if (linect > 0) {
 								// This is the first label following the one we needed the definition for, so cut off the preview range here
@@ -683,9 +686,9 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 								break;
 							}
 							else {
-								const firstwordrange = Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c));
+								const firstwordrange = Range.create(line,parsed[line][0].p,line,parsed[line][0].p+parsed[line][0].c);
 								const firstwordtext = doc.getText(firstwordrange);
-								if (firstwordtext === label) {
+								if (firstwordtext == label) {
 									// This is the correct label
 									targetselrange = firstwordrange;
 									targetrange.start = Position.create(line,0);
