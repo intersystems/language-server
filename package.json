@@ -4,7 +4,7 @@
   "description": "A language server for InterSystems ObjectScript.",
   "author": "InterSystems Corporation",
   "license": "SEE LICENSE IN LICENSE.txt",
-  "version": "2.4.5-SNAPSHOT",
+  "version": "2.5.0-SNAPSHOT",
   "publisher": "intersystems",
   "repository": {
     "type": "github",
@@ -330,7 +330,7 @@
       {
         "id": "CLS_Error",
         "superType": "ISC_Error",
-        "description": "UDL error token."
+        "description": "Class error token."
       },
       {
         "id": "COS_Error",
@@ -385,7 +385,7 @@
       {
         "id": "CLS_Comment",
         "superType": "ISC_Comment",
-        "description": "UDL comment token."
+        "description": "Class comment token."
       },
       {
         "id": "COS_Comment",
@@ -440,7 +440,7 @@
       {
         "id": "CLS_StringLiteral",
         "superType": "ISC_StringLiteral",
-        "description": "UDL string literal token."
+        "description": "Class string literal token."
       },
       {
         "id": "COS_String",
@@ -495,7 +495,7 @@
       {
         "id": "CLS_NumericLiteral",
         "superType": "ISC_NumericLiteral",
-        "description": "UDL numeric literal token."
+        "description": "Class numeric literal token."
       },
       {
         "id": "COS_Number",
@@ -600,7 +600,7 @@
       {
         "id": "CLS_Description",
         "superType": "ISC_DocComment",
-        "description": "UDL documentation comment token."
+        "description": "Class documentation comment token."
       },
       {
         "id": "COS_Documentationcomment",
@@ -610,12 +610,12 @@
       {
         "id": "CLS_ClassName",
         "superType": "ISC_ClassName",
-        "description": "UDL class name token."
+        "description": "Class class name token."
       },
       {
         "id": "CLS_RoutineName",
         "superType": "ISC_ClassName",
-        "description": "UDL routine name token."
+        "description": "Class routine name token."
       },
       {
         "id": "COS_Objectname",
@@ -635,12 +635,12 @@
       {
         "id": "CLS_ClassParameter",
         "superType": "ISC_Parameter",
-        "description": "UDL class parameter token."
+        "description": "Class class parameter token."
       },
       {
         "id": "CLS_Parameter",
         "superType": "ISC_Parameter",
-        "description": "UDL parameter token."
+        "description": "Class parameter token."
       },
       {
         "id": "COS_Parameter",
@@ -660,7 +660,7 @@
       {
         "id": "CLS_Keyword",
         "superType": "ISC_Keyword",
-        "description": "UDL keyword token."
+        "description": "Class keyword token."
       },
       {
         "id": "COS_ObjectClass",
@@ -685,17 +685,17 @@
       {
         "id": "CLS_ClassMember",
         "superType": "ISC_ClassMember",
-        "description": "UDL class member token."
+        "description": "Class class member token."
       },
       {
         "id": "CLS_Identifier",
         "superType": "ISC_ClassMember",
-        "description": "UDL identifier token."
+        "description": "Class identifier token."
       },
       {
         "id": "CLS_SqlIdentifier",
         "superType": "ISC_ClassMember",
-        "description": "UDL SQL identifier token."
+        "description": "Class SQL identifier token."
       },
       {
         "id": "COS_Objectproperty",
@@ -1020,17 +1020,17 @@
       {
         "id": "CLS_XMLAttributeValue",
         "superType": "ISC_StringLiteral",
-        "description": "UDL XML attribute value token."
+        "description": "Class XML attribute value token."
       },
       {
         "id": "CLS_XMLAttributeName",
         "superType": "ISC_LocalVariable",
-        "description": "UDL XML attribute name token."
+        "description": "Class XML attribute name token."
       },
       {
         "id": "CLS_XMLElementName",
         "superType": "ISC_Keyword",
-        "description": "UDL XML element name token."
+        "description": "Class XML element name token."
       },
       {
         "id": "XML_AttributeName",
@@ -1085,7 +1085,7 @@
       {
         "id": "CLS_XMLCDATA",
         "superType": "ISC_StringLiteral",
-        "description": "UDL XML CDATA token."
+        "description": "Class XML CDATA token."
       },
       {
         "id": "COS_Mnemonic",
@@ -1105,7 +1105,7 @@
       {
         "id": "CLS_Delimiter",
         "superType": "ISC_Delimiter",
-        "description": "UDL delimiter token."
+        "description": "Class delimiter token."
       },
       {
         "id": "COS_Delimiter",
@@ -1325,7 +1325,7 @@
       {
         "id": "CLS_XMLEscapeSequence",
         "superType": "ISC_MarkupText",
-        "description": "UDL XML escape sequence token."
+        "description": "Class XML escape sequence token."
       },
       {
         "id": "HTML_EscapeSequence",
@@ -1420,7 +1420,7 @@
       {
         "id": "CLS_XMLText",
         "superType": "ISC_MarkupText",
-        "description": "UDL XML text token."
+        "description": "Class XML text token."
       },
       {
         "id": "XML_Text",
@@ -1615,7 +1615,7 @@
       {
         "id": "CLS_KeywordTextValue",
         "superType": "ISC_StringLiteral",
-        "description": "UDL keyword text value token."
+        "description": "Class keyword text value token."
       },
       {
         "id": "PYTHON_Error",
@@ -1781,14 +1781,14 @@
   },
   "devDependencies": {
     "@types/node": "^18.15.3",
-    "@vscode/vsce": "^2.22.0",
+    "@vscode/vsce": "^2.26.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.0.0",
-    "ovsx": "^0.8.3",
+    "ovsx": "^0.9.1",
     "rimraf": "^5.0.5",
     "ts-loader": "^9.5.1",
-    "typescript": "^5.3.3",
-    "webpack": "^5.89.0",
+    "typescript": "^5.4.5",
+    "webpack": "^5.91.0",
     "webpack-cli": "^5.1.4"
   },
   "extensionDependencies": [

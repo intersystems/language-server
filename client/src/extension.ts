@@ -158,7 +158,7 @@ export async function activate(context: ExtensionContext) {
 				// The main extension didn't provide a password, so we must 
 				// get it from the server manager's authentication provider.
 				const AUTHENTICATION_PROVIDER = "intersystems-server-credentials";
-				const scopes = [serverSpec.serverName, serverSpec.username || ""];
+				const scopes = [serverSpec.serverName, serverSpec.username];
 				try {
 					let session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { silent: true });
 					if (!session) {

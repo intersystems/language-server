@@ -7,9 +7,9 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
 ## Features
 
 - [Semantic token](https://code.visualstudio.com/api/language-extensions/semantic-highlight-guide)-based coloring for InterSystems ObjectScript classes, routines and CSP files, with support for embedded languages like SQL, Python, HTML, XML, Java, JavaScript and CSS.
-- Hover information for ObjectScript commands, system functions, system variables, classes, class members, macros, preprocessor directives, UDL keywords, Parameter types, Storage definition keywords, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
+- Hover information for ObjectScript commands, system functions, system variables, classes, class members, macros, preprocessor directives, class keywords, Parameter types, Storage definition keywords, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
 - [Go to definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-definition) for ObjectScript classes, class members, macros, routines, routine labels, class name parameters, `##super()`, and embedded SQL tables, fields and class methods and queries invoked as SQL procedures.
-- Code completion for ObjectScript classes, class members, system functions, system variables, macros, include files, package imports, preprocessor directives, UDL keywords, UDL keyword values, UDL Parameter types and UDL Storage definition keywords. Code completion for properties referenced using instance variable syntax (`i%PropertyName`) must be triggered manually using `Ctrl-Space` with the cursor immediately after the `i%`.
+- Code completion for ObjectScript classes, class members, system functions, system variables, macros, include files, package imports, preprocessor directives, class keywords, class keyword values, class Parameter types and Storage definition keywords. Code completion for properties referenced using instance variable syntax (`i%PropertyName`) must be triggered manually using `Ctrl-Space` with the cursor immediately after the `i%`.
 - Code completion for XML Element names, Attribute names and Attribute values within XData blocks that have the XMLNamespace keyword set to a URL that corresponds to a Studio Assist Schema (SASchema).
 - Signature help for ObjectScript methods and macros that accept arguments.
 - Document symbols for ObjectScript classes, routines and include files.
@@ -17,20 +17,20 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Normalize the case of ObjectScript commands, system functions and system variables.
   - Normalize the usage of short or long versions of ObjectScript commands, system functions and system variables.
   - Expand short class names to include packages (off by default)
-- Code linting for ObjectScript and UDL that checks for the following:
+- Code linting for ObjectScript classes, routines and CSP files that checks for the following:
   - Syntax errors, including for embedded languages.
   - References to local variables that may be undefined.
   - Classes and routines that don't exist in the database.
-  - Invalid UDL Parameter types.
-  - Mismatches between declared UDL Parameter types and the assigned value.
+  - Invalid class Parameter types.
+  - Mismatches between declared class Parameter types and the assigned value.
   - Classes, Methods, Parameters and Properties that are [Deprecated](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_deprecated).
   - `$ZUTIL` functions that [are deprecated or have been superseded](https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_replacements).
   - [SQL reserved words](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RSQL_reservedwords) used in class and property names of persistent classes.
 - [Folding Ranges](https://code.visualstudio.com/docs/editor/codebasics#_folding) for the following:
   - ObjectScript code blocks (If/ElseIf/Else, Try/Catch, For, While, etc.)
-  - UDL class members
+  - Class members
   - ObjectScript routine labels
-  - UDL descriptions
+  - Class descriptions
   - ObjectScript documentation comments (/// in first column)
   - XML tags in XData blocks
   - Storage XML tags
@@ -42,7 +42,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Embedded code blocks (SQL, HTML, JavaScript)
   - Region markers:
     - In ObjectScript: `#;#region` or `//#region` to start and `#;#endregion` or `//#endregion` to end
-    - In UDL: `//#region` to start and `//#endregion` to end
+    - In class comments: `//#region` to start and `//#endregion` to end
 - [Symbol Renaming](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol) for ObjectScript local variables and method arguments within class definitions.
 - [Go to type definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-type-definition) for ObjectScript methods, properties, method arguments and variables declared with `#Dim`.
 - Go to declaration for ObjectScript method arguments, variables declared with `#Dim` and variables in the [PublicList](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_publiclist).
@@ -54,13 +54,13 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Private variables
   - Public variables
   - [System variables](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_VARIABLES)
-- [Document Links](https://code.visualstudio.com/api/references/vscode-api#DocumentLink) for [CLASS, METHOD, PROPERTY and QUERY HTML tags](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GOBJ_classes#GOBJ_classdoc_html) in UDL documentation comments.
+- [Document Links](https://code.visualstudio.com/api/references/vscode-api#DocumentLink) for [CLASS, METHOD, PROPERTY and QUERY HTML tags](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GOBJ_classes#GOBJ_classdoc_html) and `##class()` syntax in class documentation comments.
 - [QuickFix CodeActions](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) that resolve the following Diagnostics:
   - [Unqualified class references](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=GOBJ_packages#GOBJ_packages_in_classname) in a class definition that don't exist in the database:
     - Select a package containing the unqualified class name to import.
-  - Invalid UDL Parameter types and mismatches between declared UDL Parameter types and the assigned value:
-    - Remove the invalid UDL Parameter type.
-    - Select a correct UDL Parameter type to replace the invalid one.
+  - Invalid class Parameter types and mismatches between declared class Parameter types and the assigned value:
+    - Remove the invalid class Parameter type.
+    - Select a correct class Parameter type to replace the invalid one.
   - `$ZUTIL` functions that have been superseded by ClassMethods:
     - Replace the `$ZUTIL` function call with the appropriate ClassMethod.
 - Intellisense for the following embedded languages (provided by [request forwarding](https://code.visualstudio.com/api/language-extensions/embedded-languages#request-forwarding)):
@@ -95,10 +95,10 @@ All InterSystems products that include the Atelier APIs (Caché/Ensemble from 20
 
 ## Setup Notes
 
-If the configured user "abc" for connection to a server does NOT have the `%All` Role, execute the following query on the server to enable all of this extension's features.
+If the configured user for connection to a server does NOT have the `%All` Role, execute the following query on the server to enable all of this extension's features. This is not necessary when connecting to InterSystems IRIS version 2021.1.3+, 2022.1.2+, or 2022.2+. 
 
 ```SQL
-GRANT SELECT ON SCHEMA %Dictionary TO abc
+GRANT SELECT ON SCHEMA %Dictionary TO %Developer
 ```
 
 ## Configuration Settings

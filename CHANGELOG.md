@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.4.5] - 2024-XX-XX
+## [2.5.0] - 2024-05-02
 - Fix issue [#312](https://github.com/intersystems/language-server/issues/312): Fix routine existence diagnostics for routines that only exist in OBJ form
 - Fix issue [#313](https://github.com/intersystems/language-server/issues/313): Add Diagnostic when `ROUTINE` header is missing
 - Fix issue [#314](https://github.com/intersystems/language-server/issues/314): Suggest boolean class keywords for completion after typing `Not`
