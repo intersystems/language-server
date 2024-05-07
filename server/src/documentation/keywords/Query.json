@@ -20,6 +20,11 @@
     "description": "If true, then do not display this item in automatic documentation."
   },
   {
+    "name": "Requires",
+    "type": "KW_TYPE_STRING",
+    "description": "Comma separated string of resource constraints to run this method"
+  },
+  {
     "name": "SoapBindingStyle",
     "type": "KW_TYPE_STRING",
     "constraint": [

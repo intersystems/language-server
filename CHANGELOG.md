@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.5.1] - 2024-XX-XX
+- Parser changes:
+  - DP-430950: Support new `Requires` Query keyword
+
 ## [2.5.0] - 2024-05-02
 - Fix issue [#312](https://github.com/intersystems/language-server/issues/312): Fix routine existence diagnostics for routines that only exist in OBJ form
 - Fix issue [#313](https://github.com/intersystems/language-server/issues/313): Add Diagnostic when `ROUTINE` header is missing
