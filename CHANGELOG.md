@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2.5.1] - 2024-XX-XX
+- Fix issue [#328](https://github.com/intersystems/language-server/issues/328): Fix namespace detection for Diagnostic computation
 - Parser changes:
   - DP-430950: Support new `Requires` Query keyword
 
