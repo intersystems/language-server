@@ -1101,7 +1101,13 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						// Ran off the end of the implementation
 						(parsed[i][j].l == ld.cls_langindex) ||
 						// Ran off the end of the method
-						(/^objectscript(-int)?$/.test(doc.languageId) && j == 0 && parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_label_attrindex) ||
+						(
+							// In a routine
+							/^objectscript(-int)?$/.test(doc.languageId) &&
+							// This is the first token and it's at the start of the line
+							j == 0 && parsed[i][j].p == 0 &&
+							// This token is a label
+							parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_label_attrindex) ||
 						// Exited the script
 						(doc.languageId == "objectscript-csp" && parsed[i][j].l == ld.html_langindex)
 					) {
