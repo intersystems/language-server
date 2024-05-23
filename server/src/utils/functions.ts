@@ -1902,8 +1902,92 @@ async function determineUndeclaredLocalVarClass(
  * @param FormalSpec The value of the FormalSpec column in %Dictionary.CompiledMethod.
  */
 export function beautifyFormalSpec(FormalSpec: string): string {
-	// Split the FormalSpec by commas not enclosed in parenthesis, then rejoin with added space before doing regex replaces
-	return "(" + FormalSpec.split(/,(?![^(]*\))/).join(", ").replace(/:/g," As ").replace(/\*/g,"Output ").replace(/&/g,"ByRef ").replace(/=/g," = ") + ")";
+	let result = "", inParen = false, inQuote = false, inBraces = 0;
+	for (const c of FormalSpec) {
+		if (!inParen && !inQuote && !inBraces) {
+			// In the argument list
+			switch (c) {
+				case ",":
+					result += ", ";
+					break;
+				case "*":
+					result += "Output ";
+					break;
+				case "&":
+					result += "ByRef ";
+					break;
+				case ":":
+					result += " As ";
+					break;
+				case "=":
+					result += " = ";
+					break;
+				case "\"":
+					inQuote = true;
+					result += c;
+					break;
+				case "(":
+					inParen = true;
+					result += c;
+					break;
+				case "{":
+					inBraces++;
+					result += c;
+					break;
+				default:
+					result += c;
+			}
+		} else if (!inQuote) {
+			if (inBraces) {
+				// In a COS block
+				switch (c) {
+					case "\"":
+						inQuote = true;
+						result += c;
+						break;
+					case "{":
+						inBraces++;
+						result += c;
+						break;
+					case "}":
+						inBraces--;
+						result += c;
+						break;
+					default:
+						result += c;
+				}
+			} else {
+				// In the class parameter list
+				switch (c) {
+					case ",":
+						result += ", ";
+						break;
+					case "=":
+						result += " = ";
+						break;
+					case "\"":
+						inQuote = true;
+						result += c;
+						break;
+					case ")":
+						inParen = false;
+						result += c;
+						break;
+					case "{":
+						inBraces++;
+						result += c;
+						break;
+					default:
+						result += c;
+				}
+			}
+		} else {
+			// In a quoted string
+			if (c == "\"") inQuote = false;
+			result += c;
+		}
+	}
+	return `(${result})`;
 }
 
 /**
