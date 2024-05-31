@@ -3,6 +3,7 @@
 ## [2.5.1] - 2024-XX-XX
 - Fix issue [#328](https://github.com/intersystems/language-server/issues/328): Fix namespace detection for Diagnostic computation
 - Fix issue [#331](https://github.com/intersystems/language-server/issues/331): Fix display of method arguments with a colon in the default value
+- Fix issue [#333](https://github.com/intersystems/language-server/issues/333): Fix folding ranges when routine labels that don't appear in the first column
 - Parser changes:
   - DP-430950: Support new `Requires` Query keyword
 

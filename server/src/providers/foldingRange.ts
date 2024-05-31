@@ -157,8 +157,8 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 				}
 			}
 			if (
-				parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_label_attrindex &&
-				firsttokentext !== routinename && (doc.languageId === "objectscript" || doc.languageId === "objectscript-int")
+				parsed[line][0].l == ld.cos_langindex && parsed[line][0].s == ld.cos_label_attrindex && parsed[line][0].p == 0 &&
+				firsttokentext != routinename && (doc.languageId == "objectscript" || doc.languageId == "objectscript-int")
 			) {
 				// This line starts with a routine label
 
@@ -195,7 +195,7 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 							// Don't fold comments that immediately precede the next label
 							precedingcomments++;
 						}
-						else if (parsed[nl][0].l === ld.cos_langindex && parsed[nl][0].s === ld.cos_label_attrindex) {
+						else if (parsed[nl][0].l == ld.cos_langindex && parsed[nl][0].s == ld.cos_label_attrindex && parsed[nl][0].p == 0) {
 							// This is the next label
 							openranges[openranges.length-1].endLine = nl-precedingcomments-1;
 							if (openranges[openranges.length-1].startLine < openranges[openranges.length-1].endLine) {
