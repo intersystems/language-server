@@ -167,10 +167,10 @@ export type compresseditem = {
 
 export type compressedline = compresseditem[];
 
-export type compressedresult = {'compressedlinearray': compressedline[], 'routineheaderinfo'?: routineheaderinfotype};
+export type compressedresult = { compressedlinearray: compressedline[], routineheaderinfo?: routineheaderinfotype };
 
-export type compressedcolors = {'compressedcolors': compressedline[]};
+export type compressedcolors = { compressedcolors: compressedline[] };
 
 
 // routine header (if present 'generated' is just set to '')
-export type routineheaderinfotype = {'routinename': string, 'routinetype'?: string, 'languagemode'?: number, 'generated'?: string};
+export type routineheaderinfotype = { routinename: string, routinetype?: string, languagemode?: number, generated?: string };

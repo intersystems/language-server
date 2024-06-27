@@ -9,8 +9,9 @@ const acceptroutineheaderline = true;
 
 // flags to pass to Tokenize
 const IPARSE_UDL_EXPLICIT = 0x0001; // require variable declaration (#dim)
-const IPARSE_UDL_EXPERT = 0x4000; // this stops the SYSTEM class-keyword from being colored as a syntax-error
-const IPARSE_UDL_TRACK = 0x20000; // enable variable-tracking
+const IPARSE_UDL_EXPERT = 0x4000; // this stops the SYSTEM class keyword from being colored as a syntax error
+const IPARSE_COS_U2 = 0x10000; // accept U2 syntax
+const IPARSE_UDL_TRACK = 0x20000; // enable variable tracking
 // these flags are only passed for HTML documents
 const IPARSE_ALL_CSPEXTENSIONS = 0x0400; // all parsers: recognize CSP extensions like #(..)#
 const IPARSE_HTML_CSPMODE = 0x0800; // HTML parser: is in CSP mode
@@ -37,6 +38,11 @@ export function parseDocument(languageId: string, fileExt: string, text: string)
 
 		// color the routine header line
 		const routinelinecoloring: routineheadertype = colorRoutineLine(firstline);
+
+		if (routinelinecoloring?.routineheaderinfo?.languagemode == 10) {
+			// LanguageMode 10 is U2, so allow U2 syntax
+			flags += IPARSE_COS_U2;
+		}
 
 		// effectively replace the routine line (before the line-ending) with spaces so that the offsets are still correct
 		const doctoparse = ' '.repeat(firstline.length) + text.slice(firstline.length);

@@ -4,6 +4,7 @@
 - Fix issue [#328](https://github.com/intersystems/language-server/issues/328): Fix namespace detection for Diagnostic computation
 - Fix issue [#331](https://github.com/intersystems/language-server/issues/331): Fix display of method arguments with a colon in the default value
 - Fix issue [#333](https://github.com/intersystems/language-server/issues/333): Fix folding ranges when routine labels that don't appear in the first column
+- Fix issue [#335](https://github.com/intersystems/language-server/issues/335): Support U2 syntax when ROUTINE LanguageMode = 10
 - Parser changes:
   - DP-430950: Support new `Requires` Query keyword
 
