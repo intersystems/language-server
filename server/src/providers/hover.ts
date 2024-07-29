@@ -1,4 +1,4 @@
-import { Position, TextDocumentPositionParams, Range, MarkupKind } from 'vscode-languageserver/node';
+import { Position, TextDocumentPositionParams, Range, MarkupKind, Hover } from 'vscode-languageserver/node';
 import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, determineVariableClass } from '../utils/functions';
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
@@ -24,7 +24,17 @@ import storageKeywords = require("../documentation/keywords/Storage.json");
 import triggerKeywords = require("../documentation/keywords/Trigger.json");
 import xdataKeywords = require("../documentation/keywords/XData.json");
 
-export async function onHover(params: TextDocumentPositionParams) {
+function documaticLink(server: ServerSpec, cls: string): string {
+	return `[${cls}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?LIBRARY=${
+		encodeURIComponent(server.namespace.toUpperCase())
+	}&CLASSNAME=${encodeURIComponent(cls)})`;
+}
+
+function markupValue(header: string, body?: string): string {
+	return body?.trim().length ? [header, "***", body].join("\n") : header;
+}
+
+export async function onHover(params: TextDocumentPositionParams): Promise<Hover> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
 	const parsed = await getParsedDocument(params.textDocument.uri);
@@ -42,9 +52,11 @@ export async function onHover(params: TextDocumentPositionParams) {
 		if (params.position.character >= symbolstart && params.position.character <= symbolend) {
 			// We found the right symbol in the line
 
-			if (((parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_clsname_attrindex) ||
-			(parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_clsname_attrindex))
-			&& doc.getText(Range.create(Position.create(params.position.line,0),Position.create(params.position.line,6))).toLowerCase() !== "import") {
+			if ((
+				(parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_clsname_attrindex) ||
+				(parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_clsname_attrindex)
+				) && doc.getText(Range.create(params.position.line,0,params.position.line,6)).toLowerCase() !== "import"
+			) {
 				// This is a class name
 	
 				// Get the full text of the selection
@@ -53,8 +65,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 				if (word.charAt(0) === ".") {
 					// This might be $SYSTEM.ClassName
 					const prevseven = doc.getText(Range.create(
-						Position.create(params.position.line,wordrange.start.character-7),
-						Position.create(params.position.line,wordrange.start.character)
+						params.position.line,wordrange.start.character-7,
+						params.position.line,wordrange.start.character
 					));
 					if (prevseven.toUpperCase() === "$SYSTEM") {
 						// This is $SYSTEM.ClassName
@@ -82,16 +94,18 @@ export async function onHover(params: TextDocumentPositionParams) {
 				if (respdata !== undefined && respdata.data.result.content !== undefined && respdata.data.result.content.length === 1) {
 					// The class was found
 					return {
-						contents: [
-							`[${normalizedname}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?`.concat(
-								`LIBRARY=${encodeURIComponent(server.namespace.toUpperCase())}&CLASSNAME=${encodeURIComponent(normalizedname)})`),
-							documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
-						],
+						contents: {
+							kind: MarkupKind.Markdown,
+							value: markupValue(
+								documaticLink(server,normalizedname),
+								documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
+							)
+						},
 						range: wordrange
 					};
 				}
 			}
-			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex ) {
+			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex) {
 				// This is a macro
 
 				// Get the details of this class
@@ -360,35 +374,24 @@ export async function onHover(params: TextDocumentPositionParams) {
 			}
 			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_sysf_attrindex && settings.hover.system) {
 				// This is a system function
-				const sysfrange = Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend));
+				const sysfrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
 				const sysftext = doc.getText(sysfrange).toUpperCase();
 				const sysfdoc = systemFunctions.find((el) => el.label === sysftext || el.alias.includes(sysftext));
 				if (sysfdoc !== undefined) {
-					if (sysfdoc.link !== undefined) {
-						if (sysfdoc.link.charAt(0) === "h") {
-							return {
-								contents: [sysfdoc.documentation.join(""),`[Online documentation](${sysfdoc.link})`],
-								range: sysfrange
-							};
-						}
-						else {
-							return {
-								contents: [sysfdoc.documentation.join(""),`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link})`],
-								range: sysfrange
-							};
-						}
-					}
-					else {
-						return {
-							contents: sysfdoc.documentation.join(""),
-							range: sysfrange
-						};
-					}
+					return {
+						contents: {
+							kind: MarkupKind.Markdown,
+							value: markupValue(sysfdoc.documentation.join(""), sysfdoc.link ? `[Online documentation](${
+								sysfdoc.link[0] == "h" ? sysfdoc.link : `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
+							})` : "")
+						},
+						range: sysfrange
+					};
 				}
 			}
 			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_ssysv_attrindex && settings.hover.system) {
 				// This is a structured system variable
-				var ssysvrange = Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend));
+				var ssysvrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
 				var ssysvtext = doc.getText(ssysvrange).toUpperCase();
 				if (ssysvtext === "^$") {
 					// This is the first half, before the namespace
@@ -399,8 +402,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 					for (let j = i+1; j < parsed[params.position.line].length; j++) {
 						if (parsed[params.position.line][j].l == ld.cos_langindex && parsed[params.position.line][j].s == ld.cos_ssysv_attrindex) {
 							secondhalf = doc.getText(Range.create(
-								Position.create(params.position.line,parsed[params.position.line][j].p),
-								Position.create(params.position.line,parsed[params.position.line][j].p+parsed[params.position.line][j].c)
+								params.position.line,parsed[params.position.line][j].p,
+								params.position.line,parsed[params.position.line][j].p+parsed[params.position.line][j].c
 							)).toUpperCase();
 							secondhalfend = parsed[params.position.line][j].p+parsed[params.position.line][j].c;
 							break;
@@ -421,8 +424,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 					for (let j = i-1; j >= 0; j--) {
 						if (parsed[params.position.line][j].l == ld.cos_langindex && parsed[params.position.line][j].s == ld.cos_ssysv_attrindex) {
 							const firsthalf = doc.getText(Range.create(
-								Position.create(params.position.line,parsed[params.position.line][j].p),
-								Position.create(params.position.line,parsed[params.position.line][j].p+parsed[params.position.line][j].c)
+								params.position.line,parsed[params.position.line][j].p,
+								params.position.line,parsed[params.position.line][j].p+parsed[params.position.line][j].c
 							));
 							if (firsthalf === "^$") {
 								firsthalfstart = parsed[params.position.line][j].p;
@@ -440,26 +443,38 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const ssysvdoc = structuredSystemVariables.find((el) => el.label === ssysvtext || el.alias.includes(ssysvtext));
 				if (ssysvdoc !== undefined) {
 					return {
-						contents: [ssysvdoc.documentation.join(""),`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${ssysvdoc.link})`],
+						contents: {
+							kind: MarkupKind.Markdown,
+							value: markupValue(
+								ssysvdoc.documentation.join(""),
+								`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${ssysvdoc.link})`
+							),
+						},
 						range: ssysvrange
 					};
 				}
 			}
 			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_sysv_attrindex && settings.hover.system) {
 				// This is a system variable
-				const sysvrange = Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend));
+				const sysvrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
 				const sysvtext = doc.getText(sysvrange).toUpperCase();
 				const sysvdoc = systemVariables.find((el) => el.label === sysvtext || el.alias.includes(sysvtext));
 				if (sysvdoc !== undefined) {
 					return {
-						contents: [sysvdoc.documentation.join(""),`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysvdoc.link})`],
+						contents: {
+							kind: MarkupKind.Markdown,
+							value: markupValue(
+								sysvdoc.documentation.join(""),
+								`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysvdoc.link})`
+							),
+						},
 						range: sysvrange
 					};
 				}
 			}
 			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_command_attrindex && settings.hover.commands) {
 				// This is a command
-				const commandrange = Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend));
+				const commandrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
 				const commandtext = doc.getText(commandrange).toUpperCase();
 				var commanddoc: CommandDoc | undefined;
 				if (commandtext === "H") {
@@ -471,7 +486,13 @@ export async function onHover(params: TextDocumentPositionParams) {
 				}
 				if (commanddoc !== undefined) {
 					return {
-						contents: [commanddoc.documentation.join(""),`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${commanddoc.link})`],
+						contents: {
+							kind: MarkupKind.Markdown,
+							value: markupValue(
+								commanddoc.documentation.join(""),
+								`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${commanddoc.link})`
+							),
+						},
 						range: commandrange
 					};
 				}
@@ -571,16 +592,19 @@ export async function onHover(params: TextDocumentPositionParams) {
 					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 						// We got data back
 
-						let header = membercontext.baseclass.concat("::",member);
+						let header = `(**${membercontext.baseclass}**) ***${member}***`;
 						const nextchar = doc.getText(Range.create(params.position.line,memberrange.end.character,params.position.line,memberrange.end.character+1));
 						if (member == "%New" && respdata.data.result.content.length == 2 && respdata.data.result.content[1].Origin != "%Library.RegisteredObject") {
 							// %OnNew has been overridden for this class
-							header += beautifyFormalSpec(respdata.data.result.content[1].FormalSpec);
-							header += ` As ${membercontext.baseclass}`;
+							header += beautifyFormalSpec(respdata.data.result.content[1].FormalSpec,true);
+							header += ` As **${membercontext.baseclass}**`;
 							return {
-								contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[
-									respdata.data.result.content[1].Description.trim().length ? 1 : 0
-								].Description)],
+								contents: {
+									kind: MarkupKind.Markdown,
+									value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[
+										respdata.data.result.content[1].Description.trim().length ? 1 : 0
+									].Description))
+								},
 								range: memberrange
 							};
 						}
@@ -613,13 +637,16 @@ export async function onHover(params: TextDocumentPositionParams) {
 								if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 									// We got data back
 									if (nextchar === "(") {
-										header = header + beautifyFormalSpec(stubrespdata.data.result.content[0].FormalSpec);
+										header = header + beautifyFormalSpec(stubrespdata.data.result.content[0].FormalSpec,true);
 										if (stubrespdata.data.result.content[0].ReturnType !== "") {
-											header = header.concat(" As ",stubrespdata.data.result.content[0].ReturnType);
+											header = `${header} As **${stubrespdata.data.result.content[0].ReturnType}**`;
 										}
 									}
 									return {
-										contents: [header,documaticHtmlToMarkdown(stubrespdata.data.result.content[0].Description)],
+										contents: {
+											kind: MarkupKind.Markdown,
+											value: markupValue(header,documaticHtmlToMarkdown(stubrespdata.data.result.content[0].Description))
+										},
 										range: memberrange
 									};
 								}
@@ -629,18 +656,21 @@ export async function onHover(params: TextDocumentPositionParams) {
 							// This is a regular member
 
 							if (nextchar === "(") {
-								header += beautifyFormalSpec(member == "%New" ? "" : respdata.data.result.content[0].FormalSpec);
+								header += beautifyFormalSpec(member == "%New" ? "" : respdata.data.result.content[0].FormalSpec,true);
 							}
 							if (["%New","%Open","%OpenId"].includes(member)) {
-								header += ` As ${membercontext.baseclass}`;
+								header += ` As **${membercontext.baseclass}**`;
 							}
 							else if (respdata.data.result.content[0].ReturnType !== "") {
 								let type: string = respdata.data.result.content[0].ReturnType;
 								type = type.includes(" ") ? type.charAt(0).toUpperCase() + type.slice(1) : type;
-								header += ` As ${type}`;
+								header += ` As **${type}**`;
 							}
 							return {
-								contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+								contents: {
+									kind: MarkupKind.Markdown,
+									value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+								},
 								range: memberrange
 							};
 						}
@@ -662,8 +692,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 						// This is a UDL delimiter
 						const delim = doc.getText(
 							Range.create(
-								Position.create(params.position.line,parsed[params.position.line][j].p),
-								Position.create(params.position.line,parsed[params.position.line][j].p+1)
+								params.position.line,parsed[params.position.line][j].p,
+								params.position.line,parsed[params.position.line][j].p+1
 							)
 						);
 						if (delim === "[") {
@@ -674,13 +704,13 @@ export async function onHover(params: TextDocumentPositionParams) {
 				}
 				if (foundopenbracket) {
 					// This is a trailing keyword
-					const thiskeyrange = Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend));
+					const thiskeyrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
 					const thiskeytext = doc.getText(thiskeyrange).toLowerCase();
 
 					// Find the type of this member
 					var firstkey = doc.getText(Range.create(
-						Position.create(params.position.line,parsed[params.position.line][0].p),
-						Position.create(params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c)
+						params.position.line,parsed[params.position.line][0].p,
+						params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c
 					)).toLowerCase();
 					if (parsed[params.position.line][0].l !== ld.cls_langindex || parsed[params.position.line][0].s !== ld.cls_keyword_attrindex) {
 						// This member definition spans multiple lines
@@ -690,8 +720,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 							}
 							if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
 								firstkey = doc.getText(Range.create(
-									Position.create(k,parsed[k][0].p),
-									Position.create(k,parsed[k][0].p+parsed[k][0].c)
+									k,parsed[k][0].p,
+									k,parsed[k][0].p+parsed[k][0].c
 								)).toLowerCase();
 								break;
 							}
@@ -748,26 +778,17 @@ export async function onHover(params: TextDocumentPositionParams) {
 						if (hoverdocstr === undefined) {
 							hoverdocstr = "";
 						}
-						if ("constraint" in keydoc && keydoc.constraint instanceof Array) {
-							if (hoverdocstr !== "") {
-								return {
-									contents: [keydoc.description,"Permitted values: "+keydoc.constraint.join(", ")],
-									range: thiskeyrange
-								};
-							}
-							else {
-								return {
-									contents: ["Permitted values: "+keydoc.constraint.join(", ")],
-									range: thiskeyrange
-								};
-							}
-						}
-						else {
-							return {
-								contents: keydoc.description,
-								range: thiskeyrange
-							};
-						}
+						return {
+							contents: {
+								kind: MarkupKind.Markdown,
+								value: Array.isArray(keydoc?.constraint) ? 
+									hoverdocstr != "" ? 
+										markupValue(keydoc.description,"Permitted values: " + keydoc.constraint.join(", ")) :
+										"Permitted values: " + keydoc.constraint.join(", ")
+									: keydoc.description
+							},
+							range: thiskeyrange
+						};
 					}
 				}
 			}
@@ -775,21 +796,24 @@ export async function onHover(params: TextDocumentPositionParams) {
 				// This is a UDL identifier
 				
 				const prevtokentext = doc.getText(Range.create(
-					Position.create(params.position.line,parsed[params.position.line][i-1].p),
-					Position.create(params.position.line,parsed[params.position.line][i-1].p+parsed[params.position.line][i-1].c)
+					params.position.line,parsed[params.position.line][i-1].p,
+					params.position.line,parsed[params.position.line][i-1].p+parsed[params.position.line][i-1].c
 				)).toLowerCase();
 				if (parsed[params.position.line][i-1].l == ld.cls_langindex && parsed[params.position.line][i-1].s == ld.cls_keyword_attrindex && prevtokentext === "as") {
 					// This is a parameter type
 					
 					const tokenrange = Range.create(
-						Position.create(params.position.line,parsed[params.position.line][i].p),
-						Position.create(params.position.line,parsed[params.position.line][i].p+parsed[params.position.line][i].c)
+						params.position.line,parsed[params.position.line][i].p,
+						params.position.line,parsed[params.position.line][i].p+parsed[params.position.line][i].c
 					);
 					const tokentext = doc.getText(tokenrange).toUpperCase();
 					const thistypedoc = parameterTypes.find((typedoc) => typedoc.name === tokentext);
 					if (thistypedoc !== undefined) {
 						return {
-							contents: thistypedoc.documentation,
+							contents: {
+								kind: MarkupKind.PlainText,
+								value: thistypedoc.documentation
+							},
 							range: tokenrange
 						};
 					}
@@ -816,8 +840,8 @@ export async function onHover(params: TextDocumentPositionParams) {
 						) {
 							// This is a keyword
 							const tmpkeytext = doc.getText(Range.create(
-								Position.create(ln,parsed[ln][tk].p),
-								Position.create(ln,parsed[ln][tk].p+parsed[ln][tk].c)
+								ln,parsed[ln][tk].p,
+								ln,parsed[ln][tk].p+parsed[ln][tk].c
 							)).toLowerCase();
 							if (tmpkeytext !== "as") {
 								// Found the correct keyword
@@ -860,9 +884,12 @@ export async function onHover(params: TextDocumentPositionParams) {
 
 								let type: string = respdata.data.result.content[0].DisplayType;
 								type = type.includes(" ") ? type.charAt(0).toUpperCase() + type.slice(1) : type;
-								const header = `${normalizedname}::${propname}${type != "" ? ` As ${type}` : ""}`;
+								const header = `(**${normalizedname}**) ***${propname}***${type != "" ? ` As **${type}**` : ""}`;
 								return {
-									contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+									contents: {
+										kind: MarkupKind.Markdown,
+										value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+									},
 									range: idenrange
 								};
 							}
@@ -883,7 +910,13 @@ export async function onHover(params: TextDocumentPositionParams) {
 							if (respdata !== undefined && respdata.data.result.content.length === 1) {
 								// The class was found
 								return {
-									contents: [normalizedname,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+									contents: {
+										kind: MarkupKind.Markdown,
+										value: markupValue(
+											documaticLink(server,normalizedname),
+											documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
+										)
+									},
 									range: idenrange
 								};
 							}
@@ -909,16 +942,19 @@ export async function onHover(params: TextDocumentPositionParams) {
 						const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
-							var header = normalizedname.concat("::",procname);
-							const nextchar = doc.getText(Range.create(Position.create(params.position.line,idenrange.end.character),Position.create(params.position.line,idenrange.end.character+1)));
+							let header = `(**${normalizedname}**) ***${procname}***`;
+							const nextchar = doc.getText(Range.create(params.position.line,idenrange.end.character,params.position.line,idenrange.end.character+1));
 							if (nextchar === "(") {
-								header = header + beautifyFormalSpec(respdata.data.result.content[0].FormalSpec);
+								header = header + beautifyFormalSpec(respdata.data.result.content[0].FormalSpec,true);
 								if (respdata.data.result.content[0].ReturnType !== "") {
-									header = header.concat(" As ",respdata.data.result.content[0].ReturnType);
+									header = `${header} As **${respdata.data.result.content[0].ReturnType}**`;
 								}
 							}
 							return {
-								contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+								contents: {
+									kind: MarkupKind.Markdown,
+									value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+								},
 								range: idenrange
 							};
 						}
@@ -949,9 +985,12 @@ export async function onHover(params: TextDocumentPositionParams) {
 
 									let type: string = respdata.data.result.content[0].DisplayType;
 									type = type.includes(" ") ? type.charAt(0).toUpperCase() + type.slice(1) : type;
-									const header = `${normalizedname}::${propname}${type != "" ? ` As ${type}` : ""}`;
+									const header = `(**${normalizedname}**) ***${propname}***${type != "" ? ` As **${type}**` : ""}`;
 									return {
-										contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+										contents: {
+											kind: MarkupKind.Markdown,
+											value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+										},
 										range: idenrange
 									};
 								}
@@ -971,7 +1010,13 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const ppobj = preprocessorDirectives.find((el) => el.label.toLowerCase().replace(/\s+/g,'') === pp.toLowerCase());
 				if (ppobj !== undefined) {
 					return {
-						contents: [ppobj.documentation,`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros_${ppobj.link})`],
+						contents: {
+							kind: MarkupKind.Markdown,
+							value: markupValue(
+								ppobj.documentation,
+								`[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros_${ppobj.link})`
+							)
+						},
 						range: pprange
 					};
 				}
@@ -991,7 +1036,10 @@ export async function onHover(params: TextDocumentPositionParams) {
 				const coreParam = corePropertyParams.find(e => e.name === param);
 				if (coreParam !== undefined) {
 					return {
-						contents: [coreParam.desc],
+						contents: {
+							kind: MarkupKind.PlainText,
+							value: coreParam.desc
+						},
 						range: paramrange
 					};
 				}
@@ -1008,11 +1056,14 @@ export async function onHover(params: TextDocumentPositionParams) {
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
-							const header = `${normalizedcls}::${param}${
-								respdata.data.result.content[0].Type != "" ? ` As ${respdata.data.result.content[0].Type}` : ""
+							const header = `(**${normalizedcls}**) ***${param}***${
+								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
 							}`;
 							return {
-								contents: [header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description)],
+								contents: {
+									kind: MarkupKind.Markdown,
+									value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+								},
 								range: paramrange
 							};
 						}
@@ -1041,26 +1092,17 @@ export async function onHover(params: TextDocumentPositionParams) {
 							if (hoverdocstr === undefined) {
 								hoverdocstr = "";
 							}
-							if ("constraint" in keydoc && keydoc.constraint instanceof Array) {
-								if (hoverdocstr !== "") {
-									return {
-										contents: [keydoc.description,"Permitted values: "+keydoc.constraint.join(", ")],
-										range: elemrange
-									};
-								}
-								else {
-									return {
-										contents: ["Permitted values: "+keydoc.constraint.join(", ")],
-										range: elemrange
-									};
-								}
-							}
-							else {
-								return {
-									contents: keydoc.description,
-									range: elemrange
-								};
-							}
+							return {
+								contents: {
+									kind: MarkupKind.Markdown,
+									value: Array.isArray(keydoc?.constraint) ? 
+										hoverdocstr != "" ? 
+											markupValue(keydoc.description,"Permitted values: " + keydoc.constraint.join(", ")) :
+											"Permitted values: " + keydoc.constraint.join(", ")
+										: keydoc.description
+								},
+								range: elemrange
+							};
 						}
 					}
 				}
@@ -1078,6 +1120,9 @@ export async function onHover(params: TextDocumentPositionParams) {
 
 				const varClass = await determineVariableClass(doc,parsed,params.position.line,i,server);
 				if (varClass) {
+					const varRange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
+					const varType = parsed[params.position.line][i].s == ld.cos_param_attrindex ? "parameter" :
+						parsed[params.position.line][i].s == ld.cos_localvar_attrindex ? "public" : "private";
 					// Get the description for this class from the server
 					const querydata: QueryData = {
 						query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
@@ -1087,12 +1132,14 @@ export async function onHover(params: TextDocumentPositionParams) {
 					if (respdata !== undefined && respdata.data.result.content !== undefined && respdata.data.result.content.length === 1) {
 						// The class was found
 						return {
-							contents: [
-								`[${varClass}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?`.concat(
-									`LIBRARY=${encodeURIComponent(server.namespace.toUpperCase())}&CLASSNAME=${encodeURIComponent(varClass)})`),
-								documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
-							],
-							range: Range.create(params.position.line,symbolstart,params.position.line,symbolend)
+							contents: {
+								kind: MarkupKind.Markdown,
+								value: markupValue(
+									`(${varType}) *${doc.getText(varRange)}* As **${varClass}**`,
+									documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
+								)
+							},
+							range: varRange
 						};
 					}
 				}

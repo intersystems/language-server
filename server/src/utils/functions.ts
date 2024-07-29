@@ -1987,26 +1987,57 @@ async function determineUndeclaredLocalVarClass(
  * Expand a minified FormalSpec returned by a query to be more user friendly.
  * 
  * @param FormalSpec The value of the FormalSpec column in %Dictionary.CompiledMethod.
+ * @param markdown If the result should include Markdown.
  */
-export function beautifyFormalSpec(FormalSpec: string): string {
-	let result = "", inParen = false, inQuote = false, inBraces = 0;
+export function beautifyFormalSpec(FormalSpec: string, markdown = false): string {
+	let result = "", inParen = 0, inQuote = false, inParam = true, inCls = false, inDefault = false;
+	const markdownChars = [
+		"\\","`","*","_","{","}","(",")","[",
+		"]","<",">","#","+","-",".","!","|"
+	];
 	for (const c of FormalSpec) {
-		if (!inParen && !inQuote && !inBraces) {
+		if (!inParen && !inQuote) {
 			// In the argument list
 			switch (c) {
 				case ",":
+					if (markdown && (inParam || inCls)) {
+						result += "*";
+						if (inCls) result += "*";
+						inParam = inCls = false;
+					}
 					result += ", ";
+					if (markdown) {
+						result += "*";
+						inParam = true;
+					}
+					inDefault = false;
 					break;
 				case "*":
+					if (markdown) result = result.slice(0,-1);
 					result += "Output ";
+					if (markdown) result += "*";
 					break;
 				case "&":
+					if (markdown) result = result.slice(0,-1);
 					result += "ByRef ";
+					if (markdown) result += "*";
 					break;
 				case ":":
+					if (markdown) {
+						result += "*";
+						inParam = false;
+					}
 					result += " As ";
+					if (markdown) result += "**";
+					inCls = true;
 					break;
 				case "=":
+					if (markdown && (inParam || inCls)) {
+						result += "*";
+						if (inCls) result += "*";
+						inParam = inCls = false;
+					}
+					inDefault = true;
 					result += " = ";
 					break;
 				case "\"":
@@ -2014,66 +2045,53 @@ export function beautifyFormalSpec(FormalSpec: string): string {
 					result += c;
 					break;
 				case "(":
-					inParen = true;
-					result += c;
-					break;
-				case "{":
-					inBraces++;
+					inParen++;
+					if (markdown) {
+						if (inCls) result += "**";
+						inCls = false;
+						result += "\\";
+					}
 					result += c;
 					break;
 				default:
+					if (markdown && result == "") result += "*";
 					result += c;
 			}
 		} else if (!inQuote) {
-			if (inBraces) {
-				// In a COS block
-				switch (c) {
-					case "\"":
-						inQuote = true;
-						result += c;
-						break;
-					case "{":
-						inBraces++;
-						result += c;
-						break;
-					case "}":
-						inBraces--;
-						result += c;
-						break;
-					default:
-						result += c;
-				}
-			} else {
-				// In the class parameter list
-				switch (c) {
-					case ",":
-						result += ", ";
-						break;
-					case "=":
-						result += " = ";
-						break;
-					case "\"":
-						inQuote = true;
-						result += c;
-						break;
-					case ")":
-						inParen = false;
-						result += c;
-						break;
-					case "{":
-						inBraces++;
-						result += c;
-						break;
-					default:
-						result += c;
-				}
+			// In the class parameter list or default value expression
+			switch (c) {
+				case ",":
+					result += inDefault ? "," : ", ";
+					break;
+				case "=":
+					result += inDefault ? "=" : " = ";
+					break;
+				case "\"":
+					inQuote = true;
+					result += c;
+					break;
+				case "(":
+					inParen++;
+					if (markdown) result += "\\";
+					result += c;
+					break;
+				case ")":
+					inParen--;
+					if (markdown) result += "\\";
+					result += c;
+					break;
+				default:
+					if (markdown && markdownChars.includes(c)) result += "\\";
+					result += c;
 			}
 		} else {
 			// In a quoted string
 			if (c == "\"") inQuote = false;
+			if (markdown && markdownChars.includes(c)) result += "\\";
 			result += c;
 		}
 	}
+	if (markdown && inCls) result += "**";
 	return `(${result})`;
 }
 
