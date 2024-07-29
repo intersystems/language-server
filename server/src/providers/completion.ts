@@ -1087,7 +1087,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 				// Query the server to get the names and descriptions of all parameters
 				const data: QueryData = {
-					query: "SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?",
+					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${
+						membercontext.context == "instance" ? " AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')" : ""
+					}`,
 					parameters: [membercontext.baseclass]
 				}
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -1156,17 +1158,20 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 				else if (membercontext.context == "instance") {
 					data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL %PARALLEL " +
+						"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) " +
+						"AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
 						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? UNION ALL %PARALLEL " +
+						"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
 						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? UNION ALL %PARALLEL " +
+						"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
 						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? UNION ALL %PARALLEL " +
+						"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
 						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? UNION ALL %PARALLEL " +
-						"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated, Aliases FROM %Dictionary.CompiledProperty WHERE parent->ID = ? UNION ALL %PARALLEL " +
-						"SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated, NULL AS Aliases FROM %Dictionary.CompiledParameter WHERE parent->ID = ?";
+						"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
+						"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated, Aliases " +
+						"FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
+						"SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated, NULL AS Aliases " +
+						"FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')";
 					data.parameters = new Array(7).fill(membercontext.baseclass);
 				}
 				else {

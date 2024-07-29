@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.5.2] - 2024-XX-XX
+- Fix issue [#336](https://github.com/intersystems/language-server/issues/336): Add intellisense for variables set to the returned value of a method, or a property, with a declared type
+
 ## [2.5.1] - 2024-07-09
 - Fix issue [#328](https://github.com/intersystems/language-server/issues/328): Fix namespace detection for Diagnostic computation
 - Fix issue [#331](https://github.com/intersystems/language-server/issues/331): Fix display of method arguments with a colon in the default value

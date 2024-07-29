@@ -775,7 +775,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						else if (parsed[i][j].s == ld.cos_mem_attrindex) {
 							// This is a generic member
 
-							if (membercontext.baseclass.substr(0,7) === "%SYSTEM") {
+							if (membercontext.baseclass.startsWith("%SYSTEM.")) {
 								// This is always a method
 								addRangeToMapVal(methods,memberstr,memberrange);
 							}

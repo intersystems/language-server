@@ -509,7 +509,7 @@ export function parseDimLine(doc: TextDocument, parsed: compressedline[], line: 
  * @param line The line in the document that we need to resolve imports at.
  * @param server The server that this document is associated with.
  * 
- * The following optional parameter is only provided when called via computeDiagnostics():
+ * The following optional parameter is only provided when called via `onDiagnostics()`:
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
 export async function getImports(doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec, inheritedpackages?: string[]): Promise<string[]> {
@@ -583,7 +583,7 @@ export async function getImports(doc: TextDocument, parsed: compressedline[], li
 		// If this class has supers, make a query to find any inherited imports
 		if (hassupers) {
 			if (inheritedpackages !== undefined) {
-				// inheritedpackages was passed in from computeDiagnostics()
+				// inheritedpackages was passed in from `onDiagnostics()`
 				for (let pkg of inheritedpackages) {
 					if (!result.includes(pkg)) {
 						result.push(pkg);
@@ -650,7 +650,7 @@ export async function getImports(doc: TextDocument, parsed: compressedline[], li
  * @param server The server that doc is associated with.
  * @param line The line of doc that we're in.
  * 
- * The following optional parameters are only provided when called via computeDiagnostics():
+ * The following optional parameters are only provided when called via `onDiagnostics()`:
  * @param allfiles An array of all files in a database.
  * @param possiblecls The number of possible classes that this short class name could map to.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
@@ -788,7 +788,7 @@ export async function normalizeClassname(
  * @param line The line that the class member is in.
  * @param server The server that doc is associated with.
  * 
- * The following optional parameters are only provided when called via computeDiagnostics():
+ * The following optional parameters are only provided when called via `onDiagnostics()`:
  * @param allfiles An array of all files in a database.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
@@ -803,35 +803,14 @@ export async function getClassMemberContext(
 	
 	if (
 		doc.getText(Range.create(
-			Position.create(line,parsed[line][dot].p),
-			Position.create(line,parsed[line][dot].p+parsed[line][dot].c)
+			line,parsed[line][dot].p,
+			line,parsed[line][dot].p+parsed[line][dot].c
 		)) === ".."
 	) {
 		// This is relative dot syntax
 			
 		// Find the class name
-		for (let i = 0; i < parsed.length; i++) {
-			if (parsed[i].length === 0) {
-				continue;
-			}
-			else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
-				// This line starts with a UDL keyword
-	
-				var keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c)));
-				if (keyword.toLowerCase() === "class") {
-					for (let j = 1; j < parsed[i].length; j++) {
-						if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
-							result.baseclass = result.baseclass.concat(doc.getText(Range.create(Position.create(i,parsed[i][j].p),Position.create(i,parsed[i][j].p+parsed[i][j].c))));
-						}
-						else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
-							// We hit the 'Extends' keyword
-							break;
-						}
-					}
-					break;
-				}
-			}
-		}
+		result.baseclass = currentClass(doc,parsed);
 		// Find the type of this method
 		for (let k = line-1; k >= 0; k--) {
 			if (parsed[k].length === 0) {
@@ -839,7 +818,7 @@ export async function getClassMemberContext(
 			}
 			if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
 				// This is the definition for the method that the selector is in
-				const keytext = doc.getText(Range.create(Position.create(k,parsed[k][0].p),Position.create(k,parsed[k][0].p+parsed[k][0].c)));
+				const keytext = doc.getText(Range.create(k,parsed[k][0].p,k,parsed[k][0].p+parsed[k][0].c));
 				if (keytext.toLowerCase() === "method") {
 					result.context = "instance";
 				}
@@ -899,62 +878,19 @@ export async function getClassMemberContext(
 					
 					// Get the full text of the member
 					const member = quoteUDLIdentifier(doc.getText(Range.create(
-						Position.create(openln,parsed[openln][opentkn-1].p),
-						Position.create(openln,parsed[openln][opentkn-1].p+parsed[openln][opentkn-1].c)
+						openln,parsed[openln][opentkn-1].p,
+						openln,parsed[openln][opentkn-1].p+parsed[openln][opentkn-1].c
 					)),0);
 
 					// Get the base class that this member is in
 					const membercontext = await getClassMemberContext(doc,parsed,opentkn-2,openln,server);
-					if (membercontext.baseclass !== "") {
-						// Query the database to find the return type of this method, if it has one
-						const querydata: QueryData = {
-							query: "SELECT ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->id = ? AND Name = ?",
-							parameters: [membercontext.baseclass,member]
-						};
-						const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
-							// We got data back
-
-							let memobj = respdata.data.result.content[0];
-							if (respdata.data.result.content[0].Stub !== "") {
-								// This is a method generated by member inheritance, so we need to get its type from the proper subtable
-		
-								const stubarr = respdata.data.result.content[0].Stub.split(".");
-								let stubquery = "";
-								if (stubarr[2] === "i") {
-									// This is a method generated from an index
-									stubquery = "SELECT ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
-								}
-								if (stubarr[2] === "q") {
-									// This is a method generated from a query
-									stubquery = "SELECT ReturnType FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
-								}
-								if (stubarr[2] === "a") {
-									// This is a method generated from a property
-									stubquery = "SELECT ReturnType FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
-								}
-								if (stubarr[2] === "n") {
-									// This is a method generated from a constraint
-									stubquery = "SELECT ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
-								}
-								if (stubquery !== "") {
-									const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
-										query: stubquery,
-										parameters: [stubarr[1],membercontext.baseclass,stubarr[0]]
-									});
-									if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
-										// We got data back
-										memobj = stubrespdata.data.result.content[0];
-									}
-								}
-							}
-
-							if (memobj.ReturnType !== "") {
-								result = {
-									baseclass: memobj.ReturnType,
-									context: "instance"
-								};
-							}
+					if (membercontext.baseclass != "") {
+						const cls = await getMemberType(parsed,openln,opentkn-1,membercontext.baseclass,member,server);
+						if (cls) {
+							result = {
+								baseclass: cls,
+								context: "instance"
+							};
 						}
 					}
 				}
@@ -977,13 +913,17 @@ export async function getClassMemberContext(
 			result = paramcon;
 		}
 	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (parsed[line][dot-1].s == ld.cos_localdec_attrindex || parsed[line][dot-1].s == ld.cos_localvar_attrindex)) {
-		// The token before the dot is a declared local variable or public variable 
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (
+		parsed[line][dot-1].s == ld.cos_localdec_attrindex ||
+		parsed[line][dot-1].s == ld.cos_localvar_attrindex ||
+		parsed[line][dot-1].s == ld.cos_otw_attrindex
+	)) {
+		// The token before the dot is a declared local variable, public variable or warning variable
 
 		// First check if it's #Dim'd
 		let varContext = await determineDeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
 		if (varContext === undefined) {
-			// If it's not, check if it's Set using %New(), %Open() or %OpenId()
+			// If it's not, attempt to determine the class it was set to
 			varContext = await determineUndeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
 		}
 		if (varContext !== undefined) {
@@ -1003,11 +943,11 @@ export async function getClassMemberContext(
 				else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 					// This line starts with a UDL keyword
 		
-					var keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c)));
+					var keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
 					if (keyword.toLowerCase() === "class") {
 						for (let j = 1; j < parsed[i].length; j++) {
 							if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
-								result.baseclass = result.baseclass.concat(doc.getText(Range.create(Position.create(i,parsed[i][j].p),Position.create(i,parsed[i][j].p+parsed[i][j].c))));
+								result.baseclass = result.baseclass.concat(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)));
 								result.context = "instance";
 							}
 							else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
@@ -1021,23 +961,30 @@ export async function getClassMemberContext(
 			}
 		}
 	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_attr_attrindex && dot >= 2) {
+	else if (
+		dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (
+			(parsed[line][dot-1].s == ld.cos_attr_attrindex && dot >= 2) ||
+			parsed[line][dot-1].s == ld.cos_instvar_attrindex
+		)
+	) {
 		// The token before the dot is an object attribute
 
 		// This is a chained reference, so get the base class of the previous token
-		const prevtokenctxt = await getClassMemberContext(doc,parsed,dot-2,line,server,allfiles,inheritedpackages);
-		if (prevtokenctxt.baseclass !== "" && prevtokenctxt.baseclass !== "%Library.DynamicArray" && prevtokenctxt.baseclass !== "%Library.DynamicObject") {
+		const cls = parsed[line][dot-1].s == ld.cos_instvar_attrindex 
+			? currentClass(doc,parsed) : 
+			(await getClassMemberContext(doc,parsed,dot-2,line,server,allfiles,inheritedpackages)).baseclass;
+		if (!["","%Library.DynamicArray","%Library.DynamicObject"].includes(cls)) {
 			// We got a base class for the previous token
 			// Skip JSON base classes because they don't have any UDL Properties
 			const attrtxt = quoteUDLIdentifier(doc.getText(Range.create(
-				Position.create(line,parsed[line][dot-1].p),
-				Position.create(line,parsed[line][dot-1].p+parsed[line][dot-1].c)
-			)),0);
+				line,parsed[line][dot-1].p,
+				line,parsed[line][dot-1].p+parsed[line][dot-1].c
+			)).slice(parsed[line][dot-1].s == ld.cos_instvar_attrindex ? 2 : 0),0);
 
 			// Query the database to find the type of this attribute, if it has one
 			const querydata: QueryData = {
 				query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE parent->id = ? AND Name = ?",
-				parameters: [prevtokenctxt.baseclass,attrtxt]
+				parameters: [cls,attrtxt]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -1048,12 +995,24 @@ export async function getClassMemberContext(
 			}
 		}
 	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (parsed[line][dot-1].s == ld.cos_otw_attrindex || parsed[line][dot-1].s == ld.cos_localundec_attrindex)) {
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_localundec_attrindex) {
 		// The token before the dot is an undeclared local variable
 
 		const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
 		if (localundeccon !== undefined) {
 			result = localundeccon;
+		}
+	}
+	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_jsonb_attrindex) {
+		// The token before the dot is a JSON bracket
+
+		result.context = "instance";
+		switch (doc.getText(Range.create(line,parsed[line][dot-1].p,line,parsed[line][dot-1].p+parsed[line][dot-1].c))) {
+			case "}":
+				result.baseclass = "%Library.DynamicObject";
+				break;
+			default:
+				result.baseclass = "%Library.DynamicArray";
 		}
 	}
 
@@ -1194,7 +1153,7 @@ export function isMacroDefinedAbove(doc: TextDocument, parsed: compressedline[],
  * @param server The server that doc is associated with.
  * @param thisparam The parameter that we're looking for.
  * 
- * The following optional parameters are only provided when called via computeDiagnostics():
+ * The following optional parameters are only provided when called via `onDiagnostics()`:
  * @param allfiles An array of all files in a database.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
@@ -1429,7 +1388,7 @@ export function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string
  * @param tkn The token of the parameter in the line.
  * @param server The server that doc is associated with.
  * 
- * The following optional parameters are only provided when called via computeDiagnostics():
+ * The following optional parameters are only provided when called via `onDiagnostics()`:
  * @param allfiles An array of all files in a database.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
@@ -1502,7 +1461,7 @@ async function determineParameterClass(
  * @param tkn The token of the declared local variable in the line.
  * @param server The server that doc is associated with.
  * 
- * The following optional parameters are only provided when called via computeDiagnostics():
+ * The following optional parameters are only provided when called via `onDiagnostics()`:
  * @param allfiles An array of all files in a database.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
@@ -1629,25 +1588,31 @@ async function determineDeclaredLocalVarClass(
 }
 
 /**
- * Parse a Set command's arguments and look to see if `selector` was set using `%New()`, `%Open()` or `%OpenId()`.
+ * Parse a Set command's arguments and look to see if `selector` was set.
+ * If so, attempt to determine the class of `selector`.
  * 
  * @param doc The TextDocument that the Set is in.
  * @param parsed The tokenized representation of `doc`.
  * @param line The line the Set is in.
  * @param token The offset of the Set within `line`.
  * @param selector The variable that we're looking for.
+ * @param server The server that doc is associated with.
+ * @param diagnostic `true` if called via `onDiagnostics()`.
  */
-function parseSetCommand(doc: TextDocument, parsed: compressedline[], line: number, token: number, selector: string): { foundset: boolean; class: string; } {
-	let result = {
-		foundset: false,
-		class: ""
-	};
-
+async function parseSetCommand(
+	doc: TextDocument, parsed: compressedline[], line: number, token: number,
+	selector: string, server: ServerSpec, diagnostic: boolean
+): Promise<string> {
+	let result = "";
 	let brk = false;
 	let inPostconditional = false;
 	let pcParenCount = 0;
 	let foundVar = false;
 	let operatorTuple: [number, number] | undefined = undefined;
+	let exprLeadingParenCount = 0;
+	let exprParenLevel = 0;
+	let firstExprTuple: [number, number] | undefined = undefined;
+	let lastMemTuple: [number, number] | undefined = undefined;
 	for (let ln = line; ln < parsed.length; ln++) {
 		if (parsed[ln] == undefined || parsed[ln].length == 0) {
 			continue;
@@ -1705,118 +1670,245 @@ function parseSetCommand(doc: TextDocument, parsed: compressedline[], line: numb
 				// We found the assignment operator, so now we need to see what the value is
 				operatorTuple = [ln,tkn];
 			}
-			if (operatorTuple != undefined && ((tkn == operatorTuple[1] + 1) || (ln == operatorTuple[0] + 1 && tkn == 0))) {
-				// This is the token immediately after the assignment operator
+			if (operatorTuple && !firstExprTuple && ((tkn == operatorTuple[1] + 1) || (ln == operatorTuple[0] + 1 && tkn == 0))) {
+				// This is the token immediately after the assignment operator or a leading parenthesis
 
-				if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_clsobj_attrindex) {
-					// This is the start of a ##class
-
-					// Find the class name and the method/parameter being referred to
-					if ((tkn + 6) < parsed[ln].length) {
-						// Need at least 6 more tokens (open paren, class, close paren, dot, method, open paren)
-						for (let clstkn = tkn + 5; clstkn < parsed[ln].length; clstkn++) {
-							if (
-								parsed[ln][clstkn].l == ld.cos_langindex && parsed[ln][clstkn].s == ld.cos_method_attrindex &&
-								["%New","%Open","%OpenId"].includes(doc.getText(Range.create(ln,parsed[ln][clstkn].p,ln,parsed[ln][clstkn].p+parsed[ln][clstkn].c)))
-							) {
-								// This is ##class(cls).%New/%Open/%OpenId( so save the class name
-								result = {
-									foundset: true,
-									class: doc.getText(findFullRange(ln,parsed,tkn+2,parsed[ln][tkn+2].p,parsed[ln][tkn+2].p+parsed[ln][tkn+2].c))
-								};
-								break;
-							}
-						}
-					}
-				}
-				else if (
-					parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_sysv_attrindex &&
-					doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)).toLowerCase() == "$system" &&
-					tkn < parsed[ln].length - 1 && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s == ld.cos_clsname_attrindex
+				if (
+					parsed[ln][tkn].l == ld.cos_langindex &&
+					parsed[ln][tkn].s == ld.cos_delim_attrindex &&
+					doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == "("
 				) {
-					// This is $SYSTEM followed by a class name
-
-					// Check if the method being called is %New(), %Open() or %OpenId()
-					if ((tkn + 4) < parsed[ln].length) {
-						// Need at least 4 more tokens (class, dot, method, open paren)
-						for (let clstkn = tkn + 3; clstkn < parsed[ln].length; clstkn++) {
-							if (
-								parsed[ln][clstkn].l == ld.cos_langindex && parsed[ln][clstkn].s == ld.cos_method_attrindex &&
-								["%New","%Open","%OpenId"].includes(doc.getText(Range.create(ln,parsed[ln][clstkn].p,ln,parsed[ln][clstkn].p+parsed[ln][clstkn].c)))
-							) {
-								// This is $SYSTEM.cls.%New/%Open/%OpenId( so find the name of this class and save it
-								result = {
-									foundset: true,
-									class: `%SYSTEM${doc.getText(findFullRange(ln,parsed,tkn+1,parsed[ln][tkn+1].p,parsed[ln][tkn+1].p+parsed[ln][tkn+1].c))}`
-								};
-								break;
-							}
-						}
-					}
+					// This is a leading open parenthesis. A Set value can be enclosed in an arbitrary number of these.
+					exprLeadingParenCount++;
+					operatorTuple = [ln,tkn];
 				}
-				else if (
-					parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_objdot_attrindex &&
-					doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == ".."
-				) {
-					// This is relative dot syntax
-
-					// Check if the method being called is %New(), %Open() or %OpenId()
-					if (
-						(tkn + 2) < parsed[ln].length && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s == ld.cos_method_attrindex &&
-						["%New","%Open","%OpenId"].includes(doc.getText(Range.create(ln,parsed[ln][tkn+1].p,ln,parsed[ln][tkn+1].p+parsed[ln][tkn+1].c)))
-					) {
-						// This is ..%New/%Open/%OpenId( so find the name of this class
-
-						let clsname = "";
-						for (let i = 0; i < parsed.length; i++) {
-							if (parsed[i].length === 0) {
-								continue;
-							}
-							else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
-								// This line starts with a UDL keyword
-					
-								const keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c)));
-								if (keyword.toLowerCase() === "class") {
-									for (let j = 1; j < parsed[i].length; j++) {
-										if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
-											clsname += doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
-										}
-										else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
-											// We hit the 'Extends' keyword
-											break;
-										}
-									}
-									break;
-								}
-							}
-						}
-						if (clsname != "") {
-							result = {
-								foundset: true,
-								class: clsname
-							};
-						}
-					}
+				else if (parsed[ln][tkn].l == ld.cos_langindex && (
+					// ##class
+					parsed[ln][tkn].s == ld.cos_clsobj_attrindex ||
+					// $SYSTEM followed by a class name
+					(
+						parsed[ln][tkn].s == ld.cos_sysv_attrindex &&
+						doc.getText(
+							Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+						).toLowerCase() == "$system" &&
+						tkn < parsed[ln].length - 1 && parsed[ln][tkn+1].l == ld.cos_langindex &&
+						parsed[ln][tkn+1].s == ld.cos_clsname_attrindex
+					) ||
+					// ..
+					(
+						parsed[ln][tkn].s == ld.cos_objdot_attrindex &&
+						doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == ".."
+					) ||
+					// JSON bracket
+					parsed[ln][tkn].s == ld.cos_jsonb_attrindex ||
+					// $THIS
+					(
+						parsed[ln][tkn].s == ld.cos_sysv_attrindex &&
+						doc.getText(
+							Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+						).toLowerCase() == "$this"
+					) ||
+					// i%var
+					parsed[ln][tkn].s == ld.cos_instvar_attrindex ||
+					// variable
+					parsed[ln][tkn].s == ld.cos_param_attrindex ||
+					parsed[ln][tkn].s == ld.cos_localdec_attrindex ||
+					parsed[ln][tkn].s == ld.cos_localvar_attrindex ||
+					parsed[ln][tkn].s == ld.cos_otw_attrindex ||
+					parsed[ln][tkn].s == ld.cos_localundec_attrindex
+				)) {
+					exprParenLevel = exprLeadingParenCount;
+					firstExprTuple = [ln,tkn];
 				}
-				else if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_jsonb_attrindex) {
-					// This is a %DynamicObject or %DynamicArray
-					result.foundset = true;
-					switch (doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c))) {
-						case "{":
-							result.class = "%Library.DynamicObject";
-							break;
-						default:
-							result.class = "%Library.DynamicArray";
-					}
+				else {
+					// Exit the loop because we've already found
+					// our variable and we can't determine the type
+					brk = true;
+					break;
 				}
-
-				// Exit the loop because we've already found our variable
-				brk = true;
-				break;
+			}
+			if (firstExprTuple) {
+				if (
+					parsed[ln][tkn].l != ld.cos_langindex ||
+					parsed[ln][tkn].s == ld.error_attrindex || (
+						parsed[ln][tkn].s == ld.cos_label_attrindex &&
+						tkn == 0 && parsed[ln][tkn].p == 0
+				)) {
+					// We've reached the end of the Set
+					brk = true;
+					break;
+				} else if (parsed[ln][tkn].s == ld.cos_delim_attrindex) {
+					const delimText = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+					if (delimText == "(") {
+						exprParenLevel++;
+					} else if (delimText == ")") {
+						exprParenLevel--;
+					} else if (delimText == "," && exprParenLevel == 0) {
+						// We've reached the end of the Set
+						brk = true;
+						break;
+					}
+				} else if (exprParenLevel == exprLeadingParenCount && (
+					parsed[ln][tkn].s == ld.cos_prop_attrindex ||
+					parsed[ln][tkn].s == ld.cos_method_attrindex ||
+					parsed[ln][tkn].s == ld.cos_attr_attrindex ||
+					parsed[ln][tkn].s == ld.cos_mem_attrindex
+				)) {
+					lastMemTuple = [ln,tkn];
+				}
 			}
 		}
 		if (brk) {
 			break;
+		}
+	}
+
+	if (firstExprTuple) {
+		const [exprLn, exprTkn] = firstExprTuple;
+		if (lastMemTuple) {
+			const [memLn, memTkn] = lastMemTuple;
+			if (parsed[memLn][memTkn].s != ld.cos_prop_attrindex) {
+				// Parameters don't have meaningful types
+				if (diagnostic && parsed[memLn][memTkn].s == ld.cos_method_attrindex && ["%New","%Open","%OpenId"].includes(
+					doc.getText(Range.create(memLn,parsed[memLn][memTkn].p,memLn,parsed[memLn][memTkn].p+parsed[memLn][memTkn].c))
+				)) {
+					// Don't query the server when calculating diagnostics for performance reasons
+					// Check if this is %New/%Open/%OpenId without a chained reference, which doesn't need a server query
+					if (parsed[exprLn][exprTkn].s == ld.cos_clsobj_attrindex) {
+						// This is the start of a ##class
+
+						// Find the class name and the method/parameter being referred to
+						if ((exprTkn + 6) < parsed[exprLn].length) {
+							// Need at least 6 more tokens (open paren, class, close paren, dot, method, open paren)
+							for (let clstkn = exprTkn + 5; clstkn < parsed[exprLn].length; clstkn++) {
+								if (
+									parsed[exprLn][clstkn].l == ld.cos_langindex && parsed[exprLn][clstkn].s == ld.cos_method_attrindex &&
+									["%New","%Open","%OpenId"].includes(
+										doc.getText(Range.create(exprLn,parsed[exprLn][clstkn].p,exprLn,parsed[exprLn][clstkn].p+parsed[exprLn][clstkn].c))
+									)
+								) {
+									// This is ##class(cls).%New/%Open/%OpenId( so save the class name
+									result = doc.getText(
+										findFullRange(exprLn,parsed,exprTkn+2,parsed[exprLn][exprTkn+2].p,parsed[exprLn][exprTkn+2].p+parsed[exprLn][exprTkn+2].c)
+									);
+									break;
+								}
+							}
+						}
+					} else if (
+						parsed[exprLn][exprTkn].l == ld.cos_langindex && parsed[exprLn][exprTkn].s == ld.cos_sysv_attrindex &&
+						doc.getText(
+							Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
+						).toLowerCase() == "$system"
+					) {
+						// This is $SYSTEM followed by a class name
+
+						// Check if the method being called is %New(), %Open() or %OpenId()
+						if ((exprTkn + 4) < parsed[exprLn].length) {
+							// Need at least 4 more tokens (class, dot, method, open paren)
+							for (let clstkn = exprTkn + 3; clstkn < parsed[exprLn].length; clstkn++) {
+								if (
+									parsed[exprLn][clstkn].l == ld.cos_langindex && parsed[exprLn][clstkn].s == ld.cos_method_attrindex &&
+									["%New","%Open","%OpenId"].includes(
+										doc.getText(Range.create(exprLn,parsed[exprLn][clstkn].p,exprLn,parsed[exprLn][clstkn].p+parsed[exprLn][clstkn].c))
+									)
+								) {
+									// This is $SYSTEM.cls.%New/%Open/%OpenId( so find the name of the class
+									result = `%SYSTEM${doc.getText(
+										findFullRange(exprLn,parsed,exprTkn+1,parsed[exprLn][exprTkn+1].p,parsed[exprLn][exprTkn+1].p+parsed[exprLn][exprTkn+1].c)
+									)}`;
+									break;
+								}
+							}
+						}
+					} else if (
+						parsed[exprLn][exprTkn].l == ld.cos_langindex && parsed[exprLn][exprTkn].s == ld.cos_objdot_attrindex &&
+						doc.getText(Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)) == ".."
+					) {
+						// This is relative dot syntax
+
+						// Check if the method being called is %New(), %Open() or %OpenId()
+						if (
+							(exprTkn + 2) < parsed[exprLn].length && 
+							parsed[exprLn][exprTkn+1].l == ld.cos_langindex && parsed[exprLn][exprTkn+1].s == ld.cos_method_attrindex &&
+							["%New","%Open","%OpenId"].includes(
+								doc.getText(Range.create(exprLn,parsed[exprLn][exprTkn+1].p,exprLn,parsed[exprLn][exprTkn+1].p+parsed[exprLn][exprTkn+1].c))
+							)
+						) {
+							result = currentClass(doc,parsed);
+						}
+					}
+				} else if (!diagnostic) {
+					// Get the class that this member is in, then query the server for the ReturnType
+					const memberrange = findFullRange(memLn,parsed,memTkn,parsed[memLn][memTkn].p,parsed[memLn][memTkn].p+parsed[memLn][memTkn].c);
+					const unquotedname = quoteUDLIdentifier(doc.getText(memberrange),0);
+					// Find the dot token
+					let dottkn = 0;
+					for (let tkn = 0; tkn < parsed[memLn].length; tkn ++) {
+						if (parsed[memLn][tkn].p >= memberrange.start.character) {
+							break;
+						}
+						dottkn = tkn;
+					}
+
+					// Get the base class that this member is in
+					const membercontext = await getClassMemberContext(doc,parsed,dottkn,memLn,server);
+					if (membercontext.baseclass) {
+						result = await getMemberType(parsed,memLn,memTkn,membercontext.baseclass,unquotedname,server);
+					}
+				}
+			}
+		} else {
+			// There wasn't a member reference, so try to determine the type from the start of the expression
+			const nextTkn = nextToken(parsed,exprLn,exprTkn);
+			if (parsed[exprLn][exprTkn].s == ld.cos_jsonb_attrindex) {
+				switch (doc.getText(
+					Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c))
+				) {
+					case "{":
+						result = "%Library.DynamicObject";
+						break;
+					default:
+						result = "%Library.DynamicArray";
+				}
+			} else if (
+				parsed[exprLn][exprTkn].s == ld.cos_sysv_attrindex &&
+				doc.getText(
+					Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
+				).toLowerCase() == "$this"
+			) {
+				result = currentClass(doc,parsed);
+			} else if (!diagnostic && parsed[exprLn][exprTkn].s == ld.cos_instvar_attrindex) {
+				const cls = currentClass(doc,parsed);
+				if (cls) {
+					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
+						query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
+						parameters: [cls, quoteUDLIdentifier(doc.getText(
+							Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
+						).slice(2),0)]
+					});
+					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+						result = respdata.data.result.content[0].RuntimeType;
+					}
+				}
+			} else if (!diagnostic && (
+				parsed[exprLn][exprTkn].s == ld.cos_param_attrindex ||
+				parsed[exprLn][exprTkn].s == ld.cos_localdec_attrindex ||
+				parsed[exprLn][exprTkn].s == ld.cos_localvar_attrindex ||
+				parsed[exprLn][exprTkn].s == ld.cos_otw_attrindex ||
+				parsed[exprLn][exprTkn].s == ld.cos_localundec_attrindex
+			) && nextTkn && (
+				parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_command_attrindex ||
+				parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_zcom_attrindex || (
+					parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_delim_attrindex &&
+					doc.getText(Range.create(
+						nextTkn[0],parsed[nextTkn[0]][nextTkn[1]].p,nextTkn[0],
+						parsed[nextTkn[0]][nextTkn[1]].p+parsed[nextTkn[0]][nextTkn[1]].c)
+					) == ","
+			))) {
+				// The expression is an unsubscripted variable reference
+				result = await determineVariableClass(doc,parsed,exprLn,exprTkn,server);
+			}
 		}
 	}
 
@@ -1833,7 +1925,7 @@ function parseSetCommand(doc: TextDocument, parsed: compressedline[], line: numb
  * @param tkn The token of the undeclared local variable in the line.
  * @param server The server that doc is associated with.
  * 
- * The following optional parameters are only provided when called via computeDiagnostics():
+ * The following optional parameters are only provided when called via `onDiagnostics()`:
  * @param allfiles An array of all files in a database.
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
@@ -1845,7 +1937,6 @@ async function determineUndeclaredLocalVarClass(
 	const thisvar = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
 
 	// Scan to the top of the method to find where the variable was Set
-	let foundset = false;
 	let firstLabel = true;
 	for (let j = line; j >= 0; j--) {
 		if (parsed[j].length === 0) {
@@ -1876,19 +1967,15 @@ async function determineUndeclaredLocalVarClass(
 					["s","set"].includes(doc.getText(Range.create(j,parsed[j][tkn].p,j,parsed[j][tkn].p+parsed[j][tkn].c)).toLowerCase())
 				) {
 					// This is a Set command
-					const setresult = parseSetCommand(doc,parsed,j,tkn,thisvar);
-					foundset = setresult.foundset;
-					if (foundset) {
+					const setCls = await parseSetCommand(doc,parsed,j,tkn,thisvar,server,Array.isArray(allfiles));
+					if (setCls) {
 						result = {
-							baseclass: await normalizeClassname(doc,parsed,setresult.class,server,j,allfiles,undefined,inheritedpackages),
+							baseclass: await normalizeClassname(doc,parsed,setCls,server,j,allfiles,undefined,inheritedpackages),
 							context: "instance"
 						};
 						break;
 					}
 				}
-			}
-			if (foundset) {
-				break;
 			}
 		}
 	}
@@ -2409,14 +2496,15 @@ export async function determineVariableClass(
 		}
 	} else if (
 		parsed[line][tkn].s == ld.cos_localdec_attrindex ||
-		parsed[line][tkn].s == ld.cos_localvar_attrindex
+		parsed[line][tkn].s == ld.cos_localvar_attrindex ||
+		parsed[line][tkn].s == ld.cos_otw_attrindex
 	) {
-		// This token is a declared local variable or public variable
+		// This token is a declared local variable, public variable, or warning variable
 
 		// First check if it's #Dim'd
 		let varContext = await determineDeclaredLocalVarClass(doc,parsed,line,tkn,server);
 		if (varContext === undefined) {
-			// If it's not, check if it's Set using %New(), %Open() or %OpenId()
+			// If it's not, attempt to determine the class it was set to
 			varContext = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,server);
 		}
 		if (varContext !== undefined) {
@@ -2440,4 +2528,103 @@ export async function determineVariableClass(
 export function isClassMember(keyword: string): boolean {
 	const keywordUpper = keyword.toUpperCase();
 	return classMemberTypes.some(t => t.toUpperCase() == keywordUpper);
+}
+
+/**
+ * Get the return type of a method or runtime type of a property.
+ * 
+ * @param parsed The semantic tokens of the document.
+ * @param line The line that the member is in.
+ * @param tkn The token of the member in the line.
+ * @param cls The name of the class that the member is in.
+ * @param member The name of the member.
+ * @param server The server that this document is associated with.
+ */
+export async function getMemberType(parsed: compressedline[], line: number, tkn: number, cls: string, member: string, server: ServerSpec): Promise<string> {
+	if (["%New","%Open","%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) {
+		return cls;
+	}
+	let result = "";
+	let data: QueryData = {
+		query: "",
+		parameters: []
+	};
+	if (parsed[line][tkn].s == ld.cos_method_attrindex) {
+		// This is a method
+		data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+		data.parameters = [cls,member];
+	}
+	else if (parsed[line][tkn].s == ld.cos_attr_attrindex) {
+		// This is a property
+		data.query = "SELECT RuntimeType AS Type, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
+		data.parameters = [cls,member];
+	}
+	else {
+		// This is a generic member
+		if (cls.startsWith("%SYSTEM.")) {
+			// This is always a method
+			data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+			data.parameters = [cls,member];
+		}
+		else {
+			// This can be a method or property
+			data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
+			data.query = data.query.concat("SELECT RuntimeType AS Type, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
+			data.parameters = [cls,member,cls,member];
+		}
+	}
+	const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
+	if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+		// We got data back
+
+		let memobj = respdata.data.result.content[0];
+		if (respdata.data.result.content[0].Stub != "") {
+			// This is a method generated by member inheritance, so we need to get its type from the proper subtable
+
+			const stubarr = respdata.data.result.content[0].Stub.split(".");
+			let stubquery = "";
+			if (stubarr[2] == "i") {
+				// This is a method generated from an index
+				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+			}
+			if (stubarr[2] == "q") {
+				// This is a method generated from a query
+				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+			}
+			if (stubarr[2] == "a") {
+				// This is a method generated from a property
+				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+			}
+			if (stubarr[2] == "n") {
+				// This is a method generated from a constraint
+				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+			}
+			if (stubquery != "") {
+				const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
+					query: stubquery,
+					parameters: [stubarr[1],cls,stubarr[0]]
+				});
+				if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
+					// We got data back
+					memobj = stubrespdata.data.result.content[0];
+				}
+			}
+		}
+
+		if (memobj.Type != "") result = memobj.Type;
+	}
+
+	return result;
+}
+
+/** Find the token immediately following the one at [`ln`, `tkn`]  */
+function nextToken(parsed: compressedline[], ln: number, tkn: number): [number, number] | undefined {
+	if (tkn < (parsed[ln].length - 1)) return [ln, tkn + 1];
+	let result: [number, number] | undefined;
+	for (let i = ln + 1; i < parsed.length; i++) {
+		if (!parsed[i]?.length) continue;
+		result = [i, 0];
+		break;
+	}
+	return result;
 }
