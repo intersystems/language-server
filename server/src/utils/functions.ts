@@ -224,9 +224,10 @@ export function findFullRange(line: number, parsed: compressedline[], lineidx: n
  * @param doc The TextDocument that the macro is in.
  * @param parsed The tokenized representation of doc.
  * @param line The line that the macro is in.
+ * @param `true` if this macro is in Embedded SQL.
  */
-export function getMacroContext(doc: TextDocument, parsed: compressedline[], line: number): MacroContext {
-	var result: MacroContext = {
+export function getMacroContext(doc: TextDocument, parsed: compressedline[], line: number, sql = false): MacroContext {
+	const result: MacroContext = {
 		docname: "",
 		superclasses: [],
 		includes: [],
@@ -234,6 +235,7 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 		imports: [],
 		mode: ""
 	};
+	let sqlIsClassQuery = false;
 	if (doc.languageId == "objectscript-class") {
 		// This is a class
 		for (let i = 0; i < parsed.length; i++) {
@@ -243,22 +245,20 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 			else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 				// This line starts with a UDL keyword
 	
-				var keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
+				const keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
 				if (keyword.toLowerCase() == "class") {
-					var seenextends = false;
+					let seenextends = false;
 					for (let j = 1; j < parsed[i].length; j++) {
 						if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
 							if (seenextends) {
 								// This is a piece of a subclass
-								if (result.superclasses.length === 0) {
+								if (result.superclasses.length == 0) {
 									result.superclasses.push("");
 								}
-								result.superclasses[result.superclasses.length-1] = result.superclasses[result.superclasses.length-1].concat(
-									doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c))
-								);
+								result.superclasses[result.superclasses.length-1] += doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
 							}
 							else {
-								result.docname = result.docname.concat(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)));
+								result.docname += doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
 							}
 						}
 						else if (
@@ -270,7 +270,7 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 						}
 						else {
 							// This is a delimiter
-							if (j === parsed[i].length - 1) {
+							if (j == parsed[i].length - 1) {
 								// This is the trailing ")"
 								break;
 							}
@@ -289,16 +289,16 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 					break;
 				}
 				else if (keyword.toLowerCase() === "include" && parsed[i].length > 1) {
-					var codes = doc.getText(Range.create(Position.create(i,parsed[i][1].p),Position.create(i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)));
-					result.includes = codes.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
+					result.includes = doc.getText(Range.create(i,parsed[i][1].p,i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c))
+						.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
 				}
 				else if (keyword.toLowerCase() === "includegenerator" && parsed[i].length > 1) {
-					var codes = doc.getText(Range.create(Position.create(i,parsed[i][1].p),Position.create(i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)));
-					result.includegenerators = codes.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
+					result.includegenerators = doc.getText(Range.create(i,parsed[i][1].p,i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c))
+						.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
 				}
 				else if (keyword.toLowerCase() === "import" && parsed[i].length > 1) {
-					var codes = doc.getText(Range.create(Position.create(i,parsed[i][1].p),Position.create(i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)));
-					result.imports = codes.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
+					result.imports = doc.getText(Range.create(i,parsed[i][1].p,i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c))
+						.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
 				}
 			}
 		}
@@ -308,11 +308,15 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 			}
 			if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
 				// This is the definition for the method that the macro is in
+				if (sql && doc.getText(Range.create(
+					k,parsed[k][0].p,
+					k,parsed[k][0].p+parsed[k][0].c
+				)).toLowerCase() == "Query") sqlIsClassQuery = true;
 				if (
 					parsed[k][parsed[k].length-1].l == ld.cls_langindex && parsed[k][parsed[k].length-1].s == ld.cls_delim_attrindex &&
 					doc.getText(Range.create(
-						Position.create(k,parsed[k][parsed[k].length-1].p),
-						Position.create(k,parsed[k][parsed[k].length-1].p+parsed[k][parsed[k].length-1].c)
+						k,parsed[k][parsed[k].length-1].p,
+						k,parsed[k][parsed[k].length-1].p+parsed[k][parsed[k].length-1].c
 					)) === "("
 				) {
 					// This is a multi-line method definition
@@ -320,18 +324,18 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 						if (
 							parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
 							doc.getText(Range.create(
-								Position.create(mline,parsed[mline][parsed[mline].length-1].p),
-								Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
+								mline,parsed[mline][parsed[mline].length-1].p,
+								mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c
 							)) !== ","
 						) {
 							// We've passed the argument lines so look for the CodeMode keyword on this line
 							for (let l = 1; l < parsed[mline].length; l++) {
 								if (parsed[mline][l].l == ld.cls_langindex && parsed[mline][l].s == ld.cls_keyword_attrindex) {
-									const kw = doc.getText(Range.create(Position.create(mline,parsed[mline][l].p),Position.create(mline,parsed[mline][l].p+parsed[mline][l].c)));
-									if (kw.toLowerCase() === "codemode") {
+									const kw = doc.getText(Range.create(mline,parsed[mline][l].p,mline,parsed[mline][l].p+parsed[mline][l].c));
+									if (kw.toLowerCase() == "codemode") {
 										// The CodeMode keyword is set
-										const kwval = doc.getText(Range.create(Position.create(mline,parsed[mline][l+2].p),Position.create(mline,parsed[mline][l+2].p+parsed[mline][l+2].c)));
-										if (kwval.toLowerCase() === "generator" || kwval.toLowerCase() === "objectgenerator") {
+										const kwval = doc.getText(Range.create(mline,parsed[mline][l+2].p,mline,parsed[mline][l+2].p+parsed[mline][l+2].c));
+										if (kwval.toLowerCase() == "generator" || kwval.toLowerCase() == "objectgenerator") {
 											result.mode = "generator";
 										}
 										break;
@@ -346,11 +350,11 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 					// This is a single-line method definition so look for the CodeMode keyword on this line
 					for (let l = 1; l < parsed[k].length; l++) {
 						if (parsed[k][l].l == ld.cls_langindex && parsed[k][l].s == ld.cls_keyword_attrindex) {
-							const kw = doc.getText(Range.create(Position.create(k,parsed[k][l].p),Position.create(k,parsed[k][l].p+parsed[k][l].c)));
-							if (kw.toLowerCase() === "codemode") {
+							const kw = doc.getText(Range.create(k,parsed[k][l].p,k,parsed[k][l].p+parsed[k][l].c));
+							if (kw.toLowerCase() == "codemode") {
 								// The CodeMode keyword is set
-								const kwval = doc.getText(Range.create(Position.create(k,parsed[k][l+2].p),Position.create(k,parsed[k][l+2].p+parsed[k][l+2].c)));
-								if (kwval.toLowerCase() === "generator" || kwval.toLowerCase() === "objectgenerator") {
+								const kwval = doc.getText(Range.create(k,parsed[k][l+2].p,k,parsed[k][l+2].p+parsed[k][l+2].c));
+								if (kwval.toLowerCase() == "generator" || kwval.toLowerCase() == "objectgenerator") {
 									result.mode = "generator";
 								}
 								break;
@@ -361,7 +365,7 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 				break;
 			}
 		}
-		result.docname = result.docname.concat(".cls");
+		result.docname += ".cls";
 	}
 	else if (doc.languageId == "objectscript-csp") {
 		// This is a CSP file
@@ -372,17 +376,17 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 
 		// Loop through the file until we hit 'line', 
 		// looking for CSP:CLASS HTML tags
-		var inclasstag: boolean = false;
-		var searchname: string = "";
+		let inclasstag: boolean = false;
+		let searchname: string = "";
 		for (let i = 0; i < line; i++) {
 			for (let j = 0; j < parsed[i].length; j++) {
 				if (
 					parsed[i][j].l == ld.html_langindex &&
 					parsed[i][j].s == ld.html_tag_attrindex &&
 					doc.getText(Range.create(
-						Position.create(i,parsed[i][j].p),
-						Position.create(i,parsed[i][j].p+parsed[i][j].c)
-					)).toLowerCase() === "csp:class"
+						i,parsed[i][j].p,
+						i,parsed[i][j].p+parsed[i][j].c
+					)).toLowerCase() == "csp:class"
 				) {
 					// This is the start of a CSP:CLASS HTML element
 					inclasstag = true;
@@ -392,9 +396,9 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 					parsed[i][j].l == ld.html_langindex &&
 					parsed[i][j].s == ld.html_delim_attrindex &&
 					doc.getText(Range.create(
-						Position.create(i,parsed[i][j].p),
-						Position.create(i,parsed[i][j].p+parsed[i][j].c)
-					)) === ">"
+						i,parsed[i][j].p,
+						i,parsed[i][j].p+parsed[i][j].c
+					)) == ">"
 				) {
 					// This is a tag close delimiter
 					inclasstag = false;
@@ -403,23 +407,23 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 				else if (inclasstag && parsed[i][j].l == ld.html_langindex && parsed[i][j].s == ld.html_name_attrindex) {
 					// This is an attribute of a CSP:CLASS HTML element
 					const nametext: string = doc.getText(Range.create(
-						Position.create(i,parsed[i][j].p),
-						Position.create(i,parsed[i][j].p+parsed[i][j].c)
+						i,parsed[i][j].p,
+						i,parsed[i][j].p+parsed[i][j].c
 					)).toLowerCase();
-					if (nametext === "super" || nametext === "import" || nametext === "includes") {
+					if (nametext == "super" || nametext == "import" || nametext == "includes") {
 						searchname = nametext;
 					}
 				}
 				else if (searchname !== "" && parsed[i][j].l == ld.html_langindex && parsed[i][j].s == ld.html_str_attrindex) {
 					// This is the value of the last attribute that we saw
 					const valuearr: string[] = doc.getText(Range.create(
-						Position.create(i,parsed[i][j].p),
-						Position.create(i,parsed[i][j].p+parsed[i][j].c)
+						i,parsed[i][j].p,
+						i,parsed[i][j].p+parsed[i][j].c
 					)).slice(1,-1).split(",");
-					if (searchname === "super") {
+					if (searchname == "super") {
 						result.superclasses = valuearr;
 					}
-					else if (searchname === "import") {
+					else if (searchname == "import") {
 						result.imports = valuearr;
 					}
 					else {
@@ -431,12 +435,12 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 		}
 	}
 
-	if (doc.languageId != "objectscript-csp") {
+	if (doc.languageId != "objectscript-csp" && !sqlIsClassQuery) {
 		// This is not a CSP file so look for #Include lines
 		for (let i = 0; i < line; i++) {
 			if (i === 0 && doc.languageId != "objectscript-class") {
 				// Get the routine name from the ROUTINE header line
-				const fullline = doc.getText(Range.create(Position.create(0,0),Position.create(0,parsed[0][parsed[0].length-1].p+parsed[0][parsed[0].length-1].c)));
+				const fullline = doc.getText(Range.create(0,0,0,parsed[0][parsed[0].length-1].p+parsed[0][parsed[0].length-1].c));
 				result.docname = fullline.split(" ")[1] + ".mac";
 			}
 			else if (parsed[i].length === 0) {
@@ -444,9 +448,9 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 			}
 			else if (parsed[i][0].l == ld.cos_langindex && parsed[i][0].s == ld.cos_ppc_attrindex) {
 				// This is a preprocessor command
-				const command = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][1].p+parsed[i][1].c)));
-				if (command.toLowerCase() === "#include") {
-					result.includes.push(doc.getText(Range.create(Position.create(i,parsed[i][2].p),Position.create(i,parsed[i][2].p+parsed[i][2].c))));
+				const command = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][1].p+parsed[i][1].c));
+				if (command.toLowerCase() == "#include") {
+					result.includes.push(doc.getText(Range.create(i,parsed[i][2].p,i,parsed[i][2].p+parsed[i][2].c)));
 				} 
 			}
 		}

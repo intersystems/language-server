@@ -105,21 +105,37 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					};
 				}
 			}
-			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex) {
+			else if (
+				parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex || (
+					parsed[params.position.line][i].l == ld.sql_langindex &&
+					parsed[params.position.line][i].s == ld.sql_iden_attrindex &&
+					doc.getText(Range.create(params.position.line,symbolstart,params.position.line,symbolstart+3)) == "$$$"
+				)
+			) {
 				// This is a macro
 
 				// Get the details of this class
-				const maccon = getMacroContext(doc,parsed,params.position.line);
+				const isSql = parsed[params.position.line][i].l == ld.sql_langindex;
+				const maccon = getMacroContext(doc,parsed,params.position.line,isSql);
 
 				// Get the full range of the macro
 				const macrorange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
-				var macrotext = doc.getText(macrorange);
-				if (macrotext.slice(0,3) === "$$$") {
+				let macrotext = doc.getText(macrorange);
+				let sqlMacroArgs = "";
+				if (isSql && macrotext.includes("(")) {
+					// SQL macros with arguments have the arguments as part of the same token
+					const parenIdx = macrotext.indexOf("(");
+					sqlMacroArgs = macrotext.slice(parenIdx).replace(/\s+/g,"");
+					macrotext = macrotext.slice(0, parenIdx);
+					macrorange.end = Position.create(params.position.line, symbolstart + macrotext.length);
+				}
+				if (macrotext.slice(0,3) == "$$$") {
 					macrotext = macrotext.slice(3);
 				}
 
 				/** Helper function for getting the arguments passed to this macro. */
 				const getMacroArgs = (): string => {
+					if (isSql) return sqlMacroArgs;
 					// Get the rest of the line following the macro
 					const restofline = doc.getText(Range.create(
 						params.position.line,macrorange.end.character,
@@ -145,7 +161,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						}
 						if (closeidx !== -1) {
 							// Get all of the arguments
-							macroargs = restofline.slice(0,closeidx+1).replace(" ","");
+							macroargs = restofline.slice(0,closeidx+1).replace(/\s+/g,"");
 						}
 						else {
 							// The argument list is incomplete

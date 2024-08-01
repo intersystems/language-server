@@ -154,16 +154,28 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					}
 				}
 			}
-			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex) {
+			else if (
+				parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex || (
+					parsed[params.position.line][i].l == ld.sql_langindex &&
+					parsed[params.position.line][i].s == ld.sql_iden_attrindex &&
+					doc.getText(Range.create(params.position.line,symbolstart,params.position.line,symbolstart+3)) == "$$$"
+				)
+			) {
 				// This is a macro
 
 				// Get the details of this class
-				const maccon = getMacroContext(doc,parsed,params.position.line);
+				const isSql = parsed[params.position.line][i].l == ld.sql_langindex;
+				const maccon = getMacroContext(doc,parsed,params.position.line,isSql);
 
 				// Get the full range of the macro
 				const macrorange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
-				var macrotext = doc.getText(macrorange);
-				if (macrotext.slice(0,3) === "$$$") {
+				let macrotext = doc.getText(macrorange);
+				if (isSql && macrotext.includes("(")) {
+					// SQL macros with arguments have the arguments as part of the same token
+					macrotext = macrotext.slice(0, macrotext.indexOf("("));
+					macrorange.end = Position.create(params.position.line, symbolstart + macrotext.length);
+				}
+				if (macrotext.slice(0,3) == "$$$") {
 					macrotext = macrotext.slice(3);
 				}
 
@@ -173,12 +185,12 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				if (macrodefline !== -1) {
 					// The macro definition is in the current file
 
-					var targetrange = Range.create(Position.create(macrodefline,0),Position.create(macrodefline+1,0));
+					const targetrange = Range.create(macrodefline,0,macrodefline+1,0);
 					if (
-						parsed[macrodefline][parsed[macrodefline].length-1].l === ld.cos_langindex && parsed[macrodefline][parsed[macrodefline].length-1].s === ld.cos_ppf_attrindex &&
+						parsed[macrodefline][parsed[macrodefline].length-1].l == ld.cos_langindex && parsed[macrodefline][parsed[macrodefline].length-1].s == ld.cos_ppf_attrindex &&
 						doc.getText(Range.create(
-							Position.create(macrodefline,parsed[macrodefline][parsed[macrodefline].length-1].p),
-							Position.create(macrodefline,parsed[macrodefline][parsed[macrodefline].length-1].p+parsed[macrodefline][parsed[macrodefline].length-1].c)
+							macrodefline,parsed[macrodefline][parsed[macrodefline].length-1].p,
+							macrodefline,parsed[macrodefline][parsed[macrodefline].length-1].p+parsed[macrodefline][parsed[macrodefline].length-1].c
 						)).toLowerCase() === "continue"
 					) {
 						// This is a multi-line macro definition so scan down the file to capture the full range of the definition
@@ -186,8 +198,8 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							if (
 								parsed[mln][parsed[mln].length-1].l !== ld.cos_langindex || parsed[mln][parsed[mln].length-1].s !== ld.cos_ppf_attrindex ||
 								doc.getText(Range.create(
-									Position.create(mln,parsed[mln][parsed[mln].length-1].p),
-									Position.create(mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c)
+									mln,parsed[mln][parsed[mln].length-1].p,
+									mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c
 								)).toLowerCase() !== "continue"
 							) {
 								// This is the last line of the macro definition so update the target range
@@ -201,7 +213,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						targetUri: params.textDocument.uri,
 						targetRange: targetrange,
 						originSelectionRange: macrorange,
-						targetSelectionRange: Range.create(Position.create(macrodefline,parsed[macrodefline][2].p),Position.create(macrodefline,parsed[macrodefline][2].p+parsed[macrodefline][2].c))
+						targetSelectionRange: Range.create(macrodefline,parsed[macrodefline][2].p,macrodefline,parsed[macrodefline][2].p+parsed[macrodefline][2].c)
 					}];
 				}
 				else {
@@ -227,9 +239,9 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						if (newuri !== "") {
 							return [{
 								targetUri: newuri,
-								targetRange: Range.create(Position.create(respdata.data.result.content.line,0),Position.create(respdata.data.result.content.line+1,0)),
+								targetRange: Range.create(respdata.data.result.content.line,0,respdata.data.result.content.line+1,0),
 								originSelectionRange: macrorange,
-								targetSelectionRange: Range.create(Position.create(respdata.data.result.content.line,0),Position.create(respdata.data.result.content.line+1,0))
+								targetSelectionRange: Range.create(respdata.data.result.content.line,0,respdata.data.result.content.line+1,0)
 							}];
 						}
 					}

@@ -706,15 +706,15 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	}
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 	
-	if (prevline.slice(-3) === "$$$" && triggerlang === ld.cos_langindex) {
+	if (prevline.slice(-3) == "$$$" && [ld.cos_langindex,ld.sql_langindex].includes(triggerlang)) {
 		// This is a macro
 
 		// Get the details of this class and store them in the cache
-		var maccon = getMacroContext(doc,parsed,params.position.line);
+		const maccon = getMacroContext(doc,parsed,params.position.line,triggerlang == ld.sql_langindex);
 		macroCompletionCache = maccon;
 
 		// Get the entire macro list from the server
-		var cursorisopen: boolean = true;
+		let cursorisopen: boolean = true;
 		while (cursorisopen) {
 			const respdata = await makeRESTRequest("POST",2,"/action/getmacrolist",server,maccon);
 			if (respdata !== undefined && respdata.data.result.content.macros.length > 0) {
@@ -766,13 +766,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			if (parsed[ln][0].l == ld.cos_langindex && parsed[ln][0].s == ld.cos_ppc_attrindex) {
 				// This line begins with a preprocessor command
 				const ppctext = doc.getText(Range.create(
-					Position.create(ln,parsed[ln][1].p),
-					Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
+					ln,parsed[ln][1].p,
+					ln,parsed[ln][1].p+parsed[ln][1].c
 				)).toLowerCase();
-				if (ppctext === "define" || ppctext === "def1arg") {
+				if (ppctext == "define" || ppctext == "def1arg") {
 					// This is a macro definition
-					var macrodef: CompletionItem = {
-						label: doc.getText(Range.create(Position.create(ln,parsed[ln][2].p),Position.create(ln,parsed[ln][2].p+parsed[ln][2].c))),
+					const macrodef: CompletionItem = {
+						label: doc.getText(Range.create(ln,parsed[ln][2].p,ln,parsed[ln][2].p+parsed[ln][2].c)),
 						kind: CompletionItemKind.Text,
 						data: ["macro",doc.uri]
 					};
@@ -781,54 +781,54 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					if (
 						parsed[ln][parsed[ln].length-1].l === ld.cos_langindex && parsed[ln][parsed[ln].length-1].s === ld.cos_ppf_attrindex &&
 						doc.getText(Range.create(
-							Position.create(ln,parsed[ln][parsed[ln].length-1].p),
-							Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
-						)).toLowerCase() === "continue"
+							ln,parsed[ln][parsed[ln].length-1].p,
+							ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
+						)).toLowerCase() == "continue"
 					) {
 						// This is the start of a multi-line macro definition
 						const restofline = doc.getText(Range.create(
-							Position.create(ln,parsed[ln][3].p),
-							Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+							ln,parsed[ln][3].p,
+							ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
 						));
-						var docstr = macrodef.label;
+						let docstr = macrodef.label;
 						if (parsed[ln][3].l == ld.cos_langindex && parsed[ln][3].s == ld.cos_delim_attrindex) {
 							// This macro has args
-							var argsmatchres = restofline.match(argsregex);
-							if (argsmatchres !== null) {
+							const argsmatchres = restofline.match(argsregex);
+							if (argsmatchres != null) {
 								docstr = docstr + argsmatchres[1];
 							}
 						}
 
-						var flvalmatchres = restofline.match(/^(?:\([^\(\)]+\) *){0,1}(.*)( *##continue)$/i);
-						if (flvalmatchres !== null) {
-							if (flvalmatchres[1] !== "") {
+						const flvalmatchres = restofline.match(/^(?:\([^\(\)]+\) *){0,1}(.*)( *##continue)$/i);
+						if (flvalmatchres != null) {
+							if (flvalmatchres[1] != "") {
 								docstr = docstr + "\n" + flvalmatchres[1].trim();
 							}
 							for (let mln = ln+1; mln < parsed.length; mln++) {
 								if (
-									parsed[mln][parsed[mln].length-1].l === ld.cos_langindex && parsed[mln][parsed[mln].length-1].s === ld.cos_ppf_attrindex &&
+									parsed[mln][parsed[mln].length-1].l == ld.cos_langindex && parsed[mln][parsed[mln].length-1].s == ld.cos_ppf_attrindex &&
 									doc.getText(Range.create(
-										Position.create(mln,parsed[mln][parsed[mln].length-1].p),
-										Position.create(mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c)
-									)).toLowerCase() === "continue"
+										mln,parsed[mln][parsed[mln].length-1].p,
+										mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c
+									)).toLowerCase() == "continue"
 								) {
 									// This is a line of the multi-line macro definition
 									docstr = docstr + "\n" + doc.getText(Range.create(
-										Position.create(mln,parsed[mln][0].p),
-										Position.create(mln,parsed[mln][parsed[mln].length-3].p+parsed[mln][parsed[mln].length-3].c)
+										mln,parsed[mln][0].p,
+										mln,parsed[mln][parsed[mln].length-3].p+parsed[mln][parsed[mln].length-3].c
 									));
 								}
 								else {
 									// This is the last line of the multi-line macro definition
 									docstr = docstr + "\n" + doc.getText(Range.create(
-										Position.create(mln,parsed[mln][0].p),
-										Position.create(mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c)
+										mln,parsed[mln][0].p,
+										mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c
 									));
 									break;
 								}
 							}
 						}
-						if (docstr !== macrodef.label) {
+						if (docstr != macrodef.label) {
 							macrodef.documentation = {
 								kind: "plaintext",
 								value: docstr
@@ -838,18 +838,18 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					else {
 						// This is a single line macro definition
 						const restofline = doc.getText(Range.create(
-							Position.create(ln,parsed[ln][3].p),
-							Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
+							ln,parsed[ln][3].p,
+							ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
 						));
-						var docstr = macrodef.label;
+						let docstr = macrodef.label;
 						if (parsed[ln][3].l == ld.cos_langindex && parsed[ln][3].s == ld.cos_delim_attrindex) {
 							// This macro has args
-							var argsmatchres = restofline.match(argsregex);
+							const argsmatchres = restofline.match(argsregex);
 							if (argsmatchres !== null) {
 								docstr = docstr + argsmatchres[1];
 							}
 						}
-						var valmatchres = restofline.match(valregex);
+						const valmatchres = restofline.match(valregex);
 						if (valmatchres !== null) {
 							macrodef.documentation = {
 								kind: "plaintext",
