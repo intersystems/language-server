@@ -1,4 +1,4 @@
-import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, Position, Range, TextEdit } from 'vscode-languageserver/node';
+import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, Position, Range, TextEdit } from 'vscode-languageserver/node';
 import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, normalizeClassname } from '../utils/functions';
 import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline } from '../utils/types';
 import { documents, corePropertyParams } from '../utils/variables';
@@ -759,20 +759,24 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		}
 
 		// Scan up through the file, looking for macro definitions
+		const undefs: string[] = [];
 		for (let ln = params.position.line-1; ln >= 0; ln--) {
-			if (parsed[ln].length < 4) {
-				continue;
-			}
-			if (parsed[ln][0].l == ld.cos_langindex && parsed[ln][0].s == ld.cos_ppc_attrindex) {
+			if (!parsed[ln]?.length) continue;
+			if (parsed[ln].length > 1 && parsed[ln][0].l == ld.cos_langindex && parsed[ln][0].s == ld.cos_ppc_attrindex) {
 				// This line begins with a preprocessor command
 				const ppctext = doc.getText(Range.create(
 					ln,parsed[ln][1].p,
 					ln,parsed[ln][1].p+parsed[ln][1].c
 				)).toLowerCase();
-				if (ppctext == "define" || ppctext == "def1arg") {
+				if (parsed[ln].length > 3 && ["define","def1arg"].includes(ppctext)) {
 					// This is a macro definition
+					const macro = doc.getText(Range.create(ln,parsed[ln][2].p,ln,parsed[ln][2].p+parsed[ln][2].c));
+					if (undefs.includes(macro)) {
+						// Don't suggest this macro because it was #undef'd before the completion line
+						continue;
+					}
 					const macrodef: CompletionItem = {
-						label: doc.getText(Range.create(ln,parsed[ln][2].p,ln,parsed[ln][2].p+parsed[ln][2].c)),
+						label: macro,
 						kind: CompletionItemKind.Text,
 						data: ["macro",doc.uri]
 					};
@@ -830,7 +834,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 						if (docstr != macrodef.label) {
 							macrodef.documentation = {
-								kind: "plaintext",
+								kind: MarkupKind.PlainText,
 								value: docstr
 							};
 						}
@@ -852,14 +856,18 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						const valmatchres = restofline.match(valregex);
 						if (valmatchres !== null) {
 							macrodef.documentation = {
-								kind: "plaintext",
+								kind: MarkupKind.PlainText,
 								value: docstr + "\n" + valmatchres[1]
 							};
 						}
 					}
 					result.push(macrodef);
+				} else if (parsed[ln].length > 2 && ppctext == "undef") {
+					// This is a macro un-definition
+					undefs.push(doc.getText(Range.create(ln,parsed[ln][2].p,ln,parsed[ln][2].p+parsed[ln][2].c)));
 				}
 			}
+			if (parsed[ln].some((t) => t.l == ld.cls_langindex)) break;
 		}
 	}
 	else if (prevline.slice(-1) === "$" && prevline.charAt(prevline.length-2) !== "$" && triggerlang === ld.cos_langindex) {
@@ -2127,7 +2135,7 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 		if (respdata !== undefined && respdata.data.result.content.length > 0) {
 			// The class was found
 			item.documentation = {
-				kind: "markdown",
+				kind: MarkupKind.Markdown,
 				value: documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
 			};
 		}
@@ -2156,7 +2164,7 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 				defstr = defstr.concat(parts[0],"\n",parts.slice(1).join());
 			}
 			item.documentation = {
-				kind: "plaintext",
+				kind: MarkupKind.PlainText,
 				value: defstr
 			};
 		}

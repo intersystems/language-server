@@ -1116,32 +1116,29 @@ export async function createDefinitionUri(paramsUri: string, filename: string, e
  * @param macro The selected macro.
  */
 export function isMacroDefinedAbove(doc: TextDocument, parsed: compressedline[], line: number, macro: string): number {
-	var result: number = -1;
+	let result: number = -1;
 
 	// Scan up through the file, looking for macro definitions
 	for (let ln = line-1; ln >= 0; ln--) {
-		if (parsed[ln].length < 4) {
-			continue;
-		}
-		if (parsed[ln][0].l == ld.cos_langindex && parsed[ln][0].s == ld.cos_ppc_attrindex) {
+		if (!parsed[ln]?.length) continue;
+		if (parsed[ln].length > 1 && parsed[ln][0].l == ld.cos_langindex && parsed[ln][0].s == ld.cos_ppc_attrindex) {
 			// This line begins with a preprocessor command
 			const ppctext = doc.getText(Range.create(
-				Position.create(ln,parsed[ln][1].p),
-				Position.create(ln,parsed[ln][1].p+parsed[ln][1].c)
+				ln,parsed[ln][1].p,
+				ln,parsed[ln][1].p+parsed[ln][1].c
 			)).toLowerCase();
-			if (ppctext === "define" || ppctext === "def1arg") {
-				// This is a macro definition
-				const macrotext = doc.getText(Range.create(
-					Position.create(ln,parsed[ln][2].p),
-					Position.create(ln,parsed[ln][2].p+parsed[ln][2].c)
-				));
-				if (macrotext === macro) {
-					// We found the definition for the selected macro
-					result = ln;
-					break;
-				}
+			if (
+				parsed[ln].length > 2 && ["define","def1arg","undef"].includes(ppctext) && doc.getText(Range.create(
+					ln,parsed[ln][2].p,
+					ln,parsed[ln][2].p+parsed[ln][2].c
+				)) == macro
+			) {
+				// We found the (un-)definition for the selected macro
+				if (ppctext != "undef") result = ln;
+				break;
 			}
 		}
+		if (parsed[ln].some((t) => t.l == ld.cls_langindex)) break;
 	}
 
 	return result;
