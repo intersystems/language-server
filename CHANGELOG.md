@@ -5,6 +5,7 @@
 - Fix issue [#337](https://github.com/intersystems/language-server/issues/337): Improve Hover headers
 - Fix issue [#338](https://github.com/intersystems/language-server/issues/338): Add intellisense for macros in Embedded SQL
 - Fix issue [#339](https://github.com/intersystems/language-server/issues/339): Macro intellisense doesn't respect `#undef` directive
+- Fix issue [#340](https://github.com/intersystems/language-server/issues/340): Add folding ranges for C-style block comments
 
 ## [2.5.1] - 2024-07-09
 - Fix issue [#328](https://github.com/intersystems/language-server/issues/328): Fix namespace detection for Diagnostic computation
