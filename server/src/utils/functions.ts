@@ -1,4 +1,4 @@
-import { Position, Range } from 'vscode-languageserver';
+import { MarkupContent, MarkupKind, Position, Range } from 'vscode-languageserver';
 import { TextDocument } from 'vscode-languageserver-textdocument';
 import { URI } from 'vscode-uri';
 import { parse } from 'node-html-parser';
@@ -2646,4 +2646,23 @@ function nextToken(parsed: compressedline[], ln: number, tkn: number): [number, 
 		break;
 	}
 	return result;
+}
+
+/** Convert a macro definition array to a `MarkupContent` documentation object */
+export function macroDefToDoc(def: string[], header = false): MarkupContent {
+	const parts = def[0].trim().split(/\s+/);
+	const pound = parts[0].charAt(0) == "#";
+	const headerStr = parts[pound ? 1 : 0] + "\n";
+	const stripMppContinue = (line: string): string => {
+		let result = line.trimEnd();
+		if (result.toLowerCase().endsWith("##continue")) {
+			result = result.slice(0,-10).trimEnd();
+		}
+		return result;
+	};
+	const firstLine = stripMppContinue(parts.slice(pound ? 2 : 1).join(" "));
+	return {
+		kind: MarkupKind.Markdown,
+		value: `${header ? headerStr : ""}\`\`\`\n${firstLine.length ? firstLine + "\n" : ""}${def.slice(1).map(e => stripMppContinue(e)).join("\n")}\n\`\`\``
+	};
 }

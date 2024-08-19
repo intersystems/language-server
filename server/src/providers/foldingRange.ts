@@ -1,5 +1,5 @@
 import { FoldingRange, FoldingRangeKind, FoldingRangeParams, Range } from 'vscode-languageserver/node';
-import { documents } from '../utils/variables';
+import { documents, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 import { getParsedDocument } from '../utils/functions';
 
@@ -71,13 +71,13 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 			}
 			if (inMultiLineMacro) {
 				// Check if the last token is a ##Continue
-				if (
-					parsed[line][parsed[line].length-1].l !== ld.cos_langindex || parsed[line][parsed[line].length-1].s !== ld.cos_ppf_attrindex ||
-					doc.getText(Range.create(
+				if (!(
+					parsed[line][parsed[line].length-1].l == ld.cos_langindex && parsed[line][parsed[line].length-1].s == ld.cos_ppf_attrindex &&
+					mppContinue.test(doc.getText(Range.create(
 						line,parsed[line][parsed[line].length-1].p,
 						line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c
-					)).toLowerCase() !== "continue"
-				) {
+					)))
+				)) {
 					// This is the end of a multi-line macro
 					var prevrange = openranges.length-1;
 					for (let rge = openranges.length-1; rge >= 0; rge--) {
@@ -279,10 +279,10 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 					// Check if the last token is a ##Continue
 					if (
 						parsed[line][parsed[line].length-1].l == ld.cos_langindex && parsed[line][parsed[line].length-1].s == ld.cos_ppf_attrindex &&
-						doc.getText(Range.create(
+						mppContinue.test(doc.getText(Range.create(
 							line,parsed[line][parsed[line].length-1].p,
 							line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c
-						)).toLowerCase() === "continue"
+						)))
 					) {
 						// This is the start of a multi-line macro definition
 						openranges.push({

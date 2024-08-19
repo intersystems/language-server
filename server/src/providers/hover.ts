@@ -1,7 +1,7 @@
 import { Position, TextDocumentPositionParams, Range, MarkupKind, Hover } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, determineVariableClass } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClassname, makeRESTRequest, documaticHtmlToMarkdown, getMacroContext, isMacroDefinedAbove, haltOrHang, quoteUDLIdentifier, getClassMemberContext, beautifyFormalSpec, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, determineVariableClass, macroDefToDoc } from '../utils/functions';
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
-import { documents, corePropertyParams } from '../utils/variables';
+import { documents, corePropertyParams, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 import commands = require("../documentation/commands.json");
@@ -205,32 +205,33 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						if (
 							parsed[ln][parsed[ln].length-1].l == ld.cos_langindex &&
 							parsed[ln][parsed[ln].length-1].s == ld.cos_ppf_attrindex &&
-							doc.getText(Range.create(
-								Position.create(ln,parsed[ln][parsed[ln].length-1].p),
-								Position.create(ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)
-							)).toLowerCase() === "continue"
+							mppContinue.test(doc.getText(Range.create(
+								ln,parsed[ln][parsed[ln].length-1].p,
+								ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
+							)))
 						) {
 							// This is one line of a multi-line macro definition
-
+							const endTkn = parsed[ln].length - (doc.getText(Range.create(
+								ln,parsed[ln][parsed[ln].length-1].p,
+								ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
+							)).startsWith("##") ? 2 : 3);
 							if (ln == macrodefline) {
 								// This is the first line of a multi-line macro definition
-
-								definition = doc.getText(Range.create(ln,parsed[ln][definitionendtkn+1].p,ln,parsed[ln][parsed[ln].length-3].p+parsed[ln][parsed[ln].length-3].c)).trim() + "  \n";
+								definition = doc.getText(Range.create(ln,parsed[ln][definitionendtkn+1].p,ln,parsed[ln][endTkn].p+parsed[ln][endTkn].c)).trimEnd() + "\n";
+								if (!definition.trim()) definition = "";
 							}
 							else {
-								definition += doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][parsed[ln].length-3].p+parsed[ln][parsed[ln].length-3].c)).trim() + "  \n";
+								definition += doc.getText(Range.create(ln,0,ln,parsed[ln][endTkn].p+parsed[ln][endTkn].c)).trimEnd() + "\n";
 							}
 						}
 						else {
 							if (ln == macrodefline) {
 								// This is a one line macro definition
-
-								definition = doc.getText(Range.create(ln,parsed[ln][definitionendtkn+1].p,ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)).trim();
+								definition = doc.getText(Range.create(ln,parsed[ln][definitionendtkn+1].p,ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)).trimEnd();
 							}
 							else {
 								// This is the last line of a multi-line macro definition
-
-								definition += doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)).trim();
+								definition += doc.getText(Range.create(ln,0,ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)).trimEnd();
 							}
 							// We've captured all the lines of this macro definition
 							break;
@@ -282,8 +283,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					
 					return {
 						contents: {
-							kind: MarkupKind.PlainText,
-							value: definition
+							kind: MarkupKind.Markdown,
+							value: `\`\`\`\n${definition}\n\`\`\``
 						},
 						range: macrorange
 					};
@@ -325,19 +326,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								const defrespdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,defquerydata);
 								if (defrespdata !== undefined && defrespdata.data.result.content.definition.length > 0) {
 									// The macro definition was found
-									const parts = defrespdata.data.result.content.definition[0].trim().split(/\s+/);
-									var defstr = "";
-									if (parts[0].charAt(0) === "#") {
-										defstr = parts.slice(2).join(" ");
-									}
-									else {
-										defstr = parts.slice(1).join(" ");
-									}
 									return {
-										contents: {
-											kind: MarkupKind.PlainText,
-											value: defstr
-										},
+										contents: macroDefToDoc(defrespdata.data.result.content.definition),
 										range: macrorange
 									};
 								}
@@ -346,8 +336,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								// The expansion was generated successfully
 								return {
 									contents: {
-										kind: MarkupKind.PlainText,
-										value: exprespdata.data.result.content.expansion.join("  \n")
+										kind: MarkupKind.Markdown,
+										value: `\`\`\`\n${exprespdata.data.result.content.expansion.join("\n")}\n\`\`\``
 									},
 									range: macrorange
 								};
@@ -369,19 +359,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						const respdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,inputdata);
 						if (respdata !== undefined && respdata.data.result.content.definition.length > 0) {
 							// The macro definition was found
-							const parts = respdata.data.result.content.definition[0].trim().split(/\s+/);
-							var defstr = "";
-							if (parts[0].charAt(0) === "#") {
-								defstr = parts.slice(2).join(" ");
-							}
-							else {
-								defstr = parts.slice(1).join(" ");
-							}
 							return {
-								contents: {
-									kind: MarkupKind.PlainText,
-									value: defstr
-								},
+								contents: macroDefToDoc(respdata.data.result.content.definition),
 								range: macrorange
 							};
 						}

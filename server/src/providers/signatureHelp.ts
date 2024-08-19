@@ -114,15 +114,11 @@ function emphasizeArgument(arglist: string, arg: number): string {
 	}
 };
 
-/**
- * Escape Markdown formatting characters in `exp` so they are displayed literally.
- * Also, replace placeholders for emphasized argument with Markdown.
- */
+/** Use HTML to display `exp` as a code block with the empasized argument rendered bold, italic and underlined. */
 function markdownifyExpansion(exp: string[]): string {
-	return exp.join("\n")
-		.replace(/(\*|_|\||<|>|{|}|\\|`|\[|\]|\(|\)|#|\+|-|!){1}/g,"\\$1")
-		.replace(new RegExp(emphasizePrefix,"g"),"***")
-		.replace(new RegExp(emphasizeSuffix,"g"),"***");
+	return "<pre>\n" + exp.map(e => e.trimEnd()).join("\n")
+		.replace(new RegExp(emphasizePrefix,"g"),"<b><i><u>")
+		.replace(new RegExp(emphasizeSuffix,"g"),"</u></i></b>") + "\n</pre>";
 }
 
 /** Returns the [start,end] tuples for all parameters in `formalSpec` */

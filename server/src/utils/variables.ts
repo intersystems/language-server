@@ -136,3 +136,6 @@ export const lexerLanguages: { moniker: string; index: number; }[] = [
 
 /** All class member types */
 export const classMemberTypes: string[] = ["Parameter","Property","Relationship","ForeignKey","Index","Query","Storage","Trigger","XData","Projection","Method","ClassMethod","ClientMethod"];
+
+/** Regex for testing if a MPP directive is `##Continue` */
+export const mppContinue: RegExp = /^(?:##)?continue$/i;

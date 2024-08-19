@@ -1,6 +1,6 @@
 import { DocumentSymbol, DocumentSymbolParams, Position, SymbolKind, Range } from 'vscode-languageserver/node';
 import { findFullRange, getParsedDocument, isClassMember, labelIsProcedureBlock } from '../utils/functions';
-import { documents } from '../utils/variables';
+import { documents, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 export async function onDocumentSymbol(params: DocumentSymbolParams) {
@@ -140,48 +140,50 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 				}
 				continue;
 			}
-			const secondtokentext = doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c))).toLowerCase();
+			const secondtokentext = doc.getText(Range.create(line,parsed[line][1].p,line,parsed[line][1].p+parsed[line][1].c)).toLowerCase();
 			if (parsed[line][1].l === ld.cos_langindex && parsed[line][1].s === ld.cos_ppc_attrindex && (secondtokentext === "define" || secondtokentext === "def1arg")) {
 				// This line contains a macro definition
 
 				if (
 					parsed[line][parsed[line].length-1].l === ld.cos_langindex && parsed[line][parsed[line].length-1].s === ld.cos_ppf_attrindex &&
-					doc.getText(Range.create(
-						Position.create(line,parsed[line][parsed[line].length-1].p),
-						Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c)
-					)).toLowerCase() === "continue"
+					mppContinue.test(doc.getText(Range.create(
+						line,parsed[line][parsed[line].length-1].p,
+						line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c
+					)))
 				 ) {
 					// This is the start of a multi-line macro definition
 					multilinestart = line;
 				}
 				else {
 					// This is a single line macro definition
-					var fullrange: Range = Range.create(Position.create(line-prevdoccomments,0),Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c));
+					var fullrange: Range = Range.create(line-prevdoccomments,0,line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c);
 					prevdoccomments = 0;
 					result.push({
-						name: doc.getText(Range.create(Position.create(line,parsed[line][2].p),Position.create(line,parsed[line][2].p+parsed[line][2].c))),
+						name: doc.getText(Range.create(line,parsed[line][2].p,line,parsed[line][2].p+parsed[line][2].c)),
 						kind: SymbolKind.Constant,
 						range: fullrange,
-						selectionRange: Range.create(Position.create(line,parsed[line][2].p),Position.create(line,parsed[line][2].p+parsed[line][2].c))
+						selectionRange: Range.create(line,parsed[line][2].p,line,parsed[line][2].p+parsed[line][2].c)
 					});
 				}
 			}
 			else if (
-				multilinestart !== -1 && 
-				(parsed[line][parsed[line].length-1].l !== ld.cos_langindex || parsed[line][parsed[line].length-1].s !== ld.cos_ppf_attrindex ||
-				doc.getText(Range.create(
-					Position.create(line,parsed[line][parsed[line].length-1].p),
-					Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c)
-				)).toLowerCase() !== "continue")
+				multilinestart != -1 && 
+				!(
+					parsed[line][parsed[line].length-1].l == ld.cos_langindex && parsed[line][parsed[line].length-1].s == ld.cos_ppf_attrindex &&
+					mppContinue.test(doc.getText(Range.create(
+						line,parsed[line][parsed[line].length-1].p,
+						line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c
+					)))
+				)
 			) {
 				// This is the end of a multi-line macro definition
-				var fullrange: Range = Range.create(Position.create(multilinestart-prevdoccomments,0),Position.create(line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c));
+				var fullrange: Range = Range.create(multilinestart-prevdoccomments,0,line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c);
 				prevdoccomments = 0;
 				result.push({
-					name: doc.getText(Range.create(Position.create(multilinestart,parsed[multilinestart][2].p),Position.create(multilinestart,parsed[multilinestart][2].p+parsed[multilinestart][2].c))),
+					name: doc.getText(Range.create(multilinestart,parsed[multilinestart][2].p,multilinestart,parsed[multilinestart][2].p+parsed[multilinestart][2].c)),
 					kind: SymbolKind.Constant,
 					range: fullrange,
-					selectionRange: Range.create(Position.create(multilinestart,parsed[multilinestart][2].p),Position.create(multilinestart,parsed[multilinestart][2].p+parsed[multilinestart][2].c))
+					selectionRange: Range.create(multilinestart,parsed[multilinestart][2].p,multilinestart,parsed[multilinestart][2].p+parsed[multilinestart][2].c)
 				});
 				multilinestart = -1;
 			}

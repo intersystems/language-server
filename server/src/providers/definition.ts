@@ -1,7 +1,7 @@
 import { Position, TextDocumentPositionParams, Range, LocationLink } from 'vscode-languageserver/node';
 import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineClassNameParameterClass, getParsedDocument, currentClass, getTextForUri, isClassMember } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
-import { documents, corePropertyParams, classMemberTypes } from '../utils/variables';
+import { documents, corePropertyParams, classMemberTypes, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 /**
@@ -188,20 +188,20 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					const targetrange = Range.create(macrodefline,0,macrodefline+1,0);
 					if (
 						parsed[macrodefline][parsed[macrodefline].length-1].l == ld.cos_langindex && parsed[macrodefline][parsed[macrodefline].length-1].s == ld.cos_ppf_attrindex &&
-						doc.getText(Range.create(
+						mppContinue.test(doc.getText(Range.create(
 							macrodefline,parsed[macrodefline][parsed[macrodefline].length-1].p,
 							macrodefline,parsed[macrodefline][parsed[macrodefline].length-1].p+parsed[macrodefline][parsed[macrodefline].length-1].c
-						)).toLowerCase() === "continue"
+						)))
 					) {
 						// This is a multi-line macro definition so scan down the file to capture the full range of the definition
 						for (let mln = macrodefline+1; mln < parsed.length; mln++) {
-							if (
-								parsed[mln][parsed[mln].length-1].l !== ld.cos_langindex || parsed[mln][parsed[mln].length-1].s !== ld.cos_ppf_attrindex ||
-								doc.getText(Range.create(
+							if (!(
+								parsed[mln][parsed[mln].length-1].l == ld.cos_langindex && parsed[mln][parsed[mln].length-1].s == ld.cos_ppf_attrindex &&
+								mppContinue.test(doc.getText(Range.create(
 									mln,parsed[mln][parsed[mln].length-1].p,
 									mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c
-								)).toLowerCase() !== "continue"
-							) {
+								)))
+							)) {
 								// This is the last line of the macro definition so update the target range
 								targetrange.end = Position.create(mln+1,0);
 								break;

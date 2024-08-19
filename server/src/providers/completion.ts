@@ -1,7 +1,7 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, Position, Range, TextEdit } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, normalizeClassname } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, normalizeClassname, macroDefToDoc } from '../utils/functions';
 import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline } from '../utils/types';
-import { documents, corePropertyParams } from '../utils/variables';
+import { documents, corePropertyParams, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
 import structuredSystemVariables = require("../documentation/structuredSystemVariables.json");
@@ -784,58 +784,63 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					const argsregex = /^(\([^\(\)]+\))(?:.*)$/;
 					if (
 						parsed[ln][parsed[ln].length-1].l === ld.cos_langindex && parsed[ln][parsed[ln].length-1].s === ld.cos_ppf_attrindex &&
-						doc.getText(Range.create(
+						mppContinue.test(doc.getText(Range.create(
 							ln,parsed[ln][parsed[ln].length-1].p,
 							ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
-						)).toLowerCase() == "continue"
+						)))
 					) {
 						// This is the start of a multi-line macro definition
 						const restofline = doc.getText(Range.create(
 							ln,parsed[ln][3].p,
 							ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
 						));
-						let docstr = macrodef.label;
+						let docHeader = macrodef.label;
 						if (parsed[ln][3].l == ld.cos_langindex && parsed[ln][3].s == ld.cos_delim_attrindex) {
 							// This macro has args
 							const argsmatchres = restofline.match(argsregex);
 							if (argsmatchres != null) {
-								docstr = docstr + argsmatchres[1];
+								docHeader += argsmatchres[1];
 							}
 						}
 
 						const flvalmatchres = restofline.match(/^(?:\([^\(\)]+\) *){0,1}(.*)( *##continue)$/i);
+						let docstr = "";
 						if (flvalmatchres != null) {
 							if (flvalmatchres[1] != "") {
-								docstr = docstr + "\n" + flvalmatchres[1].trim();
+								docstr = flvalmatchres[1].trim();
 							}
 							for (let mln = ln+1; mln < parsed.length; mln++) {
 								if (
 									parsed[mln][parsed[mln].length-1].l == ld.cos_langindex && parsed[mln][parsed[mln].length-1].s == ld.cos_ppf_attrindex &&
-									doc.getText(Range.create(
+									mppContinue.test(doc.getText(Range.create(
 										mln,parsed[mln][parsed[mln].length-1].p,
 										mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c
-									)).toLowerCase() == "continue"
+									)))
 								) {
 									// This is a line of the multi-line macro definition
+									const endTkn = parsed[mln].length - (doc.getText(Range.create(
+										mln,parsed[mln][parsed[mln].length-1].p,
+										mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c
+									)).startsWith("##") ? 2 : 3);
 									docstr = docstr + "\n" + doc.getText(Range.create(
-										mln,parsed[mln][0].p,
-										mln,parsed[mln][parsed[mln].length-3].p+parsed[mln][parsed[mln].length-3].c
-									));
+										mln,0,
+										mln,parsed[mln][endTkn].p+parsed[mln][endTkn].c
+									)).trimEnd();
 								}
 								else {
 									// This is the last line of the multi-line macro definition
 									docstr = docstr + "\n" + doc.getText(Range.create(
-										mln,parsed[mln][0].p,
+										mln,0,
 										mln,parsed[mln][parsed[mln].length-1].p+parsed[mln][parsed[mln].length-1].c
 									));
 									break;
 								}
 							}
 						}
-						if (docstr != macrodef.label) {
+						if (docHeader != macrodef.label) {
 							macrodef.documentation = {
-								kind: MarkupKind.PlainText,
-								value: docstr
+								kind: MarkupKind.Markdown,
+								value: `${docHeader}\n\`\`\`\n${docstr}\n\`\`\``
 							};
 						}
 					}
@@ -856,8 +861,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						const valmatchres = restofline.match(valregex);
 						if (valmatchres !== null) {
 							macrodef.documentation = {
-								kind: MarkupKind.PlainText,
-								value: docstr + "\n" + valmatchres[1]
+								kind: MarkupKind.Markdown,
+								value: `${docstr}\n\`\`\`\n${valmatchres[1]}\n\`\`\``
 							};
 						}
 					}
@@ -927,7 +932,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				kind: CompletionItemKind.EnumMember,
 				data: "parametertype",
 				documentation: {
-					kind: "plaintext",
+					kind: MarkupKind.PlainText,
 					value: pt.documentation
 				}
 			});
@@ -1533,7 +1538,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						data: "keyword",
 						documentation: {
-							kind: "plaintext",
+							kind: MarkupKind.PlainText,
 							value: doctext
 						}
 					}
@@ -2033,7 +2038,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						kind: CompletionItemKind.Keyword,
 						data: "storage",
 						documentation: {
-							kind: "plaintext",
+							kind: MarkupKind.PlainText,
 							value: doctext
 						}
 					};
@@ -2155,18 +2160,7 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 		const respdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,querydata);
 		if (respdata !== undefined && respdata.data.result.content.definition.length > 0) {
 			// The macro definition was found
-			const parts = respdata.data.result.content.definition[0].trim().split(/\s+/);
-			var defstr = "";
-			if (parts[0].charAt(0) === "#") {
-				defstr = defstr.concat(parts[1],"\n",parts.slice(2).join());
-			}
-			else {
-				defstr = defstr.concat(parts[0],"\n",parts.slice(1).join());
-			}
-			item.documentation = {
-				kind: MarkupKind.PlainText,
-				value: defstr
-			};
+			item.documentation = macroDefToDoc(respdata.data.result.content.definition,true);
 		}
 	}
 	return item;
