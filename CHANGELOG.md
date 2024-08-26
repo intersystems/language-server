@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2.5.2] - 2024-XX-XX
+- Fix issue [#329](https://github.com/intersystems/language-server/issues/329): Support Unix platforms that don't have the `en_US.UTF-8` locale
 - Fix issue [#336](https://github.com/intersystems/language-server/issues/336): Add intellisense for variables set to the returned value of a method, or a property, with a declared type
 - Fix issue [#337](https://github.com/intersystems/language-server/issues/337): Improve Hover headers
 - Fix issue [#338](https://github.com/intersystems/language-server/issues/338): Add intellisense for macros in Embedded SQL
