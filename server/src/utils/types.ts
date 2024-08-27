@@ -37,6 +37,10 @@ export type LanguageServerConfiguration = {
 	},
 	refactor: {
 		exceptionVariable: string
+	},
+	completion: {
+		showGenerated: boolean,
+		showInternal: boolean
 	}
 };
 

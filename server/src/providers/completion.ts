@@ -1,6 +1,6 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, Position, Range, TextEdit } from 'vscode-languageserver/node';
 import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, normalizeClassname, macroDefToDoc } from '../utils/functions';
-import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline } from '../utils/types';
+import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline, LanguageServerConfiguration } from '../utils/types';
 import { documents, corePropertyParams, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
@@ -535,7 +535,7 @@ class SchemaCache {
  * @param server The server that doc is associated with.
  * @param line The line of doc that we're in.
  */
-async function completionFullClassName(doc: TextDocument, parsed: compressedline[], server: ServerSpec, line: number): Promise<CompletionItem[]> {
+async function completionFullClassName(doc: TextDocument, parsed: compressedline[], server: ServerSpec, line: number, settings: LanguageServerConfiguration): Promise<CompletionItem[]> {
 	var result: CompletionItem[] = [];
 
 	// Get the list of imports for resolution
@@ -544,11 +544,11 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 	// Get all classes
 	const querydata = {
 		query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = {fn CONCAT(dcd.Name,'.cls')}",
-		parameters: ["*.cls",1,1,1,1,0,1]
+		parameters: ["*.cls",1,1,1,1,0,settings.completion.showGenerated ? 1 : 0]
 	};
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
-		for (let clsobj of respdata.data.result.content) {
+		for (const clsobj of respdata.data.result.content) {
 			let displayname: string = clsobj.Name;
 			let compItem: CompletionItem;
 			if (imports.length > 0) {
@@ -606,17 +606,17 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
  * 
  * @param server The server that this document is associated with.
  */
-async function completionPackage(server: ServerSpec): Promise<CompletionItem[]> {
+async function completionPackage(server: ServerSpec, settings: LanguageServerConfiguration): Promise<CompletionItem[]> {
 	var result: CompletionItem[] = [];
 
 	// Get all the packages
 	const querydata = {
 		query: "SELECT DISTINCT $PIECE(Name,'.',1,$LENGTH(Name,'.')-2) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
-		parameters: ["*.cls",1,1,1,1,0,1]
+		parameters: ["*.cls",1,1,1,1,0,settings.completion.showGenerated ? 1 : 0]
 	};
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
-		for (let packobj of respdata.data.result.content) {
+		for (const packobj of respdata.data.result.content) {
 			result.push({
 				label: packobj.Package,
 				kind: CompletionItemKind.Module,
@@ -1011,7 +1011,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	) {
 		// This is a full class name
 
-		result = await completionFullClassName(doc,parsed,server,params.position.line);
+		result = await completionFullClassName(doc,parsed,server,params.position.line,settings);
 	}
 	else if (
 		(prevline.slice(-1) === "." && prevline.slice(-2,-1) !== "," && prevline.slice(-2,-1) !== " " &&
@@ -1071,13 +1071,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			// Get all classes that match the filter
 			const querydata = {
 				query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = {fn CONCAT(dcd.Name,'.cls')}",
-				parameters: ["*.cls",1,1,1,1,0,1,`Name %STARTSWITH '${filter}'`]
+				parameters: ["*.cls",1,1,1,1,0,settings.completion.showGenerated ? 1 : 0,`Name %STARTSWITH '${filter}'`]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
 				// We got data back
 
-				for (let clsobj of respdata.data.result.content) {
+				for (const clsobj of respdata.data.result.content) {
 					result.push({
 						label: clsobj.Name.slice(filter.length),
 						kind: CompletionItemKind.Class,
@@ -1090,6 +1090,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		else {
 			// This is a class member
 
+			const internalStr = !settings.completion.showInternal ? " AND Internal = 0": "";
 			if (prevline.slice(-2) === ".#") {
 				// Get the base class that this member is in
 				const membercontext = await getClassMemberContext(doc,parsed,thistoken-1,params.position.line,server);
@@ -1102,7 +1103,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				const data: QueryData = {
 					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${
 						membercontext.context == "instance" ? " AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')" : ""
-					}`,
+					}${internalStr}`,
 					parameters: [membercontext.baseclass]
 				}
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -1151,54 +1152,60 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 				
 				// Query the server to get the metadata of all appropriate class members
-				var data: QueryData = {
+				const data: QueryData = {
 					query: "",
 					parameters: []
 				};
-				if (membercontext.context == "class") {
-					data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-						"SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?";
-					data.parameters = new Array(6).fill(membercontext.baseclass);
-				}
-				else if (membercontext.context == "instance") {
-					data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
+				if (membercontext.context == "instance") {
+					// Non-generated methods
+					data.query += "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
 						"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) " +
-						"AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
-						"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated, Aliases " +
-						"FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype') UNION ALL %PARALLEL " +
+						`AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr}`;
+					data.parameters.push(membercontext.baseclass);
+					// Properties and Parameters
+					data.query += " UNION ALL %PARALLEL " +
+					"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated, Aliases " +
+						`FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr} UNION ALL %PARALLEL ` +
 						"SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated, NULL AS Aliases " +
-						"FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')";
-					data.parameters = new Array(7).fill(membercontext.baseclass);
-				}
-				else {
-					data.query = "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND classmethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND classmethod = 1 UNION ALL %PARALLEL " +
-						"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						"FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND classmethod = 1";
-					data.parameters = new Array(5).fill(membercontext.baseclass);
+						`FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr}`;
+					data.parameters.push(membercontext.baseclass,membercontext.baseclass);
+					if (settings.completion.showGenerated) {
+						// Generated methods
+						data.query += " UNION ALL %PARALLEL " +
+							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
+							`FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr} UNION ALL %PARALLEL ` +
+							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
+							`FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr} UNION ALL %PARALLEL ` +
+							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
+							`FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr} UNION ALL %PARALLEL ` +
+							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
+							`FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr}`;
+						data.parameters.push(...new Array(4).fill(membercontext.baseclass));
+					}
+				} else {
+					// Non-generated methods
+					data.query += "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+						`FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND ClassMethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0))${internalStr}`;
+					data.parameters.push(membercontext.baseclass);
+					if (membercontext.context == "class") {
+						// Parameters
+						data.query += " UNION ALL %PARALLEL " +
+							`SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${internalStr}`;
+						data.parameters.push(membercontext.baseclass);
+					}
+					if (settings.completion.showGenerated) {
+						// Generated methods
+						data.query += " UNION ALL %PARALLEL " +
+							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							`FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr} UNION ALL %PARALLEL ` +
+							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							`FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr} UNION ALL %PARALLEL ` +
+							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							`FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr} UNION ALL %PARALLEL ` +
+							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
+							`FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr}`
+						data.parameters.push(...new Array(4).fill(membercontext.baseclass));
+					}
 				}
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
@@ -1308,7 +1315,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	) {
 		// This is an import
 
-		result = await completionPackage(server);
+		result = await completionPackage(server,settings);
 	}
 	else if (
 		triggerlang === ld.cls_langindex &&
@@ -1384,7 +1391,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		const data: QueryData = {
 			query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${
 				isProperty ? " OR parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)" : ""
-			}`,
+			}${!settings.completion.showInternal ? " AND Internal = 0": ""}`,
 			parameters: isProperty ? [normalizedcls,currentClass(doc,parsed)] : [normalizedcls]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -1494,7 +1501,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			else if (keywordtype === "index") {
 				keywordsarr = indexKeywords.slice();
 			}
-			else if (keywordtype === "method" || keywordtype === "classmethod" || keywordtype === "clientmethod") {
+			else if (keywordtype === "method" || keywordtype === "ClassMethod" || keywordtype === "clientmethod") {
 				keywordsarr = methodKeywords.slice();
 			}
 			else if (keywordtype === "parameter") {
@@ -1608,7 +1615,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			else if (keywordtype === "index") {
 				keywordsarr = indexKeywords.slice();
 			}
-			else if (keywordtype === "method" || keywordtype === "classmethod" || keywordtype === "clientmethod") {
+			else if (keywordtype === "method" || keywordtype === "ClassMethod" || keywordtype === "clientmethod") {
 				keywordsarr = methodKeywords.slice();
 			}
 			else if (keywordtype === "parameter") {
@@ -1645,11 +1652,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 				else if (thiskeydoc.constraint === "KW_SYSENUM_CLASS_LIST") {
 					// List of classes
-					result = await completionFullClassName(doc,parsed,server,params.position.line);
+					result = await completionFullClassName(doc,parsed,server,params.position.line,settings);
 				}
 				else if (thiskeydoc.constraint === "KW_SYSENUM_PACKAGE_LIST") {
 					// List of packages
-					result = await completionPackage(server);
+					result = await completionPackage(server,settings);
 				}
 				else if (thiskeydoc.constraint === "KW_SYSENUM_INCFILE_LIST") {
 					// List of includes
@@ -1682,7 +1689,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 					}
 					const querydata = {
-						query: "SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ?",
+						query: `SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ?${
+							!settings.completion.showInternal ? " AND Internal = 0": ""
+						}`,
 						parameters:[thisclass]
 					};
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -2087,7 +2096,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Query the server to get the names and descriptions of all non-calculated properties
 		const data: QueryData = {
-			query: "SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND Calculated = 0",
+			query: `SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND Calculated = 0${
+				!settings.completion.showInternal ? " AND Internal = 0": ""
+			}`,
 			parameters: [thisclass]
 		}
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);

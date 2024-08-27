@@ -235,6 +235,18 @@
           "type": "boolean",
           "default": true,
           "description": "Controls whether diagnostics are provided when a local variable may be undefined."
+        },
+        "intersystems.language-server.completion.showInternal": {
+          "scope": "window",
+          "type": "boolean",
+          "default": false,
+          "markdownDescription": "Controls whether class members with the `Internal` keyword are shown in completion lists."
+        },
+        "intersystems.language-server.completion.showGenerated": {
+          "scope": "window",
+          "type": "boolean",
+          "default": false,
+          "description": "Controls whether generated classes and class members are shown in completion lists."
         }
       }
     },

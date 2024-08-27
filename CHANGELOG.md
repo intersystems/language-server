@@ -8,6 +8,7 @@
 - Fix issue [#339](https://github.com/intersystems/language-server/issues/339): Macro intellisense doesn't respect `#undef` directive
 - Fix issue [#340](https://github.com/intersystems/language-server/issues/340): Add folding ranges for C-style block comments
 - Fix issue [#341](https://github.com/intersystems/language-server/issues/341): Improve macro hover documentation
+- Fix issue [#342](https://github.com/intersystems/language-server/issues/342): Reduce clutter in class and class member completion lists by default
 
 ## [2.5.1] - 2024-07-09
 - Fix issue [#328](https://github.com/intersystems/language-server/issues/328): Fix namespace detection for Diagnostic computation
