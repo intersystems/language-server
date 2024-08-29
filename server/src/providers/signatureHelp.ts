@@ -164,7 +164,35 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
 	if (params.context.triggerKind == SignatureHelpTriggerKind.Invoked) {
+		// We always base our return value on the triggerCharacter
 		params.context.triggerCharacter = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
+	}
+
+	let thistoken: number = -1;
+	for (let i = 0; i < parsed[params.position.line].length; i++) {
+		const symbolstart: number = parsed[params.position.line][i].p;
+		const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
+		thistoken = i;
+		if (params.position.character >= symbolstart && params.position.character <= symbolend) {
+			// We found the right symbol in the line
+			break;
+		}
+	}
+	if (thistoken == -1) return null;
+	const triggerlang: number = parsed[params.position.line][thistoken].l;
+	const triggerattr: number = parsed[params.position.line][thistoken].s;
+	if (
+		// Only compute signature help in ObjectScript
+		(triggerlang != ld.cos_langindex) ||
+		// Don't compute signature help inside of a string literal
+		((doc.getText(Range.create(Position.create(params.position.line,0),params.position)).split("\"").length - 1) % 2 == 1)
+	) {
+		if (params.context.activeSignatureHelp) {
+			params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
+			return params.context.activeSignatureHelp;
+		} else {
+			return null;
+		}
 	}
 
 	if (params.context.isRetrigger && (params.context.triggerCharacter !== "(")) {
@@ -209,22 +237,9 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 		}
 	}
 
-	var thistoken: number = -1;
-	for (let i = 0; i < parsed[params.position.line].length; i++) {
-		const symbolstart: number = parsed[params.position.line][i].p;
-		const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
-		thistoken = i;
-		if (params.position.character >= symbolstart && params.position.character <= symbolend) {
-			// We found the right symbol in the line
-			break;
-		}
-	}
-	const triggerlang: number = parsed[params.position.line][thistoken].l;
-	const triggerattr: number = parsed[params.position.line][thistoken].s;
-
 	if (
-		params.context.triggerCharacter === "(" && triggerlang === ld.cos_langindex &&
-		triggerattr !== ld.cos_comment_attrindex && triggerattr !== ld.cos_dcom_attrindex &&
+		params.context.triggerCharacter == "(" && triggerlang === ld.cos_langindex &&
+		![ld.cos_comment_attrindex,ld.cos_dcom_attrindex,ld.cos_str_attrindex].includes(triggerattr) &&
 		thistoken > 0
 	) {
 		// This is potentially the start of a signature
@@ -434,8 +449,8 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	}
 	else if (
 		!params.context.isRetrigger &&
-		params.context.triggerCharacter === "," && triggerlang === ld.cos_langindex &&
-		triggerattr !== ld.cos_comment_attrindex && triggerattr !== ld.cos_dcom_attrindex
+		params.context.triggerCharacter == "," && triggerlang === ld.cos_langindex &&
+		![ld.cos_comment_attrindex,ld.cos_dcom_attrindex,ld.cos_str_attrindex].includes(triggerattr)
 	) {
 		// This is potentially the argument list for a signature
 

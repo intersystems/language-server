@@ -24,19 +24,19 @@ export async function overrideClassMembers() {
 
 	// Get the open document and check that it's an ObjectScript class
 	const openDoc = window.activeTextEditor.document;
-	if (openDoc.languageId !== "objectscript-class") {
+	if (openDoc.languageId != "objectscript-class") {
 		// Can only override members in a class
 		return;
 	}
 
 	// Check that this class has a superclass
-	var seenextends = false;
+	let seenextends = false;
 	for (let linenum = 0; linenum < openDoc.lineCount; linenum++) {
 		const linetxt = openDoc.lineAt(linenum).text;
 		if (linetxt.slice(0,5).toLowerCase() === "class") {
 			// This is the class definition line
 			const linewords = linetxt.replace(/\s{2,}/g," ").split(" ");
-			if (linewords.length > 2 && linewords[2].toLowerCase() === "extends") {
+			if (linewords.length > 2 && linewords[2].toLowerCase() == "extends") {
 				seenextends = true;
 			}
 			break;
@@ -50,8 +50,8 @@ export async function overrideClassMembers() {
 
 	// Check that we can insert new class members at the cursor position
 	const selection = window.activeTextEditor.selection;
-	var cursorvalid = false;
-	var docposvalid = false;
+	let cursorvalid = false;
+	let docposvalid = false;
 	if (openDoc.lineAt(selection.active.line).isEmptyOrWhitespace && selection.isEmpty) {
 		cursorvalid = true;
 	}
@@ -76,14 +76,14 @@ export async function overrideClassMembers() {
 		return;
 	}
 
-	var plural = selectedType+"s";
-	if (selectedType === "Query") {
+	let plural = selectedType + "s";
+	if (selectedType == "Query") {
 		plural = "Queries";
 	}
-	else if (selectedType === "XData") {
+	else if (selectedType == "XData") {
 		plural = "XData blocks";
 	}
-	else if (selectedType === "Property") {
+	else if (selectedType == "Property") {
 		plural = "Properties";
 	}
 
@@ -92,18 +92,18 @@ export async function overrideClassMembers() {
 		uri: openDoc.uri.toString(),
 		memberType: selectedType
 	});
-	if (overridableMembers.length === 0) {
+	if (!overridableMembers?.length) {
 		// There are no members of this type to override, so tell the user and exit
-		window.showInformationMessage("There are no inherited "+plural+" that are overridable.","Dismiss");
+		window.showInformationMessage(`There are no inherited ${plural} that are overridable.`,"Dismiss");
 		return;
 	}
 
 	// Ask the user to select which members they want to override
 	const selectedMembers = await window.showQuickPick(overridableMembers,{
-		placeHolder: "Select the "+plural+" to override",
+		placeHolder: `Select the ${plural} to override`,
 		canPickMany: true
 	});
-	if (!selectedMembers || selectedMembers.length === 0) {
+	if (!selectedMembers?.length) {
 		// No members were selected, so exit
 		return;
 	}
@@ -112,7 +112,8 @@ export async function overrideClassMembers() {
 	const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addOverridableMembers",{
 		uri: openDoc.uri.toString(),
 		members: selectedMembers,
-		cursor: selection.active
+		cursor: selection.active,
+		memberType: selectedType
 	});
 
 	// Apply the workspace edit

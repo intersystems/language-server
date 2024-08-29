@@ -274,7 +274,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								if (paramslist.length == argslist.length) {
 									// Perform the replacement for each argument
 									for (let argidx = 0; argidx < paramslist.length; argidx++) {
-										definition = definition.replace(new RegExp(paramslist[argidx].trim(),"g"),argslist[argidx]);
+										definition = definition.replace(new RegExp(paramslist[argidx].trim(),"g"),() => argslist[argidx]);
 									}
 								}
 							}
@@ -587,7 +587,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 						// We got data back
 
-						let header = `(**${membercontext.baseclass}**) ***${member}***`;
+						let header = `(**${membercontext.baseclass}**) <u>**${member}**</u>`;
 						const nextchar = doc.getText(Range.create(params.position.line,memberrange.end.character,params.position.line,memberrange.end.character+1));
 						if (member == "%New" && respdata.data.result.content.length == 2 && respdata.data.result.content[1].Origin != "%Library.RegisteredObject") {
 							// %OnNew has been overridden for this class
@@ -879,7 +879,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 
 								let type: string = respdata.data.result.content[0].DisplayType;
 								type = type.includes(" ") ? type.charAt(0).toUpperCase() + type.slice(1) : type;
-								const header = `(**${normalizedname}**) ***${propname}***${type != "" ? ` As **${type}**` : ""}`;
+								const header = `(**${normalizedname}**) <u>**${propname}**</u>${type != "" ? ` As **${type}**` : ""}`;
 								return {
 									contents: {
 										kind: MarkupKind.Markdown,
@@ -937,7 +937,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
-							let header = `(**${normalizedname}**) ***${procname}***`;
+							let header = `(**${normalizedname}**) <u>**${procname}**</u>`;
 							const nextchar = doc.getText(Range.create(params.position.line,idenrange.end.character,params.position.line,idenrange.end.character+1));
 							if (nextchar === "(") {
 								header = header + beautifyFormalSpec(respdata.data.result.content[0].FormalSpec,true);
@@ -980,7 +980,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 
 									let type: string = respdata.data.result.content[0].DisplayType;
 									type = type.includes(" ") ? type.charAt(0).toUpperCase() + type.slice(1) : type;
-									const header = `(**${normalizedname}**) ***${propname}***${type != "" ? ` As **${type}**` : ""}`;
+									const header = `(**${normalizedname}**) <u>**${propname}**</u>${type != "" ? ` As **${type}**` : ""}`;
 									return {
 										contents: {
 											kind: MarkupKind.Markdown,
@@ -1051,7 +1051,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
-							const header = `(**${normalizedcls}**) ***${param}***${
+							const header = `(**${normalizedcls}**) <u>**${param}**</u>${
 								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
 							}`;
 							return {

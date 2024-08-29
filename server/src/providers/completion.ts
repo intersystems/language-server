@@ -543,7 +543,7 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 
 	// Get all classes
 	const querydata = {
-		query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = {fn CONCAT(dcd.Name,'.cls')}",
+		query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'",
 		parameters: ["*.cls",1,1,1,1,0,settings.completion.showGenerated ? 1 : 0]
 	};
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -694,15 +694,17 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		// Don't provide completion inside of a comment
 		return null;
 	}
-	var openparencount = 0;
-	var closeparencount = 0;
-	for (let char = 0; char < prevline.length; char++) {
-		if (prevline.charAt(char) === "(") {
-			openparencount++;
-		}
-		else if (prevline.charAt(char) === ")") {
-			closeparencount++;
-		}
+	if ([ld.cos_langindex,ld.cls_langindex].includes(triggerlang) && ((prevline.split("\"").length - 1) % 2 == 1)) {
+		// Don't provide completion inside of a string literal
+		return null;
+	}
+	let openParenCount = 0;
+	let closeParenCount = 0;
+	let inStr = false;
+	for (const char of prevline) {
+		if (char == "\"") inStr = !inStr;
+		if (!inStr && char == "(") openParenCount++;
+		if (!inStr && char == ")") closeParenCount++;
 	}
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 	
@@ -946,8 +948,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Get all appropriate subclasses of %Query
 		const querydata = {
-			query: "SELECT Name FROM %Dictionary.ClassDefinitionQuery_SubclassOf(?) WHERE Name != ? AND Name != ?",
-			parameters: ["%Library.Query","%Library.ExtentSQLQuery","%Library.RowSQLQuery"]
+			query: "SELECT dcd.Name, Deprecated FROM %Dictionary.ClassDefinition_SubclassOf(?) AS sco, %Dictionary.ClassDefinition AS dcd WHERE sco.Name = dcd.Name AND sco.Name NOT %INLIST $LISTFROMSTRING(?)",
+			parameters: ["%Library.Query","%Library.ExtentSQLQuery,%Library.RowSQLQuery"]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
 		if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -972,6 +974,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							label: displayname,
 							kind: CompletionItemKind.Class,
 							data: ["class",clsobj.Name+".cls",doc.uri],
+							tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
 							sortText: sorttext
 						});
 					}
@@ -979,6 +982,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						result.push({
 							label: displayname,
 							kind: CompletionItemKind.Class,
+							tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
 							data: ["class",clsobj.Name+".cls",doc.uri]
 						});
 					}
@@ -991,6 +995,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					result.push({
 						label: displayname,
 						kind: CompletionItemKind.Class,
+						tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
 						data: ["class",clsobj.Name+".cls",doc.uri]
 					});
 				}
@@ -1070,7 +1075,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 			// Get all classes that match the filter
 			const querydata = {
-				query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = {fn CONCAT(dcd.Name,'.cls')}",
+				query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'",
 				parameters: ["*.cls",1,1,1,1,0,settings.completion.showGenerated ? 1 : 0,`Name %STARTSWITH '${filter}'`]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -1319,9 +1324,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	}
 	else if (
 		triggerlang === ld.cls_langindex &&
-		openparencount > closeparencount &&
+		openParenCount > closeParenCount &&
 		(prevline.slice(-2) === ", " || prevline.slice(-1) === "(") &&
-		prevline.slice(firsttwotokens.length).indexOf("[") === -1 &&
+		!prevline.slice(firsttwotokens.length).includes("[") &&
 		determineClassNameParameterClass(doc,parsed,params.position.line,thistoken,true) != ""
 	) {
 		// This is a class name parameter
@@ -1433,7 +1438,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	}
 	else if (
 		(prevline.slice(-2) === "[ " || (prevline.slice(-2) === ", " &&
-		openparencount <= closeparencount) || prevline.slice(-4).toLowerCase() == "not ") && triggerlang === ld.cls_langindex
+		openParenCount <= closeParenCount) || prevline.slice(-4).toLowerCase() == "not ") && triggerlang === ld.cls_langindex
 	) {
 		let foundopenbracket = false;
 		let foundclosebracket = false;
@@ -1559,7 +1564,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	}
 	else if (
 		triggerlang === ld.cls_langindex &&
-		(prevline.slice(-2) === "= " || (prevline.slice(-2) === ", " && openparencount > closeparencount) || prevline.slice(-3) === "= (")
+		(prevline.slice(-2) === "= " || (prevline.slice(-2) === ", " && openParenCount > closeParenCount) || prevline.slice(-3) === "= (")
 	) {
 		var foundopenbracket = false;
 		var foundclosebracket = false;

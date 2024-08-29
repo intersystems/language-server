@@ -158,6 +158,11 @@
       "description": "Specifies the name of the global this Columnar column is stored in."
     },
     {
+      "name": "DataDefinitionLocation",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies The name of the global to store this field in."
+    },
+    {
       "name": "Name",
       "type": "KW_TYPE_STRING",
       "description": "Specifies the name of the StorageData definition. This name must be a valid storage member name and must not conflict with any other StorageData names."

@@ -674,20 +674,17 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					let word = doc.getText(wordrange);
 
 					// Determine if this is an include file
-					var isinc = false;
+					let isinc = false;
 					if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) {
 						isinc = true;
-					}
-					else {
+					} else {
 						if (
 							parsed[i][j-1].l == ld.cos_langindex &&
 							parsed[i][j-1].s == ld.cos_ppc_attrindex &&
-							doc.getText(
-								Range.create(
-									Position.create(i,parsed[i][j-1].p),
-									Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
-								)
-							).toLowerCase() === "include"
+							doc.getText(Range.create(
+								i,parsed[i][j-1].p,
+								i,parsed[i][j-1].p+parsed[i][j-1].c
+							)).toLowerCase() === "include"
 						) {
 							isinc = true;
 						}
@@ -697,29 +694,25 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						// Check if the routine exists
 						if (isinc) {
 							if (!files.some(file => file.Name == (word+".inc"))) {
-								let diagnostic: Diagnostic = {
+								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
 									message: `Include file "${word}" does not exist in namespace "${baseNs}"`,
 									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+								});
 							}
-						}
-						else {
-							const regex = new RegExp(`^${word}\.(mac|int|obj)$`);
+						} else if (word.length && /^%?[\d\.\p{L}]*$/u.test(word)) { // Need validation to avoid creating a bad regex
+							const regex = new RegExp(`^${word.replace(/\./g,"\.")}\.(mac|int|obj)$`);
 							if (!files.some(file => regex.test(file.Name))) {
-								let diagnostic: Diagnostic = {
+								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
 									message: `Routine "${word}" does not exist in namespace "${baseNs}"`,
 									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+								});
 							}
 						}
-					}
-					else if (currentNs != "") {
+					} else if (currentNs != "") {
 						// Add this document to the map
 						addRangeToMapVal(otherNsDocs,`${currentNs}:::${word}${isinc ? ".inc" : ".mac"}`,wordrange);
 					}

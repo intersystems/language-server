@@ -13,7 +13,7 @@ import systemFunctions = require("../documentation/systemFunctions.json");
 import systemVariables = require("../documentation/systemVariables.json");
 
 // Initialize turndown and tune it for Documatic HTML
-const TurndownService = require('turndown-ext').default;
+const TurndownService = require("turndown").default;
 const turndown = new TurndownService({
 	codeBlockStyle: "fenced",
 	blankReplacement: (content, node: HTMLElement) => node.nodeName == 'SPAN' ? node.outerHTML : ''
@@ -2177,8 +2177,7 @@ export function documaticHtmlToMarkdown(html: string): string {
 export function determineClassNameParameterClass(doc: TextDocument, parsed: compressedline[], line: number, token: number, completion = false): string {
 	if (
 		completion &&
-		parsed[line][token].l == ld.cls_langindex &&
-		parsed[line][token].s == ld.error_attrindex &&
+		[ld.error_attrindex,ld.cls_delim_attrindex].includes(parsed[line][token].s) &&
 		["(","()"].includes(doc.getText(Range.create(
 			line,
 			parsed[line][token].p,
@@ -2189,7 +2188,8 @@ export function determineClassNameParameterClass(doc: TextDocument, parsed: comp
 		parsed[line][token-1].s == ld.cls_clsname_attrindex
 	) {
 		// When doing completion for (, the ( may be an
-		// error token so we need to handle that special case
+		// error token, or the () can be a single delimiter token,
+		//  so we need to handle those special cases
 		return doc.getText(findFullRange(
 			line,parsed,token-1,
 			parsed[line][token-1].p,
@@ -2560,7 +2560,12 @@ export function isClassMember(keyword: string): boolean {
  * @param server The server that this document is associated with.
  */
 export async function getMemberType(parsed: compressedline[], line: number, tkn: number, cls: string, member: string, server: ServerSpec): Promise<string> {
-	if (["%New","%Open","%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) {
+	if (
+		// We assume these methods always return an instance of the class
+		(["%New","%Open","%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) ||
+		// Config class Open methods function like %Open(Id)
+		(cls.startsWith("Config.") && member == "Open" && server.namespace.toUpperCase() == "%SYS")
+	) {
 		return cls;
 	}
 	let result = "";
@@ -2630,7 +2635,11 @@ export async function getMemberType(parsed: compressedline[], line: number, tkn:
 			}
 		}
 
-		if (memobj.Type != "") result = memobj.Type;
+		result = memobj.Type;
+		if (/%Library\.Dynamic(Array|Object)/.test(cls) && /%(Library)?\.DynamicAbstractObject/.test(result)) {
+			// JSON methods that return a JSON object always return an object of the same type
+			result = cls;
+		}
 	}
 
 	return result;
@@ -2665,4 +2674,11 @@ export function macroDefToDoc(def: string[], header = false): MarkupContent {
 		kind: MarkupKind.Markdown,
 		value: `${header ? headerStr : ""}\`\`\`\n${firstLine.length ? firstLine + "\n" : ""}${def.slice(1).map(e => stripMppContinue(e)).join("\n")}\n\`\`\``
 	};
+}
+
+/** Return a `RegExp` that can be used to test if a line matches a class member definition */
+export function memberRegex(keywords: string, member: string): RegExp {
+	return new RegExp(`^(?:${keywords.split("").map(
+		c => /[a-z]/i.test(c) ? `[${c.toUpperCase()}${c.toLowerCase()}]` : c
+	).join("")}) ${member}(?:\\(|;| )`);
 }

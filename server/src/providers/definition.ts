@@ -1,5 +1,5 @@
 import { Position, TextDocumentPositionParams, Range, LocationLink } from 'vscode-languageserver/node';
-import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineClassNameParameterClass, getParsedDocument, currentClass, getTextForUri, isClassMember } from '../utils/functions';
+import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineClassNameParameterClass, getParsedDocument, currentClass, getTextForUri, isClassMember, memberRegex } from '../utils/functions';
 import { ServerSpec, QueryData } from '../utils/types';
 import { documents, corePropertyParams, classMemberTypes, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -23,8 +23,7 @@ async function classMemberLocationLink(
 		if (classText.length) {
 			// Loop through the file contents to find this member
 			let linect = 0;
-			// Make only the member keywords case insensitive
-			const regex = new RegExp(`^(?:${memberKeywords.split("").map(c => /[a-z]/i.test(c) ? `[${c.toUpperCase()}${c.toLowerCase()}]` : c).join("")}) ${memberName}(?:\\(|;| )`);
+			const regex = memberRegex(memberKeywords,memberName);
 			for (let j = 0; j < classText.length; j++) {
 				if (linect > 0) {
 					linect++;
@@ -301,12 +300,19 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					return null;
 				}
 
-				var targetrange = Range.create(Position.create(0,0),Position.create(0,0));
-				var targetselrange = Range.create(Position.create(0,0),Position.create(0,0));
+				let targetrange = Range.create(0,0,0,0);
+				let targetselrange = Range.create(0,0,0,0);
+				let memberKeywords = 
+					parsed[params.position.line][i].s == ld.cos_prop_attrindex ? "Parameter" :
+					parsed[params.position.line][i].s == ld.cos_method_attrindex || unquotedname == "%OnNew" ? "Method|ClassMethod|ClientMethod" :
+					[ld.cos_attr_attrindex,ld.cos_instvar_attrindex].includes(parsed[params.position.line][i].s) ? "Property|Relationship" :
+					membercontext.baseclass.startsWith("%SYSTEM.") ? "Method|ClassMethod|ClientMethod" :
+					"Method|ClassMethod|ClientMethod|Property|Relationship";
 				if (thisclass === membercontext.baseclass) {
 					// The member may be defined in this class
 
 					// Loop through the file contents to find this member
+					const regex = memberRegex(memberKeywords,member);
 					var linect = 0;
 					for (let dln = 0; dln < parsed.length; dln++) {
 						if (linect > 0) {
@@ -328,16 +334,12 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						else if (parsed[dln].length > 0 && parsed[dln][0].l == ld.cls_langindex && parsed[dln][0].s == ld.cls_keyword_attrindex) {
 							// This line starts with a UDL keyword
 				
-							var keyword = doc.getText(Range.create(Position.create(dln,parsed[dln][0].p),Position.create(dln,parsed[dln][0].p+parsed[dln][0].c))).toLowerCase();
-							if (keyword.indexOf("method") !== -1 || keyword.indexOf("property") !== -1 || keyword.indexOf("parameter") !== -1 || keyword.indexOf("relationship") !== -1) {
+							if (regex.test(doc.getText(Range.create(dln,0,dln+1,0)))) {
+								// We found the member
 								const thismemberrange = findFullRange(dln,parsed,1,parsed[dln][1].p,parsed[dln][1].p+parsed[dln][1].c);
-								const thismember = doc.getText(thismemberrange);
-								if (thismember === member) {
-									// We found the member
-									targetselrange = thismemberrange;
-									targetrange.start = Position.create(dln,0);
-									linect++;
-								}
+								targetselrange = thismemberrange;
+								targetrange.start = Position.create(dln,0);
+								linect++;
 							}
 						}
 					}
@@ -369,41 +371,27 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					query: "",
 					parameters: []
 				};
-				let memberKeywords: string;
-				if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
+				if (memberKeywords == "Parameter") {
 					// This is a parameter
-					memberKeywords = "Parameter";
 					data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
-				else if (parsed[params.position.line][i].s == ld.cos_method_attrindex || unquotedname == "%OnNew") {
+				else if (memberKeywords == "Method|ClassMethod|ClientMethod") {
 					// This is a method
-					memberKeywords = "Method|ClassMethod|ClientMethod";
 					data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
-				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex || parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
+				else if (memberKeywords == "Property|Relationship") {
 					// This is a property
-					memberKeywords = "Property|Relationship";
 					data.query = "SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
 					data.parameters = [membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 				}
 				else {
-					// This is a generic member
-					if (membercontext.baseclass.slice(0,7) === "%SYSTEM") {
-						// This is always a method
-						memberKeywords = "Method|ClassMethod|ClientMethod";
-						data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
-						data.parameters = [membercontext.baseclass,unquotedname];
-					}
-					else {
-						// This can be a method or property
-						memberKeywords = "Method|ClassMethod|ClientMethod|Property|Relationship";
-						data.query = 
-							"SELECT Name, Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL " +
-							"SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
-						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
-					}
+					// This can be a method or property
+					data.query = 
+						"SELECT Name, Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL " +
+						"SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+					data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 				}
 				let originclass = "";
 				let membernameinfile = member;

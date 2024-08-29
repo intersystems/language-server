@@ -15,7 +15,7 @@ import parameterTypes = require("../documentation/parameterTypes.json");
 
 import * as ld from '../utils/languageDefinitions';
 import { compressedline, QueryData, ServerSpec } from '../utils/types';
-import { getServerSpec, findFullRange, makeRESTRequest, quoteUDLIdentifier, parseDimLine, getLanguageServerSettings, getParsedDocument } from '../utils/functions';
+import { getServerSpec, findFullRange, makeRESTRequest, quoteUDLIdentifier, parseDimLine, getLanguageServerSettings, getParsedDocument, memberRegex } from '../utils/functions';
 import { documents, connection, zutilFunctions } from '../utils/variables';
 
 /**
@@ -33,7 +33,8 @@ type QuickPickItem = {
 type AddOverridableMembersParams = {
 	uri: string,
 	members: QuickPickItem[],
-	cursor: Position
+	cursor: Position,
+	memberType: string
 };
 
 /**
@@ -404,6 +405,11 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 		}
 	}
 
+	const memberKeywords = 
+		params.memberType == "Method" ? "Method|ClassMethod|ClientMethod" :
+		params.memberType == "Property" ? "Property|Relationship" :
+		params.memberType;
+
 	// Get the text of all origin classes that we need
 	const respdata = await makeRESTRequest("POST",1,"/docs",server,[...membersPerOrigin.keys()]);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -416,64 +422,53 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 					// Find this member in the document contents
 
 					var desclinect = 0;
+					const regex = memberRegex(memberKeywords,member);
 					for (let ln = 0; ln < cls.content.length; ln++) {
 						const firstword = cls.content[ln].split(" ",1)[0].toLowerCase();
 						if (cls.content[ln].slice(0,3) === "///") {
 							desclinect++;
 						}
-						else if (
-							(firstword.indexOf("method") !== -1) || (firstword.indexOf("property") !== -1) ||
-							(firstword.indexOf("parameter") !== -1) || (firstword.indexOf("relationship") !== -1) ||
-							(firstword.indexOf("query") !== -1) || (firstword.indexOf("trigger") !== -1) ||
-							(firstword.indexOf("xdata") !== -1) || (firstword.indexOf("projection") !== -1)
-						) {
-							// This line is the start of a class member definition
-							const searchstr = cls.content[ln].slice(cls.content[ln].indexOf(" ")+1).trim();
-							if (new RegExp(`^${member}[( ;]{1}.*`).test(searchstr)) {
-								// This is the right member
+						else if (regex.test(cls.content[ln])) {
+							// This is the right member
 								
-								// Add the description lines to the 'newtText' string if there are any
-								if (desclinect > 0) {
-									change.newText = change.newText + cls.content.slice(ln-desclinect,ln).join("\n") + "\n";
-								}
+							// Add the description lines to the 'newtText' string if there are any
+							if (desclinect > 0) {
+								change.newText = change.newText + cls.content.slice(ln-desclinect,ln).join("\n") + "\n";
+							}
 
-								// Continue looping until you hit the end of the member or the start of its implementation
-								for (let mln = ln; mln < cls.content.length; mln++) {
-									var line = cls.content[mln];
+							// Continue looping until you hit the end of the member or the start of its implementation
+							for (let mln = ln; mln < cls.content.length; mln++) {
+								var line = cls.content[mln];
 
-									// Remove the Abstract keyword if it appears on this line
-									line = line.replace(" [ Abstract ]","").replace("[ Abstract,","[");
+								// Remove the Abstract keyword if it appears on this line
+								line = line.replace(" [ Abstract ]","").replace("[ Abstract,","[");
 
-									// Add this line to the 'newText' string
-									change.newText = change.newText + line + "\n";
+								// Add this line to the 'newText' string
+								change.newText = change.newText + line + "\n";
 
-									if (
-										(firstword.indexOf("property") !== -1) || (firstword.indexOf("relationship") !== -1) ||
-										(firstword.indexOf("parameter") !== -1) || (firstword.indexOf("projection") !== -1)
-									) {
-										// Look for the end of the member
-										if (cls.content[mln].trim().slice(-1) === ";") {
-											break;
-										}
-									}
-									else {
-										// Look for the start of the member's implementation
-										if (cls.content[mln].trim() === "{") {
-											// Add a blank line and closing curly brace
-											change.newText = change.newText + "\t\n";
-											change.newText = change.newText + "}\n";
-
-											break;
-										}
+								if (
+									(firstword.indexOf("property") !== -1) || (firstword.indexOf("relationship") !== -1) ||
+									(firstword.indexOf("parameter") !== -1) || (firstword.indexOf("projection") !== -1)
+								) {
+									// Look for the end of the member
+									if (cls.content[mln].trim().slice(-1) === ";") {
+										break;
 									}
 								}
+								else {
+									// Look for the start of the member's implementation
+									if (cls.content[mln].trim() === "{") {
+										// Add a blank line and closing curly brace
+										change.newText = change.newText + "\t\n";
+										change.newText = change.newText + "}\n";
 
-								// Add a trailing newline
-								change.newText = change.newText + "\n";
+										break;
+									}
+								}
 							}
-							else {
-								desclinect = 0;
-							}
+
+							// Add a trailing newline
+							change.newText = change.newText + "\n";
 						}
 						else {
 							desclinect = 0;
@@ -1440,7 +1435,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 	if (parsed === undefined) {return null;}
 	const settings = await getLanguageServerSettings(doc.uri);
 
-	var result: CodeAction[] = [];
+	const result: CodeAction[] = [];
 	if (!Array.isArray(params.context.only) || params.context.only.includes(CodeActionKind.Refactor)) {
 		result.push({
 			title: 'Wrap in Try/Catch',
@@ -1606,11 +1601,12 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 			};
 		}
 		result[0].data = [doc.uri,lnstart,lnend];
-	} else if (!Array.isArray(params.context.only) || params.context.only.includes(CodeActionKind.QuickFix)) {
+	}
+	if (!Array.isArray(params.context.only) || params.context.only.includes(CodeActionKind.QuickFix)) {
 		for (const diagnostic of params.context.diagnostics) {
 			if (
-				diagnostic.message === "Invalid parameter type." || 
-				diagnostic.message === "Parameter value and type do not match."
+				diagnostic.message === "Invalid parameter type" || 
+				diagnostic.message === "Parameter value and type do not match"
 			) {
 				result.push({
 					title: 'Remove incorrect type',
@@ -1643,7 +1639,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 						reason: "The class name from the Diagnostic contains a dot"
 					};
 				}
-			} else if (diagnostic.message == "Function has been superseded." && typeof diagnostic.data == "string") {
+			} else if (diagnostic.message == "Function has been superseded" && typeof diagnostic.data == "string") {
 				// This is a replaceable $ZUTIL function diagnostic
 				const classMethod = zutilFunctions.replace[diagnostic.data];
 				if (classMethod != undefined) {

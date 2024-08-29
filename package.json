@@ -4,7 +4,7 @@
   "description": "A language server for InterSystems ObjectScript.",
   "author": "InterSystems Corporation",
   "license": "SEE LICENSE IN LICENSE.txt",
-  "version": "2.5.2-SNAPSHOT",
+  "version": "2.6.0-SNAPSHOT",
   "publisher": "intersystems",
   "repository": {
     "type": "github",
@@ -54,7 +54,7 @@
     "commands": [
       {
         "command": "intersystems.language-server.overrideClassMembers",
-        "title": "Override Class Members",
+        "title": "Override Class Members...",
         "category": "InterSystems Language Server"
       }
     ],
@@ -1792,15 +1792,15 @@
     "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
   },
   "devDependencies": {
-    "@types/node": "^18.15.3",
-    "@vscode/vsce": "^2.26.0",
+    "@types/node": "^20.14.13",
+    "@vscode/vsce": "^3.0.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.0.0",
-    "ovsx": "^0.9.1",
-    "rimraf": "^5.0.5",
+    "ovsx": "^0.9.2",
+    "rimraf": "^6.0.1",
     "ts-loader": "^9.5.1",
-    "typescript": "^5.4.5",
-    "webpack": "^5.91.0",
+    "typescript": "^5.5.4",
+    "webpack": "^5.94.0",
     "webpack-cli": "^5.1.4"
   },
   "extensionDependencies": [
