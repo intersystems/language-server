@@ -699,15 +699,16 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 					openranges.splice(prevrange,1);
 				}
 				else if (parsed[line][tkn].l == ld.cos_langindex && parsed[line][tkn].s == ld.cos_comment_attrindex) {
+					const commentText = doc.getText(Range.create(line,parsed[line][tkn].p,line,parsed[line][tkn].p+parsed[line][tkn].c)).trim();
 					const inCComment = openranges.length && openranges[openranges.length - 1].kind == "isc-ccomment";
-					if (!inCComment && doc.getText(Range.create(line,parsed[line][tkn].p,line,parsed[line][tkn].p+2)) == "/*") {
+					if (!inCComment && commentText.slice(0,2) == "/*") {
 						// Open a new C-style comment range
 						openranges.push({
 							startLine: line,
 							endLine: line,
 							kind: "isc-ccomment"
 						});
-					} else if (inCComment && doc.getText(Range.create(line,parsed[line][tkn].p+parsed[line][tkn].c-2,line,parsed[line][tkn].p+parsed[line][tkn].c)) == "*/") {
+					} else if (inCComment && commentText.slice(-2) == "*/") {
 						// Close the most recent C-style comment range
 						const cCommentRange = openranges.pop();
 						cCommentRange.endLine = line - 1;

@@ -1,6 +1,7 @@
 # Changelog
 
 ## [2.6.1] - 2024-08-30
+- Fix issue [#343](https://github.com/intersystems/language-server/issues/343): foldingRange fails on some C-style block comments
 - Fix issue [#344](https://github.com/intersystems/language-server/issues/344): Prevent errors during hover when no data was returned from the server
 
 ## [2.6.0] - 2024-08-29
