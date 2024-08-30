@@ -256,7 +256,13 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 			return respdata;
 		}
 	} catch (error) {
-		console.log(error);
+		client.warn(`Error making REST request ${method} ${path}: ${
+			typeof error == "string"
+				? error
+				: error instanceof Error
+				? error.toString()
+				: JSON.stringify(error)
+		}`);
 		return undefined;
 	}
 };

@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.6.1] - 2024-08-30
+- Fix issue [#344](https://github.com/intersystems/language-server/issues/344): Prevent errors during hover when no data was returned from the server
+
 ## [2.6.0] - 2024-08-29
 - Fix issue [#329](https://github.com/intersystems/language-server/issues/329): Support Unix platforms that don't have the `en_US.UTF-8` locale
 - Fix issue [#336](https://github.com/intersystems/language-server/issues/336): Add intellisense for variables set to the returned value of a method, or a property, with a declared type

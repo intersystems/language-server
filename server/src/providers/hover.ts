@@ -91,7 +91,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					parameters: [normalizedname]
 				};
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-				if (respdata !== undefined && respdata.data.result.content !== undefined && respdata.data.result.content.length === 1) {
+				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 					// The class was found
 					return {
 						contents: {
@@ -309,7 +309,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							mode: maccon.mode
 						};
 						const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expquerydata);
-						if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
+						if (Array.isArray(exprespdata?.data?.result?.content?.expansion) && exprespdata.data.result.content.expansion.length > 0) {
 							// We got data back
 							const exptext = exprespdata.data.result.content.expansion.join("  \n");
 							if (exptext.slice(0,5) === "ERROR") {
@@ -324,7 +324,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 									mode: maccon.mode
 								};
 								const defrespdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,defquerydata);
-								if (defrespdata !== undefined && defrespdata.data.result.content.definition.length > 0) {
+								if (Array.isArray(defrespdata?.data?.result?.content?.definition) && defrespdata.data.result.content.definition.length > 0) {
 									// The macro definition was found
 									return {
 										contents: macroDefToDoc(defrespdata.data.result.content.definition),
@@ -357,7 +357,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							mode: maccon.mode
 						};
 						const respdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,inputdata);
-						if (respdata !== undefined && respdata.data.result.content.definition.length > 0) {
+						if (Array.isArray(respdata?.data?.result?.content?.definition) && respdata.data.result.content.definition.length > 0) {
 							// The macro definition was found
 							return {
 								contents: macroDefToDoc(respdata.data.result.content.definition),
@@ -902,7 +902,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								parameters: [normalizedname]
 							};
 							const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-							if (respdata !== undefined && respdata.data.result.content.length === 1) {
+							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 								// The class was found
 								return {
 									contents: {
@@ -1124,7 +1124,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						parameters: [varClass]
 					};
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
-					if (respdata !== undefined && respdata.data.result.content !== undefined && respdata.data.result.content.length === 1) {
+					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 						// The class was found
 						return {
 							contents: {
