@@ -1615,9 +1615,7 @@ async function parseSetCommand(
 	let firstExprTuple: [number, number] | undefined = undefined;
 	let lastMemTuple: [number, number] | undefined = undefined;
 	for (let ln = line; ln < parsed.length; ln++) {
-		if (parsed[ln] == undefined || parsed[ln].length == 0) {
-			continue;
-		}
+		if (!parsed[ln]?.length) continue;
 		for (let tkn = (ln == line ? token + 1 : 0); tkn < parsed[ln].length; tkn++) {
 			if (parsed[ln][tkn].l == ld.cos_langindex && (parsed[ln][tkn].s === ld.cos_command_attrindex || parsed[ln][tkn].s === ld.cos_zcom_attrindex)) {
 				// This is the next command, so stop looping
@@ -1658,7 +1656,14 @@ async function parseSetCommand(
 					parsed[ln][tkn].s == ld.cos_localdec_attrindex || parsed[ln][tkn].s == ld.cos_localvar_attrindex
 				) &&
 				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == selector &&
-				!(tkn+1 < parsed[ln].length && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s == ld.cos_objdot_attrindex) &&
+				// Variable isn't followed by a dot or a subscript
+				!(tkn+1 < parsed[ln].length && parsed[ln][tkn+1].l == ld.cos_langindex && (
+					parsed[ln][tkn+1].s == ld.cos_objdot_attrindex || (
+						parsed[ln][tkn+1].s == ld.cos_delim_attrindex &&
+						doc.getText(Range.create(ln,parsed[ln][tkn+1].p,ln,parsed[ln][tkn+1].p+parsed[ln][tkn+1].c)) == "("
+					)
+				)) &&
+				// Variable isn't preceded by the indirection operator
 				!(tkn-1 >= 0 && parsed[ln][tkn-1].l == ld.cos_langindex && parsed[ln][tkn-1].s == ld.cos_indir_attrindex)
 			) {
 				// We found the variable, so now look for the assignment operator
