@@ -4,6 +4,7 @@
 - Fix issue [#345](https://github.com/intersystems/language-server/issues/345): Add intellisense for variables passed by reference as method arguments
 - Fix issue [#347](https://github.com/intersystems/language-server/issues/347): Setting a variable's subscript should not affect the type of that variable
 - Fix issue [#348](https://github.com/intersystems/language-server/issues/348): Support intellisense for method arguments that don't have a declared type
+- Fix issue [#349](https://github.com/intersystems/language-server/issues/349): Automatically provide intellisense for `%sqlcontext` variable
 
 ## [2.6.1] - 2024-08-30
 - Fix issue [#343](https://github.com/intersystems/language-server/issues/343): foldingRange fails on some C-style block comments

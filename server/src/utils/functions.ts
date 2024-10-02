@@ -1517,6 +1517,12 @@ async function determineDeclaredLocalVarClass(
 			context: "instance"
 		};
 	}
+	else if (thisvar === "%sqlcontext") {
+		result = {
+			baseclass: "%Library.ProcedureContext",
+			context: "instance"
+		};
+	}
 	else {
 		// Scan to the top of the method to find the #Dim
 		let founddim = false;
