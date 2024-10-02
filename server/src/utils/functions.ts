@@ -909,30 +909,16 @@ export async function getClassMemberContext(
 			context: "system"
 		};
 	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_param_attrindex) {
-		// The token before the dot is a parameter
-
-		const paramcon = await determineParameterClass(doc,parsed,line,dot-1,server);
-		if (paramcon !== undefined) {
-			result = paramcon;
-		}
-	}
 	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (
+		parsed[line][dot-1].s == ld.cos_param_attrindex ||
 		parsed[line][dot-1].s == ld.cos_localdec_attrindex ||
 		parsed[line][dot-1].s == ld.cos_localvar_attrindex ||
-		parsed[line][dot-1].s == ld.cos_otw_attrindex
+		parsed[line][dot-1].s == ld.cos_otw_attrindex ||
+		parsed[line][dot-1].s == ld.cos_localundec_attrindex
 	)) {
-		// The token before the dot is a declared local variable, public variable or warning variable
-
-		// First check if it's #Dim'd
-		let varContext = await determineDeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
-		if (varContext === undefined) {
-			// If it's not, attempt to determine the class it was set to
-			varContext = await determineUndeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
-		}
-		if (varContext !== undefined) {
-			result = varContext;
-		}
+		// The token before the dot is a parameter, local variable, public variable or warning variable
+		const varClass = await determineVariableClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
+		if (varClass) result = { baseclass: varClass, context: "instance" };
 	}
 	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_sysv_attrindex) {
 		// The token before the dot is a system variable
@@ -997,14 +983,6 @@ export async function getClassMemberContext(
 					context: "instance"
 				};
 			}
-		}
-	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_localundec_attrindex) {
-		// The token before the dot is an undeclared local variable
-
-		const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
-		if (localundeccon !== undefined) {
-			result = localundeccon;
 		}
 	}
 	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_jsonb_attrindex) {
@@ -1653,7 +1631,8 @@ async function parseSetCommand(
 				!inPostconditional && parsed[ln][tkn].l == ld.cos_langindex &&
 				(
 					parsed[ln][tkn].s == ld.cos_otw_attrindex || parsed[ln][tkn].s == ld.cos_localundec_attrindex ||
-					parsed[ln][tkn].s == ld.cos_localdec_attrindex || parsed[ln][tkn].s == ld.cos_localvar_attrindex
+					parsed[ln][tkn].s == ld.cos_localdec_attrindex || parsed[ln][tkn].s == ld.cos_localvar_attrindex ||
+					parsed[ln][tkn].s == ld.cos_param_attrindex
 				) &&
 				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == selector &&
 				// Variable isn't followed by a dot or a subscript
@@ -1992,7 +1971,8 @@ async function determineUndeclaredLocalVarClass(
 					if (next && parsed[next[0]][next[1]].l == ld.cos_langindex &&
 						(
 							parsed[next[0]][next[1]].s == ld.cos_otw_attrindex || parsed[next[0]][next[1]].s == ld.cos_localundec_attrindex ||
-							parsed[next[0]][next[1]].s == ld.cos_localdec_attrindex || parsed[next[0]][next[1]].s == ld.cos_localvar_attrindex
+							parsed[next[0]][next[1]].s == ld.cos_localdec_attrindex || parsed[next[0]][next[1]].s == ld.cos_localvar_attrindex ||
+							parsed[next[0]][next[1]].s == ld.cos_param_attrindex
 						) &&
 						doc.getText(Range.create(
 							next[0],parsed[next[0]][next[1]].p,
@@ -2650,49 +2630,28 @@ export async function getTextForUri(uri: string, server: ServerSpec): Promise<st
  * @param line The line that the variable is in.
  * @param tkn The token of the variable in the line.
  * @param server The server that doc is associated with.
+ * 
+ * The following optional parameters are only provided when called via `onDiagnostics()`:
+ * @param allfiles An array of all files in a database.
+ * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
 export async function determineVariableClass(
-	doc: TextDocument, parsed: compressedline[],
-	line: number, tkn: number, server: ServerSpec
+	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
+	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<string> {
-	let varClass = "";
 	if (parsed[line][tkn].s == ld.cos_param_attrindex) {
-		// This token is a parameter
-
-		// Determine the class of the parameter
-		const paramcon = await determineParameterClass(doc,parsed,line,tkn,server);
-		if (paramcon !== undefined) {
-			// The parameter has a class
-			varClass = paramcon.baseclass;
-		}
-	} else if (
-		parsed[line][tkn].s == ld.cos_localdec_attrindex ||
-		parsed[line][tkn].s == ld.cos_localvar_attrindex ||
-		parsed[line][tkn].s == ld.cos_otw_attrindex
-	) {
-		// This token is a declared local variable, public variable, or warning variable
-
-		// First check if it's #Dim'd
-		let varContext = await determineDeclaredLocalVarClass(doc,parsed,line,tkn,server);
-		if (varContext === undefined) {
-			// If it's not, attempt to determine the class it was set to
-			varContext = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,server);
-		}
-		if (varContext !== undefined) {
-			// The declared local variable has a class
-			varClass = varContext.baseclass;
-		}
-	} else {
-		// This token is an undeclared local variable
-
-		// Determine the class of the undeclared local variable
-		const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,server);
-		if (localundeccon !== undefined) {
-			// The undeclared local variable has a class
-			varClass = localundeccon.baseclass;
-		}
+		// Check if the parameter has a declared type in the formal spec
+		const paramcon = await determineParameterClass(doc,parsed,line,tkn,server,allfiles,inheritedpackages);
+		if (paramcon?.baseclass) return paramcon.baseclass;
 	}
-	return varClass;
+	if (parsed[line][tkn].s != ld.cos_localundec_attrindex && parsed[line][tkn].s != ld.cos_param_attrindex) {
+		// Check if the variable is #Dim'd or a known percent variable
+		const varContext = await determineDeclaredLocalVarClass(doc,parsed,line,tkn,server,allfiles,inheritedpackages);
+		if (varContext?.baseclass) return varContext.baseclass;
+	}
+	// Fall back to inferring the type from a Set or pass by reference
+	const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,server,allfiles,inheritedpackages);
+	return localundeccon?.baseclass ?? "";
 }
 
 /** Returns `true` if `keyword` is a valid class member type. */

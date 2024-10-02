@@ -74,13 +74,20 @@ jobs:
     needs: build
     if: success() && github.event_name == 'push'
     steps:
-      - name: Download packages and metadata
+      - name: Download metadata
         uses: actions/download-artifact@v4
+        with:
+          name: meta
+          path: .
       - name: Set version output
         id: set-version
         run: |
           set -x
           echo "version=`cat meta.version`" >> $GITHUB_OUTPUT
+      - name: Download packages
+        uses: actions/download-artifact@v4
+        with:
+         pattern: '**/*.vsix'
       - name: Create Release
         id: create-release
         uses: softprops/action-gh-release@v2
