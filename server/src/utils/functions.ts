@@ -1869,8 +1869,8 @@ async function parseSetCommand(
 			const nextTkn = nextToken(parsed,exprLn,exprTkn);
 			if (parsed[exprLn][exprTkn].s == ld.cos_jsonb_attrindex) {
 				switch (doc.getText(
-					Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c))
-				) {
+					Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
+				)) {
 					case "{":
 						result = "%Library.DynamicObject";
 						break;
@@ -1942,7 +1942,7 @@ async function determineUndeclaredLocalVarClass(
 	let result: ClassMemberContext | undefined = undefined;
 	const thisvar = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
 
-	// Scan to the top of the method to find where the variable was Set
+	// Scan to the top of the method to find where the variable was Set or passed by reference
 	let firstLabel = true;
 	for (let j = line; j >= 0; j--) {
 		if (parsed[j].length === 0) {
@@ -1966,7 +1966,7 @@ async function determineUndeclaredLocalVarClass(
 			firstLabel = false;
 		}
 		else {
-			// Loop through the line looking for Sets
+			// Loop through the line looking for Sets or this variable passed by reference
 			for (let tkn = 0; tkn < parsed[j].length; tkn++) {
 				if (
 					parsed[j][tkn].l == ld.cos_langindex && parsed[j][tkn].s === ld.cos_command_attrindex &&
@@ -1980,6 +1980,153 @@ async function determineUndeclaredLocalVarClass(
 							context: "instance"
 						};
 						break;
+					}
+				}
+				// Don't check for by reference syntax if we're calculating diagnostics for performance reasons
+				if (
+					!allfiles && parsed[j][tkn].l == ld.cos_langindex && parsed[j][tkn].s == ld.cos_oper_attrindex &&
+					doc.getText(Range.create(j,parsed[j][tkn].p,j,parsed[j][tkn].p+parsed[j][tkn].c)) == "."
+				) {
+					const next = nextToken(parsed,j,tkn);
+					// Check if the variable passed by reference is the one we care about
+					if (next && parsed[next[0]][next[1]].l == ld.cos_langindex &&
+						(
+							parsed[next[0]][next[1]].s == ld.cos_otw_attrindex || parsed[next[0]][next[1]].s == ld.cos_localundec_attrindex ||
+							parsed[next[0]][next[1]].s == ld.cos_localdec_attrindex || parsed[next[0]][next[1]].s == ld.cos_localvar_attrindex
+						) &&
+						doc.getText(Range.create(
+							next[0],parsed[next[0]][next[1]].p,
+							next[0],parsed[next[0]][next[1]].p+parsed[next[0]][next[1]].c
+						)) == thisvar
+					) {
+						// Find the start of the method
+						const [startLn, startTkn] = findOpenParen(doc,parsed,j,tkn);
+						if (startLn != -1 && startTkn != -1 && 
+							parsed[startLn][startTkn-1].l == ld.cos_langindex && 
+							(
+								parsed[startLn][startTkn-1].s == ld.cos_method_attrindex ||
+								parsed[startLn][startTkn-1].s == ld.cos_mem_attrindex
+							)
+						) {
+							// Determine which argument number this is
+							const argNum = determineActiveParam(doc.getText(Range.create(
+								startLn,parsed[startLn][startTkn].p+1,
+								j,parsed[j][tkn].p
+							))) + 1;
+
+							// Get the full text of the member
+							const member = doc.getText(Range.create(
+								startLn,parsed[startLn][startTkn-1].p,
+								startLn,parsed[startLn][startTkn-1].p+parsed[startLn][startTkn-1].c
+							));
+							const unquotedname = quoteUDLIdentifier(member,0);
+
+							// Get the base class that this member is in
+							const membercontext = await getClassMemberContext(doc,parsed,startTkn-2,startLn,server);
+							if (membercontext.baseclass != "" && argNum > 0) {
+								// Get the method signature
+								const querydata = member == "%New" ? {
+									// Get the information for both %New and %OnNew
+									query: "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND (Name = ? OR Name = ?)",
+									parameters: [argNum,membercontext.baseclass,unquotedname,"%OnNew"]
+								} : {
+									query: "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Name = ?",
+									parameters: [argNum,membercontext.baseclass,unquotedname]
+								};
+								const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+								if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+									// We got data back
+
+									let formalSpecObj: { FormalSpec: string, Type: string } = { FormalSpec: "", Type: "" };
+									if (member == "%New") {
+										if (respdata.data.result.content.length == 2 && respdata.data.result.content[1].Origin != "%Library.RegisteredObject") {
+											// %OnNew has been overridden for this class
+											formalSpecObj = respdata.data.result.content[1];
+										} else {
+											// If there's no %OnNew, then %New shouldn't have arguments
+										}
+									} else {
+										formalSpecObj = respdata.data.result.content[0];
+										if (respdata.data.result.content[0].Stub !== "") {
+											// This is a method generated by member inheritance, so we need to get its metadata from the proper subtable
+
+											const stubarr = respdata.data.result.content[0].Stub.split(".");
+											var stubquery = "";
+											if (stubarr[2] == "i") {
+												// This is a method generated from an index
+												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+											}
+											if (stubarr[2] == "q") {
+												// This is a method generated from a query
+												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+											}
+											if (stubarr[2] == "a") {
+												// This is a method generated from a property
+												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+											}
+											if (stubarr[2] == "n") {
+												// This is a method generated from a constraint
+												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+											}
+											if (stubquery != "") {
+												const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
+													query: stubquery,
+													parameters: [argNum,stubarr[1],membercontext.baseclass,stubarr[0]]
+												});
+												if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
+													// We got data back
+													formalSpecObj = stubrespdata.data.result.content[0];
+												}
+											}
+										}
+									}
+									if (formalSpecObj.FormalSpec != "" && formalSpecObj.Type != "") {
+										// If the type is %Library.String, validate that the user really declared that type
+										if (formalSpecObj.Type == "%Library.String") {
+											let currentArg = 1, openParenCount = 0, openBraceCount = 0, inQuote = false, typeDeclared = false;
+											for (const char of formalSpecObj.FormalSpec) {
+												switch (char) {
+													case "{":
+														if (!inQuote) openBraceCount++;
+														break;
+													case "}":
+														if (!inQuote) openBraceCount--;
+														break;
+													case "(":
+														if (!inQuote) openParenCount++;
+														break;
+													case ")":
+														if (!inQuote) openParenCount--;
+														break;
+													case "\"":
+														inQuote = !inQuote;
+														break;
+													case ":":
+														if (!inQuote && !openBraceCount && !openParenCount && currentArg == argNum) typeDeclared = true;
+														break;
+													case ",":
+														if (!inQuote && !openBraceCount && !openParenCount) currentArg++;
+												}
+												if (typeDeclared || currentArg > argNum) break;
+											}
+											if (typeDeclared) {
+												result = {
+													baseclass: formalSpecObj.Type,
+													context: "instance"
+												};
+												break;
+											}
+										} else {
+											result = {
+												baseclass: formalSpecObj.Type,
+												context: "instance"
+											};
+											break;
+										}
+									}
+								}
+							}
+						}
 					}
 				}
 			}
@@ -2686,4 +2833,37 @@ export function memberRegex(keywords: string, member: string): RegExp {
 	return new RegExp(`^(?:${keywords.split("").map(
 		c => /[a-z]/i.test(c) ? `[${c.toUpperCase()}${c.toLowerCase()}]` : c
 	).join("")}) ${member}(?:\\(|;| )`);
+}
+
+/** Determine the active parameter number */
+export function determineActiveParam(text: string): number {
+	let activeParam = 0, openParenCount = 0, openBraceCount = 0, inQuote = false, inComment = false;
+	Array.from(text).forEach((char: string, idx: number) => {
+		switch (char) {
+			case "{":
+				if (!inQuote && !inComment) openBraceCount++;
+				break;
+			case "}":
+				if (!inQuote && !inComment) openBraceCount--;
+				break;
+			case "(":
+				if (!inQuote && !inComment) openParenCount++;
+				break;
+			case ")":
+				if (!inQuote && !inComment) openParenCount--;
+				break;
+			case "\"":
+				if (!inComment) inQuote = !inQuote;
+				break;
+			case "/":
+				if (!inQuote && !inComment && (idx < text.length - 1) && text[idx+1] == "*") inComment = true;
+				break;
+			case "*":
+				if (inComment && (idx < text.length - 1) && text[idx+1] == "/") inComment = false;
+				break;
+			case ",":
+				if (!inQuote && !inComment && !openBraceCount && !openParenCount) activeParam++;
+		}
+	});
+	return activeParam;
 }

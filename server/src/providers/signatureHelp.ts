@@ -1,5 +1,5 @@
 import { Position, SignatureHelp, SignatureHelpParams, SignatureHelpTriggerKind, SignatureInformation, Range, MarkupKind, ParameterInformation } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, makeRESTRequest, getMacroContext, findFullRange, getClassMemberContext, beautifyFormalSpec, documaticHtmlToMarkdown, findOpenParen, getParsedDocument, quoteUDLIdentifier } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, makeRESTRequest, getMacroContext, findFullRange, getClassMemberContext, beautifyFormalSpec, documaticHtmlToMarkdown, findOpenParen, getParsedDocument, quoteUDLIdentifier, determineActiveParam } from '../utils/functions';
 import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from '../utils/types';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -18,39 +18,6 @@ var signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefin
  * The start position of the active SignatureHelp.
  */
 var signatureHelpStartPosition: Position | undefined = undefined;
-
-/** Determine the active parameter number */
-function determineActiveParam(text: string): number {
-	let activeParam = 0, openParenCount = 0, openBraceCount = 0, inQuote = false, inComment = false;
-	Array.from(text).forEach((char: string, idx: number) => {
-		switch (char) {
-			case "{":
-				if (!inQuote && !inComment) openBraceCount++;
-				break;
-			case "}":
-				if (!inQuote && !inComment) openBraceCount--;
-				break;
-			case "(":
-				if (!inQuote && !inComment) openParenCount++;
-				break;
-			case ")":
-				if (!inQuote && !inComment) openParenCount--;
-				break;
-			case "\"":
-				if (!inComment) inQuote = !inQuote;
-				break;
-			case "/":
-				if (!inQuote && !inComment && (idx < text.length - 1) && text[idx+1] == "*") inComment = true;
-				break;
-			case "*":
-				if (inComment && (idx < text.length - 1) && text[idx+1] == "/") inComment = false;
-				break;
-			case ",":
-				if (!inQuote && !inComment && !openBraceCount && !openParenCount) activeParam++;
-		}
-	});
-	return activeParam;
-}
 
 /** Placeholder for the Markdown emphasis characters before an argument. */
 const emphasizePrefix: string = "%%%%%";
