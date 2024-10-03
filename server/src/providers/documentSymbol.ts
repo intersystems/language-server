@@ -93,25 +93,21 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 						}
 					}
 
-					var kind: SymbolKind = SymbolKind.Property;
-					if (keywordtextlower.indexOf("method") !== -1 || keywordtextlower === "query") {
-						kind = SymbolKind.Method;
-					}
-					else if (keywordtextlower === "parameter") {
-						kind = SymbolKind.Constant;
-					}
-					else if (keywordtextlower === "index") {
-						kind = SymbolKind.Key;
-					}
-					else if (keywordtextlower === "xdata" || keywordtextlower === "storage") {
-						kind = SymbolKind.Struct;
-					}
-
 					members.push({
-						name: doc.getText(Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c))),
-						kind: kind,
-						range: Range.create(Position.create(firstnondoc+1,0),Position.create(lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c)),
-						selectionRange: Range.create(Position.create(line,parsed[line][1].p),Position.create(line,parsed[line][1].p+parsed[line][1].c)),
+						name: doc.getText(Range.create(line,parsed[line][1].p,line,parsed[line][1].p+parsed[line][1].c)),
+						kind: 
+							["method","classmethod","clientmethod"].includes(keywordtextlower) ? SymbolKind.Method :
+							keywordtextlower == "query" ? SymbolKind.Function :
+							keywordtextlower == "trigger" ? SymbolKind.Event :
+							keywordtextlower == "parameter" ? SymbolKind.Constant :
+							keywordtextlower == "index" ? SymbolKind.Array :
+							keywordtextlower == "foreignkey" ? SymbolKind.Key :
+							keywordtextlower == "xdata" ? SymbolKind.Struct :
+							keywordtextlower == "storage" ? SymbolKind.Object :
+							keywordtextlower == "projection" ? SymbolKind.Interface :
+							SymbolKind.Property, // Property and Relationship
+						range: Range.create(firstnondoc+1,0,lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c),
+						selectionRange: Range.create(line,parsed[line][1].p,line,parsed[line][1].p+parsed[line][1].c),
 						detail: keywordtext
 					});
 				}
