@@ -13,6 +13,7 @@
   "bugs": {
     "url": "https://github.com/intersystems/language-server/issues"
   },
+  "homepage": "https://docs.intersystems.com/components/csp/docbook/DocBook.UI.Page.cls?KEY=GVSCO",
   "icon": "images/logo.png",
   "categories": [
     "Programming Languages",

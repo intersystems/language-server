@@ -6,6 +6,8 @@
 - Fix issue [#348](https://github.com/intersystems/language-server/issues/348): Support intellisense for method arguments that don't have a declared type
 - Fix issue [#349](https://github.com/intersystems/language-server/issues/349): Automatically provide intellisense for `%sqlcontext` variable
 - Fix issue [#350](https://github.com/intersystems/language-server/issues/350): Use more granular symbols for class members in Outline
+- Parser changes:
+  - DP-435183: Clear table of known local variables when exiting a routine procedure
 
 ## [2.6.1] - 2024-08-30
 - Fix issue [#343](https://github.com/intersystems/language-server/issues/343): foldingRange fails on some C-style block comments
