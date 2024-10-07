@@ -44,10 +44,10 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
     - In ObjectScript: `#;#region` or `//#region` to start and `#;#endregion` or `//#endregion` to end
     - In class comments: `//#region` to start and `//#endregion` to end
 - [Symbol Renaming](https://code.visualstudio.com/docs/editor/refactoring#_rename-symbol) for ObjectScript local variables and method arguments within class definitions.
-- [Go to type definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-type-definition) for ObjectScript methods, properties, method arguments and variables declared with `#Dim`.
+- [Go to type definition](https://code.visualstudio.com/docs/editor/editingevolved#_go-to-type-definition) for ObjectScript methods, properties, method arguments and variables.
 - Go to declaration for ObjectScript method arguments, variables declared with `#Dim` and variables in the [PublicList](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_publiclist).
 - Command to override inherited class members. To invoke the command, right-click in a blank line of a class definition body and select the `Override Class Members` row in the menu that appears. The command will insert the selected class member definition(s) at the cursor position where the command was invoked.
-- [Evaluatable Expression Provider](https://code.visualstudio.com/api/references/vscode-api#EvaluatableExpressionProvider) that allows the debug hover to evaluate the following expressions side-effect free:
+- [Evaluatable Expression Provider](https://code.visualstudio.com/api/references/vscode-api#EvaluatableExpressionProvider) that allows the debug hover to evaluate the following:
   - Globals
   - Class parameters
   - Method parameters
