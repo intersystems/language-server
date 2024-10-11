@@ -248,6 +248,12 @@
           "type": "boolean",
           "default": false,
           "description": "Controls whether generated classes and class members are shown in completion lists."
+        },
+        "intersystems.language-server.completion.showDeprecated": {
+          "scope": "window",
+          "type": "boolean",
+          "default": false,
+          "description": "Controls whether deprecated classes and class members are shown in completion lists."
         }
       }
     },

@@ -543,7 +543,9 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 
 	// Get all classes
 	const querydata = {
-		query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'",
+		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
+			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+		}`,
 		parameters: ["*.cls",1,1,1,1,0,settings.completion.showGenerated ? 1 : 0]
 	};
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -611,7 +613,9 @@ async function completionPackage(server: ServerSpec, settings: LanguageServerCon
 
 	// Get all the packages
 	const querydata = {
-		query: "SELECT DISTINCT $PIECE(Name,'.',1,$LENGTH(Name,'.')-2) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
+		query: `SELECT DISTINCT $PIECE(dcd.Name,'.',1,$LENGTH(dcd.Name,'.')-1) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
+			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+		}`,
 		parameters: ["*.cls",1,1,1,1,0,settings.completion.showGenerated ? 1 : 0]
 	};
 	const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -948,7 +952,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Get all appropriate subclasses of %Query
 		const querydata = {
-			query: "SELECT dcd.Name, Deprecated FROM %Dictionary.ClassDefinition_SubclassOf(?) AS sco, %Dictionary.ClassDefinition AS dcd WHERE sco.Name = dcd.Name AND sco.Name NOT %INLIST $LISTFROMSTRING(?)",
+			query: `SELECT dcd.Name, Deprecated FROM %Dictionary.ClassDefinition_SubclassOf(?) AS sco, %Dictionary.ClassDefinition AS dcd WHERE sco.Name = dcd.Name AND sco.Name NOT %INLIST $LISTFROMSTRING(?)${
+				!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+			}`,
 			parameters: ["%Library.Query","%Library.ExtentSQLQuery,%Library.RowSQLQuery"]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -1075,7 +1081,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 			// Get all classes that match the filter
 			const querydata = {
-				query: "SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'",
+				query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
+					!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+				}`,
 				parameters: ["*.cls",1,1,1,1,0,settings.completion.showGenerated ? 1 : 0,`Name %STARTSWITH '${filter}'`]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -1096,6 +1104,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			// This is a class member
 
 			const internalStr = !settings.completion.showInternal ? " AND Internal = 0": "";
+			const deprecatedStr = !settings.completion.showDeprecated ? " AND Deprecated = 0" : "";
 			if (prevline.slice(-2) === ".#") {
 				// Get the base class that this member is in
 				const membercontext = await getClassMemberContext(doc,parsed,thistoken-1,params.position.line,server);
@@ -1108,7 +1117,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				const data: QueryData = {
 					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${
 						membercontext.context == "instance" ? " AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')" : ""
-					}${internalStr}`,
+					}${internalStr}${deprecatedStr}`,
 					parameters: [membercontext.baseclass]
 				}
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -1165,50 +1174,50 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					// Non-generated methods
 					data.query += "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
 						"FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0)) " +
-						`AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr}`;
+						`AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr}${deprecatedStr}`;
 					data.parameters.push(membercontext.baseclass);
 					// Properties and Parameters
 					data.query += " UNION ALL %PARALLEL " +
 					"SELECT Name, Description, Origin, NULL AS FormalSpec, RuntimeType AS Type, 'property' AS MemberType, Deprecated, Aliases " +
-						`FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr} UNION ALL %PARALLEL ` +
+						`FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr}${deprecatedStr} UNION ALL %PARALLEL ` +
 						"SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated, NULL AS Aliases " +
-						`FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr}`;
+						`FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')${internalStr}${deprecatedStr}`;
 					data.parameters.push(membercontext.baseclass,membercontext.baseclass);
 					if (settings.completion.showGenerated) {
 						// Generated methods
 						data.query += " UNION ALL %PARALLEL " +
 							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-							`FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr} UNION ALL %PARALLEL ` +
+							`FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr}${deprecatedStr} UNION ALL %PARALLEL ` +
 							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-							`FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr} UNION ALL %PARALLEL ` +
+							`FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr}${deprecatedStr} UNION ALL %PARALLEL ` +
 							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-							`FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr} UNION ALL %PARALLEL ` +
+							`FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr}${deprecatedStr} UNION ALL %PARALLEL ` +
 							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated, NULL AS Aliases " +
-							`FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr}`;
+							`FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND (parent->parent->ClassType IS NULL OR parent->parent->ClassType != 'datatype')${internalStr}${deprecatedStr}`;
 						data.parameters.push(...new Array(4).fill(membercontext.baseclass));
 					}
 				} else {
 					// Non-generated methods
 					data.query += "SELECT Name, Description, Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-						`FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND ClassMethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0))${internalStr}`;
+						`FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND ClassMethod = 1 AND Stub IS NULL AND ((Origin = parent->ID) OR (Origin != parent->ID AND NotInheritable = 0))${internalStr}${deprecatedStr}`;
 					data.parameters.push(membercontext.baseclass);
 					if (membercontext.context == "class") {
 						// Parameters
 						data.query += " UNION ALL %PARALLEL " +
-							`SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${internalStr}`;
+							`SELECT Name, Description, Origin, NULL AS FormalSpec, Type, 'parameter' AS MemberType, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${internalStr}${deprecatedStr}`;
 						data.parameters.push(membercontext.baseclass);
 					}
 					if (settings.completion.showGenerated) {
 						// Generated methods
 						data.query += " UNION ALL %PARALLEL " +
 							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-							`FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr} UNION ALL %PARALLEL ` +
+							`FROM %Dictionary.CompiledIndexMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr}${deprecatedStr} UNION ALL %PARALLEL ` +
 							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-							`FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr} UNION ALL %PARALLEL ` +
+							`FROM %Dictionary.CompiledQueryMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr}${deprecatedStr} UNION ALL %PARALLEL ` +
 							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-							`FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr} UNION ALL %PARALLEL ` +
+							`FROM %Dictionary.CompiledPropertyMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr}${deprecatedStr} UNION ALL %PARALLEL ` +
 							"SELECT parent->name||Name AS Name, Description, parent->Origin AS Origin, FormalSpec, ReturnType AS Type, 'method' AS MemberType, Deprecated " +
-							`FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr}`
+							`FROM %Dictionary.CompiledConstraintMethod WHERE parent->parent->ID = ? AND ClassMethod = 1${internalStr}${deprecatedStr}`
 						data.parameters.push(...new Array(4).fill(membercontext.baseclass));
 					}
 				}
@@ -1396,7 +1405,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		const data: QueryData = {
 			query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE parent->ID = ?${
 				isProperty ? " OR parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)" : ""
-			}${!settings.completion.showInternal ? " AND Internal = 0": ""}`,
+			}${!settings.completion.showInternal ? " AND Internal = 0": ""}${!settings.completion.showDeprecated ? " AND Deprecated = 0": ""}`,
 			parameters: isProperty ? [normalizedcls,currentClass(doc,parsed)] : [normalizedcls]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -2103,14 +2112,14 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		const data: QueryData = {
 			query: `SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND Calculated = 0${
 				!settings.completion.showInternal ? " AND Internal = 0": ""
-			}`,
+			}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
 			parameters: [thisclass]
 		}
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
 		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
 
-			for (let memobj of respdata.data.result.content) {
+			for (const memobj of respdata.data.result.content) {
 				const quotedname = quoteUDLIdentifier(memobj.Name,1);
 				var item: CompletionItem = {
 					label: ""
