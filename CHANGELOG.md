@@ -2,6 +2,7 @@
 
 ## [2.6.3] - 2024-XX-XX
 - Fix issue [#352](https://github.com/intersystems/language-server/issues/352): Hide Deprecated classes and class members from completion lists by default
+- Fix issue [#353](https://github.com/intersystems/language-server/issues/353): Fix keyword completion for ClassMethods
 
 ## [2.6.2] - 2024-10-07
 - Fix issue [#345](https://github.com/intersystems/language-server/issues/345): Add intellisense for variables passed by reference as method arguments

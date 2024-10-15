@@ -670,8 +670,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	var firsttwotokens = "";
 	if (parsed[params.position.line].length >= 2) {
 		firsttwotokens = doc.getText(Range.create(
-			Position.create(params.position.line,parsed[params.position.line][0].p),
-			Position.create(params.position.line,parsed[params.position.line][1].p+parsed[params.position.line][1].c)
+			params.position.line,parsed[params.position.line][0].p,
+			params.position.line,parsed[params.position.line][1].p+parsed[params.position.line][1].c
 		));
 	}
 	var thistoken: number = -1;
@@ -1485,9 +1485,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			// This is a UDL keyword
 
 			// Find the type of this member
-			var keywordtype = doc.getText(Range.create(
-				Position.create(params.position.line,parsed[params.position.line][0].p),
-				Position.create(params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c)
+			let keywordtype = doc.getText(Range.create(
+				params.position.line,parsed[params.position.line][0].p,
+				params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c
 			)).toLowerCase();
 			if (parsed[params.position.line][0].l !== ld.cls_langindex || parsed[params.position.line][0].s !== ld.cls_keyword_attrindex) {
 				// This member definition spans multiple lines
@@ -1497,15 +1497,15 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					}
 					if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
 						keywordtype = doc.getText(Range.create(
-							Position.create(k,parsed[k][0].p),
-							Position.create(k,parsed[k][0].p+parsed[k][0].c)
+							k,parsed[k][0].p,
+							k,parsed[k][0].p+parsed[k][0].c
 						)).toLowerCase();
 						break;
 					}
 				}
 			}
 
-			var keywordsarr: KeywordDoc[] =[];
+			let keywordsarr: KeywordDoc[] =[];
 			if (keywordtype === "class") {
 				keywordsarr = classKeywords.slice();
 			}
@@ -1515,7 +1515,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			else if (keywordtype === "index") {
 				keywordsarr = indexKeywords.slice();
 			}
-			else if (keywordtype === "method" || keywordtype === "ClassMethod" || keywordtype === "clientmethod") {
+			else if (keywordtype === "method" || keywordtype === "classmethod" || keywordtype === "clientmethod") {
 				keywordsarr = methodKeywords.slice();
 			}
 			else if (keywordtype === "parameter") {
@@ -1537,7 +1537,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				keywordsarr = xdataKeywords.slice();
 			}
 			for (const keydoc of keywordsarr) {
-				var doctext = keydoc.description;
+				let doctext = keydoc.description;
 				if (doctext === undefined) {
 					doctext = "";
 				}
@@ -1554,7 +1554,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 						doctext = doctext.concat("Permitted Values: ",keydoc.constraint.join(", "));
 					}
-					var compitem: CompletionItem = {
+					const compitem: CompletionItem = {
 						label: keydoc.name,
 						kind: CompletionItemKind.Keyword,
 						data: "keyword",
@@ -1629,7 +1629,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			else if (keywordtype === "index") {
 				keywordsarr = indexKeywords.slice();
 			}
-			else if (keywordtype === "method" || keywordtype === "ClassMethod" || keywordtype === "clientmethod") {
+			else if (keywordtype === "method" || keywordtype === "classmethod" || keywordtype === "clientmethod") {
 				keywordsarr = methodKeywords.slice();
 			}
 			else if (keywordtype === "parameter") {
