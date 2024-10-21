@@ -19,27 +19,28 @@ const turndown = new TurndownService({
 	blankReplacement: (content, node: HTMLElement) => node.nodeName == 'SPAN' ? node.outerHTML : ''
 });
 turndown.remove("style");
-turndown.keep(["span", "table", "tr", "td"]);
+turndown.keep(["span", "table", "tr", "td", "u"]);
 turndown.addRule("pre",{
 	filter: "pre",
 	replacement: function (content: string, node: HTMLElement) {
 		let lang = "";
-		content = content.replace(/\\\\/g,"\\").replace(/\\\[/g,"[").replace(/\\\]/g,"]");
+		content = content.replace(/\\\\/g,"\\").replace(/\\\[/g,"[").replace(/\\\]/g,"]")
+			.replace(/&amp;/g,"&").replace(/&amp;/g,"&")
+			.replace(/&lt;/g,"<").replace(/&gt;/g,">");
 		let attrVal = node.getAttribute("LANGUAGE");
-		if (attrVal === null) {
+		if (attrVal == null) {
 			try {
 				let obj = JSON.parse(content);
-				if (obj && typeof obj === "object") {
+				if (typeof obj == "object") {
 					lang = "json";
 				}
-			} catch {
-				lang = "objectscript";
-			}
+			} catch {}
 		}
 		else {
-			switch (attrVal.toUpperCase()) {
+			switch (attrVal.split("!").shift().toUpperCase()) {
 				case "OBJECTSCRIPT":
 				case "COS":
+				case "INT":
 					lang = "objectscript";
 					break;
 				case "SQL":
@@ -55,7 +56,8 @@ turndown.addRule("pre",{
 					lang = "java";
 					break;
 				case "JAVASCRIPT":
-					lang = "javascript";
+				case "JS":
+					lang = attrVal.split("!").pop().toUpperCase() == "JSON" ? "json" : "javascript";
 					break;
 				case "CSS":
 					lang = "css";
@@ -2278,26 +2280,19 @@ export function findOpenParen(doc: TextDocument, parsed: compressedline[], line:
 }
 
 /**
- * Convert a class documentation string as Markdown.
+ * Convert a class documentation string to Markdown.
  * 
- * @param html The class documentation string to convert.
+ * @param html The class documentation HTML string to convert.
  */
 export function documaticHtmlToMarkdown(html: string): string {
 	let root = parse(html);
 	for (const elem of root.getElementsByTagName("example")) {
 		const newElem = parse("<pre></pre>").getElementsByTagName("pre")[0];
-		const lang = elem.getAttribute("language");
-		if (lang !== undefined) {
-			newElem.setAttribute("language",lang);
-		}
-		let text = elem.innerText;
-		if (lang?.toLowerCase() === "html") {
-			text = elem.innerHTML.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-		}
-		newElem.textContent = text;
+		newElem.setAttribute("language",elem.getAttribute("language") ?? "COS");
+		newElem.textContent = elem.innerHTML.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
 		elem.parentNode.exchangeChild(elem,newElem);
 	}
-	return turndown.turndown(root.toString());
+	return turndown.turndown(root.toString().replace(/&/g,"&amp;"));
 }
 
 /**
