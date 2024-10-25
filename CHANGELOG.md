@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.6.3] - 2024-XX-XX
+## [2.6.3] - 2024-10-25
 - Fix issue [#352](https://github.com/intersystems/language-server/issues/352): Hide Deprecated classes and class members from completion lists by default
 - Fix issue [#353](https://github.com/intersystems/language-server/issues/353): Fix keyword completion for ClassMethods
 - Fix issue [#354](https://github.com/intersystems/language-server/issues/354): Improve conversion of Documatic HTML to Markdown
