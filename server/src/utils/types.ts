@@ -122,6 +122,7 @@ export type ServerSpec = {
 	namespace: string,
 	username: string,
 	serverName: string,
+	serverVersion: string,
 	password: string,
 	active: boolean
 };

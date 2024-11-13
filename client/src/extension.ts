@@ -162,7 +162,7 @@ export async function activate(context: ExtensionContext) {
 				// get it from the server manager's authentication provider.
 				const scopes = [serverSpec.serverName, serverSpec.username];
 				try {
-					const account = serverManagerApi?.getAccount ? serverManagerApi.getAccount(serverSpec) : undefined;
+					const account = serverManagerApi?.getAccount ? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec }) : undefined;
 					let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, { silent: true, account });
 					if (!session) {
 						session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, { createIfNone: true, account });

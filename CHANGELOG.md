@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.6.5] - 2024-11-13
+- Fix issue [#356](https://github.com/intersystems/language-server/issues/356): Unexpected new dialog during password retrieval using Server Manager authprovider
+
 ## [2.6.4] - 2024-11-13
 - Fix issue [#355](https://github.com/intersystems/language-server/issues/355): Prevent overprompting for Server Manager permission and account information
 
