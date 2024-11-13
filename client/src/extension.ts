@@ -21,6 +21,7 @@ import {
 } from 'vscode-languageclient/node';
 
 import { gt, lte } from "semver";
+import * as serverManager from "@intersystems-community/intersystems-servermanager";
 
 import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
 import {
@@ -40,6 +41,8 @@ export let client: LanguageClient;
  * Cache for cookies from REST requests to InterSystems servers.
  */
 export let cookiesCache: Cache;
+
+let serverManagerApi: serverManager.ServerManagerAPI;
 
 type MakeRESTRequestParams = {
 	method: "GET"|"POST";
@@ -131,7 +134,7 @@ export async function activate(context: ExtensionContext) {
 	const serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
 	if (serverManagerExt !== undefined) {
 		// The server manager extension is installed
-		const serverManagerApi = serverManagerExt.isActive ? serverManagerExt.exports : await serverManagerExt.activate();
+		serverManagerApi = serverManagerExt.isActive ? serverManagerExt.exports : await serverManagerExt.activate();
 		serverManagerApi.onDidChangePassword()((serverName: string) => {
 			client.sendNotification("intersystems/server/passwordChange",serverName);
 		});
@@ -157,12 +160,12 @@ export async function activate(context: ExtensionContext) {
 			) {
 				// The main extension didn't provide a password, so we must 
 				// get it from the server manager's authentication provider.
-				const AUTHENTICATION_PROVIDER = "intersystems-server-credentials";
 				const scopes = [serverSpec.serverName, serverSpec.username];
 				try {
-					let session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { silent: true });
+					const account = serverManagerApi.getAccount ? serverManagerApi.getAccount(serverSpec) : undefined;
+					let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, { silent: true, account });
 					if (!session) {
-						session = await authentication.getSession(AUTHENTICATION_PROVIDER, scopes, { createIfNone: true });
+						session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, { createIfNone: true, account });
 					}
 					if (session) {
 						serverSpec.username = session.scopes[1];
@@ -171,7 +174,7 @@ export async function activate(context: ExtensionContext) {
 				} catch (error) {
 					// The user did not consent to sharing authentication information
 					if (error instanceof Error) {
-						client.warn(`${AUTHENTICATION_PROVIDER}: ${error.message}`);
+						client.warn(`${serverManager.AUTHENTICATION_PROVIDER}: ${error.message}`);
 					}
 				}
 			}
