@@ -657,6 +657,69 @@ async function completionInclude(server: ServerSpec): Promise<CompletionItem[]> 
 	return result;
 };
 
+/** Return a list of globals or routines. Optionally filter using `prefix`. */
+async function globalsOrRoutines(
+	doc: TextDocument, parsed: compressedline[], line: number, token: number,
+	settings: LanguageServerConfiguration, server: ServerSpec, lineText: string, prefix: string = ""
+): Promise<CompletionItem[]> {
+	// Determine if this is a routine or global, and return null if we're in $BITLOGIC
+	let brk = false, parenLevel = 0, isBitlogic = false, lastCmd = "";
+	for (let ln = line; ln >= 0; ln--) {
+		if (!parsed[ln]?.length) continue;
+		for (let tkn = (ln == line ? token : parsed[ln].length - 1); tkn >= 0; tkn--) {
+			if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_delim_attrindex) {
+				const delimtext = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+				if (delimtext == "(") {
+					parenLevel++;
+					if (parenLevel > 0 && tkn > 0 && parsed[ln][tkn-1].l == ld.cos_langindex && parsed[ln][tkn-1].s == ld.cos_sysf_attrindex && 
+						doc.getText(Range.create(ln,parsed[ln][tkn-1].p,ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)).toLowerCase() == "$bitlogic"
+					) {
+						isBitlogic = true;
+						brk = true;
+						break;
+					}
+				}
+				else if (delimtext == ")") {
+					parenLevel--;
+				}
+			} else if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_command_attrindex) {
+				lastCmd = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)).toLowerCase();
+				brk = true;
+				break;
+			}
+		}
+		if (brk) break;
+	}
+	if (isBitlogic) return null;
+	const isRoutine =
+		// The character before the caret is part of a label or extrinsic function syntax
+		/[%$\d\p{L}]/u.test(lineText.slice(-2,-1)) ||
+		// Routine syntax without a label or extrinsic function syntax can only appear as an argument for a DO or JOB command
+		(["d","do","j","job"].includes(lastCmd) && parenLevel == 0) ||
+		// Special case needed since this DO command will be an error token instead of a command token
+		/(^|\s+)do?\s+\^$/i.test(lineText);
+	const respdata = await makeRESTRequest("POST",1,"/action/query",server,
+		isRoutine ? {
+			query: `SELECT DISTINCT $PIECE(Name,'.',1,$LENGTH(Name,'.')-1) AS Name FROM %Library.RoutineMgr_StudioOpenDialog(?,1,1,1,1,1,0,'NOT (Name %PATTERN ''.E1"."0.1"G"1N1".obj"'' AND $LENGTH(Name,''.'') > 3)')`,
+			parameters: [`${prefix.length ? `${prefix.slice(0,-1)}/` : ""}*.mac,*.int,*.obj`]
+		} : {
+			query: "SELECT Name FROM %SYS.GlobalQuery_NameSpaceList(,?,?,,,1,0)",
+			parameters: [`${prefix}*`,settings.completion.showInternal ? 1 : 0]
+		}
+	);
+	if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+		return respdata.data.result.content.map((item: { Name: string; }) => {
+			return {
+				label: item.Name.slice(prefix.length),
+				kind: isRoutine ? CompletionItemKind.Function : CompletionItemKind.Variable,
+				data: isRoutine ? "routine" : "global"
+			};
+		});
+	} else {
+		return null;
+	}
+}
+
 export async function onCompletion(params: CompletionParams): Promise<CompletionItem[] | null> {
 	var result: CompletionItem[] = [];
 	const doc = documents.get(params.textDocument.uri);
@@ -1063,6 +1126,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 			if (isCls) prevtokentype = "class";
 		}
+		const globalOrRoutineMatch = prevline.match(/\^(%?[\d\p{L}.]+)$/u);
 		if (prevtokentype === "class" || prevtokentype === "system") {
 			// This is a partial class name
 
@@ -1099,6 +1163,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					});
 				}
 			}
+		}
+		else if (globalOrRoutineMatch && triggerlang == ld.cos_langindex) {
+			// This might be a routine or global
+
+			result = await globalsOrRoutines(doc,parsed,params.position.line,thistoken,settings,server,prevline.slice(0,-(globalOrRoutineMatch[1].length)),globalOrRoutineMatch[1]);
 		}
 		else {
 			// This is a class member
@@ -2150,11 +2219,16 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
+	else if (prevline.slice(-1) == "^" && triggerlang == ld.cos_langindex) {
+		// This might be a routine or global
+
+		result = await globalsOrRoutines(doc,parsed,params.position.line,thistoken,settings,server,prevline);
+	}
 	return result;
 }
 
 export async function onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
-	if (item.data instanceof Array && item.data[0] === "class") {
+	if (Array.isArray(item.data) && item.data[0] === "class") {
 		// Get the description for this class from the server
 		const server: ServerSpec = await getServerSpec(item.data[2]);
 		const querydata: QueryData = {
@@ -2170,7 +2244,7 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 			};
 		}
 	}
-	else if (item.data instanceof Array && item.data[0] === "macro" && item.documentation === undefined) {
+	else if (Array.isArray(item.data) && item.data[0] === "macro" && !item.documentation) {
 		// Get the macro definition from the server
 		const server: ServerSpec = await getServerSpec(item.data[1]);
 		const querydata = {

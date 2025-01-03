@@ -39,7 +39,7 @@ connection.onInitialize(() => {
 			textDocumentSync: TextDocumentSyncKind.Full,
 			completionProvider: {
 				resolveProvider: true,
-				triggerCharacters: [".","$","("," ","<",'"',"#"]
+				triggerCharacters: [".","$","("," ","<",'"',"#","^"]
 			},
 			hoverProvider: true,
 			definitionProvider: true,

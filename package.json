@@ -241,7 +241,7 @@
           "scope": "window",
           "type": "boolean",
           "default": false,
-          "markdownDescription": "Controls whether class members with the `Internal` keyword are shown in completion lists."
+          "markdownDescription": "Controls whether class members with the `Internal` keyword and system globals are shown in completion lists."
         },
         "intersystems.language-server.completion.showGenerated": {
           "scope": "window",
