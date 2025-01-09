@@ -2,6 +2,7 @@
 
 ## [2.7.0] - 2025-XX-XX
 - Fix issue [#357](https://github.com/intersystems/language-server/issues/357): Add completion for globals and routines
+- Fix issue [#358](https://github.com/intersystems/language-server/issues/358): Uncaught error when hovering over a macro that's defined as empty in the current document
 
 ## [2.6.5] - 2024-11-13
 - Fix issue [#356](https://github.com/intersystems/language-server/issues/356): Unexpected new dialog during password retrieval using Server Manager authprovider

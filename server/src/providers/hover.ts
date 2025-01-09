@@ -200,6 +200,10 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 									}
 								}
 							}
+							if (definitionendtkn == (parsed[ln].length - 1)) {
+								// This is an empty macro definition
+								break;
+							}
 						}
 						
 						if (
@@ -237,6 +241,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							break;
 						}
 					}
+
+					if (definition == "") return null;
 
 					// If this macro has a formal spec, attempt to replace the parameters with the arguments from the usage
 					if (formalspec.endsWith(")")) {
