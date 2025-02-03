@@ -555,11 +555,11 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 			let compItem: CompletionItem;
 			if (imports.length > 0) {
 				// Resolve import
-				var sorttext: string = "";
+				let sortText: string;
 				for (let imp of imports) {
 					if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length+1).indexOf(".") === -1) {
 						displayname = displayname.slice(imp.length+1);
-						sorttext = "%%%" + displayname;
+						sortText = "%%%" + displayname;
 						break;
 					}
 				}
@@ -567,21 +567,12 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 					// Use short form for %Library classes
 					displayname = "%" + displayname.slice(9);
 				}
-				if (sorttext !== "") {
-					compItem = {
-						label: displayname,
-						kind: CompletionItemKind.Class,
-						data: ["class",clsobj.Name,doc.uri],
-						sortText: sorttext
-					};
-				}
-				else {
-					compItem = {
-						label: displayname,
-						kind: CompletionItemKind.Class,
-						data: ["class",clsobj.Name,doc.uri]
-					};
-				}
+				compItem = {
+					label: displayname,
+					kind: CompletionItemKind.Class,
+					data: ["class",clsobj.Name,doc.uri],
+					sortText
+				};
 			}
 			else {
 				if (displayname.slice(0,9) === "%Library.") {
@@ -1026,11 +1017,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				var displayname: string = clsobj.Name;
 				if (imports.length > 0) {
 					// Resolve import
-					var sorttext: string = "";
+					let sortText: string;
 					for (let imp of imports) {
 						if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length+1).indexOf(".") === -1) {
 							displayname = displayname.slice(imp.length+1);
-							sorttext = "%%%" + displayname;
+							sortText = "%%%" + displayname;
 							break;
 						}
 					}
@@ -1038,23 +1029,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						// Use short form for %Library classes
 						displayname = "%" + displayname.slice(9);
 					}
-					if (sorttext !== "") {
-						result.push({
-							label: displayname,
-							kind: CompletionItemKind.Class,
-							data: ["class",clsobj.Name+".cls",doc.uri],
-							tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
-							sortText: sorttext
-						});
-					}
-					else {
-						result.push({
-							label: displayname,
-							kind: CompletionItemKind.Class,
-							tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
-							data: ["class",clsobj.Name+".cls",doc.uri]
-						});
-					}
+					result.push({
+						label: displayname,
+						kind: CompletionItemKind.Class,
+						data: ["class",clsobj.Name+".cls",doc.uri],
+						tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
+						sortText
+					});
 				}
 				else {
 					if (displayname.slice(0,9) === "%Library.") {
@@ -1200,7 +1181,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						};
 						item = {
 							label: "#" + quotedname,
-							kind: CompletionItemKind.Property,
+							kind: CompletionItemKind.Constant,
 							data: "member",
 							documentation: {
 								kind: "markdown",
@@ -1330,7 +1311,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						else if (memobj.MemberType === "parameter") {
 							item = {
 								label: "#" + quotedname,
-								kind: CompletionItemKind.Property,
+								kind: CompletionItemKind.Constant,
 								data: "member",
 								documentation: {
 									kind: "markdown",
@@ -1449,7 +1430,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		const coreParams: CompletionItem[] = corePropertyParams.map(e => {
 			return {
 				label: e.name,
-				kind: CompletionItemKind.Property,
+				kind: CompletionItemKind.Constant,
 				data: "member",
 				documentation: {
 					kind: "markdown",
@@ -1491,7 +1472,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				};
 				item = {
 					label: memobj.Name,
-					kind: CompletionItemKind.Property,
+					kind: CompletionItemKind.Constant,
 					data: "member",
 					documentation: {
 						kind: "markdown",
@@ -1921,8 +1902,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							if (parsed[params.position.line][tkn].l == ld.xml_langindex && parsed[params.position.line][tkn].s == ld.xml_attr_attrindex) {
 								// This is an attribute name
 								usedAttrs.push(doc.getText(Range.create(
-									Position.create(params.position.line,parsed[params.position.line][tkn].p),
-									Position.create(params.position.line,parsed[params.position.line][tkn].p+parsed[params.position.line][tkn].c)
+									params.position.line,parsed[params.position.line][tkn].p,
+									params.position.line,parsed[params.position.line][tkn].p+parsed[params.position.line][tkn].c
 								)));
 							}
 						}
@@ -1930,7 +1911,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						// Filter out all attribute names that have already been used
 						possibleAttrs = possibleAttrs.filter((el) => !usedAttrs.includes(el));
 
-						// Create the CompletionItem's
+						// Create the CompletionItems
 						for (let attr of possibleAttrs) {
 							result.push({
 								label: attr,
@@ -1945,7 +1926,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 						var childElems = schemaQuery.getElements();
 
-						// Create the CompletionItem's for the children
+						// Create the CompletionItems for the children
 						for (let elem of childElems) {
 							result.push({
 								label: elem,
@@ -1983,7 +1964,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 						var attrMoniker = schemaQuery.getAttributeMoniker(selector);
 						if (attrMoniker === "" || attrMoniker.slice(0,4) === "enum") {
-							// If the attribute moniker is an enum, create CompletionItem's for all possible values
+							// If the attribute moniker is an enum, create CompletionItems for all possible values
 							const vals = attrMoniker.slice(5).split(",");
 							for (let val of vals) {
 								if (val !== "!") {

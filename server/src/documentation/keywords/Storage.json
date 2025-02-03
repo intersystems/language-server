@@ -158,14 +158,24 @@
       "description": "Specifies the name of the global this Columnar column is stored in."
     },
     {
+      "name": "ConversionTarget",
+      "type": "KW_TYPE_STRING",
+      "description": "For columnar maps, specifies that this map is the target of a storage type conversion"
+    },
+    {
       "name": "DataDefinitionLocation",
       "type": "KW_TYPE_STRING",
-      "description": "Specifies The name of the global to store this field in."
+      "description": "Specifies the name of the global to store this field in."
     },
     {
       "name": "Name",
       "type": "KW_TYPE_STRING",
       "description": "Specifies the name of the StorageData definition. This name must be a valid storage member name and must not conflict with any other StorageData names."
+    },
+    {
+      "name": "SmallChunkSize",
+      "type": "KW_TYPE_INTEGER",
+      "description": "Specifies the size of the small chunk for this colmnar string field."
     },
     {
       "name": "Structure",
@@ -189,6 +199,10 @@
   ],
   "STORAGEDATAVALUE": [
     {
+      "name": "ConversionCleanup",
+      "type": "KW_TYPE_STRING"
+    },
+    {
       "name": "Name",
       "type": "KW_TYPE_INTEGER",
       "description": "Specifies the name of the StorageDataValue. This name must be a valid storage member name and must not conflict with any other StorageDataValue names."
@@ -206,6 +220,10 @@
     {
       "name": "Name",
       "type": "KW_TYPE_STRING"
+    },
+    {
+      "name": "SmallChunkSize",
+      "type": "KW_TYPE_INTEGER"
     }
   ],
   "STORAGEPROPERTY": [

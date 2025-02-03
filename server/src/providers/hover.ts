@@ -161,7 +161,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						}
 						if (closeidx !== -1) {
 							// Get all of the arguments
-							macroargs = restofline.slice(0,closeidx+1).replace(/\s+/g,"");
+							macroargs = restofline.slice(0,closeidx+1).replace(/\s+(?=([^"]*"[^"]*")*[^"]*$)/g,"");
 						}
 						else {
 							// The argument list is incomplete
@@ -378,11 +378,13 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				const sysfrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
 				const sysftext = doc.getText(sysfrange).toUpperCase();
 				const sysfdoc = systemFunctions.find((el) => el.label === sysftext || el.alias.includes(sysftext));
-				if (sysfdoc !== undefined) {
+				if (sysfdoc && sysftext != "$PREPROCESS") {
 					return {
 						contents: {
 							kind: MarkupKind.Markdown,
-							value: markupValue(sysfdoc.documentation.join(""), sysfdoc.link ? `[Online documentation](${
+							value: ["$ZUTIL","$ZU"].includes(sysftext) ? 
+								markupValue(`[Online documentation](${sysfdoc.link})`) :
+								markupValue(sysfdoc.documentation.join(""), sysfdoc.link ? `[Online documentation](${
 								sysfdoc.link[0] == "h" ? sysfdoc.link : `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
 							})` : "")
 						},

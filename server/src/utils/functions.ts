@@ -73,8 +73,10 @@ turndown.addRule("pre",{
 });
 turndown.addRule("documaticLinks",{
 	filter: ["class","method","property","query","parameter"],
-	replacement: function (content: string) {
-		return `***${content}***`;
+	replacement: function (content: string, node: HTMLElement) {
+		const methodOrQuery = ["METHOD","QUERY"].includes(node.nodeName);
+		const wrapper = node.nodeName == "CLASS" ? "***" : "**";
+		return `${wrapper}${methodOrQuery ? content.replace(/\(\)/g,"") : content}${methodOrQuery ? "()" : ""}${wrapper}`;
 	}
 });
 turndown.addRule("documaticArgs",{

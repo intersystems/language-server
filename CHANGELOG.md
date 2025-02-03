@@ -1,8 +1,13 @@
 # Changelog
 
-## [2.7.0] - 2025-XX-XX
+## [2.7.0] - 2025-02-03
+- Fix issue [#258](https://github.com/intersystems/language-server/issues/258): Support Windows Arm
+- Fix issue [#351](https://github.com/intersystems/language-server/issues/351): Memory leak in parser module
 - Fix issue [#357](https://github.com/intersystems/language-server/issues/357): Add completion for globals and routines
 - Fix issue [#358](https://github.com/intersystems/language-server/issues/358): Uncaught error when hovering over a macro that's defined as empty in the current document
+- Parser changes:
+  - DP-436793: Improve assigning of syntax error descriptions to tokens
+  - DP-436900: Add support for /USEIPV6 OPEN keyword
 
 ## [2.6.5] - 2024-11-13
 - Fix issue [#356](https://github.com/intersystems/language-server/issues/356): Unexpected new dialog during password retrieval using Server Manager authprovider

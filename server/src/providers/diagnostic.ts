@@ -227,6 +227,10 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	// Keys are of the form "ns:::doc.ext"
 	const otherNsDocs: Map<string, Range[]> = new Map();
 
+	// We need to know if the last syntax error token was whitespace so we don't
+	// try to combine error tokens that aren't for the same underlying error.
+	let lastErrWasWhitespace = false;
+
 	// Loop through the parsed document to find errors and warnings
 	for (let i = startline; i < parsed.length; i++) {
 
@@ -238,43 +242,56 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			if (j > 0 && parsed[i][j].l === parsed[i][j-1].l && parsed[i][j].s === parsed[i][j-1].s) {
 				// This token is the same as the last
 
-				const errorDesc = normalizeErrorDesc(parsed[i][j].e);
 				if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
-					if (
-						parsed[i][j].l == parsed[i][j-1].l &&
-						diagnostics.length &&
-						[syntaxError,diagnostics[diagnostics.length-1].message].includes(errorDesc)
-					) {
-						// This error token is a continuation of the same underlying error
-						diagnostics[diagnostics.length-1].range.end = Position.create(i,symbolend);
+					const errorDesc = normalizeErrorDesc(parsed[i][j].e);
+					const errorRange = Range.create(i,symbolstart,i,symbolend);
+					if (doc.getText(errorRange).trim()) {
+						if (
+							!lastErrWasWhitespace &&
+							parsed[i][j].l == parsed[i][j-1].l &&
+							diagnostics.length &&
+							[syntaxError,diagnostics[diagnostics.length-1].message].includes(errorDesc)
+						) {
+							// This error token is a continuation of the same underlying error
+							diagnostics[diagnostics.length-1].range.end = Position.create(i,symbolend);
+						}
+						else {
+							// This is a token for a new error
+							diagnostics.push({
+								severity: DiagnosticSeverity.Error,
+								range: {
+									start: Position.create(i,symbolstart),
+									end: Position.create(i,symbolend)
+								},
+								message: errorDesc,
+								source: 'InterSystems Language Server'
+							});
+						}
 					}
-					else {
-						// This is a token for a new error
-						diagnostics.push({
-							severity: DiagnosticSeverity.Error,
-							range: {
-								start: Position.create(i,symbolstart),
-								end: Position.create(i,symbolend)
-							},
-							message: errorDesc,
-							source: 'InterSystems Language Server'
-						});
-					}
+					lastErrWasWhitespace = false;
+				} else {
+					lastErrWasWhitespace = true;
 				}
 			}
 			else {
 				if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
 					// This is an error token
-					let diagnostic: Diagnostic = {
-						severity: DiagnosticSeverity.Error,
-						range: {
-							start: Position.create(i,symbolstart),
-							end: Position.create(i,symbolend)
-						},
-						message: normalizeErrorDesc(parsed[i][j].e),
-						source: 'InterSystems Language Server'
-					};
-					diagnostics.push(diagnostic);
+					const errorRange = Range.create(i,symbolstart,i,symbolend);
+					// Don't create a diagnostic for this error if it's just whitespace.
+					// This can happen because the parsers can report a syntax error token
+					// that spans only whitespace, and it won't be filtered out
+					// at the parser level since it's an error token.
+					if (doc.getText(errorRange).trim()) {
+						diagnostics.push({
+							severity: DiagnosticSeverity.Error,
+							range: errorRange,
+							message: normalizeErrorDesc(parsed[i][j].e),
+							source: 'InterSystems Language Server'
+						});
+						lastErrWasWhitespace = false;
+					} else {
+						lastErrWasWhitespace = true;
+					}
 				}
 				else if (
 					parsed[i][j].l == ld.cos_langindex &&
