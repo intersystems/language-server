@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.7.1] - 2025-XX-XX
+- Fix issue [#360](https://github.com/intersystems/language-server/issues/360): Infinite recursion in local variable type inference
+
 ## [2.7.0] - 2025-02-03
 - Fix issue [#258](https://github.com/intersystems/language-server/issues/258): Support Windows Arm
 - Fix issue [#351](https://github.com/intersystems/language-server/issues/351): Memory leak in parser module

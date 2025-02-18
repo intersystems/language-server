@@ -1900,7 +1900,10 @@ async function parseSetCommand(
 						nextTkn[0],parsed[nextTkn[0]][nextTkn[1]].p,nextTkn[0],
 						parsed[nextTkn[0]][nextTkn[1]].p+parsed[nextTkn[0]][nextTkn[1]].c)
 					) == ","
-			))) {
+			// Protect against infinite recursion
+			)) && doc.getText(
+				Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
+			) != selector) {
 				// The expression is an unsubscripted variable reference
 				result = await determineVariableClass(doc,parsed,exprLn,exprTkn,server);
 			}
