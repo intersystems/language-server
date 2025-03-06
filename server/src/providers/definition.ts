@@ -373,24 +373,24 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				};
 				if (memberKeywords == "Parameter") {
 					// This is a parameter
-					data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
+					data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE Parent = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else if (memberKeywords == "Method|ClassMethod|ClientMethod") {
 					// This is a method
-					data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+					data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else if (memberKeywords == "Property|Relationship") {
 					// This is a property
-					data.query = "SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+					data.query = "SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
 					data.parameters = [membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 				}
 				else {
 					// This can be a method or property
 					data.query = 
-						"SELECT Name, Origin, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL " +
-						"SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+						"SELECT Name, Origin, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL " +
+						"SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
 					data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 				}
 				let originclass = "";
@@ -411,19 +411,19 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							memberKeywords = "Method|ClassMethod|ClientMethod";
 							if (stubarr[2] === "i") {
 								// This is a method generated from an index
-								stubquery = "SELECT Origin FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Origin FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "q") {
 								// This is a method generated from a query
-								stubquery = "SELECT Origin FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Origin FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "a") {
 								// This is a method generated from a property
-								stubquery = "SELECT Origin FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Origin FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "n") {
 								// This is a method generated from a constraint
-								stubquery = "SELECT Origin FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Origin FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubquery !== "") {
 								const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
@@ -773,7 +773,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						if (normalizedname !== "") {
 							// Query the server to get the origin class of this property
 							const data: QueryData = {
-								query: "SELECT Origin FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
+								query: "SELECT Origin FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
 								parameters: [normalizedname,propname]
 							};
 							const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -838,8 +838,8 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					const normalizedname = await normalizeClassname(doc,parsed,clsname,server,params.position.line);
 					if (normalizedname !== "") {
 						// Query the server to get the origin class
-						var querystr = "SELECT Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-						querystr = querystr.concat("SELECT Origin FROM %Dictionary.CompiledQuery WHERE parent->ID = ? AND name = ?");
+						var querystr = "SELECT Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL ";
+						querystr = querystr.concat("SELECT Origin FROM %Dictionary.CompiledQuery WHERE Parent = ? AND name = ?");
 						const data: QueryData = {
 							query: querystr,
 							parameters: [normalizedname,procname,normalizedname,procname]
@@ -870,7 +870,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							if (normalizedname !== "") {
 								// Query the server to get the origin class of this property
 								const data: QueryData = {
-									query: "SELECT Origin FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
+									query: "SELECT Origin FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
 									parameters: [normalizedname,propname]
 								};
 								const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -951,8 +951,8 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 				// The parameter is defined in another class
 				const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
-					query: "SELECT Origin FROM %Dictionary.CompiledParameter WHERE Name = ? AND (parent->ID = ? OR " +
-					"parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
+					query: "SELECT Origin FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
+					"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
 					parameters: [param,normalizedcls,thisclass]
 				});
 				if (queryrespdata !== undefined) {
@@ -1046,7 +1046,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				if (superclasses.length && thisMethod) {
 					// Get the list of allsuperclasses that have this method
 					const queryrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
-						query: "SELECT Origin, parent->ID AS Super FROM %Dictionary.CompiledMethod WHERE Name = ? AND parent->ID %INLIST $LISTFROMSTRING(?)",
+						query: "SELECT Origin, Parent AS Super FROM %Dictionary.CompiledMethod WHERE Name = ? AND Parent %INLIST $LISTFROMSTRING(?)",
 						parameters: [quoteUDLIdentifier(thisMethod,0),superclasses.join(",")]
 					});
 					if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length) {

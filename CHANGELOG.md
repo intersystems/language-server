@@ -2,6 +2,7 @@
 
 ## [2.7.1] - 2025-XX-XX
 - Fix issue [#360](https://github.com/intersystems/language-server/issues/360): Infinite recursion in local variable type inference
+- Fix issue [#361](https://github.com/intersystems/language-server/issues/361): Normalize Input UIs
 
 ## [2.7.0] - 2025-02-03
 - Fix issue [#258](https://github.com/intersystems/language-server/issues/258): Support Windows Arm

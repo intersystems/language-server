@@ -1134,9 +1134,9 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 		// Build the query
 		const querydata: QueryData = {
-			query: "SELECT Name, Parent->ID AS Class, 'method' AS MemberType FROM %Dictionary.CompiledMethod WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?) UNION ALL %PARALLEL " +
-				"SELECT Name, Parent->ID AS Class, 'parameter' AS MemberType FROM %Dictionary.CompiledParameter WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?) UNION ALL %PARALLEL " +
-				"SELECT Name, Parent->ID AS Class, 'property' AS MemberType FROM %Dictionary.CompiledProperty WHERE Deprecated = 1 AND Parent->ID %INLIST $LISTFROMSTRING(?) UNION ALL %PARALLEL " +
+			query: "SELECT Name, Parent AS Class, 'method' AS MemberType FROM %Dictionary.CompiledMethod WHERE Deprecated = 1 AND Parent %INLIST $LISTFROMSTRING(?) UNION ALL %PARALLEL " +
+				"SELECT Name, Parent AS Class, 'parameter' AS MemberType FROM %Dictionary.CompiledParameter WHERE Deprecated = 1 AND Parent %INLIST $LISTFROMSTRING(?) UNION ALL %PARALLEL " +
+				"SELECT Name, Parent AS Class, 'property' AS MemberType FROM %Dictionary.CompiledProperty WHERE Deprecated = 1 AND Parent %INLIST $LISTFROMSTRING(?) UNION ALL %PARALLEL " +
 				"SELECT Name, NULL AS Class, 'class' AS MemberType FROM %Dictionary.CompiledClass WHERE Deprecated = 1 AND Name %INLIST $LISTFROMSTRING(?)",
 			parameters: [
 				[...new Set([...methods.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),

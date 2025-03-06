@@ -22,8 +22,8 @@ import { documents, connection, zutilFunctions } from '../utils/variables';
  * Represents an item that can be selected from a list of items.
  */
 type QuickPickItem = {
-	description: string,
-	detail: string,
+	description?: string,
+	detail?: string,
 	label: string
 };
 
@@ -241,7 +241,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		// Build the list of QuickPickItems
 		if (params.memberType === "Method") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, ClassMethod, ReturnType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Stub IS NULL AND Origin != ? AND Final = 0 AND NotInheritable = 0",
+				query: "SELECT Name, Origin, ClassMethod, ReturnType FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Stub IS NULL AND Origin != ? AND Final = 0 AND NotInheritable = 0",
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -266,7 +266,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Parameter") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND Origin != ? AND Final = 0",
+				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledParameter WHERE Parent = ? AND Origin != ? AND Final = 0",
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -282,7 +282,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Projection") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProjection WHERE parent->ID = ? AND Origin != ?",
+				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProjection WHERE Parent = ? AND Origin != ?",
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -298,7 +298,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Property") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND Origin != ? AND Final = 0",
+				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Origin != ? AND Final = 0",
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -314,7 +314,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Query") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledQuery WHERE parent->ID = ? AND Origin != ? AND Final = 0",
+				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledQuery WHERE Parent = ? AND Origin != ? AND Final = 0",
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -330,7 +330,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Trigger") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Event FROM %Dictionary.CompiledTrigger WHERE parent->ID = ? AND Origin != ? AND Final = 0",
+				query: "SELECT Name, Origin, Event FROM %Dictionary.CompiledTrigger WHERE Parent = ? AND Origin != ? AND Final = 0",
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -346,7 +346,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "XData") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, MimeType FROM %Dictionary.CompiledXData WHERE parent->ID = ? AND Origin != ?",
+				query: "SELECT Name, Origin, MimeType FROM %Dictionary.CompiledXData WHERE Parent = ? AND Origin != ?",
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -549,8 +549,7 @@ export function listParameterTypes(): QuickPickItem[] {
 	for (let i = 0; i < parameterTypes.length; i++) { 
 		result.push({
 			label: parameterTypes[i].name,
-			description: parameterTypes[i].documentation,
-			detail: ""
+			description: parameterTypes[i].documentation
 		});
 	}
 	return result;
@@ -573,9 +572,7 @@ export async function listImportPackages(params: ListImportPackagesParams): Prom
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (let packobj of respdata.data.result.content) {
 			result.push({
-				label: packobj.Package,
-				description: "",
-				detail: ""
+				label: packobj.Package
 			});
 		}
 	}

@@ -554,39 +554,39 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				};
 				if (unquotedname == "%New") {
 					// Get the information for both %New and %OnNew
-					data.query = "SELECT Description, FormalSpec, ReturnType, Stub, Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND (name = ? OR name = ?)";
+					data.query = "SELECT Description, FormalSpec, ReturnType, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (name = ? OR name = ?)";
 					data.parameters = [membercontext.baseclass,unquotedname,"%OnNew"];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 					// This is a parameter
-					data.query = "SELECT Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE parent->ID = ? AND name = ?";
+					data.query = "SELECT Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE Parent = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
 					// This is a method
-					data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+					data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
 					data.parameters = [membercontext.baseclass,unquotedname];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex || parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
 					// This is a property
 					data.query = 
 						"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
-						"FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+						"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
 					data.parameters = [membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 				}
 				else {
 					// This is a generic member
 					if (membercontext.baseclass.startsWith("%SYSTEM")) {
 						// This is always a method
-						data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+						data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
 						data.parameters = [membercontext.baseclass,unquotedname];
 					}
 					else {
 						// This can be a method or property
 						data.query = 
-							"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL " +
+							"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL " +
 							"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
-							"FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+							"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
 						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
 					}
 				}
@@ -618,19 +618,19 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							var stubquery = "";
 							if (stubarr[2] === "i") {
 								// This is a method generated from an index
-								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "q") {
 								// This is a method generated from a query
-								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "a") {
 								// This is a method generated from a property
-								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "n") {
 								// This is a method generated from a constraint
-								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubquery !== "") {
 								const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
@@ -878,7 +878,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						if (normalizedname !== "") {
 							// Query the server to get the description of this property
 							const data: QueryData = {
-								query: "SELECT Description, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS DisplayType FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
+								query: "SELECT Description, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS DisplayType FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
 								parameters: [normalizedname,propname]
 							};
 							const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -936,8 +936,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					const normalizedname = await normalizeClassname(doc,parsed,clsname,server,params.position.line);
 					if (normalizedname !== "") {
 						// Query the server to get the description
-						var querystr = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-						querystr = querystr.concat("SELECT Description, FormalSpec, Type AS ReturnType FROM %Dictionary.CompiledQuery WHERE parent->ID = ? AND name = ?");
+						var querystr = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL ";
+						querystr = querystr.concat("SELECT Description, FormalSpec, Type AS ReturnType FROM %Dictionary.CompiledQuery WHERE Parent = ? AND name = ?");
 						const data: QueryData = {
 							query: querystr,
 							parameters: [normalizedname,procname,normalizedname,procname]
@@ -979,7 +979,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							if (normalizedname !== "") {
 								// Query the server to get the description of this property
 								const data: QueryData = {
-									query: "SELECT Description, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS DisplayType FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
+									query: "SELECT Description, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS DisplayType FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
 									parameters: [normalizedname,propname]
 								};
 								const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -1051,8 +1051,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				const normalizedcls = await normalizeClassname(doc,parsed,clsName,server,params.position.line);
 				if (normalizedcls !== "") {
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
-						query: "SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (parent->ID = ? OR " +
-						"parent->ID %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
+						query: "SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
+						"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
 						parameters: [param,normalizedcls,currentClass(doc,parsed)]
 					});
 					if (respdata !== undefined) {

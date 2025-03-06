@@ -69,7 +69,7 @@ export async function overrideClassMembers() {
 
 	// Ask the user to select the type of member that they want to override
 	const selectedType = await window.showQuickPick(["Method","Parameter","Projection","Property","Query","Trigger","XData"],{
-		placeHolder: "Select the class member type to override"
+		title: "Pick the type of class member to override"
 	});
 	if (!selectedType) {
 		// No member type was selected, so exit
@@ -100,7 +100,9 @@ export async function overrideClassMembers() {
 
 	// Ask the user to select which members they want to override
 	const selectedMembers = await window.showQuickPick(overridableMembers,{
-		placeHolder: `Select the ${plural} to override`,
+		title: `Pick the ${plural} to override`,
+		matchOnDescription: true,
+		matchOnDetail: true,
 		canPickMany: true
 	});
 	if (!selectedMembers?.length) {
@@ -129,7 +131,8 @@ export async function selectParameterType(uri: string, parameterRange: Range) {
 
 	// Ask the user to select a parameter type
 	const selectedParameter = await window.showQuickPick(allparametertypes,{
-		placeHolder: "Select the Parameter type",
+		title: "Pick the Parameter type",
+		matchOnDescription: true,
 		canPickMany: false
 	});
 	if (!selectedParameter) {
@@ -172,7 +175,7 @@ export async function selectImportPackage(uri: string, classname: string) {
 	} else {
 		// Ask the user to select an import package
 		var selectedPackage = await window.showQuickPick(allimportpackages,{
-			placeHolder: "Select the package to import",
+			title: "Pick the package to import",
 			canPickMany: false 
 		});
 		if (!selectedPackage) {
@@ -203,7 +206,7 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 	}
 
 	var newmethodname = await window.showInputBox({
-		placeHolder: "Enter the name of the new method",
+		title: "Enter the name of the new method",
 		value: "newmethod",
 		validateInput: (newmethodname: string) => {
 			if (newmethodname === "") {

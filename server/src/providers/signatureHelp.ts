@@ -296,10 +296,10 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			// Get the method signature
 			const querydata = member == "%New" ? {
 				// Get the information for both %New and %OnNew
-				query: "SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND (Name = ? OR Name = ?)",
+				query: "SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
 				parameters: [membercontext.baseclass,unquotedname,"%OnNew"]
 			} : {
-				query: "SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Name = ?",
+				query: "SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
 				parameters: [membercontext.baseclass,unquotedname]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -346,19 +346,19 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 						var stubquery = "";
 						if (stubarr[2] === "i") {
 							// This is a method generated from an index
-							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 						}
 						if (stubarr[2] === "q") {
 							// This is a method generated from a query
-							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 						}
 						if (stubarr[2] === "a") {
 							// This is a method generated from a property
-							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 						}
 						if (stubarr[2] === "n") {
 							// This is a method generated from a constraint
-							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 						}
 						if (stubquery !== "") {
 							const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
@@ -515,10 +515,10 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				// Get the method signature
 				const querydata = member == "%New" ? {
 					// Get the information for both %New and %OnNew
-					query: "SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND (Name = ? OR Name = ?)",
+					query: "SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
 					parameters: [membercontext.baseclass,unquotedname,"%OnNew"]
 				} : {
-					query: "SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Name = ?",
+					query: "SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
 					parameters: [membercontext.baseclass,unquotedname]
 				};
 				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -565,19 +565,19 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							var stubquery = "";
 							if (stubarr[2] === "i") {
 								// This is a method generated from an index
-								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "q") {
 								// This is a method generated from a query
-								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "a") {
 								// This is a method generated from a property
-								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubarr[2] === "n") {
 								// This is a method generated from a constraint
-								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubquery !== "") {
 								const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{

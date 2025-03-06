@@ -977,7 +977,7 @@ export async function getClassMemberContext(
 
 			// Query the database to find the type of this attribute, if it has one
 			const querydata: QueryData = {
-				query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE parent->id = ? AND Name = ?",
+				query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Name = ?",
 				parameters: [cls,attrtxt]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -1877,7 +1877,7 @@ async function parseSetCommand(
 				const cls = currentClass(doc,parsed);
 				if (cls) {
 					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
-						query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?",
+						query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
 						parameters: [cls, quoteUDLIdentifier(doc.getText(
 							Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
 						).slice(2),0)]
@@ -2020,10 +2020,10 @@ async function determineUndeclaredLocalVarClass(
 								// Get the method signature
 								const querydata = member == "%New" ? {
 									// Get the information for both %New and %OnNew
-									query: "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND (Name = ? OR Name = ?)",
+									query: "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
 									parameters: [argNum,membercontext.baseclass,unquotedname,"%OnNew"]
 								} : {
-									query: "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND Name = ?",
+									query: "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
 									parameters: [argNum,membercontext.baseclass,unquotedname]
 								};
 								const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -2047,19 +2047,19 @@ async function determineUndeclaredLocalVarClass(
 											var stubquery = "";
 											if (stubarr[2] == "i") {
 												// This is a method generated from an index
-												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 											}
 											if (stubarr[2] == "q") {
 												// This is a method generated from a query
-												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 											}
 											if (stubarr[2] == "a") {
 												// This is a method generated from a property
-												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 											}
 											if (stubarr[2] == "n") {
 												// This is a method generated from a constraint
-												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 											}
 											if (stubquery != "") {
 												const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
@@ -2692,25 +2692,25 @@ export async function getMemberType(parsed: compressedline[], line: number, tkn:
 	};
 	if (parsed[line][tkn].s == ld.cos_method_attrindex) {
 		// This is a method
-		data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+		data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
 		data.parameters = [cls,member];
 	}
 	else if (parsed[line][tkn].s == ld.cos_attr_attrindex) {
 		// This is a property
-		data.query = "SELECT RuntimeType AS Type, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?";
+		data.query = "SELECT RuntimeType AS Type, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?";
 		data.parameters = [cls,member];
 	}
 	else {
 		// This is a generic member
 		if (cls.startsWith("%SYSTEM.")) {
 			// This is always a method
-			data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ?";
+			data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
 			data.parameters = [cls,member];
 		}
 		else {
 			// This can be a method or property
-			data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE parent->ID = ? AND name = ? UNION ALL ";
-			data.query = data.query.concat("SELECT RuntimeType AS Type, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE parent->ID = ? AND name = ?");
+			data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL ";
+			data.query = data.query.concat("SELECT RuntimeType AS Type, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?");
 			data.parameters = [cls,member,cls,member];
 		}
 	}
@@ -2726,19 +2726,19 @@ export async function getMemberType(parsed: compressedline[], line: number, tkn:
 			let stubquery = "";
 			if (stubarr[2] == "i") {
 				// This is a method generated from an index
-				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 			}
 			if (stubarr[2] == "q") {
 				// This is a method generated from a query
-				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledQueryMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 			}
 			if (stubarr[2] == "a") {
 				// This is a method generated from a property
-				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledPropertyMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 			}
 			if (stubarr[2] == "n") {
 				// This is a method generated from a constraint
-				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->parent->ID = ? AND parent->Name = ?";
+				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 			}
 			if (stubquery != "") {
 				const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
