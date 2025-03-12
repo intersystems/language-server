@@ -686,7 +686,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 								break;
 							}
 							else {
-								const firstwordrange = Range.create(line,parsed[line][0].p,line,parsed[line][0].p+parsed[line][0].c);
+								const firstwordrange = findFullRange(line,parsed,0,parsed[line][0].p,parsed[line][0].p+parsed[line][0].c);
 								const firstwordtext = doc.getText(firstwordrange);
 								if (firstwordtext == label) {
 									// This is the correct label
