@@ -14,7 +14,8 @@
       "stream",
       "view",
       "index",
-      "dynamic"
+      "dynamic",
+      "literal"
     ],
     "description": "Specifies how this class is to be used."
   },
@@ -180,6 +181,11 @@
     "name": "Owner",
     "type": "KW_TYPE_TEXT",
     "description": "Specifies the owner of the class and its corresponding table. By default, classes and tables are owned by _SYSTEM."
+  },
+  {
+    "name": "Partitioned",
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "In the case of a persistent class, specifies whether the table is partitioned."
   },
   {
     "name": "ProcedureBlock",

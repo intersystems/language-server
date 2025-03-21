@@ -41,6 +41,43 @@
     "description": "If true, then do not display this item in automatic documentation."
   },
   {
+    "name": "Partitioned",
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "A partitioned index has partition id(s) and bucket id as leading subscripts. Only partitioned tables can have partitioned indexes, and indexes created for partitioned tables through DDL are partitioned by default."
+  },
+  {
+    "name": "PartitionGranularity",
+    "type": "KW_TYPE_STRING",
+    "constraint": [
+      "year",
+      "month",
+      "day",
+      "hour",
+      "minute"
+    ],
+    "description": "Specifies the granularity of a date range partition key."
+  },
+  {
+    "name": "PartitionInterval",
+    "type": "KW_TYPE_INTEGER",
+    "description": "Specifies the interval of a range partition key."
+  },
+  {
+    "name": "PartitionKey",
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "If true then this index represents a partition key."
+  },
+  {
+    "name": "PartitionType",
+    "type": "KW_TYPE_STRING",
+    "constraint": [
+      "range",
+      "hash",
+      "list"
+    ],
+    "description": "Specifies the type of the partition key."
+  },
+  {
     "name": "PrimaryKey",
     "type": "KW_TYPE_BOOLEAN",
     "description": "Specifies that this index should be reported, via SQL, as being the Primary Key for this class. "

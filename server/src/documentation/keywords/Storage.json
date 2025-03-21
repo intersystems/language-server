@@ -76,6 +76,15 @@
       "description": "Specifies the name of the Storage definition. This name must be a valid class member name and must not conflict with any other class member names."
     },
     {
+      "name": "Partitioned",
+      "type": "KW_TYPE_STRING",
+      "description": "Value of the Partitioned keyword"
+    },
+    {
+      "name": "PartitionKey",
+      "type": "KW_TYPE_SUBNODE"
+    },
+    {
       "name": "Property",
       "type": "KW_TYPE_SUBNODE"
     },
@@ -224,6 +233,18 @@
     {
       "name": "SmallChunkSize",
       "type": "KW_TYPE_INTEGER"
+    }
+  ],
+  "STORAGEPARTITIONKEY": [
+    {
+      "name": "Name",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the name of the partition key"
+    },
+    {
+      "name": "Properties",
+      "type": "KW_TYPE_STRING",
+      "description": "Specifies the properties of the partition key"
     }
   ],
   "STORAGEPROPERTY": [
