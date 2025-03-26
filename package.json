@@ -1800,7 +1800,7 @@
   },
   "devDependencies": {
     "@types/node": "^20.14.13",
-    "@vscode/vsce": "^3.2.2",
+    "@vscode/vsce": "^3.3.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
     "ovsx": "^0.10.1",
