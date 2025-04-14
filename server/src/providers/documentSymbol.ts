@@ -50,6 +50,9 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 				else if (isClassMember(keywordtextlower)) {
 					// This is a class member definition
 
+					const memName = doc.getText(Range.create(line,parsed[line][1].p,line,parsed[line][1].p+parsed[line][1].c));
+					if (memName.trim() == "") continue;
+
 					// Loop through the file from this line to find the next class member
 					var lastnonempty = line;
 					for (let nl = line+1; nl < parsed.length; nl++) {
@@ -94,7 +97,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 					}
 
 					members.push({
-						name: doc.getText(Range.create(line,parsed[line][1].p,line,parsed[line][1].p+parsed[line][1].c)),
+						name: memName,
 						kind: 
 							["method","classmethod","clientmethod"].includes(keywordtextlower) ? SymbolKind.Method :
 							keywordtextlower == "query" ? SymbolKind.Function :

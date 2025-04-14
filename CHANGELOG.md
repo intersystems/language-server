@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.7.3] - 2025-XX-XX
+- Fix issue [#366](https://github.com/intersystems/language-server/issues/366): Language Server can return invalid DocumentSymbols in some rare circumstances
+
 ## [2.7.2] - 2025-03-26
 - Fix issue [#362](https://github.com/intersystems/language-server/issues/362): Fix go to definition on labels starting with a number in the current routine
 - Fix issue [#363](https://github.com/intersystems/language-server/issues/363): Parser support for table partitioning feature
