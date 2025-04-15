@@ -21,6 +21,11 @@
     "description": "Specifies a list of properties whose values are to be stored within this index."
   },
   {
+    "name": "Deferred",
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "True if this index is a deferred filing index"
+  },
+  {
     "name": "Deprecated",
     "type": "KW_TYPE_BOOLEAN",
     "description": "True if this index is deprecated."

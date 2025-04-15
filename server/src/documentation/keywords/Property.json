@@ -26,6 +26,11 @@
     "description": "An alias used by client projections of this property."
   },
   {
+    "name": "Deferred",
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "For stored computed fields only. True if the computation and filing of this field is deferred."
+  },
+  {
     "name": "Deprecated",
     "type": "KW_TYPE_BOOLEAN",
     "description": "True if this property is deprecated."

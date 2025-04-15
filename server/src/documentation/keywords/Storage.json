@@ -328,6 +328,10 @@
       "type": "KW_TYPE_SUBNODE"
     },
     {
+      "name": "Deferred",
+      "type": "KW_TYPE_STRING"
+    },
+    {
       "name": "Global",
       "type": "KW_TYPE_STRING"
     },
