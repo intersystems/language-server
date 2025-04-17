@@ -2,6 +2,7 @@
 
 ## [2.7.3] - 2025-XX-XX
 - Fix issue [#366](https://github.com/intersystems/language-server/issues/366): Language Server can return invalid DocumentSymbols in some rare circumstances
+- Fix issue [#367](https://github.com/intersystems/language-server/issues/367): Support `objectscript.multilineMethodArgs` being set per workspace folder
 - Parser changes:
   - DP-438845, DP-440271: Support new keywords for deferred filing of indices and computed fields
 

@@ -229,7 +229,9 @@ export async function activate(context: ExtensionContext) {
 							? uri.path.slice(1)
 							: uri.path.split("/").slice(1).join(".");
 					const docParams = 
-						workspace.getConfiguration("objectscript",uri).get<boolean>("multilineMethodArgs") && params.server.apiVersion >= 4
+						params.server.apiVersion >= 4 && workspace.getConfiguration("objectscript",
+							workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase())
+						).get<boolean>("multilineMethodArgs")
 							? { format: "udl-multiline" }
 							: undefined;
 					const resp = await makeRESTRequest("GET",1,`/doc/${fileName}`,params.server,undefined,undefined,docParams);
