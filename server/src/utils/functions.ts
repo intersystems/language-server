@@ -1578,7 +1578,13 @@ async function determineDeclaredLocalVarClass(
 
 /**
  * Parse a Set command's arguments and look to see if `selector` was set.
- * If so, attempt to determine the class of `selector`.
+ * If so, attempt to determine the class of `selector`. If the token at
+ * `[endLn,endTkn]` is reached, the function will immediately terminate
+ * to prevent infinite recursion when encountering commands like:
+ * 
+ * ```objectscript
+ *  Set a = a.MyMethod()
+ * ```
  * 
  * @param doc The TextDocument that the Set is in.
  * @param parsed The tokenized representation of `doc`.
@@ -1590,7 +1596,7 @@ async function determineDeclaredLocalVarClass(
  */
 async function parseSetCommand(
 	doc: TextDocument, parsed: compressedline[], line: number, token: number,
-	selector: string, server: ServerSpec, diagnostic: boolean
+	selector: string, server: ServerSpec, diagnostic: boolean, endLn: number, endTkn: number
 ): Promise<string> {
 	let result = "";
 	let brk = false;
@@ -1605,6 +1611,12 @@ async function parseSetCommand(
 	for (let ln = line; ln < parsed.length; ln++) {
 		if (!parsed[ln]?.length) continue;
 		for (let tkn = (ln == line ? token + 1 : 0); tkn < parsed[ln].length; tkn++) {
+			if (ln > endLn || (ln == endLn && tkn >= endTkn)) {
+				// We reached the token of the variable that we are trying to
+				// resolve the type for, so exit to prevent infinite recursion
+				brk = true;
+				break;
+			}
 			if (parsed[ln][tkn].l == ld.cos_langindex && (parsed[ln][tkn].s === ld.cos_command_attrindex || parsed[ln][tkn].s === ld.cos_zcom_attrindex)) {
 				// This is the next command, so stop looping
 				brk = true;
@@ -1959,13 +1971,13 @@ async function determineUndeclaredLocalVarClass(
 		}
 		else {
 			// Loop through the line looking for Sets or this variable passed by reference
-			for (let tkn = 0; tkn < parsed[j].length; tkn++) {
+			for (let k = 0; k < parsed[j].length; k++) {
 				if (
-					parsed[j][tkn].l == ld.cos_langindex && parsed[j][tkn].s === ld.cos_command_attrindex &&
-					["s","set"].includes(doc.getText(Range.create(j,parsed[j][tkn].p,j,parsed[j][tkn].p+parsed[j][tkn].c)).toLowerCase())
+					parsed[j][k].l == ld.cos_langindex && parsed[j][k].s === ld.cos_command_attrindex &&
+					["s","set"].includes(doc.getText(Range.create(j,parsed[j][k].p,j,parsed[j][k].p+parsed[j][k].c)).toLowerCase())
 				) {
 					// This is a Set command
-					const setCls = await parseSetCommand(doc,parsed,j,tkn,thisvar,server,Array.isArray(allfiles));
+					const setCls = await parseSetCommand(doc,parsed,j,k,thisvar,server,Array.isArray(allfiles),line,tkn);
 					if (setCls) {
 						result = {
 							baseclass: await normalizeClassname(doc,parsed,setCls,server,j,allfiles,undefined,inheritedpackages),
@@ -1976,10 +1988,10 @@ async function determineUndeclaredLocalVarClass(
 				}
 				// Don't check for by reference syntax if we're calculating diagnostics for performance reasons
 				if (
-					!allfiles && parsed[j][tkn].l == ld.cos_langindex && parsed[j][tkn].s == ld.cos_oper_attrindex &&
-					doc.getText(Range.create(j,parsed[j][tkn].p,j,parsed[j][tkn].p+parsed[j][tkn].c)) == "."
+					!allfiles && parsed[j][k].l == ld.cos_langindex && parsed[j][k].s == ld.cos_oper_attrindex &&
+					doc.getText(Range.create(j,parsed[j][k].p,j,parsed[j][k].p+parsed[j][k].c)) == "."
 				) {
-					const next = nextToken(parsed,j,tkn);
+					const next = nextToken(parsed,j,k);
 					// Check if the variable passed by reference is the one we care about
 					if (next && parsed[next[0]][next[1]].l == ld.cos_langindex &&
 						(
@@ -1993,7 +2005,7 @@ async function determineUndeclaredLocalVarClass(
 						)) == thisvar
 					) {
 						// Find the start of the method
-						const [startLn, startTkn] = findOpenParen(doc,parsed,j,tkn);
+						const [startLn, startTkn] = findOpenParen(doc,parsed,j,k);
 						if (startLn != -1 && startTkn != -1 && 
 							parsed[startLn][startTkn-1].l == ld.cos_langindex && 
 							(
@@ -2004,7 +2016,7 @@ async function determineUndeclaredLocalVarClass(
 							// Determine which argument number this is
 							const argNum = determineActiveParam(doc.getText(Range.create(
 								startLn,parsed[startLn][startTkn].p+1,
-								j,parsed[j][tkn].p
+								j,parsed[j][k].p
 							))) + 1;
 
 							// Get the full text of the member
