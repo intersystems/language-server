@@ -208,7 +208,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		}
 	}
 
-	const startline: number = (firstlineisroutine) ? 1 : 0;
+	const startline = firstlineisroutine ? 1 : 0;
 
 	// Store the name, class and ranges for all class members that we see if settings.diagnostics.deprecation is true
 	// Map keys are of the form "class:::member", except for classes
@@ -231,15 +231,40 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	// try to combine error tokens that aren't for the same underlying error.
 	let lastErrWasWhitespace = false;
 
+	// Don't report diagnostics in a #if 0 block, and
+	// mark all of the code in the block as "unused"
+	let ifZeroStartPos: Position;
+	const ifZeroStart = /^\s*#if\s+(?:0|"0")(?:$|\s)/i;
+	const ifZeroEnd = /^\s*#elseif\s+|(?:#else|#endif)(?:$|\s)/i;
+
 	// Loop through the parsed document to find errors and warnings
 	for (let i = startline; i < parsed.length; i++) {
+
+		const lineText = doc.getText(Range.create(i,0,i+1,0));
+		if (doc.languageId != "objectscript-int" && !ifZeroStartPos) {
+			const ifZeroStartMatch = lineText.match(ifZeroStart);
+			if (ifZeroStartMatch) {
+				ifZeroStartPos = Position.create(i,ifZeroStartMatch[0].length);
+				continue; // No more diagnostics on this line
+			}
+		} else if (ifZeroStartPos && ifZeroEnd.test(lineText)) {
+			if (i > (ifZeroStartPos.line + 1)) diagnostics.push({
+				severity: DiagnosticSeverity.Hint,
+				range: Range.create(ifZeroStartPos,Position.create(i,0)),
+				message: "Unused code detected",
+				tags: [DiagnosticTag.Unnecessary],
+				source: 'InterSystems Language Server'
+			});
+			ifZeroStartPos = undefined;
+			continue; // No more diagnostics on this line
+		}
 
 		// Loop through the line's tokens
 		for (let j = 0; j < parsed[i].length; j++) {
 			const symbolstart: number = parsed[i][j].p;
 			const symbolend: number = parsed[i][j].p + parsed[i][j].c;
 
-			if (j > 0 && parsed[i][j].l === parsed[i][j-1].l && parsed[i][j].s === parsed[i][j-1].s) {
+			if (j > 0 && parsed[i][j].l === parsed[i][j-1].l && parsed[i][j].s === parsed[i][j-1].s && !ifZeroStartPos) {
 				// This token is the same as the last
 
 				if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
@@ -274,7 +299,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 			}
 			else {
-				if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
+				if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l) && !ifZeroStartPos) {
 					// This is an error token
 					const errorRange = Range.create(i,symbolstart,i,symbolend);
 					// Don't create a diagnostic for this error if it's just whitespace.
@@ -296,17 +321,17 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				else if (
 					parsed[i][j].l == ld.cos_langindex &&
 					parsed[i][j].s == ld.cos_otw_attrindex &&
-					settings.diagnostics.undefinedVariables
+					settings.diagnostics.undefinedVariables &&
+					!ifZeroStartPos
 				) {
 					// This is an OptionTrackWarning (unset local variable)
 					const varrange = Range.create(Position.create(i,symbolstart),Position.create(i,symbolend));
-					let diagnostic: Diagnostic = {
+					diagnostics.push({
 						severity: DiagnosticSeverity.Warning,
 						range: varrange,
 						message: `Local variable "${doc.getText(varrange)}" may be undefined`,
 						source: 'InterSystems Language Server'
-					};
-					diagnostics.push(diagnostic);
+					});
 				}
 				else if (
 					parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex &&
@@ -393,13 +418,12 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						const thistypedoc = parameterTypes.find((typedoc) => typedoc.name === tokentext);
 						if (thistypedoc === undefined) {
 							// The type is invalid
-							let diagnostic: Diagnostic = {
+							diagnostics.push({
 								severity: DiagnosticSeverity.Warning,
 								range: tokenrange,
 								message: "Invalid parameter type",
 								source: 'InterSystems Language Server'
-							};
-							diagnostics.push(diagnostic);
+							});
 						}
 						else {
 							// The type is valid
@@ -504,10 +528,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							else {
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
-									range: {
-										start: Position.create(i,parsed[i][ptkn].p),
-										end: Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c)
-									},
+									range: Range.create(i,parsed[i][ptkn].p,i,parsed[i][ptkn].p+parsed[i][ptkn].c),
 									message: errorDesc,
 									source: 'InterSystems Language Server'
 								});
@@ -529,8 +550,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						if (parsed[i][imptkn].s == ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
 							if (
 								parsed[i][imptkn-1].s == ld.error_attrindex && !doc.getText(Range.create(
-									Position.create(i,parsed[i][imptkn].p-1),
-									Position.create(i,parsed[i][imptkn].p)
+									i,parsed[i][imptkn].p-1,
+									i,parsed[i][imptkn].p
 								)).trim()
 							) {
 								// The previous token is an error without a space in between, so extend the existing syntax error Diagnostic to cover this token
@@ -539,10 +560,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							else {
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
-									range: {
-										start: Position.create(i,parsed[i][imptkn].p),
-										end: Position.create(i,parsed[i][imptkn].p+parsed[i][imptkn].c)
-									},
+									range: Range.create(i,parsed[i][imptkn].p,i,parsed[i][imptkn].p+parsed[i][imptkn].c),
 									message: syntaxError,
 									source: 'InterSystems Language Server'
 								});
@@ -562,7 +580,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: pkgrange,
-									message: `No classes with package "${pkg}" exist in namespace "${baseNs}"`,
+									message: `Package "${pkg}" does not exist in namespace "${baseNs}"`,
 									source: 'InterSystems Language Server'
 								});
 							}
@@ -576,7 +594,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					files.length > 0 &&
 					((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
 					(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
-					(settings.diagnostics.classes || settings.diagnostics.deprecation)
+					(settings.diagnostics.classes || settings.diagnostics.deprecation) && !ifZeroStartPos
 				) {
 					// This is a class name
 
@@ -584,8 +602,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					if (j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex) {
 						// The previous token is a UDL keyword
 						const prevkeytext = doc.getText(Range.create(
-							Position.create(i,parsed[i][j-1].p),
-							Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
+							i,parsed[i][j-1].p,
+							i,parsed[i][j-1].p+parsed[i][j-1].c
 						)).toLowerCase();
 						if (prevkeytext === "class") {
 							continue;
@@ -598,19 +616,18 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					if (word.charAt(0) === ".") {
 						// This might be $SYSTEM.ClassName
 						const prevseven = doc.getText(Range.create(
-							Position.create(i,wordrange.start.character-7),
-							Position.create(i,wordrange.start.character)
+							i,wordrange.start.character-7,
+							i,wordrange.start.character
 						));
 						if (prevseven.toUpperCase() !== "$SYSTEM") {
 							// This classname is invalid
 							if (settings.diagnostics.classes) {
-								let diagnostic: Diagnostic = {
+								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
 									message: "Invalid class name",
 									source: 'InterSystems Language Server'
-								};
-								diagnostics.push(diagnostic);
+								});
 							}
 							continue;
 						}
@@ -682,7 +699,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					files.length > 0 &&
 					((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) ||
 					(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_rtnname_attrindex)) &&
-					settings.diagnostics.routines
+					settings.diagnostics.routines && !ifZeroStartPos
 				) {
 					// This is a routine name
 
@@ -798,7 +815,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					}
 				}
 				else if (
-					settings.diagnostics.zutil && parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_sysf_attrindex &&
+					settings.diagnostics.zutil && !ifZeroStartPos && parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_sysf_attrindex &&
 					/^\$zu(til)?$/i.test(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c))) && j < parsed[i].length - 1
 				) {
 					// This is a $ZUTIL call

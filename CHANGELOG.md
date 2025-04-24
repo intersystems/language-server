@@ -4,6 +4,7 @@
 - Fix issue [#366](https://github.com/intersystems/language-server/issues/366): Language Server can return invalid DocumentSymbols in some rare circumstances
 - Fix issue [#367](https://github.com/intersystems/language-server/issues/367): Support `objectscript.multilineMethodArgs` being set per workspace folder
 - Fix issue [#370](https://github.com/intersystems/language-server/issues/370): Infinite recursion when a variable is set to the result of one of its instance methods
+- Fix issue [#371](https://github.com/intersystems/language-server/issues/371): Don't report problems for code enclosed in `#if 0` blocks
 - Parser changes:
   - DP-438845, DP-440271: Support new keywords for deferred filing of indices and computed fields
 
