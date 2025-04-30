@@ -20,7 +20,7 @@ import {
 	TransportKind
 } from 'vscode-languageclient/node';
 
-import { gt, lte } from "semver";
+import { gt, lte, lt } from "semver";
 import * as serverManager from "@intersystems-community/intersystems-servermanager";
 
 import { ObjectScriptEvaluatableExpressionProvider } from './evaluatableExpressionProvider';
@@ -40,8 +40,29 @@ export let client: LanguageClient;
 /**
  * Cache for cookies from REST requests to InterSystems servers.
  */
-export let cookiesCache: Cache;
+let cookiesCache: Cache;
 
+export async function updateCookies(newCookies: string[], server: ServerSpec): Promise<string[]> {
+	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
+	const cookies = cookiesCache.get(key, []);
+	newCookies.forEach((cookie) => {
+	  const [cookieName] = cookie.split("=");
+	  const index = cookies.findIndex((el) => el.startsWith(cookieName));
+	  if (index >= 0) {
+		cookies[index] = cookie;
+	  } else {
+		cookies.push(cookie);
+	  }
+	});
+	await cookiesCache.put(key, cookies);
+	return cookies;
+}
+
+export function getCookies(server: ServerSpec): string[] {
+	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`, []);
+}
+
+let objectScriptApi;
 let serverManagerApi: serverManager.ServerManagerAPI;
 
 type MakeRESTRequestParams = {
@@ -57,7 +78,7 @@ type MakeRESTRequestParams = {
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
 	const objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript");
-	const objectScriptApi = objectScriptExt.isActive ? objectScriptExt.exports : await objectScriptExt.activate();
+	objectScriptApi = objectScriptExt.isActive ? objectScriptExt.exports : await objectScriptExt.activate();
 
 	cookiesCache = new Cache(context, "cookies");
 	// The server is implemented in node
@@ -346,9 +367,28 @@ export async function activate(context: ExtensionContext) {
 	}
 }
 
-export function deactivate(): Thenable<void> | undefined {
-	if (!client) {
-		return undefined;
+export async function deactivate(): Promise<void> {
+	// Stop the server and log out of all CSP sessions
+	const loggedOut: Set<string> = new Set();
+	const promises: Promise<any>[] = client ? [client.stop()] : [];
+	for (const f of workspace.workspaceFolders ?? []) {
+		const serverSpec: ServerSpec = objectScriptApi.serverForUri(f.uri);
+		if (!serverSpec?.active) continue;
+		const sessionCookie = getCookies(serverSpec).find((c) => c.startsWith("CSPSESSIONID-"));
+		if (!sessionCookie || loggedOut.has(sessionCookie)) continue;
+		loggedOut.add(sessionCookie);
+		promises.push(
+			makeRESTRequest(
+				"HEAD",
+				0,
+				undefined,
+				serverSpec,
+				undefined,
+				undefined,
+				// Prefer IRISLogout for servers that support it
+				lt(serverSpec.serverVersion, "2018.2.0") ? { CacheLogout: "end" } : { IRISLogout: "end" }
+			)
+		);
 	}
-	return client.stop();
+	await Promise.allSettled(promises);
 }

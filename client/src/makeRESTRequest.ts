@@ -3,7 +3,7 @@ import { workspace } from 'vscode';
 import axios, { AxiosResponse } from 'axios';
 import * as https from 'https';
 
-import { client, cookiesCache } from './extension';
+import { client, getCookies, updateCookies } from './extension';
 
 export type ServerSpec = {
 	scheme: string,
@@ -15,28 +15,9 @@ export type ServerSpec = {
 	username: string,
 	serverName: string,
 	password: string,
+	serverVersion: string,
 	active: boolean
 };
-
-async function updateCookies(newCookies: string[], server: ServerSpec): Promise<string[]> {
-	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
-	const cookies = cookiesCache.get(key, []);
-    newCookies.forEach((cookie) => {
-      const [cookieName] = cookie.split("=");
-      const index = cookies.findIndex((el) => el.startsWith(cookieName));
-      if (index >= 0) {
-        cookies[index] = cookie;
-      } else {
-        cookies.push(cookie);
-      }
-    });
-    await cookiesCache.put(key, cookies);
-	return cookies;
-}
-
-function getCookies(server: ServerSpec): string[] {
-	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`, []);
-}
 
 /**
  * Send a REST request to an InterSystems server.
@@ -49,7 +30,7 @@ function getCookies(server: ServerSpec): string[] {
  * @param checksum Optional checksum. Only passed for SASchema requests.
  * @param params Optional URL parameters. Only passed for GET /doc/ requests.
  */
-export async function makeRESTRequest(method: "GET"|"POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse<any> | undefined> {
+export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse<any> | undefined> {
 	if (server.host === "") {
 		// No server connection is configured
 		client.warn("Cannot make required REST request because no server connection is configured.");
@@ -75,7 +56,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 	}
 
 	// Build the URL
-	let url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/v${server.apiVersion}/${server.namespace}${path}`);
+	let url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/${api ? `v${server.apiVersion}/${server.namespace}${path}` : "" }`);
 
 	// Create the HTTPS agent
 	const httpsAgent = new https.Agent({ rejectUnauthorized: workspace.getConfiguration("http").get("proxyStrictSSL") });
@@ -234,7 +215,7 @@ export async function makeRESTRequest(method: "GET"|"POST", api: number, path: s
 						}
 					}
 				);
-				if (respdata.status === 401) {
+				if (respdata.status === 401 && api) { // api is only 0 when calling HEAD / to log out of the session
 					// Either we had no cookies or they expired, so resend the request with basic auth
 
 					respdata = await axios.request(

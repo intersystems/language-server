@@ -5,6 +5,7 @@
 - Fix issue [#367](https://github.com/intersystems/language-server/issues/367): Support `objectscript.multilineMethodArgs` being set per workspace folder
 - Fix issue [#370](https://github.com/intersystems/language-server/issues/370): Infinite recursion when a variable is set to the result of one of its instance methods
 - Fix issue [#371](https://github.com/intersystems/language-server/issues/371): Don't report problems for code enclosed in `#if 0` blocks
+- Fix issue [#372](https://github.com/intersystems/language-server/issues/372): Log out of web sessions when VS Code exits
 - Parser changes:
   - DP-438845, DP-440271: Support new keywords for deferred filing of indices and computed fields
 
