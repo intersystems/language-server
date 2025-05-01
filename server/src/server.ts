@@ -154,7 +154,7 @@ connection.onNotification("intersystems/server/passwordChange",
 	(serverName: string) => {
 		var invalid: string[] = [];
 		for (let [uri, server] of serverSpecs.entries()) {
-			if (server.serverName = serverName) {
+			if (server.serverName == serverName) {
 				invalid.push(uri);
 			}
 		}
@@ -163,7 +163,7 @@ connection.onNotification("intersystems/server/passwordChange",
 		}
 		var toRemove: ServerSpec | undefined = undefined;
 		for (let server of schemaCaches.keys()) {
-			if (server.serverName = serverName) {
+			if (server.serverName == serverName) {
 				toRemove = server;
 				break;
 			}

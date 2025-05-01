@@ -65,6 +65,9 @@ export function getCookies(server: ServerSpec): string[] {
 let objectScriptApi;
 let serverManagerApi: serverManager.ServerManagerAPI;
 
+/** Resolved connection information for each workspace folder */
+const wsFolderServerSpecs: Map<string, ServerSpec> = new Map();
+
 type MakeRESTRequestParams = {
 	method: "GET"|"POST";
 	api: number;
@@ -150,6 +153,7 @@ export async function activate(context: ExtensionContext) {
 
 	// Send custom notifications when the connection or password changes
 	objectScriptApi.onDidChangeConnection()(() => {
+		wsFolderServerSpecs.clear();
 		client.sendNotification("intersystems/server/connectionChange");
 	});
 	const serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
@@ -157,6 +161,9 @@ export async function activate(context: ExtensionContext) {
 		// The server manager extension is installed
 		serverManagerApi = serverManagerExt.isActive ? serverManagerExt.exports : await serverManagerExt.activate();
 		serverManagerApi.onDidChangePassword()((serverName: string) => {
+			for (const [k,v] of wsFolderServerSpecs.entries()) {
+				if (v.serverName == serverName) wsFolderServerSpecs.delete(k);
+			}
 			client.sendNotification("intersystems/server/passwordChange",serverName);
 		});
 	}
@@ -165,7 +172,9 @@ export async function activate(context: ExtensionContext) {
 	context.subscriptions.push(
 		// Register custom request handlers
 		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
-			let serverSpec = objectScriptApi.serverForUri(Uri.parse(uri));
+			const uriObj = Uri.parse(uri);
+			const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
+			let serverSpec = objectScriptApi.serverForUri(uriObj);
 			if (
 				// Server was resolved
 				serverSpec.host !== "" &&
@@ -202,6 +211,9 @@ export async function activate(context: ExtensionContext) {
 			if (typeof serverSpec.username == "string" && serverSpec.username.toLowerCase() == "unknownuser" && typeof serverSpec.password == "undefined") {
 				// UnknownUser without a password means "unauthenticated"
 				serverSpec.username = undefined;
+			}
+			if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
+				wsFolderServerSpecs.set(wsFolderUriString, serverSpec);
 			}
 			return serverSpec;
 		}),
@@ -372,7 +384,7 @@ export async function deactivate(): Promise<void> {
 	const loggedOut: Set<string> = new Set();
 	const promises: Promise<any>[] = client ? [client.stop()] : [];
 	for (const f of workspace.workspaceFolders ?? []) {
-		const serverSpec: ServerSpec = objectScriptApi.serverForUri(f.uri);
+		const serverSpec = wsFolderServerSpecs.get(f.uri.toString());
 		if (!serverSpec?.active) continue;
 		const sessionCookie = getCookies(serverSpec).find((c) => c.startsWith("CSPSESSIONID-"));
 		if (!sessionCookie || loggedOut.has(sessionCookie)) continue;
