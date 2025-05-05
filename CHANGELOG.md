@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.7.3] - 2025-XX-XX
+## [2.7.3] - 2025-05-05
 - Fix issue [#366](https://github.com/intersystems/language-server/issues/366): Language Server can return invalid DocumentSymbols in some rare circumstances
 - Fix issue [#367](https://github.com/intersystems/language-server/issues/367): Support `objectscript.multilineMethodArgs` being set per workspace folder
 - Fix issue [#370](https://github.com/intersystems/language-server/issues/370): Infinite recursion when a variable is set to the result of one of its instance methods
