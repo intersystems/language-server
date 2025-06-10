@@ -82,6 +82,7 @@ export const html_tag_attrindex = 0x0B;
 
 export const xml_tagdelim_attrindex = 0x03;
 export const xml_attr_attrindex = 0x06;
+export const xml_str_attrindex = 0x11;
 
 export const javascript_delim_attrindex = 0x04;
 export const javascript_cspext_attrindex = 0x15;

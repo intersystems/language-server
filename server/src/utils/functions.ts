@@ -2786,6 +2786,57 @@ function nextToken(parsed: compressedline[], ln: number, tkn: number): [number, 
 	return result;
 }
 
+/** Return the attribute of this XML string if it's Call or Forward in a UrlMap. Else return the empty string.  */
+export function urlMapAttribute(doc: TextDocument, parsed: compressedline[], line: number, token: number): "Call" | "Forward" | "" {
+	// Determine if we're in a UrlMap XData block
+	let inUrlMap = false;
+	for (let ln = line; ln >= 0; ln--) {
+		if (parsed[ln]?.length < 2) continue;
+		if (parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
+			const keyword = doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][0].p+parsed[ln][0].c));
+			if (isClassMember(keyword)) {
+				// We found the definition of the containg class member
+				if (keyword.toLowerCase() == "xdata") {
+					inUrlMap = doc.getText(Range.create(ln,parsed[ln][1].p,ln,parsed[ln][1].p+parsed[ln][1].c)) == "UrlMap";
+				}
+				break;
+			}
+		}
+	}
+	if (!inUrlMap) return "";
+
+	// Determine if this is the value of a Call or Forward attribute
+	let attr = "";
+	const prev1 = prevToken(parsed,line,token);
+	const prev2 = prev1 ? prevToken(parsed,prev1[0],prev1[1]) : undefined;
+	if (
+		prev1 && prev2 &&
+		parsed[prev1[0]][prev1[1]].l == ld.xml_langindex && parsed[prev1[0]][prev1[1]].s == ld.xml_tagdelim_attrindex && doc.getText(Range.create(
+			prev1[0],parsed[prev1[0]][prev1[1]].p,
+			prev1[0],parsed[prev1[0]][prev1[1]].p+parsed[prev1[0]][prev1[1]].c
+		)) == "=" &&
+		parsed[prev2[0]][prev2[1]].l == ld.xml_langindex && parsed[prev2[0]][prev2[1]].s == ld.xml_attr_attrindex
+	) {
+		attr = doc.getText(Range.create(
+			prev2[0],parsed[prev2[0]][prev2[1]].p,
+			prev2[0],parsed[prev2[0]][prev2[1]].p+parsed[prev2[0]][prev2[1]].c
+		));
+	}
+	if (!["Call","Forward"].includes(attr)) return "";
+}
+
+/** Find the token immediately preceding the one at [`ln`, `tkn`]  */
+export function prevToken(parsed: compressedline[], ln: number, tkn: number): [number, number] | undefined {
+	if (tkn > 0) return [ln, tkn - 1];
+	let result: [number, number] | undefined;
+	for (let i = ln - 1; i >= 0; i--) {
+		if (!parsed[i]?.length) continue;
+		result = [i, parsed[i].length - 1];
+		break;
+	}
+	return result;
+}
+
 /** Convert a macro definition array to a `MarkupContent` documentation object */
 export function macroDefToDoc(def: string[], header = false): MarkupContent {
 	const parts = def[0].trim().split(/\s+/);
