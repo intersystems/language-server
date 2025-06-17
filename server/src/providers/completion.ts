@@ -1801,14 +1801,14 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					if (parsed[j][k].l == ld.cls_langindex && parsed[j][k].s == ld.cls_keyword_attrindex) {
 						// This is a UDL trailing keyword
 						const keytext = doc.getText(Range.create(
-							Position.create(j,parsed[j][k].p),
-							Position.create(j,parsed[j][k].p+parsed[j][k].c)
+							j,parsed[j][k].p,
+							j,parsed[j][k].p+parsed[j][k].c
 						)).toLowerCase();
 						if (keytext === "xmlnamespace") {
 							// An XMLNamespace is defined
 							xmlns = doc.getText(Range.create(
-								Position.create(j,parsed[j][k+2].p+1),
-								Position.create(j,parsed[j][k+2].p+parsed[j][k+2].c-1)
+								j,parsed[j][k+2].p+1,
+								j,parsed[j][k+2].p+parsed[j][k+2].c-1
 							));
 							break;
 						}
@@ -1857,21 +1857,21 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							if (parsed[xmlline][xmltkn].l == ld.xml_langindex && parsed[xmlline][xmltkn].s == ld.xml_tagdelim_attrindex) {
 								// This is a tag delimiter 
 								const tokentext = doc.getText(Range.create(
-									Position.create(xmlline,parsed[xmlline][xmltkn].p),
-									Position.create(xmlline,parsed[xmlline][xmltkn].p+parsed[xmlline][xmltkn].c)
+									xmlline,parsed[xmlline][xmltkn].p,
+									xmlline,parsed[xmlline][xmltkn].p+parsed[xmlline][xmltkn].c
 								));
 								if (tokentext === "<") {
 									// The upcoming element is being opened
 									openelem.push(doc.getText(Range.create(
-										Position.create(xmlline,parsed[xmlline][xmltkn+1].p),
-										Position.create(xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c)
+										xmlline,parsed[xmlline][xmltkn+1].p,
+										xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c
 									)));
 								}
 								else if (tokentext === "</") {
 									// The upcoming element is being closed
 									openelem.splice(openelem.lastIndexOf(doc.getText(Range.create(
-										Position.create(xmlline,parsed[xmlline][xmltkn+1].p),
-										Position.create(xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c)
+										xmlline,parsed[xmlline][xmltkn+1].p,
+										xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c
 									))),1);
 								}
 								else if (tokentext === "/>") {
@@ -1935,13 +1935,15 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							});
 						}
 
-						// Create the completion item for the closing tag
-						result.push({
-							label: "/"+openelem[openelem.length-1]+">",
-							kind: CompletionItemKind.Property,
-							data: "SASchema",
-							sortText: "zzzzz"+"/"+openelem[openelem.length-1]+">"
-						});
+						if (openelem.length) {
+							// Create the completion item for the closing tag
+							result.push({
+								label: "/"+openelem[openelem.length-1]+">",
+								kind: CompletionItemKind.Property,
+								data: "SASchema",
+								sortText: "zzzzz"+"/"+openelem[openelem.length-1]+">"
+							});
+						}
 					}
 					else {
 						// Looking for an attribute value enum
@@ -1955,8 +1957,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							if (parsed[params.position.line][tkn].l == ld.xml_langindex && parsed[params.position.line][tkn].s == ld.xml_attr_attrindex) {
 								// This is an attribute name
 								selector = doc.getText(Range.create(
-									Position.create(params.position.line,parsed[params.position.line][tkn].p),
-									Position.create(params.position.line,parsed[params.position.line][tkn].p+parsed[params.position.line][tkn].c)
+									params.position.line,parsed[params.position.line][tkn].p,
+									params.position.line,parsed[params.position.line][tkn].p+parsed[params.position.line][tkn].c
 								));
 								break;
 							}
