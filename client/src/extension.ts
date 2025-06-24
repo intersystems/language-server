@@ -8,7 +8,8 @@ import {
 	workspace,
 	commands,
 	languages,
-	authentication
+	authentication,
+	AuthenticationSession
 } from 'vscode';
 
 import * as Cache from 'vscode-cache';
@@ -77,6 +78,12 @@ type MakeRESTRequestParams = {
 	checksum?: string;
 	params?: any;
 };
+
+
+interface ServerManagerAuthSession extends AuthenticationSession {
+  serverName: string;
+  userName: string;
+}
 
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
@@ -193,12 +200,12 @@ export async function activate(context: ExtensionContext) {
 				const scopes = [serverSpec.serverName, serverSpec.username];
 				try {
 					const account = serverManagerApi?.getAccount ? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec }) : undefined;
-					let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, { silent: true, account });
+					let session = <ServerManagerAuthSession>await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, { silent: true, account });
 					if (!session) {
-						session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, { createIfNone: true, account });
+						session = <ServerManagerAuthSession>await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, { createIfNone: true, account });
 					}
 					if (session) {
-						serverSpec.username = session.scopes[1];
+						serverSpec.username = session.userName;
 						serverSpec.password = session.accessToken;
 					}
 				} catch (error) {
