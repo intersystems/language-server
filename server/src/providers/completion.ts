@@ -563,7 +563,7 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 						break;
 					}
 				}
-				if (displayname.slice(0,9) === "%Library.") {
+				if (displayname.startsWith("%Library.")) {
 					// Use short form for %Library classes
 					displayname = "%" + displayname.slice(9);
 				}
@@ -575,7 +575,7 @@ async function completionFullClassName(doc: TextDocument, parsed: compressedline
 				};
 			}
 			else {
-				if (displayname.slice(0,9) === "%Library.") {
+				if (displayname.startsWith("%Library.")) {
 					// Use short form for %Library classes
 					displayname = "%" + displayname.slice(9);
 				}
@@ -727,6 +727,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	if (params.position.line === parsed.length) {return null;}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const prevline = doc.getText(Range.create(Position.create(params.position.line,0),params.position));
+	const prevlineLower = prevline.toLowerCase();
 	const classregex = /^class[ ]+%?[\p{L}\d]+(\.{1}[\p{L}\d]+)* +extends[ ]+(\(([%]?[\p{L}\d]+(\.{1}[\p{L}\d]+)*,[ ]*)*)?$/iu;
 	var firsttwotokens = "";
 	if (parsed[params.position.line].length >= 2) {
@@ -772,8 +773,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		if (!inStr && char == ")") closeParenCount++;
 	}
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
+	const asRegex = /\s+as\s+$/;
+	const parenAndCommaRegex = /[,(]\s*$/;
+	const squareAndCommaRegex = /[,[]\s*$/;
 	
-	if (prevline.slice(-3) == "$$$" && [ld.cos_langindex,ld.sql_langindex].includes(triggerlang)) {
+	if (prevline.endsWith("$$$") && [ld.cos_langindex,ld.sql_langindex].includes(triggerlang)) {
 		// This is a macro
 
 		// Get the details of this class and store them in the cache
@@ -942,7 +946,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			if (parsed[ln].some((t) => t.l == ld.cls_langindex)) break;
 		}
 	}
-	else if (prevline.slice(-1) === "$" && prevline.charAt(prevline.length-2) !== "$" && triggerlang === ld.cos_langindex) {
+	else if (prevline.endsWith("$") && prevline.slice(-2,-1) != "$" && triggerlang === ld.cos_langindex) {
 		if (prevline.charAt(prevline.length-2) === "^") {
 			// This is a structured system variable
 			for (let ssv of structuredSystemVariables) {
@@ -953,7 +957,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					textEdit: TextEdit.insert(params.position,label.slice(2) + "("),
 					data: "ssv",
 					documentation: {
-						kind: "markdown",
+						kind: MarkupKind.Markdown,
 						value: ssv.documentation.join("")
 					}
 				});
@@ -969,7 +973,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					textEdit: TextEdit.insert(params.position,label.slice(1)),
 					data: "sv",
 					documentation: {
-						kind: "markdown",
+						kind: MarkupKind.Markdown,
 						value: sv.documentation.join("")
 					}
 				});
@@ -983,7 +987,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						textEdit: TextEdit.insert(params.position,label.slice(1) + "("),
 						data: "sf",
 						documentation: {
-							kind: "markdown",
+							kind: MarkupKind.Markdown,
 							value: sf.documentation.join("")
 						}
 					});
@@ -991,7 +995,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
-	else if (prevline.slice(-3).toLowerCase() === "as " && prevline.slice(0,9).toLowerCase() === "parameter"  && triggerlang === ld.cls_langindex) {
+	else if (asRegex.test(prevlineLower) && prevlineLower.startsWith("parameter") && triggerlang === ld.cls_langindex) {
 		// This is a parameter type
 		for (let pt of parameterTypes) {
 			result.push({
@@ -1005,7 +1009,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			});
 		}
 	}
-	else if (/.*\) *as $/.test(prevline.toLowerCase()) && prevline.slice(0,5).toLowerCase() === "query"  && triggerlang === ld.cls_langindex) {
+	else if (/\)\s+as\s+$/.test(prevlineLower) && prevlineLower.startsWith("query") && triggerlang === ld.cls_langindex) {
 		// This is a class query type
 		
 		// Get the list of imports for resolution
@@ -1032,7 +1036,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							break;
 						}
 					}
-					if (displayname.slice(0,9) === "%Library.") {
+					if (displayname.startsWith("%Library.")) {
 						// Use short form for %Library classes
 						displayname = "%" + displayname.slice(9);
 					}
@@ -1045,7 +1049,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					});
 				}
 				else {
-					if (displayname.slice(0,9) === "%Library.") {
+					if (displayname.startsWith("%Library.")) {
 						// Use short form for %Library classes
 						displayname = "%" + displayname.slice(9);
 					}
@@ -1066,9 +1070,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		}
 	}
 	else if (
-		(prevline.slice(-8).toLowerCase() === "##class(" && triggerlang === ld.cos_langindex) ||
-		(prevline.slice(-3).toLowerCase() === "as " && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
-		(prevline.slice(-3).toLowerCase() === "of " && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
+		(prevlineLower.endsWith("##class(") && triggerlang === ld.cos_langindex) ||
+		((triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex) && (asRegex.test(prevlineLower) || /\s+of\s+$/.test(prevlineLower))) ||
 		classregex.test(prevline)
 	) {
 		// This is a full class name
@@ -1076,9 +1079,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		result = await completionFullClassName(doc,parsed,server,params.position.line,settings);
 	}
 	else if (
-		(prevline.slice(-1) === "." && prevline.slice(-2,-1) !== "," && prevline.slice(-2,-1) !== " " &&
+		(prevline.endsWith(".") && prevline.slice(-2,-1) !== "," && prevline.slice(-2,-1) !== " " &&
 		thistoken !== 0 && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
-		(prevline.slice(-2) === ".#" && triggerlang === ld.cos_langindex)
+		(prevline.endsWith(".#") && triggerlang === ld.cos_langindex)
 	) {
 		var prevtokentype = "";
 		var prevtokentext = "";
@@ -1096,7 +1099,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			// This is $SYSTEM
 			prevtokentype = "system";
 		}
-		else if (prevline.slice(-1) === "." && triggerlang === ld.cls_langindex && parsed[params.position.line][thistoken].s == ld.error_attrindex) {
+		else if (prevline.endsWith(".") && triggerlang === ld.cls_langindex && parsed[params.position.line][thistoken].s == ld.error_attrindex) {
 			// Check if this is a dotted portion of a classname in UDL (e.g. "Property p As User.")
 			let isCls = false;
 			for (let tkn = thistoken - 1; tkn >= 0; tkn--) {
@@ -1191,7 +1194,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							kind: CompletionItemKind.Constant,
 							data: "member",
 							documentation: {
-								kind: "markdown",
+								kind: MarkupKind.Markdown,
 								value: documaticHtmlToMarkdown(memobj.Description)
 							},
 							sortText: quotedname,
@@ -1293,7 +1296,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 								kind: CompletionItemKind.Method,
 								data: "member",
 								documentation: {
-									kind: "markdown",
+									kind: MarkupKind.Markdown,
 									value: documaticHtmlToMarkdown(memobj.Description)
 								}
 							};
@@ -1321,7 +1324,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 								kind: CompletionItemKind.Constant,
 								data: "member",
 								documentation: {
-									kind: "markdown",
+									kind: MarkupKind.Markdown,
 									value: documaticHtmlToMarkdown(memobj.Description)
 								},
 								sortText: quotedname
@@ -1338,7 +1341,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 								data: "member",
 								detail: memobj.Type != "" ? memobj.Type : undefined,
 								documentation: {
-									kind: "markdown",
+									kind: MarkupKind.Markdown,
 									value: markdownDesc
 								}
 							};
@@ -1372,8 +1375,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		}
 	}
 	else if (
-		((prevline.slice(-1) === " " || prevline.slice(-1) === "," || prevline.slice(-1) === "(") && triggerlang === ld.cls_langindex &&
-		(prevline.slice(0,7).toLowerCase() === "include" || prevline.slice(0,16).toLowerCase() === "includegenerator")) ||
+		(parenAndCommaRegex.test(prevline) && triggerlang === ld.cls_langindex &&
+		(prevlineLower.startsWith("include") || prevlineLower.startsWith("includegenerator"))) ||
 		(parsed[params.position.line].length === 2 && firsttwotokens.toLowerCase() === "#include" && triggerlang === ld.cos_langindex)
 	) {
 		// This is an include file
@@ -1381,8 +1384,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		result = await completionInclude(server);
 	}
 	else if (
-		(prevline.slice(-1) === " " || prevline.slice(-1) === "," || prevline.slice(-1) === "(") &&
-		(prevline.slice(0,6).toLowerCase() === "import") && triggerlang === ld.cls_langindex
+		parenAndCommaRegex.test(prevline) &&
+		prevlineLower.startsWith("import") && triggerlang === ld.cls_langindex
 	) {
 		// This is an import
 
@@ -1391,7 +1394,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	else if (
 		triggerlang === ld.cls_langindex &&
 		openParenCount > closeParenCount &&
-		(prevline.slice(-2) === ", " || prevline.slice(-1) === "(") &&
+		parenAndCommaRegex.test(prevline) &&
 		!prevline.slice(firsttwotokens.length).includes("[") &&
 		determineClassNameParameterClass(doc,parsed,params.position.line,thistoken,true) != ""
 	) {
@@ -1406,7 +1409,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Find all parameters that are already used
 		const existingparams: string[] = [];
-		if (prevline.slice(-2) == ", ") {
+		if (prevline.trimEnd().endsWith(",")) {
 			let openCount = 1;
 			for (let tkn = thistoken; tkn >= 0; tkn--) {
 				if (parsed[params.position.line][tkn].l == ld.cls_langindex && parsed[params.position.line][tkn].s == ld.cls_delim_attrindex) {
@@ -1440,7 +1443,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				kind: CompletionItemKind.Constant,
 				data: "member",
 				documentation: {
-					kind: "markdown",
+					kind: MarkupKind.Markdown,
 					value: e.desc
 				},
 				sortText: e.name,
@@ -1482,7 +1485,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					kind: CompletionItemKind.Constant,
 					data: "member",
 					documentation: {
-						kind: "markdown",
+						kind: MarkupKind.Markdown,
 						value: documaticHtmlToMarkdown(memobj.Description)
 					},
 					sortText: memobj.Name,
@@ -1503,8 +1506,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		}
 	}
 	else if (
-		(prevline.slice(-2) === "[ " || (prevline.slice(-2) === ", " &&
-		openParenCount <= closeParenCount) || prevline.slice(-4).toLowerCase() == "not ") && triggerlang === ld.cls_langindex
+		(/\[\s*$/.test(prevline) || (/,\s*$/.test(prevline) && openParenCount <= closeParenCount) || /not\s+$/.test(prevlineLower)) && triggerlang === ld.cls_langindex
 	) {
 		let foundopenbracket = false;
 		let foundclosebracket = false;
@@ -1601,7 +1603,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				if (
 					!existingkeywords.includes(keydoc.name.toLowerCase()) && !(
 						// Only boolean keywords can follow a "Not "
-						prevline.slice(-4).toLowerCase() == "not " &&
+						/not\s+$/.test(prevlineLower) &&
 						keydoc.type != "KW_TYPE_BOOLEAN"
 					)
 				) {
@@ -1630,7 +1632,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	}
 	else if (
 		triggerlang === ld.cls_langindex &&
-		(prevline.slice(-2) === "= " || (prevline.slice(-2) === ", " && openParenCount > closeParenCount) || prevline.slice(-3) === "= (")
+		(/=\s*$/.test(prevline) || (/,\s*$/.test(prevline) && openParenCount > closeParenCount) || /=\s+\(\s*$/.test(prevline))
 	) {
 		var foundopenbracket = false;
 		var foundclosebracket = false;
@@ -1641,7 +1643,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			if (params.position.character <= symbolstart) {
 				break;
 			}
-			const symboltext = doc.getText(Range.create(Position.create(params.position.line,symbolstart),Position.create(params.position.line,symbolend))).toLowerCase();
+			const symboltext = doc.getText(Range.create(params.position.line,symbolstart,params.position.line,symbolend)).toLowerCase();
 			if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_delim_attrindex && symboltext === "[") {
 				foundopenbracket = true;
 			}
@@ -1656,9 +1658,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			// This is a value for a UDL keyword
 
 			// Find the type of this member
-			var keywordtype = doc.getText(Range.create(
-				Position.create(params.position.line,parsed[params.position.line][0].p),
-				Position.create(params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c)
+			let keywordtype = doc.getText(Range.create(
+				params.position.line,parsed[params.position.line][0].p,
+				params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c
 			)).toLowerCase();
 			if (parsed[params.position.line][0].l !== ld.cls_langindex || parsed[params.position.line][0].s !== ld.cls_keyword_attrindex) {
 				// This member definition spans multiple lines
@@ -1667,10 +1669,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						continue;
 					}
 					if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
-						keywordtype = doc.getText(Range.create(
-							Position.create(k,parsed[k][0].p),
-							Position.create(k,parsed[k][0].p+parsed[k][0].c)
-						)).toLowerCase();
+						keywordtype = doc.getText(Range.create(k,parsed[k][0].p,k,parsed[k][0].p+parsed[k][0].c)).toLowerCase();
 						break;
 					}
 				}
@@ -1775,7 +1774,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 								kind: CompletionItemKind.Method,
 								data: "member",
 								documentation: {
-									kind: "markdown",
+									kind: MarkupKind.Markdown,
 									value: documaticHtmlToMarkdown(method.Description)
 								}
 							};
@@ -1793,7 +1792,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
-	else if ((prevline.slice(-1) === " " || prevline.slice(-1) === "<" || prevline.slice(-1) === '"') && triggerlang === ld.xml_langindex) {
+	else if ([" ","<",'"'].includes(prevline.slice(-1)) && triggerlang === ld.xml_langindex) {
 		// Scan up to see if the XData block has an XMLNamespace
 		// Also find the parent element
 		var xmlns: string = "";
@@ -1833,14 +1832,14 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			
 			// Only proceed if we can provide suggestions
 			if (
-				(prevline.slice(-1) === " " &&
-				prevline.indexOf("<") !== -1 &&
+				(prevline.endsWith(" ") &&
+				prevline.includes("<") &&
 				prevline.charAt(prevline.lastIndexOf("<")+1) !== "!" &&
 				prevline.split("<").length > prevline.split(">").length) ||
-				prevline.slice(-1) === "<" || prevline.slice(-1) === '"'
+				prevline.endsWith("<") || prevline.endsWith('"')
 			) {
 				// Get the SchemaCache for this server or create one if it doesn't exist
-				var schemaCache = schemaCaches.get(server);
+				let schemaCache = schemaCaches.get(server);
 				if (schemaCache === undefined) {
 					schemaCache = new SchemaCache(server);
 					schemaCaches.set(server,schemaCache);
@@ -1898,10 +1897,10 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					if (prevline.slice(-1) === " ") {
 						// Looking for possible attribute values
 
-						var possibleAttrs = schemaQuery.getAttributes();
+						let possibleAttrs = schemaQuery.getAttributes();
 						
 						// Find any attribute names that are already used
-						var usedAttrs: string[] = [];
+						const usedAttrs: string[] = [];
 						for (let tkn = parsed[params.position.line].length-1; tkn >= 0; tkn--) {
 							if (parsed[params.position.line][tkn].p >= params.position.character) {
 								continue;
@@ -1931,7 +1930,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					else if (prevline.slice(-1) === "<") {
 						// Looking for child element names
 
-						var childElems = schemaQuery.getElements();
+						const childElems = schemaQuery.getElements();
 
 						// Create the CompletionItems for the children
 						for (let elem of childElems) {
@@ -1956,7 +1955,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						// Looking for an attribute value enum
 
 						// Find the name of the attribute that we're looking for values for
-						var selector: string = "";
+						let selector: string = "";
 						for (let tkn = parsed[params.position.line].length-1; tkn >= 0; tkn--) {
 							if (parsed[params.position.line][tkn].p >= params.position.character) {
 								continue;
@@ -1971,8 +1970,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							}
 						}
 
-						var attrMoniker = schemaQuery.getAttributeMoniker(selector);
-						if (attrMoniker === "" || attrMoniker.slice(0,4) === "enum") {
+						const attrMoniker = schemaQuery.getAttributeMoniker(selector);
+						if (attrMoniker === "" || attrMoniker.startsWith("enum")) {
 							// If the attribute moniker is an enum, create CompletionItems for all possible values
 							const vals = attrMoniker.slice(5).split(",");
 							for (let val of vals) {
@@ -1991,19 +1990,19 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
-	else if (prevline.slice(-2) === "##" && triggerlang === ld.cos_langindex) {
+	else if (prevline.endsWith("##") && triggerlang === ld.cos_langindex) {
 		// This is a double-pound preprocessor directive
 
 		if (thistoken === 0) {
 			// This preprocessor directive is on the start of the line
 
 			for (let dir of preprocessorDirectives) {
-				if (dir.start && dir.label.slice(0,2) === "##") {
+				if (dir.start && dir.label.startsWith("##")) {
 					result.push({
 						label: dir.label,
 						kind: CompletionItemKind.Keyword,
 						documentation: {
-							kind: "markdown",
+							kind: MarkupKind.Markdown,
 							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros__${dir.link})`
 						},
 						insertText: dir.label.slice(2),
@@ -2016,12 +2015,12 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			// This preprocessor directive is mid-line
 
 			for (let dir of preprocessorDirectives) {
-				if (dir.middle && dir.label.slice(0,2) === "##") {
+				if (dir.middle && dir.label.startsWith("##")) {
 					result.push({
 						label: dir.label,
 						kind: CompletionItemKind.Keyword,
 						documentation: {
-							kind: "markdown",
+							kind: MarkupKind.Markdown,
 							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros__${dir.link})`
 						},
 						insertText: dir.label.slice(2),
@@ -2031,7 +2030,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
-	else if (prevline.slice(-1) === "#" && triggerlang === ld.cos_langindex) {
+	else if (prevline.endsWith("#") && triggerlang === ld.cos_langindex) {
 		// This is a preprocessor directive
 
 		if (thistoken === 0) {
@@ -2043,7 +2042,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						label: dir.label,
 						kind: CompletionItemKind.Keyword,
 						documentation: {
-							kind: "markdown",
+							kind: MarkupKind.Markdown,
 							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros__${dir.link})`
 						},
 						insertText: dir.label.slice(1),
@@ -2061,7 +2060,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						label: dir.label,
 						kind: CompletionItemKind.Keyword,
 						documentation: {
-							kind: "markdown",
+							kind: MarkupKind.Markdown,
 							value: dir.documentation + "\n\n" + `[Online documentation](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_macros__${dir.link})`
 						},
 						insertText: dir.label.slice(1),
@@ -2071,7 +2070,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
-	else if (prevline.slice(-1) === "<" && triggerlang === ld.cls_langindex) {
+	else if (prevline.endsWith("<") && triggerlang === ld.cls_langindex) {
 		// This is an angle bracket in UDL
 
 		const storageObjKey = storageKeywordsKeyForToken(doc, parsed, params.position.line, thistoken);
@@ -2157,7 +2156,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
-	else if (prevline.slice(-2) === "i%" && triggerlang === ld.cos_langindex) {
+	else if (prevline.endsWith("i%") && triggerlang === ld.cos_langindex) {
 		// This is instance variable syntax
 
 		// Find the name of the current class
@@ -2188,7 +2187,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					kind: CompletionItemKind.Property,
 					data: "member",
 					documentation: {
-						kind: "markdown",
+						kind: MarkupKind.Markdown,
 						value: documaticHtmlToMarkdown(memobj.Description)
 					}
 				};
@@ -2209,7 +2208,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	}
-	else if (prevline.slice(-1) == "^" && triggerlang == ld.cos_langindex) {
+	else if (prevline.endsWith("^") && triggerlang == ld.cos_langindex) {
 		// This might be a routine or global
 
 		result = await globalsOrRoutines(doc,parsed,params.position.line,thistoken,settings,server,prevline);
