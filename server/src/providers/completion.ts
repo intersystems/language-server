@@ -654,7 +654,7 @@ async function globalsOrRoutines(
 	settings: LanguageServerConfiguration, server: ServerSpec, lineText: string, prefix: string = ""
 ): Promise<CompletionItem[]> {
 	// Determine if this is a routine or global, and return null if we're in $BITLOGIC
-	let brk = false, parenLevel = 0, isBitlogic = false, lastCmd = "";
+	let brk = false, parenLevel = 0, isBitlogic = false, lastCmd = "", isRoutine = false;
 	for (let ln = line; ln >= 0; ln--) {
 		if (!parsed[ln]?.length) continue;
 		for (let tkn = (ln == line ? token : parsed[ln].length - 1); tkn >= 0; tkn--) {
@@ -662,12 +662,19 @@ async function globalsOrRoutines(
 				const delimtext = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
 				if (delimtext == "(") {
 					parenLevel++;
-					if (parenLevel > 0 && tkn > 0 && parsed[ln][tkn-1].l == ld.cos_langindex && parsed[ln][tkn-1].s == ld.cos_sysf_attrindex && 
-						doc.getText(Range.create(ln,parsed[ln][tkn-1].p,ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)).toLowerCase() == "$bitlogic"
-					) {
-						isBitlogic = true;
-						brk = true;
-						break;
+					if (parenLevel > 0 && tkn > 0 && parsed[ln][tkn-1].l == ld.cos_langindex && parsed[ln][tkn-1].s == ld.cos_sysf_attrindex) {
+						const sysf = doc.getText(Range.create(ln,parsed[ln][tkn-1].p,ln,parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)).toLowerCase();
+						if (sysf == "$bitlogic") {
+							// Caret inside $BITLOGIC is neither a routine nor global prefix
+							isBitlogic = true;
+							brk = true;
+							break;
+						} else if (["$text","$t"].includes(sysf)) {
+							// Caret inside $TEXT is always a routine prefix
+							isRoutine = true;
+							brk = true;
+							break;
+						}
 					}
 				}
 				else if (delimtext == ")") {
@@ -682,7 +689,7 @@ async function globalsOrRoutines(
 		if (brk) break;
 	}
 	if (isBitlogic) return null;
-	const isRoutine =
+	isRoutine = isRoutine ||
 		// The character before the caret is part of a label or extrinsic function syntax
 		/[%$\d\p{L}]/u.test(lineText.slice(-2,-1)) ||
 		// Routine syntax without a label or extrinsic function syntax can only appear as an argument for a DO or JOB command
