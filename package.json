@@ -1799,15 +1799,15 @@
     "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
   },
   "devDependencies": {
-    "@types/node": "^20.14.13",
-    "@vscode/vsce": "^3.3.0",
+    "@types/node": "^22.15.33",
+    "@vscode/vsce": "^3.6.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
-    "ovsx": "^0.10.1",
+    "ovsx": "^0.10.4",
     "rimraf": "^6.0.1",
     "ts-loader": "^9.5.2",
     "typescript": "^5.5.4",
-    "webpack": "^5.98.0",
+    "webpack": "^5.99.9",
     "webpack-cli": "^6.0.1"
   },
   "extensionDependencies": [

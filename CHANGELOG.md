@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.7.4] - 2025-XX-XX
+## [2.7.4] - 2025-06-30
 - Fix issue [#373](https://github.com/intersystems/language-server/issues/373): Add go to definition and hover support for `UrlMap` Call and Forward attribute values
 - Fix issue [#374](https://github.com/intersystems/language-server/issues/374): `undefined` items appearing in completion lists for XML XData
 - Fix issue [#376](https://github.com/intersystems/language-server/issues/376): Completion inside `$TEXT()` should always return routines
