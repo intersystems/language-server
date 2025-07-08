@@ -40,7 +40,6 @@ export type LanguageServerConfiguration = {
 	},
 	completion: {
 		showGenerated: boolean,
-		showInternal: boolean,
 		showDeprecated: boolean
 	}
 };

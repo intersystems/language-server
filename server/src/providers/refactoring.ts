@@ -15,7 +15,7 @@ import parameterTypes = require("../documentation/parameterTypes.json");
 
 import * as ld from '../utils/languageDefinitions';
 import { compressedline, QueryData, ServerSpec } from '../utils/types';
-import { getServerSpec, findFullRange, makeRESTRequest, quoteUDLIdentifier, parseDimLine, getLanguageServerSettings, getParsedDocument, memberRegex } from '../utils/functions';
+import { getServerSpec, findFullRange, makeRESTRequest, quoteUDLIdentifier, parseDimLine, getLanguageServerSettings, getParsedDocument, memberRegex, showInternalForServer } from '../utils/functions';
 import { documents, connection, zutilFunctions } from '../utils/variables';
 
 /**
@@ -216,32 +216,29 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 	const parsed = await getParsedDocument(params.uri);
 	if (parsed === undefined) {return [];}
 	const server: ServerSpec = await getServerSpec(params.uri);
-	var result: QuickPickItem[] = [];
+	const result: QuickPickItem[] = [];
 
 	// Determine what class this is
-	var thisclass = "";
+	let thisclass = "";
 	for (let ln = 0; ln < parsed.length; ln++) {
-		if (parsed[ln].length === 0) {
-			continue;
-		}
-		else if (parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
-			// This line starts with a UDL keyword
-
-			var keyword = doc.getText(Range.create(Position.create(ln,parsed[ln][0].p),Position.create(ln,parsed[ln][0].p+parsed[ln][0].c))).toLowerCase();
-			if (keyword === "class") {
-				thisclass = doc.getText(findFullRange(ln,parsed,1,parsed[ln][1].p,parsed[ln][1].p+parsed[ln][1].c));
-				break;
-			}
+		if (!parsed[ln]?.length) continue;
+		if (
+			parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex &&
+			doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][0].p+parsed[ln][0].c)).toLowerCase() == "class"
+		) {
+			thisclass = doc.getText(findFullRange(ln,parsed,1,parsed[ln][1].p,parsed[ln][1].p+parsed[ln][1].c));
+			break;
 		}
 	}
 
 	if (thisclass !== "") {
 		// We found the name of this class
 
+		const showInternalStr = await showInternalForServer(server) ? "" : " AND Internal = 0";
 		// Build the list of QuickPickItems
 		if (params.memberType === "Method") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, ClassMethod, ReturnType FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Stub IS NULL AND Origin != ? AND Final = 0 AND NotInheritable = 0",
+				query: `SELECT Name, Origin, ClassMethod, ReturnType FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Stub IS NULL AND Origin != ? AND Final = 0 AND NotInheritable = 0${showInternalStr}`,
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -266,7 +263,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Parameter") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledParameter WHERE Parent = ? AND Origin != ? AND Final = 0",
+				query: `SELECT Name, Origin, Type FROM %Dictionary.CompiledParameter WHERE Parent = ? AND Origin != ? AND Final = 0${showInternalStr}`,
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -282,7 +279,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Projection") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProjection WHERE Parent = ? AND Origin != ?",
+				query: `SELECT Name, Origin, Type FROM %Dictionary.CompiledProjection WHERE Parent = ? AND Origin != ?${showInternalStr}`,
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -298,7 +295,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Property") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Origin != ? AND Final = 0",
+				query: `SELECT Name, Origin, Type FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Origin != ? AND Final = 0${showInternalStr}`,
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -314,7 +311,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Query") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Type FROM %Dictionary.CompiledQuery WHERE Parent = ? AND Origin != ? AND Final = 0",
+				query: `SELECT Name, Origin, Type FROM %Dictionary.CompiledQuery WHERE Parent = ? AND Origin != ? AND Final = 0${showInternalStr}`,
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -330,7 +327,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "Trigger") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, Event FROM %Dictionary.CompiledTrigger WHERE Parent = ? AND Origin != ? AND Final = 0",
+				query: `SELECT Name, Origin, Event FROM %Dictionary.CompiledTrigger WHERE Parent = ? AND Origin != ? AND Final = 0${showInternalStr}`,
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
@@ -346,7 +343,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 		}
 		else if (params.memberType === "XData") {
 			const querydata: QueryData = {
-				query: "SELECT Name, Origin, MimeType FROM %Dictionary.CompiledXData WHERE Parent = ? AND Origin != ?",
+				query: `SELECT Name, Origin, MimeType FROM %Dictionary.CompiledXData WHERE Parent = ? AND Origin != ?${showInternalStr}`,
 				parameters: [thisclass,thisclass]
 			};
 			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);

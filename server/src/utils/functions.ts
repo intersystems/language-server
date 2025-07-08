@@ -2895,3 +2895,18 @@ export function determineActiveParam(text: string): number {
 	});
 	return activeParam;
 }
+
+const showInternalCache: Map<string,boolean> = new Map();
+
+/** Determine if class members with the `Internal` keyword and system globals should be shown in the completion list */
+export async function showInternalForServer(server: ServerSpec): Promise<boolean> {
+	const key = `${server.host}::${server.port}::${server.pathPrefix}::${server.username}`;
+	let result = showInternalCache.get(key);
+	if (result != undefined) return result;
+	result = await makeRESTRequest("POST",1,"/action/query",server,{
+		query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
+		parameters: ["%Library.ConstraintRelationship.cls",1,1,1,1,0,0]
+	}).then((respdata) => respdata?.data?.result?.content?.length > 0).catch(() => false);
+	showInternalCache.set(key,result);
+	return result;
+}

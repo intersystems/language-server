@@ -1,5 +1,5 @@
 import { CompletionItem, CompletionItemKind, CompletionItemTag, CompletionParams, InsertTextFormat, MarkupKind, Position, Range, TextEdit } from 'vscode-languageserver/node';
-import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, normalizeClassname, macroDefToDoc } from '../utils/functions';
+import { getServerSpec, getLanguageServerSettings, getMacroContext, makeRESTRequest, normalizeSystemName, getImports, findFullRange, getClassMemberContext, quoteUDLIdentifier, documaticHtmlToMarkdown, determineClassNameParameterClass, storageKeywordsKeyForToken, getParsedDocument, currentClass, normalizeClassname, macroDefToDoc, showInternalForServer } from '../utils/functions';
 import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline, LanguageServerConfiguration } from '../utils/types';
 import { documents, corePropertyParams, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -702,7 +702,7 @@ async function globalsOrRoutines(
 			parameters: [`${prefix.length ? `${prefix.slice(0,-1)}/` : ""}*.mac,*.int,*.obj`]
 		} : {
 			query: "SELECT Name FROM %SYS.GlobalQuery_NameSpaceList(,?,?,,,1,0)",
-			parameters: [`${prefix}*`,settings.completion.showInternal ? 1 : 0]
+			parameters: [`${prefix}*`,(await showInternalForServer(server)) ? 1 : 0]
 		}
 	);
 	if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
@@ -1083,8 +1083,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		thistoken !== 0 && (triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
 		(prevline.endsWith(".#") && triggerlang === ld.cos_langindex)
 	) {
-		var prevtokentype = "";
-		var prevtokentext = "";
+		let prevtokentype = "";
+		let prevtokentext = "";
 		const prevtokenrange = findFullRange(params.position.line,parsed,thistoken-1,parsed[params.position.line][thistoken-1].p,parsed[params.position.line][thistoken-1].p+parsed[params.position.line][thistoken-1].c);
 		prevtokentext = doc.getText(prevtokenrange);
 		if ((parsed[params.position.line][thistoken-1].l == ld.cls_langindex && parsed[params.position.line][thistoken-1].s == ld.cls_clsname_attrindex) ||
@@ -1163,7 +1163,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		else {
 			// This is a class member
 
-			const internalStr = !settings.completion.showInternal ? " AND Internal = 0": "";
+			const internalStr = !(await showInternalForServer(server)) ? " AND Internal = 0": "";
 			const deprecatedStr = !settings.completion.showDeprecated ? " AND Deprecated = 0" : "";
 			if (prevline.slice(-2) === ".#") {
 				// Get the base class that this member is in
@@ -1465,7 +1465,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		const data: QueryData = {
 			query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${
 				isProperty ? " OR Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)" : ""
-			}${!settings.completion.showInternal ? " AND Internal = 0": ""}${!settings.completion.showDeprecated ? " AND Deprecated = 0": ""}`,
+			}${!(await showInternalForServer(server)) ? " AND Internal = 0": ""}${!settings.completion.showDeprecated ? " AND Deprecated = 0": ""}`,
 			parameters: isProperty ? [normalizedcls,currentClass(doc,parsed)] : [normalizedcls]
 		};
 		const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
@@ -1736,14 +1736,14 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					// List of methods
 
 					// Find the class name
-					var thisclass = "";
+					let thisclass = "";
 					for (let i = 0; i < parsed.length; i++) {
 						if (parsed[i].length === 0) {
 							continue;
 						}
 						else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 							// This line starts with a UDL keyword
-							var keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c)));
+							const keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c)));
 							if (keyword.toLowerCase() === "class") {
 								for (let j = 1; j < parsed[i].length; j++) {
 									if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
@@ -1760,7 +1760,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					}
 					const querydata = {
 						query: `SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ?${
-							!settings.completion.showInternal ? " AND Internal = 0": ""
+							!(await showInternalForServer(server)) ? " AND Internal = 0": ""
 						}`,
 						parameters:[thisclass]
 					};
@@ -2165,11 +2165,12 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			// If we couldn't determine the class, don't return anything
 			return null;
 		}
+		const showInternal = await showInternalForServer(server);
 
 		// Query the server to get the names and descriptions of all non-calculated properties
 		const data: QueryData = {
 			query: `SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Calculated = 0${
-				!settings.completion.showInternal ? " AND Internal = 0": ""
+				!showInternal ? " AND Internal = 0": ""
 			}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
 			parameters: [thisclass]
 		}
