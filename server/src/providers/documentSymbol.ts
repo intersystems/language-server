@@ -1,7 +1,43 @@
-import { DocumentSymbol, DocumentSymbolParams, Position, SymbolKind, Range } from 'vscode-languageserver/node';
-import { findFullRange, getParsedDocument, isClassMember, labelIsProcedureBlock } from '../utils/functions';
+import { DocumentSymbol, DocumentSymbolParams, Position, SymbolKind, Range, SymbolTag } from 'vscode-languageserver/node';
+import { TextDocument } from 'vscode-languageserver-textdocument';
+import { findFullRange, getParsedDocument, isClassMember, labelIsProcedureBlock, prevToken } from '../utils/functions';
 import { documents, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
+import { compressedline } from '../utils/types';
+
+/** Loop through the class from this line until the next class member or the end of the class */
+function processMember(doc: TextDocument, parsed: compressedline[], line: number): { deprecated: boolean, lastNonEmpty: number } {
+	let lastNonEmpty = line;
+	let deprecated;
+	for (let nl = line; nl < parsed.length; nl++) {
+		if (!parsed[nl]?.length) continue;
+		if (nl > line && parsed[nl][0].l === ld.cls_langindex) {
+			if (parsed[nl][0].s === ld.cls_desc_attrindex) {
+				break;
+			}
+			if (parsed[nl][0].s === ld.cls_keyword_attrindex) {
+				const nextkeytext = doc.getText(Range.create(nl,parsed[nl][0].p,nl,parsed[nl][0].p+parsed[nl][0].c)).toLowerCase();
+				if (isClassMember(nextkeytext)) {
+					break;
+				}
+			}
+		}
+		if (deprecated == undefined) {
+			const depTkn = parsed[nl].findIndex((e) => 
+				e.l == ld.cls_langindex && e.s == ld.cls_keyword_attrindex && doc.getText(Range.create(nl,e.p,nl,e.p+e.c)).toLowerCase() == "deprecated"
+			);
+			if (depTkn != -1) {
+				const previous = prevToken(parsed,nl,depTkn);
+				deprecated = previous && doc.getText(
+					Range.create(previous[0],parsed[previous[0]][previous[1]].p,previous[0],parsed[previous[0]][previous[1]].p+parsed[previous[0]][previous[1]].c)
+				).toLowerCase() != "not";
+			}
+		}
+		lastNonEmpty = nl;
+	}
+	if (deprecated == undefined) deprecated = false;
+	return { deprecated, lastNonEmpty };
+}
 
 export async function onDocumentSymbol(params: DocumentSymbolParams) {
 	const doc = documents.get(params.textDocument.uri);
@@ -13,31 +49,27 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 	if (doc.languageId === "objectscript-class") {
 		// Loop through the file and look for the class definition and class members
 
-		var cls: DocumentSymbol = {
+		const cls: DocumentSymbol = {
 			name: "",
 			kind: SymbolKind.Class,
-			range: Range.create(Position.create(0,0),Position.create(0,0)),
-			selectionRange: Range.create(Position.create(0,0),Position.create(0,0))
+			range: Range.create(0,0,0,0),
+			selectionRange: Range.create(0,0,0,0)
 		};
-		var members: DocumentSymbol[] = [];
+		const members: DocumentSymbol[] = [];
 		for (let line = 0; line < parsed.length; line++) {
-			if (parsed[line].length === 0) {
-				continue;
-			}
+			if (!parsed[line]?.length) continue;
 			if (parsed[line][0].l === ld.cls_langindex && parsed[line][0].s === ld.cls_keyword_attrindex && parsed[line].length > 1) {
 				// This line starts with a UDL keyword
 				
-				const keywordtext = doc.getText(Range.create(Position.create(line,parsed[line][0].p),Position.create(line,parsed[line][0].p+parsed[line][0].c)));
+				const keywordtext = doc.getText(Range.create(line,parsed[line][0].p,line,parsed[line][0].p+parsed[line][0].c));
 				const keywordtextlower = keywordtext.toLowerCase();
 				if (keywordtextlower === "class") {
 					// This is the class definition
 					
 					// Find the last non-empty line
-					var lastnonempty = parsed.length-1;
+					let lastnonempty = parsed.length-1;
 					for (let nl = parsed.length-1; nl > line; nl--) {
-						if (parsed[nl].length === 0) {
-							continue;
-						}
+						if (!parsed[nl]?.length) continue;
 						lastnonempty = nl;
 						break;
 					}
@@ -45,7 +77,11 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 					// Update the DocumentSymbol object
 					cls.selectionRange = findFullRange(line,parsed,1,parsed[line][1].p,parsed[line][1].p+parsed[line][1].c);
 					cls.name = doc.getText(cls.selectionRange);
-					cls.range = Range.create(Position.create(line,0),Position.create(lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c));
+					cls.range = Range.create(line,0,lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c);
+
+					// Determine if this class is Deprecated
+					const { deprecated } = processMember(doc,parsed,line);
+					if (deprecated) cls.tags = [SymbolTag.Deprecated];
 				}
 				else if (isClassMember(keywordtextlower)) {
 					// This is a class member definition
@@ -54,46 +90,22 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 					if (memName.trim() == "") continue;
 
 					// Loop through the file from this line to find the next class member
-					var lastnonempty = line;
-					for (let nl = line+1; nl < parsed.length; nl++) {
-						if (parsed[nl].length === 0) {
-							continue;
-						}
-						if (parsed[nl][0].l === ld.cls_langindex) {
-							if (parsed[nl][0].s === ld.cls_desc_attrindex) {
-								break;
-							}
-							if (parsed[nl][0].s === ld.cls_keyword_attrindex) {
-								const nextkeytext = doc.getText(Range.create(nl,parsed[nl][0].p,nl,parsed[nl][0].p+parsed[nl][0].c)).toLowerCase();
-								if (isClassMember(nextkeytext)) {
-									break;
-								}
-							}
-						}
-						lastnonempty = nl;
-					}
+					let { deprecated, lastNonEmpty } = processMember(doc,parsed,line);
 
-					if (lastnonempty === cls.range.end.line) {
+					if (lastNonEmpty === cls.range.end.line) {
 						// This is the last member, so fix its ending line
-						for (let nl = lastnonempty-1; nl > line; nl--) {
-							if (parsed[nl].length === 0) {
-								continue;
-							}
-							lastnonempty = nl;
+						for (let nl = lastNonEmpty-1; nl > line; nl--) {
+							if (!parsed[nl]?.length) continue;
+							lastNonEmpty = nl;
 							break;
 						}
 					}
 
 					// Loop upwards in the file to capture the documentation for this member
-					var firstnondoc = line-1;
+					let firstnondoc = line-1;
 					for (let nl = line-1; nl >= 0; nl--) {
 						firstnondoc = nl;
-						if (parsed[nl].length === 0) {
-							break;
-						}
-						if (parsed[nl][0].l === ld.cls_langindex && parsed[nl][0].s !== ld.cls_desc_attrindex) {
-							break;
-						}
+						if (!parsed[nl]?.length || (parsed[nl][0].l === ld.cls_langindex && parsed[nl][0].s !== ld.cls_desc_attrindex)) break;
 					}
 
 					members.push({
@@ -109,14 +121,15 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 							keywordtextlower == "storage" ? SymbolKind.Object :
 							keywordtextlower == "projection" ? SymbolKind.Interface :
 							SymbolKind.Property, // Property and Relationship
-						range: Range.create(firstnondoc+1,0,lastnonempty,parsed[lastnonempty][parsed[lastnonempty].length-1].p+parsed[lastnonempty][parsed[lastnonempty].length-1].c),
+						range: Range.create(firstnondoc+1,0,lastNonEmpty,parsed[lastNonEmpty][parsed[lastNonEmpty].length-1].p+parsed[lastNonEmpty][parsed[lastNonEmpty].length-1].c),
 						selectionRange: Range.create(line,parsed[line][1].p,line,parsed[line][1].p+parsed[line][1].c),
+						tags: deprecated ? [SymbolTag.Deprecated] : undefined,
 						detail: keywordtext
 					});
 				}
 			}
 		}
-		if (cls.name !== "") {
+		if (cls.name) {
 			cls.children = members;
 			result.push(cls);
 		}
@@ -124,9 +137,13 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 	else if (doc.languageId === "objectscript-macros") {
 		// Loop through the file and look for macro definitions
 
-		var prevdoccomments = 0;
-		var multilinestart = -1;
+		let prevdoccomments = 0;
+		let multilinestart = -1;
 		for (let line = 0; line < parsed.length; line++) {
+			if (!parsed[line]?.length) {
+				prevdoccomments = 0;
+				continue;
+			}
 			if (parsed[line].length < 3) {
 				if (parsed[line].length === 1) {
 					if (parsed[line][0].l === ld.cos_langindex && parsed[line][0].s === ld.cos_dcom_attrindex) {
@@ -176,12 +193,11 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 				)
 			) {
 				// This is the end of a multi-line macro definition
-				var fullrange: Range = Range.create(multilinestart-prevdoccomments,0,line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c);
 				prevdoccomments = 0;
 				result.push({
 					name: doc.getText(Range.create(multilinestart,parsed[multilinestart][2].p,multilinestart,parsed[multilinestart][2].p+parsed[multilinestart][2].c)),
 					kind: SymbolKind.Constant,
-					range: fullrange,
+					range: Range.create(multilinestart-prevdoccomments,0,line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c),
 					selectionRange: Range.create(multilinestart,parsed[multilinestart][2].p,multilinestart,parsed[multilinestart][2].p+parsed[multilinestart][2].c)
 				});
 				multilinestart = -1;
@@ -246,7 +262,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 				else {
 					// Loop through the file from this line to find the next label
 					for (let nl = line+1; nl < parsed.length; nl++) {
-						if (parsed[nl].length === 0) {
+						if (!parsed[nl]?.length) {
 							continue;
 						}
 						if (parsed[nl][0].l === ld.cos_langindex && parsed[nl][0].s === ld.cos_label_attrindex) {
@@ -280,23 +296,21 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 	else if (doc.languageId === "objectscript-csp") {
 		// Loop through the file and look for HTML script tags
 
-		var symbolopen: boolean = false;
+		let symbolopen: boolean = false;
 		for (let line = 0; line < parsed.length; line++) {
-			if (parsed[line].length === 0) {
-				continue;
-			}
+			if (!parsed[line]?.length) continue;
 			for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 				if (
 					tkn < parsed[line].length - 1 &&
 					parsed[line][tkn].l == ld.html_langindex && parsed[line][tkn].s == ld.html_delim_attrindex &&
 					parsed[line][tkn+1].l == ld.html_langindex && parsed[line][tkn+1].s == ld.html_tag_attrindex &&
 					doc.getText(Range.create(
-						Position.create(line,parsed[line][tkn].p),
-						Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)
+						line,parsed[line][tkn].p,
+						line,parsed[line][tkn].p+parsed[line][tkn].c
 					)) === "<" &&
 					doc.getText(Range.create(
-						Position.create(line,parsed[line][tkn+1].p),
-						Position.create(line,parsed[line][tkn+1].p+parsed[line][tkn+1].c)
+						line,parsed[line][tkn+1].p,
+						line,parsed[line][tkn+1].p+parsed[line][tkn+1].c
 					)).toLowerCase() === "script" && !symbolopen
 				) {
 					// This line contains an HTML open script tag so create a new symbol if we can
@@ -313,13 +327,13 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 							// This is an attribute
 
 							const attrtext: string = doc.getText(Range.create(
-								Position.create(line,parsed[line][stkn].p),
-								Position.create(line,parsed[line][stkn].p+parsed[line][stkn].c)
+								line,parsed[line][stkn].p,
+								line,parsed[line][stkn].p+parsed[line][stkn].c
 							)).toLowerCase();
 							if (parsed[line].length > stkn + 2) {
 								const valrange: Range = Range.create(
-									Position.create(line,parsed[line][stkn+2].p),
-									Position.create(line,parsed[line][stkn+2].p+parsed[line][stkn+2].c)
+									line,parsed[line][stkn+2].p,
+									line,parsed[line][stkn+2].p+parsed[line][stkn+2].c
 								);
 								var valtext: string = doc.getText(valrange);
 								if (valtext.startsWith('"') && valtext.endsWith('"')) {
@@ -373,8 +387,8 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 					parsed[line][tkn+1].l == ld.html_langindex && parsed[line][tkn+1].s == ld.html_delim_attrindex &&
 					parsed[line][tkn+2].l == ld.html_langindex && parsed[line][tkn+2].s == ld.html_tag_attrindex &&
 					doc.getText(Range.create(
-						Position.create(line,parsed[line][tkn+2].p),
-						Position.create(line,parsed[line][tkn+2].p+parsed[line][tkn+2].c)
+						line,parsed[line][tkn+2].p,
+						line,parsed[line][tkn+2].p+parsed[line][tkn+2].c
 					)).toLowerCase() === "script" && symbolopen
 				) {
 					// This line starts with a HTML close script tag so close the open symbol

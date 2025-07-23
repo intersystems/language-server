@@ -2,6 +2,7 @@
 
 ## [2.7.5] - 2025-XX-XX
 - Fix issue [#378](https://github.com/intersystems/language-server/issues/378): Remove `intersystems.language-server.completion.showInternal` setting
+- Fix issue [#380](https://github.com/intersystems/language-server/issues/380): Add the Deprecated tag to DocumentSymbols in classes
 
 ## [2.7.4] - 2025-06-30
 - Fix issue [#373](https://github.com/intersystems/language-server/issues/373): Add go to definition and hover support for `UrlMap` Call and Forward attribute values
