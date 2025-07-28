@@ -239,6 +239,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 	// Loop through the parsed document to find errors and warnings
 	for (let i = startline; i < parsed.length; i++) {
+		if (!parsed[i]?.length) continue;
 
 		const lineText = doc.getText(Range.create(i,0,i+1,0));
 		if (doc.languageId != "objectscript-int" && !ifZeroStartPos) {

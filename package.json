@@ -4,7 +4,7 @@
   "description": "A language server for InterSystems ObjectScript.",
   "author": "InterSystems Corporation",
   "license": "SEE LICENSE IN LICENSE.txt",
-  "version": "2.7.5-SNAPSHOT",
+  "version": "2.8.0-SNAPSHOT",
   "publisher": "intersystems",
   "repository": {
     "type": "github",
@@ -1797,11 +1797,11 @@
     "@vscode/vsce": "^3.6.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
-    "ovsx": "^0.10.4",
+    "ovsx": "^0.10.5",
     "rimraf": "^6.0.1",
     "ts-loader": "^9.5.2",
     "typescript": "^5.5.4",
-    "webpack": "^5.99.9",
+    "webpack": "^5.100.2",
     "webpack-cli": "^6.0.1"
   },
   "extensionDependencies": [
