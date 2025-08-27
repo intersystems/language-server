@@ -14,10 +14,11 @@ interface IsolateEmbeddedLanguageParams {
  */
 export async function languageAtPosition(params: TextDocumentPositionParams): Promise<number> {
 	const doc = documents.get(params.textDocument.uri);
-	if (doc === undefined) {return -1;}
+	if (!doc) return -1;
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) {return -1;}
-	if (params.position.line === parsed.length) {return -1;}
+	if (!parsed) return -1;
+	if (params.position.line >= parsed.length) return -1;
+	if (!parsed[params.position.line]?.length) return -1;
 
 	let thistoken: number = -1;
 	for (let i = 0; i < parsed[params.position.line].length; i++) {

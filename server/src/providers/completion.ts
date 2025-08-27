@@ -719,7 +719,7 @@ async function globalsOrRoutines(
 }
 
 export async function onCompletion(params: CompletionParams): Promise<CompletionItem[] | null> {
-	var result: CompletionItem[] = [];
+	let result: CompletionItem[] = [];
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {return null;}
 	const parsed = await getParsedDocument(params.textDocument.uri);
@@ -729,14 +729,14 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	const prevline = doc.getText(Range.create(Position.create(params.position.line,0),params.position));
 	const prevlineLower = prevline.toLowerCase();
 	const classregex = /^class[ ]+%?[\p{L}\d]+(\.{1}[\p{L}\d]+)* +extends[ ]+(\(([%]?[\p{L}\d]+(\.{1}[\p{L}\d]+)*,[ ]*)*)?$/iu;
-	var firsttwotokens = "";
+	let firsttwotokens = "";
 	if (parsed[params.position.line].length >= 2) {
 		firsttwotokens = doc.getText(Range.create(
 			params.position.line,parsed[params.position.line][0].p,
 			params.position.line,parsed[params.position.line][1].p+parsed[params.position.line][1].c
 		));
 	}
-	var thistoken: number = -1;
+	let thistoken: number = -1;
 	for (let i = 0; i < parsed[params.position.line].length; i++) {
 		const symbolstart: number = parsed[params.position.line][i].p;
 		const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
@@ -775,7 +775,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 	const asRegex = /\s+as\s+$/;
 	const parenAndCommaRegex = /[,(]\s*$/;
-	const squareAndCommaRegex = /[,[]\s*$/;
 	
 	if (prevline.endsWith("$$$") && [ld.cos_langindex,ld.sql_langindex].includes(triggerlang)) {
 		// This is a macro

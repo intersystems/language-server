@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.8.1] - 2025-XX-XX
+- Fix issue [#381](https://github.com/intersystems/language-server/issues/381): Fix extension crashes due to request forwarding
+
 ## [2.8.0] - 2025-07-28
 - Fix issue [#378](https://github.com/intersystems/language-server/issues/378): Remove `intersystems.language-server.completion.showInternal` setting
 - Fix issue [#380](https://github.com/intersystems/language-server/issues/380): Add the Deprecated tag to DocumentSymbols in classes
