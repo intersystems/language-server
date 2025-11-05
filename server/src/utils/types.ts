@@ -55,11 +55,11 @@ export type StudioOpenDialogFile = {
  * Schema of an element in the command documentation file.
  */
 export type CommandDoc = {
-    label: string;
-    alias: string[];
-    documentation: string[];
-    link: string;
-    insertText?: string;
+	label: string;
+	alias: string[];
+	documentation: string[];
+	link: string;
+	insertText?: string;
 };
 
 /**
@@ -144,8 +144,8 @@ export type SignatureHelpMacroContext = {
  * The content of the last SignatureHelp documentation sent and the type of signature that it applies to.
  */
 export type SignatureHelpDocCache = {
-	doc: MarkupContent,
-	type: "macro" | "method"
+	doc: MarkupContent | undefined,
+	type: "macro" | "method" | "routine"
 };
 
 /**
@@ -159,15 +159,15 @@ export type PossibleClasses = {
 
 export type compresseditem = {
 	/** The numerical index of the language. */
-    l: number;
-    /** The index of the attribute within the array returned by `GetLanguageAttributes()`. */
-    s: number;
-    /** The starting position of this token in the source line. */
-    p: number;
-    /** The length of this token's source. */
-    c: number;
-    /** A short description of the syntax error. It will only be defined if `l` is `1` (ObjectScript) and `s` is `0`. */
-    e?: string;
+	l: number;
+	/** The index of the attribute within the array returned by `GetLanguageAttributes()`. */
+	s: number;
+	/** The starting position of this token in the source line. */
+	p: number;
+	/** The length of this token's source. */
+	c: number;
+	/** A short description of the syntax error. It will only be defined if `l` is `1` (ObjectScript) and `s` is `0`. */
+	e?: string;
 };
 
 export type compressedline = compresseditem[];

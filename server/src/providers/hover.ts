@@ -3,6 +3,8 @@ import { getServerSpec, getLanguageServerSettings, findFullRange, normalizeClass
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
 import { documents, corePropertyParams, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
+import { getClassMethodHover } from '../ccs/hover/classSupport';
+import { getRoutineHover } from '../ccs/hover/routineSupport';
 
 import commands = require("../documentation/commands.json");
 import structuredSystemVariables = require("../documentation/structuredSystemVariables.json");
@@ -25,9 +27,8 @@ import triggerKeywords = require("../documentation/keywords/Trigger.json");
 import xdataKeywords = require("../documentation/keywords/XData.json");
 
 function documaticLink(server: ServerSpec, cls: string): string {
-	return `[${cls}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?LIBRARY=${
-		encodeURIComponent(server.namespace.toUpperCase())
-	}&CLASSNAME=${encodeURIComponent(cls)})`;
+	return `[${cls}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?LIBRARY=${encodeURIComponent(server.namespace.toUpperCase())
+		}&CLASSNAME=${encodeURIComponent(cls)})`;
 }
 
 function markupValue(header: string, body?: string): string {
@@ -36,9 +37,9 @@ function markupValue(header: string, body?: string): string {
 
 export async function onHover(params: TextDocumentPositionParams): Promise<Hover> {
 	const doc = documents.get(params.textDocument.uri);
-	if (doc === undefined) {return null;}
+	if (doc === undefined) { return null; }
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+	if (parsed === undefined) { return null; }
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
@@ -48,25 +49,48 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	}
 	for (let i = 0; i < parsed[params.position.line].length; i++) {
 		const symbolstart: number = parsed[params.position.line][i].p;
-		const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
+		const symbolend: number = parsed[params.position.line][i].p + parsed[params.position.line][i].c;
 		if (params.position.character >= symbolstart && params.position.character <= symbolend) {
 			// We found the right symbol in the line
+
+			const routineHover = await getRoutineHover(
+				doc,
+				parsed,
+				params.position,
+				i,
+				params.textDocument.uri,
+				server
+			);
+			if (routineHover !== null) {
+				return routineHover;
+			}
+
+			const methodHover = await getClassMethodHover(
+				doc,
+				parsed,
+				params.position,
+				i,
+				server
+			);
+			if (methodHover !== null) {
+				return methodHover;
+			}
 
 			if ((
 				(parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_clsname_attrindex) ||
 				(parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_clsname_attrindex)
-				) && doc.getText(Range.create(params.position.line,0,params.position.line,6)).toLowerCase() !== "import"
+			) && doc.getText(Range.create(params.position.line, 0, params.position.line, 6)).toLowerCase() !== "import"
 			) {
 				// This is a class name
-	
+
 				// Get the full text of the selection
-				let wordrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				let wordrange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				let word = doc.getText(wordrange);
 				if (word.charAt(0) === ".") {
 					// This might be $SYSTEM.ClassName
 					const prevseven = doc.getText(Range.create(
-						params.position.line,wordrange.start.character-7,
-						params.position.line,wordrange.start.character
+						params.position.line, wordrange.start.character - 7,
+						params.position.line, wordrange.start.character
 					));
 					if (prevseven.toUpperCase() === "$SYSTEM") {
 						// This is $SYSTEM.ClassName
@@ -79,25 +103,25 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				}
 				if (word.charAt(0) === '"') {
 					// This classname is delimited with ", so strip them
-					word = word.slice(1,-1);
+					word = word.slice(1, -1);
 				}
 
 				// Normalize the class name if there are imports
-				let normalizedname = await normalizeClassname(doc,parsed,word,server,params.position.line);
+				let normalizedname = await normalizeClassname(doc, parsed, word, server, params.position.line);
 
 				// Get the description for this class from the server
 				const querydata: QueryData = {
 					query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
 					parameters: [normalizedname]
 				};
-				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 					// The class was found
 					return {
 						contents: {
 							kind: MarkupKind.Markdown,
 							value: markupValue(
-								documaticLink(server,normalizedname),
+								documaticLink(server, normalizedname),
 								documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
 							)
 						},
@@ -109,27 +133,27 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex || (
 					parsed[params.position.line][i].l == ld.sql_langindex &&
 					parsed[params.position.line][i].s == ld.sql_iden_attrindex &&
-					doc.getText(Range.create(params.position.line,symbolstart,params.position.line,symbolstart+3)) == "$$$"
+					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$$"
 				)
 			) {
 				// This is a macro
 
 				// Get the details of this class
 				const isSql = parsed[params.position.line][i].l == ld.sql_langindex;
-				const maccon = getMacroContext(doc,parsed,params.position.line,isSql);
+				const maccon = getMacroContext(doc, parsed, params.position.line, isSql);
 
 				// Get the full range of the macro
-				const macrorange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const macrorange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				let macrotext = doc.getText(macrorange);
 				let sqlMacroArgs = "";
 				if (isSql && macrotext.includes("(")) {
 					// SQL macros with arguments have the arguments as part of the same token
 					const parenIdx = macrotext.indexOf("(");
-					sqlMacroArgs = macrotext.slice(parenIdx).replace(/\s+/g,"");
+					sqlMacroArgs = macrotext.slice(parenIdx).replace(/\s+/g, "");
 					macrotext = macrotext.slice(0, parenIdx);
 					macrorange.end = Position.create(params.position.line, symbolstart + macrotext.length);
 				}
-				if (macrotext.slice(0,3) == "$$$") {
+				if (macrotext.slice(0, 3) == "$$$") {
 					macrotext = macrotext.slice(3);
 				}
 
@@ -138,10 +162,10 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					if (isSql) return sqlMacroArgs;
 					// Get the rest of the line following the macro
 					const restofline = doc.getText(Range.create(
-						params.position.line,macrorange.end.character,
-						params.position.line,parsed[params.position.line][parsed[params.position.line].length-1].p+parsed[params.position.line][parsed[params.position.line].length-1].c
+						params.position.line, macrorange.end.character,
+						params.position.line, parsed[params.position.line][parsed[params.position.line].length - 1].p + parsed[params.position.line][parsed[params.position.line].length - 1].c
 					));
-					
+
 					// If this macro takes arguments, send them in the request body
 					let macroargs = "";
 					if (restofline.charAt(0) === "(") {
@@ -161,7 +185,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						}
 						if (closeidx !== -1) {
 							// Get all of the arguments
-							macroargs = restofline.slice(0,closeidx+1).replace(/\s+(?=([^"]*"[^"]*")*[^"]*$)/g,"");
+							macroargs = restofline.slice(0, closeidx + 1).replace(/\s+(?=([^"]*"[^"]*")*[^"]*$)/g, "");
 						}
 						else {
 							// The argument list is incomplete
@@ -170,10 +194,10 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					}
 					return macroargs;
 				};
-				
+
 				// Check if the macro definition appears in the current file
-				const macrodefline = isMacroDefinedAbove(doc,parsed,params.position.line,macrotext);
-				
+				const macrodefline = isMacroDefinedAbove(doc, parsed, params.position.line, macrotext);
+
 				if (macrodefline != -1) {
 					// The macro definition is in the current file
 
@@ -185,15 +209,15 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						if (ln == macrodefline) {
 							// Capture the formal spec (if present) and if this is a #Def1arg macro
 
-							onearg = doc.getText(Range.create(ln,parsed[ln][1].p,ln,parsed[ln][1].p+parsed[ln][1].c)).toLowerCase() == "def1arg";
+							onearg = doc.getText(Range.create(ln, parsed[ln][1].p, ln, parsed[ln][1].p + parsed[ln][1].c)).toLowerCase() == "def1arg";
 							if (
 								parsed[ln].length > 3 && parsed[ln][3].s == ld.cos_delim_attrindex &&
-								doc.getText(Range.create(ln,parsed[ln][3].p,ln,parsed[ln][3].p+parsed[ln][3].c)) == "("
+								doc.getText(Range.create(ln, parsed[ln][3].p, ln, parsed[ln][3].p + parsed[ln][3].c)) == "("
 							) {
 								// Capture the formal spec
 
 								for (let tkn = 3; tkn < parsed[ln].length; tkn++) {
-									formalspec += doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+									formalspec += doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c));
 									if (parsed[ln][tkn].s == ld.cos_delim_attrindex && formalspec.endsWith(")")) {
 										definitionendtkn = tkn;
 										break;
@@ -205,37 +229,37 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								break;
 							}
 						}
-						
+
 						if (
-							parsed[ln][parsed[ln].length-1].l == ld.cos_langindex &&
-							parsed[ln][parsed[ln].length-1].s == ld.cos_ppf_attrindex &&
+							parsed[ln][parsed[ln].length - 1].l == ld.cos_langindex &&
+							parsed[ln][parsed[ln].length - 1].s == ld.cos_ppf_attrindex &&
 							mppContinue.test(doc.getText(Range.create(
-								ln,parsed[ln][parsed[ln].length-1].p,
-								ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
+								ln, parsed[ln][parsed[ln].length - 1].p,
+								ln, parsed[ln][parsed[ln].length - 1].p + parsed[ln][parsed[ln].length - 1].c
 							)))
 						) {
 							// This is one line of a multi-line macro definition
 							const endTkn = parsed[ln].length - (doc.getText(Range.create(
-								ln,parsed[ln][parsed[ln].length-1].p,
-								ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c
+								ln, parsed[ln][parsed[ln].length - 1].p,
+								ln, parsed[ln][parsed[ln].length - 1].p + parsed[ln][parsed[ln].length - 1].c
 							)).startsWith("##") ? 2 : 3);
 							if (ln == macrodefline) {
 								// This is the first line of a multi-line macro definition
-								definition = doc.getText(Range.create(ln,parsed[ln][definitionendtkn+1].p,ln,parsed[ln][endTkn].p+parsed[ln][endTkn].c)).trimEnd() + "\n";
+								definition = doc.getText(Range.create(ln, parsed[ln][definitionendtkn + 1].p, ln, parsed[ln][endTkn].p + parsed[ln][endTkn].c)).trimEnd() + "\n";
 								if (!definition.trim()) definition = "";
 							}
 							else {
-								definition += doc.getText(Range.create(ln,0,ln,parsed[ln][endTkn].p+parsed[ln][endTkn].c)).trimEnd() + "\n";
+								definition += doc.getText(Range.create(ln, 0, ln, parsed[ln][endTkn].p + parsed[ln][endTkn].c)).trimEnd() + "\n";
 							}
 						}
 						else {
 							if (ln == macrodefline) {
 								// This is a one line macro definition
-								definition = doc.getText(Range.create(ln,parsed[ln][definitionendtkn+1].p,ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)).trimEnd();
+								definition = doc.getText(Range.create(ln, parsed[ln][definitionendtkn + 1].p, ln, parsed[ln][parsed[ln].length - 1].p + parsed[ln][parsed[ln].length - 1].c)).trimEnd();
 							}
 							else {
 								// This is the last line of a multi-line macro definition
-								definition += doc.getText(Range.create(ln,0,ln,parsed[ln][parsed[ln].length-1].p+parsed[ln][parsed[ln].length-1].c)).trimEnd();
+								definition += doc.getText(Range.create(ln, 0, ln, parsed[ln][parsed[ln].length - 1].p + parsed[ln][parsed[ln].length - 1].c)).trimEnd();
 							}
 							// We've captured all the lines of this macro definition
 							break;
@@ -247,12 +271,12 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					// If this macro has a formal spec, attempt to replace the parameters with the arguments from the usage
 					if (formalspec.endsWith(")")) {
 						let macroargs = getMacroArgs();
-						if (!["","incomplete"].includes(macroargs)) {
-							formalspec = formalspec.slice(1,-1).replace(/\s+/g,"");
-							macroargs = macroargs.slice(1,-1);
+						if (!["", "incomplete"].includes(macroargs)) {
+							formalspec = formalspec.slice(1, -1).replace(/\s+/g, "");
+							macroargs = macroargs.slice(1, -1);
 							if (onearg) {
 								// This is a #Def1arg macro, so perform the single replacement
-								definition = definition.replace(new RegExp(formalspec,"g"),macroargs);
+								definition = definition.replace(new RegExp(formalspec, "g"), macroargs);
 							}
 							else {
 								// Build lists for the parameters and passed arguments
@@ -274,19 +298,19 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 										argslist.push("");
 									}
 									else {
-										argslist[argslist.length-1] += char;
+										argslist[argslist.length - 1] += char;
 									}
 								}
 								if (paramslist.length == argslist.length) {
 									// Perform the replacement for each argument
 									for (let argidx = 0; argidx < paramslist.length; argidx++) {
-										definition = definition.replace(new RegExp(paramslist[argidx].trim(),"g"),() => argslist[argidx]);
+										definition = definition.replace(new RegExp(paramslist[argidx].trim(), "g"), () => argslist[argidx]);
 									}
 								}
 							}
 						}
 					}
-					
+
 					return {
 						contents: {
 							kind: MarkupKind.Markdown,
@@ -297,7 +321,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				}
 				else {
 					// The macro is defined in another file
-					
+
 					// If this macro takes arguments, send them in the request body
 					const macroargs = getMacroArgs();
 
@@ -314,11 +338,11 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							imports: maccon.imports,
 							mode: maccon.mode
 						};
-						const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expquerydata);
+						const exprespdata = await makeRESTRequest("POST", 2, "/action/getmacroexpansion", server, expquerydata);
 						if (Array.isArray(exprespdata?.data?.result?.content?.expansion) && exprespdata.data.result.content.expansion.length > 0) {
 							// We got data back
 							const exptext = exprespdata.data.result.content.expansion.join("  \n");
-							if (exptext.slice(0,5) === "ERROR") {
+							if (exptext.slice(0, 5) === "ERROR") {
 								// An error occurred while generating the expansion, so return the definition instead
 								const defquerydata = {
 									docname: maccon.docname,
@@ -329,7 +353,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 									imports: maccon.imports,
 									mode: maccon.mode
 								};
-								const defrespdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,defquerydata);
+								const defrespdata = await makeRESTRequest("POST", 2, "/action/getmacrodefinition", server, defquerydata);
 								if (Array.isArray(defrespdata?.data?.result?.content?.definition) && defrespdata.data.result.content.definition.length > 0) {
 									// The macro definition was found
 									return {
@@ -362,7 +386,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							imports: maccon.imports,
 							mode: maccon.mode
 						};
-						const respdata = await makeRESTRequest("POST",2,"/action/getmacrodefinition",server,inputdata);
+						const respdata = await makeRESTRequest("POST", 2, "/action/getmacrodefinition", server, inputdata);
 						if (Array.isArray(respdata?.data?.result?.content?.definition) && respdata.data.result.content.definition.length > 0) {
 							// The macro definition was found
 							return {
@@ -375,18 +399,17 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_sysf_attrindex && settings.hover.system) {
 				// This is a system function
-				const sysfrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
+				const sysfrange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 				const sysftext = doc.getText(sysfrange).toUpperCase();
 				const sysfdoc = systemFunctions.find((el) => el.label === sysftext || el.alias.includes(sysftext));
 				if (sysfdoc && sysftext != "$PREPROCESS") {
 					return {
 						contents: {
 							kind: MarkupKind.Markdown,
-							value: ["$ZUTIL","$ZU"].includes(sysftext) ? 
+							value: ["$ZUTIL", "$ZU"].includes(sysftext) ?
 								markupValue(`[Online documentation](${sysfdoc.link})`) :
-								markupValue(sysfdoc.documentation.join(""), sysfdoc.link ? `[Online documentation](${
-								sysfdoc.link[0] == "h" ? sysfdoc.link : `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
-							})` : "")
+								markupValue(sysfdoc.documentation.join(""), sysfdoc.link ? `[Online documentation](${sysfdoc.link[0] == "h" ? sysfdoc.link : `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
+									})` : "")
 						},
 						range: sysfrange
 					};
@@ -394,7 +417,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_ssysv_attrindex && settings.hover.system) {
 				// This is a structured system variable
-				var ssysvrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
+				var ssysvrange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 				var ssysvtext = doc.getText(ssysvrange).toUpperCase();
 				if (ssysvtext === "^$") {
 					// This is the first half, before the namespace
@@ -402,13 +425,13 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					// Continue looping on the line to find the second half
 					var secondhalf = "";
 					var secondhalfend = -1;
-					for (let j = i+1; j < parsed[params.position.line].length; j++) {
+					for (let j = i + 1; j < parsed[params.position.line].length; j++) {
 						if (parsed[params.position.line][j].l == ld.cos_langindex && parsed[params.position.line][j].s == ld.cos_ssysv_attrindex) {
 							secondhalf = doc.getText(Range.create(
-								params.position.line,parsed[params.position.line][j].p,
-								params.position.line,parsed[params.position.line][j].p+parsed[params.position.line][j].c
+								params.position.line, parsed[params.position.line][j].p,
+								params.position.line, parsed[params.position.line][j].p + parsed[params.position.line][j].c
 							)).toUpperCase();
-							secondhalfend = parsed[params.position.line][j].p+parsed[params.position.line][j].c;
+							secondhalfend = parsed[params.position.line][j].p + parsed[params.position.line][j].c;
 							break;
 						}
 					}
@@ -417,18 +440,18 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						return null;
 					}
 					ssysvtext = ssysvtext + secondhalf;
-					ssysvrange = Range.create(ssysvrange.start,Position.create(params.position.line,secondhalfend));
+					ssysvrange = Range.create(ssysvrange.start, Position.create(params.position.line, secondhalfend));
 				}
 				else if (ssysvtext.indexOf("^$") === -1) {
 					// This is the second half, after the namespace
 
 					// Loop backwards on the line to find the first half
 					var firsthalfstart = -1;
-					for (let j = i-1; j >= 0; j--) {
+					for (let j = i - 1; j >= 0; j--) {
 						if (parsed[params.position.line][j].l == ld.cos_langindex && parsed[params.position.line][j].s == ld.cos_ssysv_attrindex) {
 							const firsthalf = doc.getText(Range.create(
-								params.position.line,parsed[params.position.line][j].p,
-								params.position.line,parsed[params.position.line][j].p+parsed[params.position.line][j].c
+								params.position.line, parsed[params.position.line][j].p,
+								params.position.line, parsed[params.position.line][j].p + parsed[params.position.line][j].c
 							));
 							if (firsthalf === "^$") {
 								firsthalfstart = parsed[params.position.line][j].p;
@@ -441,7 +464,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						return null;
 					}
 					ssysvtext = "^$" + ssysvtext;
-					ssysvrange = Range.create(Position.create(params.position.line,firsthalfstart),ssysvrange.end);
+					ssysvrange = Range.create(Position.create(params.position.line, firsthalfstart), ssysvrange.end);
 				}
 				const ssysvdoc = structuredSystemVariables.find((el) => el.label === ssysvtext || el.alias.includes(ssysvtext));
 				if (ssysvdoc !== undefined) {
@@ -459,7 +482,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_sysv_attrindex && settings.hover.system) {
 				// This is a system variable
-				const sysvrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
+				const sysvrange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 				const sysvtext = doc.getText(sysvrange).toUpperCase();
 				const sysvdoc = systemVariables.find((el) => el.label === sysvtext || el.alias.includes(sysvtext));
 				if (sysvdoc !== undefined) {
@@ -477,15 +500,15 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_command_attrindex && settings.hover.commands) {
 				// This is a command
-				const commandrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
+				const commandrange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 				const commandtext = doc.getText(commandrange).toUpperCase();
 				var commanddoc: CommandDoc | undefined;
 				if (commandtext === "H") {
 					// This is "halt" or "hang"
-					commanddoc = haltOrHang(doc,parsed,params.position.line,i);
+					commanddoc = haltOrHang(doc, parsed, params.position.line, i);
 				}
 				else {
-					commanddoc = commands.find((el) => el.label === commandtext|| el.alias.includes(commandtext));
+					commanddoc = commands.find((el) => el.label === commandtext || el.alias.includes(commandtext));
 				}
 				if (commanddoc !== undefined) {
 					return {
@@ -502,23 +525,23 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (
 				parsed[params.position.line][i].l == ld.cos_langindex && (
-				parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
-				parsed[params.position.line][i].s == ld.cos_method_attrindex ||
-				parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
-				parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
-				parsed[params.position.line][i].s == ld.cos_instvar_attrindex)
+					parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_instvar_attrindex)
 			) {
 				// This is a class member (property/parameter/method)
 
 				// Get the full text of the selection
-				const memberrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const memberrange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				var member = doc.getText(memberrange);
 				if (member.charAt(0) === "#") {
 					member = member.slice(1);
 				} else if (parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
 					member = member.slice(2);
 				}
-				const unquotedname = quoteUDLIdentifier(member,0);
+				const unquotedname = quoteUDLIdentifier(member, 0);
 
 				let membercontext = {
 					baseclass: "",
@@ -535,10 +558,10 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					}
 
 					// Get the base class that this member is in
-					membercontext = await getClassMemberContext(doc,parsed,dottkn,params.position.line,server);
+					membercontext = await getClassMemberContext(doc, parsed, dottkn, params.position.line, server);
 				} else {
 					membercontext = {
-						baseclass: currentClass(doc,parsed),
+						baseclass: currentClass(doc, parsed),
 						context: ""
 					};
 				}
@@ -546,7 +569,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					// If we couldn't determine the class, don't return anything
 					return null;
 				}
-				
+
 				// Query the server to get the description of this member using its base class, text and token type
 				var data: QueryData = {
 					query: "",
@@ -555,55 +578,55 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				if (unquotedname == "%New") {
 					// Get the information for both %New and %OnNew
 					data.query = "SELECT Description, FormalSpec, ReturnType, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (name = ? OR name = ?)";
-					data.parameters = [membercontext.baseclass,unquotedname,"%OnNew"];
+					data.parameters = [membercontext.baseclass, unquotedname, "%OnNew"];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
 					// This is a parameter
 					data.query = "SELECT Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE Parent = ? AND name = ?";
-					data.parameters = [membercontext.baseclass,unquotedname];
+					data.parameters = [membercontext.baseclass, unquotedname];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
 					// This is a method
 					data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
-					data.parameters = [membercontext.baseclass,unquotedname];
+					data.parameters = [membercontext.baseclass, unquotedname];
 				}
 				else if (parsed[params.position.line][i].s == ld.cos_attr_attrindex || parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
 					// This is a property
-					data.query = 
+					data.query =
 						"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
 						"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
-					data.parameters = [membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
+					data.parameters = [membercontext.baseclass, unquotedname, unquotedname.replace(/\s+/g, "")];
 				}
 				else {
 					// This is a generic member
 					if (membercontext.baseclass.startsWith("%SYSTEM")) {
 						// This is always a method
 						data.query = "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
-						data.parameters = [membercontext.baseclass,unquotedname];
+						data.parameters = [membercontext.baseclass, unquotedname];
 					}
 					else {
 						// This can be a method or property
-						data.query = 
+						data.query =
 							"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL " +
 							"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
 							"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
-						data.parameters = [membercontext.baseclass,unquotedname,membercontext.baseclass,unquotedname,unquotedname.replace(/\s+/g,"")];
+						data.parameters = [membercontext.baseclass, unquotedname, membercontext.baseclass, unquotedname, unquotedname.replace(/\s+/g, "")];
 					}
 				}
-				const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
+				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 					// We got data back
 
 					let header = `(**${membercontext.baseclass}**) <u>**${member}**</u>`;
-					const nextchar = doc.getText(Range.create(params.position.line,memberrange.end.character,params.position.line,memberrange.end.character+1));
+					const nextchar = doc.getText(Range.create(params.position.line, memberrange.end.character, params.position.line, memberrange.end.character + 1));
 					if (member == "%New" && respdata.data.result.content.length == 2 && respdata.data.result.content[1].Origin != "%Library.RegisteredObject") {
 						// %OnNew has been overridden for this class
-						header += beautifyFormalSpec(respdata.data.result.content[1].FormalSpec,true);
+						header += beautifyFormalSpec(respdata.data.result.content[1].FormalSpec, true);
 						header += ` As **${membercontext.baseclass}**`;
 						return {
 							contents: {
 								kind: MarkupKind.Markdown,
-								value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[
+								value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[
 									respdata.data.result.content[1].Description.trim().length ? 1 : 0
 								].Description))
 							},
@@ -632,14 +655,14 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 						}
 						if (stubquery !== "") {
-							const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
+							const stubrespdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 								query: stubquery,
-								parameters: [stubarr[1],membercontext.baseclass,stubarr[0]]
+								parameters: [stubarr[1], membercontext.baseclass, stubarr[0]]
 							});
 							if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 								// We got data back
 								if (nextchar === "(") {
-									header = header + beautifyFormalSpec(stubrespdata.data.result.content[0].FormalSpec,true);
+									header = header + beautifyFormalSpec(stubrespdata.data.result.content[0].FormalSpec, true);
 									if (stubrespdata.data.result.content[0].ReturnType !== "") {
 										header = `${header} As **${stubrespdata.data.result.content[0].ReturnType}**`;
 									}
@@ -647,7 +670,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								return {
 									contents: {
 										kind: MarkupKind.Markdown,
-										value: markupValue(header,documaticHtmlToMarkdown(stubrespdata.data.result.content[0].Description))
+										value: markupValue(header, documaticHtmlToMarkdown(stubrespdata.data.result.content[0].Description))
 									},
 									range: memberrange
 								};
@@ -658,9 +681,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						// This is a regular member
 
 						if (nextchar === "(") {
-							header += beautifyFormalSpec(member == "%New" ? "" : respdata.data.result.content[0].FormalSpec,true);
+							header += beautifyFormalSpec(member == "%New" ? "" : respdata.data.result.content[0].FormalSpec, true);
 						}
-						if (["%New","%Open","%OpenId"].includes(member)) {
+						if (["%New", "%Open", "%OpenId"].includes(member)) {
 							header += ` As **${membercontext.baseclass}**`;
 						}
 						else if (respdata.data.result.content[0].ReturnType !== "") {
@@ -671,7 +694,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						return {
 							contents: {
 								kind: MarkupKind.Markdown,
-								value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+								value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
 							},
 							range: memberrange
 						};
@@ -680,16 +703,16 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_keyword_attrindex) {
 				// This is a UDL keyword
-				
+
 				// Scan left on the line to see if we're in a set of square brackets
 				var foundopenbracket = false;
-				for (let j = i-1; j >= 0; j--) {
+				for (let j = i - 1; j >= 0; j--) {
 					if (parsed[params.position.line][j].l == ld.cls_langindex && parsed[params.position.line][j].s == ld.cls_delim_attrindex) {
 						// This is a UDL delimiter
 						const delim = doc.getText(
 							Range.create(
-								params.position.line,parsed[params.position.line][j].p,
-								params.position.line,parsed[params.position.line][j].p+1
+								params.position.line, parsed[params.position.line][j].p,
+								params.position.line, parsed[params.position.line][j].p + 1
 							)
 						);
 						if (delim === "[") {
@@ -700,30 +723,30 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				}
 				if (foundopenbracket) {
 					// This is a trailing keyword
-					const thiskeyrange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
+					const thiskeyrange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 					const thiskeytext = doc.getText(thiskeyrange).toLowerCase();
 
 					// Find the type of this member
 					var firstkey = doc.getText(Range.create(
-						params.position.line,parsed[params.position.line][0].p,
-						params.position.line,parsed[params.position.line][0].p+parsed[params.position.line][0].c
+						params.position.line, parsed[params.position.line][0].p,
+						params.position.line, parsed[params.position.line][0].p + parsed[params.position.line][0].c
 					)).toLowerCase();
 					if (parsed[params.position.line][0].l !== ld.cls_langindex || parsed[params.position.line][0].s !== ld.cls_keyword_attrindex) {
 						// This member definition spans multiple lines
-						for (let k = params.position.line-1; k >= 0; k--) {
+						for (let k = params.position.line - 1; k >= 0; k--) {
 							if (parsed[k].length === 0) {
 								continue;
 							}
 							if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
 								firstkey = doc.getText(Range.create(
-									k,parsed[k][0].p,
-									k,parsed[k][0].p+parsed[k][0].c
+									k, parsed[k][0].p,
+									k, parsed[k][0].p + parsed[k][0].c
 								)).toLowerCase();
 								break;
 							}
 						}
 					}
-					
+
 					var keydoc: KeywordDoc | undefined;
 					if (firstkey === "class") {
 						// This is a class keyword
@@ -777,9 +800,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						return {
 							contents: {
 								kind: MarkupKind.Markdown,
-								value: Array.isArray(keydoc?.constraint) ? 
-									hoverdocstr != "" ? 
-										markupValue(keydoc.description,"Permitted values: " + keydoc.constraint.join(", ")) :
+								value: Array.isArray(keydoc?.constraint) ?
+									hoverdocstr != "" ?
+										markupValue(keydoc.description, "Permitted values: " + keydoc.constraint.join(", ")) :
 										"Permitted values: " + keydoc.constraint.join(", ")
 									: keydoc.description
 							},
@@ -790,17 +813,17 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_iden_attrindex) {
 				// This is a UDL identifier
-				
+
 				const prevtokentext = doc.getText(Range.create(
-					params.position.line,parsed[params.position.line][i-1].p,
-					params.position.line,parsed[params.position.line][i-1].p+parsed[params.position.line][i-1].c
+					params.position.line, parsed[params.position.line][i - 1].p,
+					params.position.line, parsed[params.position.line][i - 1].p + parsed[params.position.line][i - 1].c
 				)).toLowerCase();
-				if (parsed[params.position.line][i-1].l == ld.cls_langindex && parsed[params.position.line][i-1].s == ld.cls_keyword_attrindex && prevtokentext === "as") {
+				if (parsed[params.position.line][i - 1].l == ld.cls_langindex && parsed[params.position.line][i - 1].s == ld.cls_keyword_attrindex && prevtokentext === "as") {
 					// This is a parameter type
-					
+
 					const tokenrange = Range.create(
-						params.position.line,parsed[params.position.line][i].p,
-						params.position.line,parsed[params.position.line][i].p+parsed[params.position.line][i].c
+						params.position.line, parsed[params.position.line][i].p,
+						params.position.line, parsed[params.position.line][i].p + parsed[params.position.line][i].c
 					);
 					const tokentext = doc.getText(tokenrange).toUpperCase();
 					const thistypedoc = parameterTypes.find((typedoc) => typedoc.name === tokentext);
@@ -817,15 +840,15 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (parsed[params.position.line][i].l == ld.sql_langindex && parsed[params.position.line][i].s == ld.sql_iden_attrindex) {
 				// This is a SQL identifier
-				
+
 				// Get the full text of the selection
-				const idenrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const idenrange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				const iden = doc.getText(idenrange);
-				
+
 				// Find the preceding keyword (other than 'AS')
 				var keytext: string = "";
 				for (let ln = params.position.line; ln >= 0; ln--) {
-					for (let tk = parsed[ln].length-1; tk >= 0; tk--) {
+					for (let tk = parsed[ln].length - 1; tk >= 0; tk--) {
 						if (ln === params.position.line && parsed[ln][tk].p >= idenrange.start.character) {
 							// Start looking when we pass the full range of the selected identifier
 							continue;
@@ -836,8 +859,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						) {
 							// This is a keyword
 							const tmpkeytext = doc.getText(Range.create(
-								ln,parsed[ln][tk].p,
-								ln,parsed[ln][tk].p+parsed[ln][tk].c
+								ln, parsed[ln][tk].p,
+								ln, parsed[ln][tk].p + parsed[ln][tk].c
 							)).toLowerCase();
 							if (tmpkeytext !== "as") {
 								// Found the correct keyword
@@ -851,11 +874,11 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						break;
 					}
 				}
-				
+
 				if (
 					(keytext === "join" || keytext === "from" || keytext === "into" ||
-					keytext=== "lock" || keytext === "unlock" || keytext === "table" ||
-					keytext === "update")
+						keytext === "lock" || keytext === "unlock" || keytext === "table" ||
+						keytext === "update")
 				) {
 					// This identifier is a table name
 
@@ -863,18 +886,18 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						// This table is projected from a multi-dimensional property
 
 						// Split the identifier into the class and property
-						const clsname = iden.slice(0,iden.lastIndexOf("_")).replace(/_/g,".");
-						const propname = iden.slice(iden.lastIndexOf("_")+1);
+						const clsname = iden.slice(0, iden.lastIndexOf("_")).replace(/_/g, ".");
+						const propname = iden.slice(iden.lastIndexOf("_") + 1);
 
 						// Normalize the class name if there are imports
-						const normalizedname = await normalizeClassname(doc,parsed,clsname,server,params.position.line);
+						const normalizedname = await normalizeClassname(doc, parsed, clsname, server, params.position.line);
 						if (normalizedname !== "") {
 							// Query the server to get the description of this property
 							const data: QueryData = {
 								query: "SELECT Description, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS DisplayType FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
-								parameters: [normalizedname,propname]
+								parameters: [normalizedname, propname]
 							};
-							const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
+							const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 								// We got data back
 
@@ -884,7 +907,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								return {
 									contents: {
 										kind: MarkupKind.Markdown,
-										value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+										value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
 									},
 									range: idenrange
 								};
@@ -895,21 +918,21 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						// This table is a class
 
 						// Normalize the class name if there are imports
-						const normalizedname = await normalizeClassname(doc,parsed,iden.replace(/_/g,"."),server,params.position.line);
+						const normalizedname = await normalizeClassname(doc, parsed, iden.replace(/_/g, "."), server, params.position.line);
 						if (normalizedname !== "") {
 							// Get the description for this class from the server
 							const querydata: QueryData = {
 								query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
 								parameters: [normalizedname]
 							};
-							const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+							const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 								// The class was found
 								return {
 									contents: {
 										kind: MarkupKind.Markdown,
 										value: markupValue(
-											documaticLink(server,normalizedname),
+											documaticLink(server, normalizedname),
 											documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
 										)
 									},
@@ -922,26 +945,26 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				else if (keytext === "call" && iden.indexOf("_") !== -1) {
 					// This identifier is a Query or ClassMethod being invoked as a SqlProc
 
-					const clsname = iden.slice(0,iden.lastIndexOf("_")).replace(/_/g,".");
-					const procname = iden.slice(iden.lastIndexOf("_")+1);
-					
+					const clsname = iden.slice(0, iden.lastIndexOf("_")).replace(/_/g, ".");
+					const procname = iden.slice(iden.lastIndexOf("_") + 1);
+
 					// Normalize the class name if there are imports
-					const normalizedname = await normalizeClassname(doc,parsed,clsname,server,params.position.line);
+					const normalizedname = await normalizeClassname(doc, parsed, clsname, server, params.position.line);
 					if (normalizedname !== "") {
 						// Query the server to get the description
 						var querystr = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL ";
 						querystr = querystr.concat("SELECT Description, FormalSpec, Type AS ReturnType FROM %Dictionary.CompiledQuery WHERE Parent = ? AND name = ?");
 						const data: QueryData = {
 							query: querystr,
-							parameters: [normalizedname,procname,normalizedname,procname]
+							parameters: [normalizedname, procname, normalizedname, procname]
 						};
-						const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
+						const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 							let header = `(**${normalizedname}**) <u>**${procname}**</u>`;
-							const nextchar = doc.getText(Range.create(params.position.line,idenrange.end.character,params.position.line,idenrange.end.character+1));
+							const nextchar = doc.getText(Range.create(params.position.line, idenrange.end.character, params.position.line, idenrange.end.character + 1));
 							if (nextchar === "(") {
-								header = header + beautifyFormalSpec(respdata.data.result.content[0].FormalSpec,true);
+								header = header + beautifyFormalSpec(respdata.data.result.content[0].FormalSpec, true);
 								if (respdata.data.result.content[0].ReturnType !== "") {
 									header = `${header} As **${respdata.data.result.content[0].ReturnType}**`;
 								}
@@ -949,7 +972,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							return {
 								contents: {
 									kind: MarkupKind.Markdown,
-									value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+									value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
 								},
 								range: idenrange
 							};
@@ -960,22 +983,22 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					// This identifier is a property
 					if ((iden.split(".").length - 1) > 0) {
 						// We won't resolve properties that don't contain the table name
-						const tblname = iden.slice(0,iden.lastIndexOf("."));
-						const propname = iden.slice(iden.lastIndexOf(".")+1);
+						const tblname = iden.slice(0, iden.lastIndexOf("."));
+						const propname = iden.slice(iden.lastIndexOf(".") + 1);
 
 						if (tblname.lastIndexOf("_") > tblname.lastIndexOf(".")) {
 							// This table is projected from a multi-dimensional property, so we can't provide any info
 						}
 						else {
 							// Normalize the class name if there are imports
-							const normalizedname = await normalizeClassname(doc,parsed,tblname.replace(/_/g,"."),server,params.position.line);
+							const normalizedname = await normalizeClassname(doc, parsed, tblname.replace(/_/g, "."), server, params.position.line);
 							if (normalizedname !== "") {
 								// Query the server to get the description of this property
 								const data: QueryData = {
 									query: "SELECT Description, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS DisplayType FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
-									parameters: [normalizedname,propname]
+									parameters: [normalizedname, propname]
 								};
-								const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
+								const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 								if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 									// We got data back
 
@@ -985,7 +1008,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 									return {
 										contents: {
 											kind: MarkupKind.Markdown,
-											value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+											value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
 										},
 										range: idenrange
 									};
@@ -999,11 +1022,11 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				// This is a preprocessor directive
 
 				// Get the full text of the selection
-				const pprange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const pprange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				const pp = doc.getText(pprange);
 
 				// Find the correct directive
-				const ppobj = preprocessorDirectives.find((el) => el.label.toLowerCase().replace(/\s+/g,'') === pp.toLowerCase());
+				const ppobj = preprocessorDirectives.find((el) => el.label.toLowerCase().replace(/\s+/g, '') === pp.toLowerCase());
 				if (ppobj !== undefined) {
 					return {
 						contents: {
@@ -1021,11 +1044,11 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				// This is a class name parameter
 
 				// Verify that is is a parameter for a class name and not a method argument
-				const clsName = determineClassNameParameterClass(doc,parsed,params.position.line,i);
+				const clsName = determineClassNameParameterClass(doc, parsed, params.position.line, i);
 				if (clsName == "") return;
 
 				// Get the full text of the selection
-				const paramrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const paramrange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				const param = doc.getText(paramrange);
 
 				// If this is a core Property data type parameter, return the static description
@@ -1041,24 +1064,23 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				}
 
 				// Determine the normalized class name
-				const normalizedcls = await normalizeClassname(doc,parsed,clsName,server,params.position.line);
+				const normalizedcls = await normalizeClassname(doc, parsed, clsName, server, params.position.line);
 				if (normalizedcls !== "") {
-					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
+					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 						query: "SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
-						"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
-						parameters: [param,normalizedcls,currentClass(doc,parsed)]
+							"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
+						parameters: [param, normalizedcls, currentClass(doc, parsed)]
 					});
 					if (respdata !== undefined) {
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
-							const header = `(**${normalizedcls}**) <u>**${param}**</u>${
-								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
-							}`;
+							const header = `(**${normalizedcls}**) <u>**${param}**</u>${respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
+								}`;
 							return {
 								contents: {
 									kind: MarkupKind.Markdown,
-									value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+									value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
 								},
 								range: paramrange
 							};
@@ -1068,13 +1090,13 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			}
 			else if (
 				parsed[params.position.line][i].l == ld.cls_langindex && (
-				parsed[params.position.line][i].s == ld.cls_xmlelemname_attrindex ||
-				parsed[params.position.line][i].s == ld.cls_xmlattrname_attrindex)
+					parsed[params.position.line][i].s == ld.cls_xmlelemname_attrindex ||
+					parsed[params.position.line][i].s == ld.cls_xmlattrname_attrindex)
 			) {
 				// This is a Storage XML element or attribute name
 
 				// Get the full text of the selection
-				const elemrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const elemrange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				const elem = doc.getText(elemrange);
 
 				const storageObjKey = storageKeywordsKeyForToken(doc, parsed, params.position.line, i);
@@ -1091,9 +1113,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							return {
 								contents: {
 									kind: MarkupKind.Markdown,
-									value: Array.isArray(keydoc?.constraint) ? 
-										hoverdocstr != "" ? 
-											markupValue(keydoc.description,"Permitted values: " + keydoc.constraint.join(", ")) :
+									value: Array.isArray(keydoc?.constraint) ?
+										hoverdocstr != "" ?
+											markupValue(keydoc.description, "Permitted values: " + keydoc.constraint.join(", ")) :
 											"Permitted values: " + keydoc.constraint.join(", ")
 										: keydoc.description
 								},
@@ -1114,9 +1136,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			) {
 				// This is an ObjectScript variable
 
-				const varClass = await determineVariableClass(doc,parsed,params.position.line,i,server);
+				const varClass = await determineVariableClass(doc, parsed, params.position.line, i, server);
 				if (varClass) {
-					const varRange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
+					const varRange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 					const varType = parsed[params.position.line][i].s == ld.cos_param_attrindex ? "parameter" :
 						parsed[params.position.line][i].s == ld.cos_localvar_attrindex ? "public" : "private";
 					// Get the description for this class from the server
@@ -1124,7 +1146,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
 						parameters: [varClass]
 					};
-					const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 						// The class was found
 						return {
@@ -1147,18 +1169,18 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			) {
 				// This is an XML string
 
-				const thisClass = currentClass(doc,parsed);
+				const thisClass = currentClass(doc, parsed);
 				if (thisClass == "") return null; // Class definition is malformed
 				// Determine if this is the value of a Call or
 				// Forward attribute in a UrlMap XData block
-				const attr = urlMapAttribute(doc,parsed,params.position.line,i);
+				const attr = urlMapAttribute(doc, parsed, params.position.line, i);
 				if (attr == "") return null;
 
-				const strRange = Range.create(params.position.line,symbolstart,params.position.line,symbolend);
-				const strText = doc.getText(strRange).slice(1,-1);
+				const strRange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
+				const strText = doc.getText(strRange).slice(1, -1);
 				if (attr == "Forward") {
 					// This is a class name. Assume it's a full class name, with package.
-					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
+					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 						query: "SELECT Description FROM %Dictionary.CompiledClass WHERE Name = ?",
 						parameters: [strText]
 					});
@@ -1168,7 +1190,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							contents: {
 								kind: MarkupKind.Markdown,
 								value: markupValue(
-									documaticLink(server,strText),
+									documaticLink(server, strText),
 									documaticHtmlToMarkdown(respdata.data.result.content[0].Description)
 								)
 							},
@@ -1177,16 +1199,16 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					}
 				} else {
 					// This is a method name with an optional class name prepended
-					let [cls, method] = strText.includes(":") ? strText.split(":") : ["",strText];
+					let [cls, method] = strText.includes(":") ? strText.split(":") : ["", strText];
 					if (cls == "") cls = thisClass;
-					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
+					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 						// Use the same query as above even though we don't
 						// need Stub so we don't create another cached query
 						query: "SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?",
-						parameters: [cls,method]
+						parameters: [cls, method]
 					});
 					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
-						let header = `(**${cls}**) <u>**${method}**</u>${beautifyFormalSpec(respdata.data.result.content[0].FormalSpec,true)}`;
+						let header = `(**${cls}**) <u>**${method}**</u>${beautifyFormalSpec(respdata.data.result.content[0].FormalSpec, true)}`;
 						if (respdata.data.result.content[0].ReturnType != "") {
 							let type: string = respdata.data.result.content[0].ReturnType;
 							type = type.includes(" ") ? type.charAt(0).toUpperCase() + type.slice(1) : type;
@@ -1195,7 +1217,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						return {
 							contents: {
 								kind: MarkupKind.Markdown,
-								value: markupValue(header,documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
+								value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description))
 							},
 							range: strRange
 						};
