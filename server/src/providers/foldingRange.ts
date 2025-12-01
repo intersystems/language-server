@@ -11,6 +11,22 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 	if (doc === undefined) {return null;}
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) {return null;}
+	/**
+	 * Returns `true` if the given line is the opening of a class member range.
+	 * This is needed for the rare case where the open curly brace is not the
+	 * last semantic token on the line even though it is the last character.
+	 * The only known instance of this happening is for `Language = python`
+	 * methods on Windows, which is caused by an underlying parser bug.
+	 */
+	const isClassMemberOpen = (line: number): boolean => {
+		if (doc.languageId != "objectscript-class") return false;
+		const lineText = doc.getText(Range.create(line,0,line+1,0));
+		if (lineText.trimEnd().endsWith("{")) {
+			const openCurlyIdx = lineText.lastIndexOf("{");
+			return (parsed[line] ?? []).some((t) => openCurlyIdx == t.p && t.l == ld.cls_langindex && t.s == ld.cls_delim_attrindex);
+		}
+		return false;
+	};
 	const result: FoldingRange[] = [];
 
 	const openranges: FoldingRange[] = [];
@@ -95,11 +111,13 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 				}
 			}
 			if (
-				parsed[line][parsed[line].length-1].l == ld.cls_langindex && parsed[line][parsed[line].length-1].s == ld.cls_delim_attrindex &&
-				doc.getText(Range.create(
-					line,parsed[line][parsed[line].length-1].p,
-					line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c
-				)) == "{"
+				(
+					parsed[line][parsed[line].length-1].l == ld.cls_langindex && parsed[line][parsed[line].length-1].s == ld.cls_delim_attrindex &&
+					doc.getText(Range.create(
+						line,parsed[line][parsed[line].length-1].p,
+						line,parsed[line][parsed[line].length-1].p+parsed[line][parsed[line].length-1].c
+					)) == "{"
+				) || isClassMemberOpen(line)
 			) {
 				// This line ends with a UDL open curly
 
