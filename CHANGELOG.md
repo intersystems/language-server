@@ -3,6 +3,7 @@
 ## [2.8.1] - 2025-XX-XX
 - Fix issue [#381](https://github.com/intersystems/language-server/issues/381): Fix extension crashes due to request forwarding
 - Fix issue [#386](https://github.com/intersystems/language-server/issues/386): No folding range added for methods with `Language = python` on Windows
+- Fix issue [#387](https://github.com/intersystems/language-server/issues/387): Add warning Diagnostic when value of the DEFAULTGLOBAL Parameter in a persistent class is not a valid global name prefixed by a caret
 
 ## [2.8.0] - 2025-07-28
 - Fix issue [#378](https://github.com/intersystems/language-server/issues/378): Remove `intersystems.language-server.completion.showInternal` setting

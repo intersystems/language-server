@@ -26,6 +26,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Classes, Methods, Parameters and Properties that are [Deprecated](https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=ROBJ_method_deprecated).
   - `$ZUTIL` functions that [are deprecated or have been superseded](https://docs.intersystems.com/latest/csp/docbook/DocBook.UI.Page.cls?KEY=RCOS_replacements).
   - [SQL reserved words](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=RSQL_reservedwords) used in class and property names of persistent classes.
+  - The value of the DEFAULTGLOBAL Parameter in a persistent class is not a valid global name prefixed by a caret.
 - [Folding Ranges](https://code.visualstudio.com/docs/editor/codebasics#_folding) for the following:
   - ObjectScript code blocks (If/ElseIf/Else, Try/Catch, For, While, etc.)
   - Class members

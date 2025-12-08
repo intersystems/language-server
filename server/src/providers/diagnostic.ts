@@ -337,10 +337,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				else if (
 					parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex &&
 					j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex &&
-					doc.getText(Range.create(
-						Position.create(i,parsed[i][j-1].p),
-						Position.create(i,parsed[i][j-1].p+parsed[i][j-1].c)
-					)).toLowerCase() === "class"
+					doc.getText(Range.create(i,parsed[i][j-1].p,i,parsed[i][j-1].p+parsed[i][j-1].c)).toLowerCase() === "class"
 				) {
 					// This is the class name in the class definition line
 
@@ -404,17 +401,50 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-					doc.getText(Range.create(Position.create(i,0),Position.create(i,9))).toLowerCase() === "parameter" &&
+					doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase() === "parameter" &&
 					settings.diagnostics.parameters
 				) {
 					// This line is a UDL Parameter definition
+
+					const endsWithSemi = 
+						parsed[i][parsed[i].length-1].l == ld.cls_langindex &&
+						parsed[i][parsed[i].length-1].s == ld.cls_delim_attrindex &&
+						doc.getText(Range.create(i,parsed[i][parsed[i].length-1].p,i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)) == ";";
+					if (isPersistent && parsed[i].length > 3 && doc.getText(Range.create(i,parsed[i][1].p,i,parsed[i][1].p+parsed[i][1].c)) == "DEFAULTGLOBAL") {
+						// Check if the provided value is a valid global name, with leading caret
+						let inKeywords = false;
+						for (let tkn = 2; tkn < parsed[i].length; tkn++) {
+							if (parsed[i][tkn].l == ld.cls_langindex && parsed[i][tkn].s == ld.cls_delim_attrindex) {
+								const delim = doc.getText(Range.create(i,parsed[i][tkn].p,i,parsed[i][tkn].p+parsed[i][tkn].c));
+								if (inKeywords && delim == "]") {
+									inKeywords = false;
+								} else if (!inKeywords && delim == "[") {
+									inKeywords = true;
+								} else if (!inKeywords && delim == "=" && tkn < (parsed[i].length - 1)) {
+									const valueEndTkn = parsed[i].length - (endsWithSemi ? 2 : 1);
+									const valueRange = Range.create(i,parsed[i][tkn+1].p,i,parsed[i][valueEndTkn].p+parsed[i][valueEndTkn].c);
+									const valueText = doc.getText(valueRange);
+									if (!valueText.startsWith("{") && !/^"\^[%\x41-\xFF]([\x41-\xFF\d.]*[\x41-\xFF\d])?"$/.test(valueText)) {
+										// The value is neither a valid global name nor a compile-time expression
+										diagnostics.push({
+											severity: DiagnosticSeverity.Warning,
+											range: valueRange,
+											message: "DEFAULTGLOBAL Parameter value should be a valid global name prefixed by a caret",
+											source: 'InterSystems Language Server'
+										});
+									}
+									break;
+								}
+							}
+						}
+					}
 					if (
 						parsed[i].length > 3 &&
 						parsed[i][2].l == ld.cls_langindex && parsed[i][2].s === ld.cls_keyword_attrindex &&
-						doc.getText(Range.create(Position.create(i,parsed[i][2].p),Position.create(i,parsed[i][2].p+parsed[i][2].c))).toLowerCase() === "as"
+						doc.getText(Range.create(i,parsed[i][2].p,i,parsed[i][2].p+parsed[i][2].c)).toLowerCase() === "as"
 					) {
 						// This Parameter has a type
-						const tokenrange = Range.create(Position.create(i,parsed[i][3].p),Position.create(i,parsed[i][3].p+parsed[i][3].c));
+						const tokenrange = Range.create(i,parsed[i][3].p,i,parsed[i][3].p+parsed[i][3].c);
 						const tokentext = doc.getText(tokenrange).toUpperCase();
 						const thistypedoc = parameterTypes.find((typedoc) => typedoc.name === tokentext);
 						if (thistypedoc === undefined) {
@@ -426,39 +456,28 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								source: 'InterSystems Language Server'
 							});
 						}
-						else {
+						else if (parsed[i].length > 4) {
 							// The type is valid
 
 							// See if this Parameter has a value
-							if (parsed[i].length <= 4) {
-								continue;
-							}
-							var valuetkn = -1;
-							const delimtext = doc.getText(Range.create(Position.create(i,parsed[i][4].p),Position.create(i,parsed[i][4].p+parsed[i][4].c)));
+							let valuetkn: number;
+							const delimtext = doc.getText(Range.create(i,parsed[i][4].p,i,parsed[i][4].p+parsed[i][4].c));
 							if (delimtext === "[") {
 								// Loop through the line to find the closing brace
-
-								var closingtkn = -1;
+								let closingtkn: number;
 								for (let ptkn = 5; ptkn < parsed[i].length; ptkn++) {
 									if (
 										parsed[i][ptkn].l == ld.cls_langindex && parsed[i][ptkn].s === ld.cls_delim_attrindex &&
-										doc.getText(Range.create(
-											Position.create(i,parsed[i][ptkn].p),
-											Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c)
-										)) === "]"
+										doc.getText(Range.create(i,parsed[i][ptkn].p,i,parsed[i][ptkn].p+parsed[i][ptkn].c)) === "]"
 									) {
 										closingtkn = ptkn;
 										break;
 									}
 								}
-
 								// Check if the token following the closing brace is =
 								if (
-									closingtkn !== -1 && parsed[i].length > closingtkn &&
-									doc.getText(Range.create(
-										Position.create(i,parsed[i][closingtkn+1].p),
-										Position.create(i,parsed[i][closingtkn+1].p+parsed[i][closingtkn+1].c)
-									)) === "="
+									closingtkn && parsed[i].length > closingtkn &&
+									doc.getText(Range.create(i,parsed[i][closingtkn+1].p,i,parsed[i][closingtkn+1].p+parsed[i][closingtkn+1].c)) === "="
 								) {
 									// There is a value following the =
 									valuetkn = closingtkn + 2;
@@ -472,9 +491,10 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								// Delimiter is a ; so there isn't a value to evaluate
 							}
 
-							if (valuetkn !== -1 && parsed[i].length > valuetkn+1) {
-								const valtext = doc.getText(Range.create(Position.create(i,parsed[i][valuetkn].p),Position.create(i,parsed[i][valuetkn].p+parsed[i][valuetkn].c)));
-								const valrange = Range.create(Position.create(i,parsed[i][valuetkn].p),Position.create(i,parsed[i][parsed[i].length-2].p+parsed[i][parsed[i].length-2].c));
+							if (valuetkn && parsed[i].length > valuetkn+1) {
+								const valueEndTkn = parsed[i].length - (endsWithSemi ? 2 : 1);
+								const valtext = doc.getText(Range.create(i,parsed[i][valuetkn].p,i,parsed[i][valuetkn].p+parsed[i][valuetkn].c));
+								const valrange = Range.create(i,parsed[i][valuetkn].p,i,parsed[i][valueEndTkn].p+parsed[i][valueEndTkn].c);
 								if (
 									(thistypedoc.name === "STRING" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_str_attrindex)) ||
 									(thistypedoc.name === "COSEXPRESSION" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_str_attrindex)) ||
@@ -541,7 +561,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-					doc.getText(Range.create(Position.create(i,0),Position.create(i,6))).toLowerCase() === "import"
+					doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase() === "import"
 				) {
 					// This is the UDL Import line
 
@@ -1033,9 +1053,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					j == 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-					isPersistent && parsed[i].length > 2 && (
-						doc.getText(Range.create(i,0,i,8)).toLowerCase() == "property" ||
-						doc.getText(Range.create(i,0,i,12)).toLowerCase() == "relationship"
+					isPersistent && parsed[i].length > 2 && ["property","relationship"].includes(
+						doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase()
 					)
 				) {
 					// This is the start of a UDL Property definition
