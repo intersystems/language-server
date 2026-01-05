@@ -191,10 +191,10 @@ export async function getLanguageServerSettings(uri: string): Promise<LanguageSe
  * @param symbolend The end of the selected token.
  */
 export function findFullRange(line: number, parsed: compressedline[], lineidx: number, symbolstart: number, symbolend: number): Range {
-	var rangestart: number = symbolstart;
-	var rangeend: number = symbolend;
+	let rangestart: number = symbolstart;
+	let rangeend: number = symbolend;
 	// Scan backwards on the line to see where the selection starts
-	var newidx = lineidx;
+	let newidx = lineidx;
 	while (true) {
 		newidx--;
 		if ((newidx == -1) || (parsed[line][newidx].l != parsed[line][lineidx].l) || (parsed[line][newidx].s != parsed[line][lineidx].s)) {
@@ -207,7 +207,7 @@ export function findFullRange(line: number, parsed: compressedline[], lineidx: n
 		rangestart = parsed[line][newidx].p;
 	}
 	// Scan forwards on the line to see where the selection ends
-	var newidx = lineidx;
+	newidx = lineidx;
 	while (true) {
 		newidx++;
 		if ((parsed[line][newidx] === undefined) || (parsed[line][newidx].l != parsed[line][lineidx].l) || (parsed[line][newidx].s != parsed[line][lineidx].s)) {
@@ -804,7 +804,7 @@ export async function getClassMemberContext(
 	doc: TextDocument, parsed: compressedline[], dot: number, line: number,
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext> {
-	var result: ClassMemberContext = {
+	let result: ClassMemberContext = {
 		baseclass: "",
 		context: ""
 	};
@@ -840,8 +840,8 @@ export async function getClassMemberContext(
 	else if (
 		dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_delim_attrindex &&
 		doc.getText(Range.create(
-			Position.create(line,parsed[line][dot-1].p),
-			Position.create(line,parsed[line][dot-1].p+parsed[line][dot-1].c)
+			line,parsed[line][dot-1].p,
+			line,parsed[line][dot-1].p+parsed[line][dot-1].c
 		)) === ")"
 	) {
 		// The token before the dot is a close parenthesis
@@ -918,7 +918,21 @@ export async function getClassMemberContext(
 		parsed[line][dot-1].s == ld.cos_localdec_attrindex ||
 		parsed[line][dot-1].s == ld.cos_localvar_attrindex ||
 		parsed[line][dot-1].s == ld.cos_otw_attrindex ||
-		parsed[line][dot-1].s == ld.cos_localundec_attrindex
+		parsed[line][dot-1].s == ld.cos_localundec_attrindex || (
+			// This macro token looks like a variable reference, so attempt to compute intellisense for it.
+			// For example, $$$TRACE(var.|) or $$$TRACE(a,var.|) but not $$$TRACE(var.a.|)
+			doc.languageId != "objectscript-macros" &&
+			parsed[line][dot-1].s == ld.cos_macro_attrindex &&
+			/^[%\p{L}][\p{L}\d]{0,30}$/u.test(doc.getText(Range.create(
+				line,parsed[line][dot-1].p,
+				line,parsed[line][dot-1].p+parsed[line][dot-1].c
+			))) && (
+				dot-1 == 0 || parsed[line][dot-2].s != ld.cos_macro_attrindex || doc.getText(Range.create(
+					line,parsed[line][dot-2].p,
+					line,parsed[line][dot-2].p+parsed[line][dot-2].c
+				)) == ","
+			)
+		)
 	)) {
 		// The token before the dot is a parameter, local variable, public variable or warning variable
 		const varClass = await determineVariableClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
@@ -1368,7 +1382,7 @@ export function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string
  * @param doc The TextDocument that the parameter is in.
  * @param parsed The tokenized representation of doc.
  * @param line The line that the parameter is in.
- * @param tkn The token of the parameter in the line.
+ * @param varText The name of the parameter.
  * @param server The server that doc is associated with.
  * 
  * The following optional parameters are only provided when called via `onDiagnostics()`:
@@ -1376,14 +1390,13 @@ export function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
 async function determineParameterClass(
-	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
+	doc: TextDocument, parsed: compressedline[], line: number, varText: string,
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext | undefined> {
-	var result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined = undefined;
 	if (doc.languageId === "objectscript-class") {
 		// Parameters can only have a type if they're in a UDL method
 
-		const thisparam = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
 		// Scan to the method definition
 		for (let j = line; j >= 0; j--) {
 			if (parsed[j].length === 0) {
@@ -1394,15 +1407,15 @@ async function determineParameterClass(
 				if (
 					parsed[j][parsed[j].length-1].l == ld.cls_langindex && parsed[j][parsed[j].length-1].s == ld.cls_delim_attrindex &&
 					doc.getText(Range.create(
-						Position.create(j,parsed[j][parsed[j].length-1].p),
-						Position.create(j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c)
+						j,parsed[j][parsed[j].length-1].p,
+						j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c
 					)) === "("
 				) {
 					// This is a multi-line method definition
 					for (let mline = j+1; mline < parsed.length; mline++) {
 						// Loop through the line and look for this parameter
 
-						const paramcon = await findMethodParameterClass(doc,parsed,mline,server,thisparam,allfiles,inheritedpackages);
+						const paramcon = await findMethodParameterClass(doc,parsed,mline,server,varText,allfiles,inheritedpackages);
 						if (paramcon !== undefined) {
 							// We found the parameter
 							result = paramcon;
@@ -1411,8 +1424,8 @@ async function determineParameterClass(
 						else if (
 							parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
 							doc.getText(Range.create(
-								Position.create(mline,parsed[mline][parsed[mline].length-1].p),
-								Position.create(mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c)
+								mline,parsed[mline][parsed[mline].length-1].p,
+								mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c
 							)) !== ","
 						) {
 							// We've reached the end of the method definition
@@ -1422,7 +1435,7 @@ async function determineParameterClass(
 				}
 				else {
 					// This is a single-line method definition
-					const paramcon = await findMethodParameterClass(doc,parsed,j,server,thisparam);
+					const paramcon = await findMethodParameterClass(doc,parsed,j,server,varText);
 					if (paramcon !== undefined) {
 						result = paramcon;
 					}
@@ -1441,7 +1454,7 @@ async function determineParameterClass(
  * @param doc The TextDocument that the declared local variable is in.
  * @param parsed The tokenized representation of doc.
  * @param line The line that the declared local variable is in.
- * @param tkn The token of the declared local variable in the line.
+ * @param varText The name of the variable.
  * @param server The server that doc is associated with.
  * 
  * The following optional parameters are only provided when called via `onDiagnostics()`:
@@ -1449,79 +1462,78 @@ async function determineParameterClass(
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
 async function determineDeclaredLocalVarClass(
-	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
+	doc: TextDocument, parsed: compressedline[], line: number, varText: string,
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext | undefined> {
-	var result: ClassMemberContext | undefined = undefined;
-	const thisvar = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
+	let result: ClassMemberContext | undefined = undefined;
 
-	if (thisvar === "%request") {
+	if (varText === "%request") {
 		result = {
 			baseclass: "%CSP.Request",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%response") {
+	else if (varText === "%response") {
 		result = {
 			baseclass: "%CSP.Response",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%session") {
+	else if (varText === "%session") {
 		result = {
 			baseclass: "%CSP.Session",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%code") {
+	else if (varText === "%code") {
 		result = {
 			baseclass: "%Stream.MethodGenerator",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%class") {
+	else if (varText === "%class") {
 		result = {
 			baseclass: "%Dictionary.ClassDefinition",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%method") {
+	else if (varText === "%method") {
 		result = {
 			baseclass: "%Dictionary.MethodDefinition",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%compiledclass") {
+	else if (varText === "%compiledclass") {
 		result = {
 			baseclass: "%Dictionary.CompiledClass",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%compiledmethod" || thisvar === "%objcompiledmethod") {
+	else if (varText === "%compiledmethod" || varText === "%objcompiledmethod") {
 		result = {
 			baseclass: "%Dictionary.CompiledMethod",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%trigger") {
+	else if (varText === "%trigger") {
 		result = {
 			baseclass: "%Dictionary.TriggerDefinition",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%compiledtrigger") {
+	else if (varText === "%compiledtrigger") {
 		result = {
 			baseclass: "%Dictionary.CompiledTrigger",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%SourceControl") {
+	else if (varText === "%SourceControl") {
 		result = {
 			baseclass: "%Studio.Extension.Base",
 			context: "instance"
 		};
 	}
-	else if (thisvar === "%sqlcontext") {
+	else if (varText === "%sqlcontext") {
 		result = {
 			baseclass: "%Library.ProcedureContext",
 			context: "instance"
@@ -1554,10 +1566,10 @@ async function determineDeclaredLocalVarClass(
 			}
 			else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
 				// This is a preprocessor command
-				const command = doc.getText(Range.create(Position.create(j,parsed[j][0].p),Position.create(j,parsed[j][1].p+parsed[j][1].c)));
+				const command = doc.getText(Range.create(j,parsed[j][0].p,j,parsed[j][1].p+parsed[j][1].c));
 				if (command.toLowerCase() === "#dim") {
 					// This is a #Dim
-					const dimresult = parseDimLine(doc,parsed,j,thisvar);
+					const dimresult = parseDimLine(doc,parsed,j,varText);
 					founddim = dimresult.founddim;
 					if (founddim) {
 						result = {
@@ -1933,6 +1945,7 @@ async function parseSetCommand(
  * @param parsed The tokenized representation of doc.
  * @param line The line that the undeclared local variable is in.
  * @param tkn The token of the undeclared local variable in the line.
+ * @param varText The name of the variable.
  * @param server The server that doc is associated with.
  * 
  * The following optional parameters are only provided when called via `onDiagnostics()`:
@@ -1940,11 +1953,10 @@ async function parseSetCommand(
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
 async function determineUndeclaredLocalVarClass(
-	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
+	doc: TextDocument, parsed: compressedline[], line: number, tkn: number, varText: string,
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext | undefined> {
 	let result: ClassMemberContext | undefined = undefined;
-	const thisvar = doc.getText(findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c));
 
 	// Scan to the top of the method to find where the variable was Set or passed by reference
 	let firstLabel = true;
@@ -1977,7 +1989,7 @@ async function determineUndeclaredLocalVarClass(
 					["s","set"].includes(doc.getText(Range.create(j,parsed[j][k].p,j,parsed[j][k].p+parsed[j][k].c)).toLowerCase())
 				) {
 					// This is a Set command
-					const setCls = await parseSetCommand(doc,parsed,j,k,thisvar,server,Array.isArray(allfiles),line,tkn);
+					const setCls = await parseSetCommand(doc,parsed,j,k,varText,server,Array.isArray(allfiles),line,tkn);
 					if (setCls) {
 						result = {
 							baseclass: await normalizeClassname(doc,parsed,setCls,server,j,allfiles,undefined,inheritedpackages),
@@ -2002,7 +2014,7 @@ async function determineUndeclaredLocalVarClass(
 						doc.getText(Range.create(
 							next[0],parsed[next[0]][next[1]].p,
 							next[0],parsed[next[0]][next[1]].p+parsed[next[0]][next[1]].c
-						)) == thisvar
+						)) == varText
 					) {
 						// Find the start of the method
 						const [startLn, startTkn] = findOpenParen(doc,parsed,j,k);
@@ -2657,18 +2669,26 @@ export async function determineVariableClass(
 	doc: TextDocument, parsed: compressedline[], line: number, tkn: number,
 	server: ServerSpec, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<string> {
-	if (parsed[line][tkn].s == ld.cos_param_attrindex) {
+	const varText = doc.getText(parsed[line][tkn].s == ld.cos_macro_attrindex ?
+		// Can't use findFullRange() on a macro token because it will capture
+		// everything, including the trailing dot that triggered the completion.
+		// A macro token should only occur here for completion requests.
+		Range.create(line,parsed[line][tkn].p,line,parsed[line][tkn].p+parsed[line][tkn].c) :
+		findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c)
+	);
+	if ([ld.cos_param_attrindex,ld.cos_macro_attrindex].includes(parsed[line][tkn].s)) {
 		// Check if the parameter has a declared type in the formal spec
-		const paramcon = await determineParameterClass(doc,parsed,line,tkn,server,allfiles,inheritedpackages);
+		// A macro token might be a parameter, so need to check that too
+		const paramcon = await determineParameterClass(doc,parsed,line,varText,server,allfiles,inheritedpackages);
 		if (paramcon?.baseclass) return paramcon.baseclass;
 	}
 	if (parsed[line][tkn].s != ld.cos_localundec_attrindex && parsed[line][tkn].s != ld.cos_param_attrindex) {
 		// Check if the variable is #Dim'd or a known percent variable
-		const varContext = await determineDeclaredLocalVarClass(doc,parsed,line,tkn,server,allfiles,inheritedpackages);
+		const varContext = await determineDeclaredLocalVarClass(doc,parsed,line,varText,server,allfiles,inheritedpackages);
 		if (varContext?.baseclass) return varContext.baseclass;
 	}
 	// Fall back to inferring the type from a Set or pass by reference
-	const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,server,allfiles,inheritedpackages);
+	const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,varText,server,allfiles,inheritedpackages);
 	return localundeccon?.baseclass ?? "";
 }
 

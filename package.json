@@ -1794,10 +1794,10 @@
   },
   "devDependencies": {
     "@types/node": "^22.15.33",
-    "@vscode/vsce": "^3.6.0",
+    "@vscode/vsce": "^3.7.1",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
-    "ovsx": "^0.10.5",
+    "ovsx": "^0.10.7",
     "rimraf": "^6.0.1",
     "ts-loader": "^9.5.2",
     "typescript": "^5.5.4",

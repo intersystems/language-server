@@ -1,9 +1,15 @@
 # Changelog
 
-## [2.8.1] - 2025-XX-XX
+## [2.8.1] - 2026-01-05
+- Fix issue [#379](https://github.com/intersystems/language-server/issues/379): SQL syntax error when using "ms" as an alias
 - Fix issue [#381](https://github.com/intersystems/language-server/issues/381): Fix extension crashes due to request forwarding
+- Fix issue [#385](https://github.com/intersystems/language-server/issues/385): Incorrect SQL syntax error when using an extrinsic function with a dot
 - Fix issue [#386](https://github.com/intersystems/language-server/issues/386): No folding range added for methods with `Language = python` on Windows
 - Fix issue [#387](https://github.com/intersystems/language-server/issues/387): Add warning Diagnostic when value of the DEFAULTGLOBAL Parameter in a persistent class is not a valid global name prefixed by a caret
+- Fix issue [#388](https://github.com/intersystems/language-server/issues/388): Go to definition on a generated method should take you to the parent member
+- Fix issue [#389](https://github.com/intersystems/language-server/issues/389): Fix completion for variable properties inside macro argument lists
+- Parser changes:
+  - DP-447006: Fix SQL syntax coloring for ATAN2 ODBC method
 
 ## [2.8.0] - 2025-07-28
 - Fix issue [#378](https://github.com/intersystems/language-server/issues/378): Remove `intersystems.language-server.completion.showInternal` setting
