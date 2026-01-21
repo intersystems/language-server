@@ -2261,6 +2261,7 @@ export function beautifyFormalSpec(FormalSpec: string, markdown = false): string
 			result += c;
 		}
 	}
+	if (markdown && inParam) result += "*";
 	if (markdown && inCls) result += "**";
 	return `(${result})`;
 }

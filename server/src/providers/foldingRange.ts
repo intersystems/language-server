@@ -35,7 +35,7 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 	let inJSONXData: boolean = false;
 	let routinename = "";
 	for (let line = 0; line < parsed.length; line++) {
-		if (parsed[line].length === 0) {
+		if (!parsed[line]?.length) {
 			if (openranges.length > 0 && openranges[openranges.length-1].kind === FoldingRangeKind.Comment) {
 				// Comment block ended, so close the range and append it to the result array if the range is more than one line
 				if (openranges[openranges.length-1].startLine < openranges[openranges.length-1].endLine) {

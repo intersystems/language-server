@@ -1,5 +1,8 @@
 # Changelog
 
+## [2.8.2] - 2026-01-21
+- Fix issue [#392](https://github.com/intersystems/language-server/issues/392): Restore support for a wide array of Linux distros
+
 ## [2.8.1] - 2026-01-05
 - Fix issue [#379](https://github.com/intersystems/language-server/issues/379): SQL syntax error when using "ms" as an alias
 - Fix issue [#381](https://github.com/intersystems/language-server/issues/381): Fix extension crashes due to request forwarding

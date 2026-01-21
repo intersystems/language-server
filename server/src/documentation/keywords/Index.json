@@ -98,6 +98,11 @@
     "description": "Defines an alternate name for this index when referred to via SQL."
   },
   {
+    "name": "SurrogateId",
+    "type": "KW_TYPE_BOOLEAN",
+    "description": "A SurrogateId index is a nonpartitioned index on a single column, which behaves externally as if it is the class's id."
+  },
+  {
     "name": "Type",
     "type": "KW_TYPE_STRING",
     "constraint": [
