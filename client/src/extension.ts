@@ -86,7 +86,7 @@ type MakeRESTRequestParams = {
 
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
-	const objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript");
+	const objectScriptExt = extensions.getExtension("consistem-sistemas.vscode-objectscript");
 	objectScriptApi = objectScriptExt.isActive ? objectScriptExt.exports : await objectScriptExt.activate();
 
 	cookiesCache = new Cache(context, "cookies");
@@ -376,7 +376,7 @@ export async function activate(context: ExtensionContext) {
 		if (window.activeColorTheme.kind === ColorThemeKind.Light) {
 			if (workspace.name === undefined) {
 				window.showInformationMessage(
-					`For the best user experience, InterSystems recommends that you activate the default light theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+					`For the best user experience, InterSystems recommends that you activate the default light theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=consistem-sistemas.language-server). Activate now?`,
 					"Yes",
 					"Don't Ask Again"
 				).then((answer) => {
@@ -391,7 +391,7 @@ export async function activate(context: ExtensionContext) {
 			else {
 				// Only give the "Only This Workspace" option if a workspace is open
 				window.showInformationMessage(
-					`For the best user experience, InterSystems recommends that you activate the default light theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+					`For the best user experience, InterSystems recommends that you activate the default light theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=consistem-sistemas.language-server). Activate now?`,
 					"Globally",
 					"Only This Workspace",
 					"Don't Ask Again"
@@ -411,7 +411,7 @@ export async function activate(context: ExtensionContext) {
 		else if (window.activeColorTheme.kind === ColorThemeKind.Dark) {
 			if (workspace.name === undefined) {
 				window.showInformationMessage(
-					`For the best user experience, InterSystems recommends that you activate the default dark theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+					`For the best user experience, InterSystems recommends that you activate the default dark theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=consistem-sistemas.language-server). Activate now?`,
 					"Yes",
 					"Don't Ask Again"
 				).then((answer) => {
@@ -426,7 +426,7 @@ export async function activate(context: ExtensionContext) {
 			else {
 				// Only give the "Only This Workspace" option if a workspace is open
 				window.showInformationMessage(
-					`For the best user experience, InterSystems recommends that you activate the default dark theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=intersystems.language-server). Activate now?`,
+					`For the best user experience, InterSystems recommends that you activate the default dark theme included with the [InterSystems Language Server extension](https://marketplace.visualstudio.com/items?itemName=consistem-sistemas.language-server). Activate now?`,
 					"Globally",
 					"Only This Workspace",
 					"Don't Ask Again"

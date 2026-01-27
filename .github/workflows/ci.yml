@@ -54,9 +54,9 @@ jobs:
         with:
           node-version: 20
       - run: npm install
-      - name: Use correct .node binary file
-        run: cp -f ./server/lib/${{ matrix.platarch }}-isclexer.node ./server/lib/isclexer.node
       - name: Build package
+        env:
+          ISCLEXER_TARGET: ${{ matrix.platarch }}
         run: npx vsce package -o ${{ steps.set-version.outputs.name }}.vsix --target ${{ matrix.platarch }}
       - name: Upload package
         uses: actions/upload-artifact@v4

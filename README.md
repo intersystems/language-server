@@ -1,8 +1,24 @@
-# InterSystems Language Server
+<p align="center">
+  <img alt="Consistem" src="https://raw.githubusercontent.com/consistem/vscode-objectscript/master/images/logo-consistem-horizontal.png" width="280" />
+</p>
+
+# Consistem Language Server
+
+This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant language server for [InterSystems](http://www.intersystems.com/our-products/) ObjectScript.
+It is powered by **Node.js**, written primarily in **TypeScript**, and designed to integrate seamlessly with editors that support the [LSP standard](https://microsoft.github.io/language-server-protocol/).
+
+## Installation & usage
 
 > **Note:** The best way to install and use this extension is by installing the [InterSystems ObjectScript Extension Pack](https://marketplace.visualstudio.com/items?itemName=intersystems-community.objectscript-pack) and following the [documentation here](https://docs.intersystems.com/components/csp/docbook/DocBook.UI.Page.cls?KEY=GVSCO).
 
-This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant language server for [InterSystems](http://www.intersystems.com/our-products/) ObjectScript powered by Node.js and written primarily in TypeScript. It is maintained by InterSystems.
+## About this fork
+
+This project is a fork of the official [`intersystems/language-server`](https://github.com/intersystems/language-server) repository.
+
+Originally maintained by [InterSystems&reg;](http://www.intersystems.com), this fork is maintained by [Consistem&reg;](https://consistem.com.br/).
+
+It preserves all features of the upstream project and adds integrations, adjustments, and internal standards adopted by Consistem,
+with a focus on meeting the specific needs of our development ecosystem.
 
 ## Features
 
@@ -69,11 +85,11 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - Hover, code completion and signature help for JavaScript methods in ObjectScript classes and JavaScript embedded in CSP using `<script>` tags or embedded in ObjectScript using the `&js` directive.
 - [Code refactoring CodeActions](https://code.visualstudio.com/docs/editor/refactoring#_code-actions-quick-fixes-and-refactorings) for the following:
   - Wrapping a block of ObjectScript code in a [Try/Catch block](https://docs.intersystems.com/irislatest/csp/docbook/DocBook.UI.Page.cls?KEY=ATRYCATCHFAQ).
-  ![](images/TryCatch.gif)
+    ![](images/TryCatch.gif)
   - Extracting a block of ObjectScript code from an existing method to a new method.
-  ![](images/ExtractMethod.gif)
+    ![](images/ExtractMethod.gif)
 - [Type Hierarchy Provider](https://code.visualstudio.com/api/references/vscode-api#TypeHierarchyProvider) for ObjectScript classes to show subclasses and superclasses in a hierarchical tree view:
-![](images/TypeHierarchy.gif)
+  ![](images/TypeHierarchy.gif)
 
 ## Supported Platforms
 
@@ -88,7 +104,7 @@ This extension can be installed on the following platforms:
 
 ## Dependencies
 
-This extension requires that the [vscode-objectscript](https://marketplace.visualstudio.com/items?itemName=intersystems-community.vscode-objectscript) extension be downloaded and enabled.
+This extension depends on the [vscode-objectscript](https://marketplace.visualstudio.com/items?itemName=consistem-sistemas.vscode-objectscript) extension be downloaded and enabled.
 
 ## InterSystems Product Compatibility
 
@@ -96,7 +112,7 @@ All InterSystems products that include the Atelier APIs (Caché/Ensemble from 20
 
 ## Setup Notes
 
-If the configured user for connection to a server does NOT have the `%All` Role, execute the following query on the server to enable all of this extension's features. This is not necessary when connecting to InterSystems IRIS version 2021.1.3+, 2022.1.2+, or 2022.2+. 
+If the configured user for connection to a server does NOT have the `%All` Role, execute the following query on the server to enable all of this extension's features. This is not necessary when connecting to InterSystems IRIS version 2021.1.3+, 2022.1.2+, or 2022.2+.
 
 ```SQL
 GRANT SELECT ON SCHEMA %Dictionary TO %Developer
@@ -160,25 +176,25 @@ To create your own custom color theme that provides coloring for InterSystems se
 
 This extension provides the following high-level semantic tokens for coloring similar features across all supported languages:
 
-| ID | Description |
-| -- | ----------- |
-| `"ISC_ClassMember"` | InterSystems-wide class member token. |
-| `"ISC_ClassName"` | InterSystems-wide class and routine name token. |
-| `"ISC_Command"` | InterSystems-wide command token. |
-| `"ISC_Comment"` | InterSystems-wide comment token. |
-| `"ISC_Delimiter"` | InterSystems-wide delimiter token. |
-| `"ISC_DocComment"` | InterSystems-wide documentation comment token. |
-| `"ISC_Error"` | InterSystems-wide error token. |
-| `"ISC_Keyword"` | InterSystems-wide keyword token. |
-| `"ISC_LocalVariable"` | InterSystems-wide local variable token. |
-| `"ISC_LocalVariableUnset"` | InterSystems-wide unset local variable token. |
-| `"ISC_MarkupText"` | InterSystems-wide markup text token. |
-| `"ISC_Neutral"` | InterSystems-wide neutral token. |
-| `"ISC_NumericLiteral"` | InterSystems-wide numeric literal token. |
-| `"ISC_Operator"` | InterSystems-wide operator token. |
-| `"ISC_Parameter"` | InterSystems-wide parameter token. |
-| `"ISC_PublicVariable"` | InterSystems-wide public variable and global token. |
-| `"ISC_SQLFunction"` | InterSystems-wide SQL function token. |
-| `"ISC_SQLKeyword"` | InterSystems-wide SQL keyword and datatype token. |
-| `"ISC_StringLiteral"` | InterSystems-wide string literal token. |
-| `"ISC_System"` | InterSystems-wide system function and variable token. |
+| ID                         | Description                                           |
+| -------------------------- | ----------------------------------------------------- |
+| `"ISC_ClassMember"`        | InterSystems-wide class member token.                 |
+| `"ISC_ClassName"`          | InterSystems-wide class and routine name token.       |
+| `"ISC_Command"`            | InterSystems-wide command token.                      |
+| `"ISC_Comment"`            | InterSystems-wide comment token.                      |
+| `"ISC_Delimiter"`          | InterSystems-wide delimiter token.                    |
+| `"ISC_DocComment"`         | InterSystems-wide documentation comment token.        |
+| `"ISC_Error"`              | InterSystems-wide error token.                        |
+| `"ISC_Keyword"`            | InterSystems-wide keyword token.                      |
+| `"ISC_LocalVariable"`      | InterSystems-wide local variable token.               |
+| `"ISC_LocalVariableUnset"` | InterSystems-wide unset local variable token.         |
+| `"ISC_MarkupText"`         | InterSystems-wide markup text token.                  |
+| `"ISC_Neutral"`            | InterSystems-wide neutral token.                      |
+| `"ISC_NumericLiteral"`     | InterSystems-wide numeric literal token.              |
+| `"ISC_Operator"`           | InterSystems-wide operator token.                     |
+| `"ISC_Parameter"`          | InterSystems-wide parameter token.                    |
+| `"ISC_PublicVariable"`     | InterSystems-wide public variable and global token.   |
+| `"ISC_SQLFunction"`        | InterSystems-wide SQL function token.                 |
+| `"ISC_SQLKeyword"`         | InterSystems-wide SQL keyword and datatype token.     |
+| `"ISC_StringLiteral"`      | InterSystems-wide string literal token.               |
+| `"ISC_System"`             | InterSystems-wide system function and variable token. |

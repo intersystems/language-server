@@ -1,17 +1,17 @@
 {
   "name": "language-server",
-  "displayName": "InterSystems Language Server",
-  "description": "A language server for InterSystems ObjectScript.",
+  "displayName": "Consistem Language Server",
+  "description": "A language server for InterSystems ObjectScript, based on the official project and maintained by Consistem.",
   "author": "InterSystems Corporation",
   "license": "SEE LICENSE IN LICENSE.txt",
   "version": "2.8.3-SNAPSHOT",
-  "publisher": "intersystems",
+  "publisher": "consistem-sistemas",
   "repository": {
     "type": "github",
-    "url": "https://github.com/intersystems/language-server"
+    "url": "https://github.com/consistem/language-server"
   },
   "bugs": {
-    "url": "https://github.com/intersystems/language-server/issues"
+    "url": "https://github.com/consistem/language-server/issues"
   },
   "homepage": "https://docs.intersystems.com/components/csp/docbook/DocBook.UI.Page.cls?KEY=GVSCO",
   "icon": "images/logo.png",
@@ -56,7 +56,7 @@
       {
         "command": "intersystems.language-server.overrideClassMembers",
         "title": "Override Class Members...",
-        "category": "InterSystems Language Server"
+        "category": "Consistem Language Server"
       }
     ],
     "menus": {
@@ -76,7 +76,7 @@
     },
     "configuration": {
       "type": "object",
-      "title": "InterSystems Language Server",
+      "title": "Consistem Language Server",
       "properties": {
         "intersystems.language-server.trace.server": {
           "scope": "window",
@@ -1785,8 +1785,12 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run webpack",
-    "webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
-    "webpack:dev": "npm run clean && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
+    "select-isclexer": "node ./scripts/select-isclexer.js",
+    "package:win32-x64": "node ./scripts/package-vsce.js win32-x64",
+    "package:win32-arm64": "node ./scripts/package-vsce.js win32-arm64",
+    "package:current": "node ./scripts/package-vsce.js",
+    "webpack": "npm run clean && npm run select-isclexer && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
+    "webpack:dev": "npm run clean && npm run select-isclexer && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
     "compile": "tsc -b",
     "watch": "tsc -b -w",
     "clean": "rimraf client/out && rimraf server/out",
@@ -1795,6 +1799,7 @@
   "devDependencies": {
     "@types/node": "^22.15.33",
     "@vscode/vsce": "^3.7.1",
+    "cross-env": "^10.1.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
     "ovsx": "^0.10.7",
@@ -1805,6 +1810,6 @@
     "webpack-cli": "^6.0.1"
   },
   "extensionDependencies": [
-    "intersystems-community.vscode-objectscript"
+    "consistem-sistemas.vscode-objectscript"
   ]
 }
