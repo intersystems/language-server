@@ -26,3 +26,7 @@ This file applies to the **entire repository**. More specific instructions in su
 - `server/lib/isclexer.node` is gitignored and must exist locally for runs that use the native lexer.
   - Preferred: run `npm run select-isclexer` from repo root (auto-selects for the current OS/arch).
   - Cross-build: set `ISCLEXER_TARGET=<platform>-<arch>` (e.g. `win32-x64`) before running `npm run select-isclexer` / `npm run webpack`.
+
+## Workflow-Specific Guidance
+
+- For CI/CD workflow rules and upstream sync governance, follow `.github/workflows/AGENTS.md`.
