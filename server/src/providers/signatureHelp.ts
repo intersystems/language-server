@@ -7,17 +7,17 @@ import * as ld from '../utils/languageDefinitions';
 /**
  * Cache of the macro context info required to do a macro expansion when the selected parameter changes.
  */
-var signatureHelpMacroCache: SignatureHelpMacroContext;
+let signatureHelpMacroCache: SignatureHelpMacroContext;
 
 /**
  * Cache of the documentation content sent for the last triggered SignatureHelp.
  */
-var signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefined;
- 
+let signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefined;
+
 /**
  * The start position of the active SignatureHelp.
  */
-var signatureHelpStartPosition: Position | undefined = undefined;
+let signatureHelpStartPosition: Position | undefined = undefined;
 
 /** Placeholder for the Markdown emphasis characters before an argument. */
 const emphasizePrefix: string = "%%%%%";
@@ -32,16 +32,16 @@ const emphasizeSuffix: string = "@@@@@";
  * @param arg The one-indexed number of the argument to emphasize.
  */
 function emphasizeArgument(arglist: string, arg: number): string {
-	var numargs: number = arglist.split(" ").length;
+	const numargs: number = arglist.split(" ").length;
 	if (arg > numargs) {
 		// The given argument doesn't exist in the list
-		return arglist.replace(/\s+/g,"");
+		return arglist.replace(/\s+/g, "");
 	}
 
-	var start: number = -1; // inclusive
-	var end: number = -1; // exclusive
-	var spacesfound: number = 0;
-	var lastspace: number = 0;
+	let start: number = -1; // inclusive
+	let end: number = -1; // exclusive
+	let spacesfound: number = 0;
+	let lastspace: number = 0;
 	if (arg === numargs) {
 		// The last argument always ends at the second-to-last position
 		end = arglist.length - 1;
@@ -57,41 +57,41 @@ function emphasizeArgument(arglist: string, arg: number): string {
 	}
 	if (start !== -1 && end !== -1) {
 		// Do the replacement
-		return (arglist.slice(0,start) + emphasizePrefix + arglist.slice(start,end) + emphasizeSuffix + arglist.slice(end)).replace(/\s+/g,"");
+		return (arglist.slice(0, start) + emphasizePrefix + arglist.slice(start, end) + emphasizeSuffix + arglist.slice(end)).replace(/\s+/g, "");
 	}
 	else {
 		// Find the unknown positions
-		var result = arglist;
-		while (arglist.indexOf(" ",lastspace+1) !== -1) {
-			const thisspace = arglist.indexOf(" ",lastspace);
+		let result = arglist;
+		while (arglist.indexOf(" ", lastspace + 1) !== -1) {
+			const thisspace = arglist.indexOf(" ", lastspace);
 			spacesfound++;
 			if (arg === spacesfound + 1) {
 				// This is the space before the argument
 				start = thisspace + 1;
 				if (end === -1) {
 					// Look for the next space
-					end = arglist.indexOf(" ",start) - 1;
+					end = arglist.indexOf(" ", start) - 1;
 				}
-				result = arglist.slice(0,start) + emphasizePrefix + arglist.slice(start,end) + emphasizeSuffix + arglist.slice(end);
+				result = arglist.slice(0, start) + emphasizePrefix + arglist.slice(start, end) + emphasizeSuffix + arglist.slice(end);
 				break;
 			}
 			lastspace = thisspace;
 		}
-		return result.replace(/\s+/g,"");
+		return result.replace(/\s+/g, "");
 	}
 };
 
 /** Use HTML to display `exp` as a code block with the empasized argument rendered bold, italic and underlined. */
 function markdownifyExpansion(exp: string[]): string {
 	return "<pre>\n" + exp.map(e => e.trimEnd()).join("\n")
-		.replace(new RegExp(emphasizePrefix,"g"),"<b><i><u>")
-		.replace(new RegExp(emphasizeSuffix,"g"),"</u></i></b>") + "\n</pre>";
+		.replace(new RegExp(emphasizePrefix, "g"), "<b><i><u>")
+		.replace(new RegExp(emphasizeSuffix, "g"), "</u></i></b>") + "\n</pre>";
 }
 
 /** Returns the [start,end] tuples for all parameters in `formalSpec` */
 function formalSpecToParamsArr(formalSpec: string): ParameterInformation[] {
 	const result: ParameterInformation[] = [];
-	if (formalSpec.replace(/\s+/g,"") == "()") return result; // No parameters
+	if (formalSpec.replace(/\s+/g, "") == "()") return result; // No parameters
 	let currentParamStart = 1, openParenCount = 0, openBraceCount = 0, inQuote = false;
 	Array.from(formalSpec).forEach((char: string, idx: number) => {
 		switch (char) {
@@ -112,33 +112,33 @@ function formalSpecToParamsArr(formalSpec: string): ParameterInformation[] {
 				break;
 			case ",":
 				if (!inQuote && !openBraceCount && openParenCount == 1) {
-					result.push(ParameterInformation.create([currentParamStart,idx]));
+					result.push(ParameterInformation.create([currentParamStart, idx]));
 					currentParamStart = idx + 1;
 				}
 		}
 	});
-	result.push(ParameterInformation.create([currentParamStart,formalSpec.length - 1]));
+	result.push(ParameterInformation.create([currentParamStart, formalSpec.length - 1]));
 	return result;
 }
 
 export async function onSignatureHelp(params: SignatureHelpParams): Promise<SignatureHelp | null> {
-	if (params.context === undefined) {return null;}
+	if (params.context === undefined) { return null; }
 	const doc = documents.get(params.textDocument.uri);
-	if (doc === undefined) {return null;}
+	if (doc === undefined) { return null; }
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) {return null;}
+	if (parsed === undefined) { return null; }
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
 	if (params.context.triggerKind == SignatureHelpTriggerKind.Invoked) {
 		// We always base our return value on the triggerCharacter
-		params.context.triggerCharacter = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
+		params.context.triggerCharacter = doc.getText(Range.create(Position.create(params.position.line, params.position.character - 1), params.position));
 	}
 
 	let thistoken: number = -1;
 	for (let i = 0; i < parsed[params.position.line].length; i++) {
 		const symbolstart: number = parsed[params.position.line][i].p;
-		const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
+		const symbolend: number = parsed[params.position.line][i].p + parsed[params.position.line][i].c;
 		thistoken = i;
 		if (params.position.character >= symbolstart && params.position.character <= symbolend) {
 			// We found the right symbol in the line
@@ -152,7 +152,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 		// Only compute signature help in ObjectScript
 		(triggerlang != ld.cos_langindex) ||
 		// Don't compute signature help inside of a string literal
-		((doc.getText(Range.create(Position.create(params.position.line,0),params.position)).split("\"").length - 1) % 2 == 1)
+		((doc.getText(Range.create(Position.create(params.position.line, 0), params.position)).split("\"").length - 1) % 2 == 1)
 	) {
 		if (params.context.activeSignatureHelp) {
 			params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
@@ -164,7 +164,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 
 	if (params.context.isRetrigger && (params.context.triggerCharacter !== "(")) {
 		if (params.context.activeSignatureHelp !== undefined && signatureHelpStartPosition !== undefined) {
-			const prevchar = doc.getText(Range.create(Position.create(params.position.line,params.position.character-1),params.position));
+			const prevchar = doc.getText(Range.create(Position.create(params.position.line, params.position.character - 1), params.position));
 			if (prevchar === ")") {
 				// The user closed the signature
 				signatureHelpDocumentationCache = undefined;
@@ -173,16 +173,16 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			}
 
 			// Determine the active parameter
-			params.context.activeSignatureHelp.activeParameter = determineActiveParam(doc.getText(Range.create(signatureHelpStartPosition,params.position)));
+			params.context.activeSignatureHelp.activeParameter = determineActiveParam(doc.getText(Range.create(signatureHelpStartPosition, params.position)));
 
 			if (signatureHelpDocumentationCache !== undefined) {
 				if (signatureHelpDocumentationCache.type === "macro" && params.context.activeSignatureHelp.activeParameter !== null) {
 					// This is a macro with active parameter
 
 					// Get the macro expansion with the next parameter emphasized
-					var expinputdata = {...signatureHelpMacroCache};
-					expinputdata.arguments = emphasizeArgument(expinputdata.arguments,params.context.activeSignatureHelp.activeParameter+1);
-					const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expinputdata)
+					const expinputdata = { ...signatureHelpMacroCache };
+					expinputdata.arguments = emphasizeArgument(expinputdata.arguments, params.context.activeSignatureHelp.activeParameter + 1);
+					const exprespdata = await makeRESTRequest("POST", 2, "/action/getmacroexpansion", server, expinputdata)
 					if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
 						signatureHelpDocumentationCache.doc = {
 							kind: MarkupKind.Markdown,
@@ -206,20 +206,20 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 
 	if (
 		params.context.triggerCharacter == "(" && triggerlang === ld.cos_langindex &&
-		![ld.cos_comment_attrindex,ld.cos_dcom_attrindex,ld.cos_str_attrindex].includes(triggerattr) &&
+		![ld.cos_comment_attrindex, ld.cos_dcom_attrindex, ld.cos_str_attrindex].includes(triggerattr) &&
 		thistoken > 0
 	) {
 		// This is potentially the start of a signature
 
-		var newsignature: SignatureHelp | null = null;
-		if (parsed[params.position.line][thistoken-1].l == ld.cos_langindex && parsed[params.position.line][thistoken-1].s == ld.cos_macro_attrindex) {
+		let newsignature: SignatureHelp | null = null;
+		if (parsed[params.position.line][thistoken - 1].l == ld.cos_langindex && parsed[params.position.line][thistoken - 1].s == ld.cos_macro_attrindex) {
 			// This is a macro
 
 			// Get the details of this class
-			const maccon = getMacroContext(doc,parsed,params.position.line);
+			const maccon = getMacroContext(doc, parsed, params.position.line);
 
 			// Get the full range of the macro
-			const macrorange = findFullRange(params.position.line,parsed,thistoken-1,parsed[params.position.line][thistoken-1].p,parsed[params.position.line][thistoken-1].p+parsed[params.position.line][thistoken-1].c);
+			const macrorange = findFullRange(params.position.line, parsed, thistoken - 1, parsed[params.position.line][thistoken - 1].p, parsed[params.position.line][thistoken - 1].p + parsed[params.position.line][thistoken - 1].c);
 			const macroname = doc.getText(macrorange).slice(3);
 
 			// Get the macro signature from the server
@@ -232,10 +232,10 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				imports: maccon.imports,
 				mode: maccon.mode
 			};
-			const respdata = await makeRESTRequest("POST",2,"/action/getmacrosignature",server,inputdata);
+			const respdata = await makeRESTRequest("POST", 2, "/action/getmacrosignature", server, inputdata);
 			if (respdata !== undefined && respdata.data.result.content.signature !== "") {
 				// The macro signature was found
-				const sigtext = respdata.data.result.content.signature.replace(/\s+/g,"").replace(/,/g,", ");
+				const sigtext = respdata.data.result.content.signature.replace(/\s+/g, "").replace(/,/g, ", ");
 				const sig: SignatureInformation = {
 					label: sigtext,
 					parameters: formalSpecToParamsArr(sigtext)
@@ -252,9 +252,9 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 					mode: maccon.mode,
 					arguments: sig.label
 				};
-				var expinputdata = {...signatureHelpMacroCache};
-				expinputdata.arguments = emphasizeArgument(sig.label,1);
-				const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expinputdata)
+				const expinputdata = { ...signatureHelpMacroCache };
+				expinputdata.arguments = emphasizeArgument(sig.label, 1);
+				const exprespdata = await makeRESTRequest("POST", 2, "/action/getmacroexpansion", server, expinputdata)
 				if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
 					signatureHelpDocumentationCache = {
 						type: "macro",
@@ -274,20 +274,20 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			}
 		}
 		else if (
-			parsed[params.position.line][thistoken-1].l == ld.cos_langindex && 
-			(parsed[params.position.line][thistoken-1].s == ld.cos_method_attrindex || parsed[params.position.line][thistoken-1].s == ld.cos_mem_attrindex)
+			parsed[params.position.line][thistoken - 1].l == ld.cos_langindex &&
+			(parsed[params.position.line][thistoken - 1].s == ld.cos_method_attrindex || parsed[params.position.line][thistoken - 1].s == ld.cos_mem_attrindex)
 		) {
 			// This is a method or multidimensional property
 
 			// Get the full text of the member
 			const member = doc.getText(Range.create(
-				params.position.line,parsed[params.position.line][thistoken-1].p,
-				params.position.line,parsed[params.position.line][thistoken-1].p+parsed[params.position.line][thistoken-1].c
+				params.position.line, parsed[params.position.line][thistoken - 1].p,
+				params.position.line, parsed[params.position.line][thistoken - 1].p + parsed[params.position.line][thistoken - 1].c
 			));
-			const unquotedname = quoteUDLIdentifier(member,0);
+			const unquotedname = quoteUDLIdentifier(member, 0);
 
 			// Get the base class that this member is in
-			const membercontext = await getClassMemberContext(doc,parsed,thistoken-2,params.position.line,server);
+			const membercontext = await getClassMemberContext(doc, parsed, thistoken - 2, params.position.line, server);
 			if (membercontext.baseclass === "") {
 				// If we couldn't determine the class, don't return anything
 				return null;
@@ -297,12 +297,12 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			const querydata = member == "%New" ? {
 				// Get the information for both %New and %OnNew
 				query: "SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-				parameters: [membercontext.baseclass,unquotedname,"%OnNew"]
+				parameters: [membercontext.baseclass, unquotedname, "%OnNew"]
 			} : {
 				query: "SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-				parameters: [membercontext.baseclass,unquotedname]
+				parameters: [membercontext.baseclass, unquotedname]
 			};
-			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
 
@@ -325,7 +325,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							};
 							sig.documentation = signatureHelpDocumentationCache.doc;
 						}
-						
+
 						sig.parameters = formalSpecToParamsArr(sig.label);
 						sig.label += ` As ${membercontext.baseclass}`;
 						signatureHelpStartPosition = params.position;
@@ -343,7 +343,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 						// This is a method generated by member inheritance, so we need to get its metadata from the proper subtable
 
 						const stubarr = respdata.data.result.content[0].Stub.split(".");
-						var stubquery = "";
+						let stubquery = "";
 						if (stubarr[2] === "i") {
 							// This is a method generated from an index
 							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
@@ -361,9 +361,9 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 						}
 						if (stubquery !== "") {
-							const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
+							const stubrespdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 								query: stubquery,
-								parameters: [stubarr[1],membercontext.baseclass,stubarr[0]]
+								parameters: [stubarr[1], membercontext.baseclass, stubarr[0]]
 							});
 							if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 								// We got data back
@@ -387,9 +387,9 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							};
 							sig.documentation = signatureHelpDocumentationCache.doc;
 						}
-						
+
 						sig.parameters = formalSpecToParamsArr(sig.label);
-						if (["%Open","%OpenId"].includes(member)) {
+						if (["%Open", "%OpenId"].includes(member)) {
 							sig.label += ` As ${membercontext.baseclass}`;
 						} else if (memobj.ReturnType != "") {
 							sig.label += ` As ${memobj.ReturnType}`;
@@ -417,25 +417,25 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	else if (
 		!params.context.isRetrigger &&
 		params.context.triggerCharacter == "," && triggerlang === ld.cos_langindex &&
-		![ld.cos_comment_attrindex,ld.cos_dcom_attrindex,ld.cos_str_attrindex].includes(triggerattr)
+		![ld.cos_comment_attrindex, ld.cos_dcom_attrindex, ld.cos_str_attrindex].includes(triggerattr)
 	) {
 		// This is potentially the argument list for a signature
 
 		// Loop backwards in the file and look for the first open parenthesis that isn't closed
-		const [sigstartln, sigstarttkn] = findOpenParen(doc,parsed,params.position.line,thistoken);
+		const [sigstartln, sigstarttkn] = findOpenParen(doc, parsed, params.position.line, thistoken);
 
 		if (sigstartln !== -1 && sigstarttkn !== -1) {
 			// We found an open parenthesis token that wasn't closed
 
 			// Check the language and attribute of the token before the "("
-			if (parsed[sigstartln][sigstarttkn-1].l == ld.cos_langindex && parsed[sigstartln][sigstarttkn-1].s == ld.cos_macro_attrindex) {
+			if (parsed[sigstartln][sigstarttkn - 1].l == ld.cos_langindex && parsed[sigstartln][sigstarttkn - 1].s == ld.cos_macro_attrindex) {
 				// This is a macro
 
 				// Get the details of this class
-				const maccon = getMacroContext(doc,parsed,sigstartln);
+				const maccon = getMacroContext(doc, parsed, sigstartln);
 
 				// Get the full range of the macro
-				const macrorange = findFullRange(sigstartln,parsed,sigstarttkn-1,parsed[sigstartln][sigstarttkn-1].p,parsed[sigstartln][sigstarttkn-1].p+parsed[sigstartln][sigstarttkn-1].c);
+				const macrorange = findFullRange(sigstartln, parsed, sigstarttkn - 1, parsed[sigstartln][sigstarttkn - 1].p, parsed[sigstartln][sigstarttkn - 1].p + parsed[sigstartln][sigstarttkn - 1].c);
 				const macroname = doc.getText(macrorange).slice(3);
 
 				// Get the macro signature from the server
@@ -448,17 +448,17 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 					imports: maccon.imports,
 					mode: maccon.mode
 				};
-				const respdata = await makeRESTRequest("POST",2,"/action/getmacrosignature",server,inputdata);
+				const respdata = await makeRESTRequest("POST", 2, "/action/getmacrosignature", server, inputdata);
 				if (respdata !== undefined && respdata.data.result.content.signature !== "") {
 					// The macro signature was found
-					const sigtext = respdata.data.result.content.signature.replace(/\s+/g,"").replace(/,/g,", ");
+					const sigtext = respdata.data.result.content.signature.replace(/\s+/g, "").replace(/,/g, ", ");
 					const sig: SignatureInformation = {
 						label: sigtext,
 						parameters: formalSpecToParamsArr(sigtext)
 					};
 
 					// Determine the active parameter
-					var activeparam = determineActiveParam(doc.getText(Range.create(Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1),params.position)));
+					const activeparam = determineActiveParam(doc.getText(Range.create(Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1), params.position)));
 
 					// Get the macro expansion with the correct parameter emphasized
 					signatureHelpMacroCache = {
@@ -471,9 +471,9 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 						mode: maccon.mode,
 						arguments: sig.label
 					};
-					var expinputdata = {...signatureHelpMacroCache};
-					expinputdata.arguments = emphasizeArgument(sig.label,activeparam+1);
-					const exprespdata = await makeRESTRequest("POST",2,"/action/getmacroexpansion",server,expinputdata)
+					const expinputdata = { ...signatureHelpMacroCache };
+					expinputdata.arguments = emphasizeArgument(sig.label, activeparam + 1);
+					const exprespdata = await makeRESTRequest("POST", 2, "/action/getmacroexpansion", server, expinputdata)
 					if (exprespdata !== undefined && exprespdata.data.result.content.expansion.length > 0) {
 						signatureHelpDocumentationCache = {
 							type: "macro",
@@ -484,7 +484,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 						};
 						sig.documentation = signatureHelpDocumentationCache.doc;
 					}
-					signatureHelpStartPosition = Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1);
+					signatureHelpStartPosition = Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1);
 					return {
 						signatures: [sig],
 						activeSignature: 0,
@@ -493,20 +493,20 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				}
 			}
 			else if (
-				parsed[sigstartln][sigstarttkn-1].l == ld.cos_langindex && 
-				(parsed[sigstartln][sigstarttkn-1].s == ld.cos_method_attrindex || parsed[sigstartln][sigstarttkn-1].s == ld.cos_mem_attrindex)
+				parsed[sigstartln][sigstarttkn - 1].l == ld.cos_langindex &&
+				(parsed[sigstartln][sigstarttkn - 1].s == ld.cos_method_attrindex || parsed[sigstartln][sigstarttkn - 1].s == ld.cos_mem_attrindex)
 			) {
 				// This is a method or multidimensional property
-				
+
 				// Get the full text of the member
 				const member = doc.getText(Range.create(
-					sigstartln,parsed[sigstartln][sigstarttkn-1].p,
-					sigstartln,parsed[sigstartln][sigstarttkn-1].p+parsed[sigstartln][sigstarttkn-1].c
+					sigstartln, parsed[sigstartln][sigstarttkn - 1].p,
+					sigstartln, parsed[sigstartln][sigstarttkn - 1].p + parsed[sigstartln][sigstarttkn - 1].c
 				));
-				const unquotedname = quoteUDLIdentifier(member,0);
+				const unquotedname = quoteUDLIdentifier(member, 0);
 
 				// Get the base class that this member is in
-				const membercontext = await getClassMemberContext(doc,parsed,sigstarttkn-2,sigstartln,server);
+				const membercontext = await getClassMemberContext(doc, parsed, sigstarttkn - 2, sigstartln, server);
 				if (membercontext.baseclass === "") {
 					// If we couldn't determine the class, don't return anything
 					return null;
@@ -516,12 +516,12 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				const querydata = member == "%New" ? {
 					// Get the information for both %New and %OnNew
 					query: "SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-					parameters: [membercontext.baseclass,unquotedname,"%OnNew"]
+					parameters: [membercontext.baseclass, unquotedname, "%OnNew"]
 				} : {
 					query: "SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-					parameters: [membercontext.baseclass,unquotedname]
+					parameters: [membercontext.baseclass, unquotedname]
 				};
-				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 					// We got data back
 
@@ -544,14 +544,14 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 								};
 								sig.documentation = signatureHelpDocumentationCache.doc;
 							}
-							
+
 							sig.parameters = formalSpecToParamsArr(sig.label);
 							sig.label += ` As ${membercontext.baseclass}`;
-							signatureHelpStartPosition = Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1);
-							newsignature = {
+							signatureHelpStartPosition = Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1);
+							const newsignature = {
 								signatures: [sig],
 								activeSignature: 0,
-								activeParameter: determineActiveParam(doc.getText(Range.create(Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1),params.position)))
+								activeParameter: determineActiveParam(doc.getText(Range.create(Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1), params.position)))
 							};
 						} else {
 							// If there's no %OnNew, then %New shouldn't have arguments
@@ -562,7 +562,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							// This is a method generated by member inheritance, so we need to get its metadata from the proper subtable
 
 							const stubarr = respdata.data.result.content[0].Stub.split(".");
-							var stubquery = "";
+							let stubquery = "";
 							if (stubarr[2] === "i") {
 								// This is a method generated from an index
 								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
@@ -580,9 +580,9 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 								stubquery = "SELECT Description, FormalSpec, ReturnType FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 							}
 							if (stubquery !== "") {
-								const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
+								const stubrespdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 									query: stubquery,
-									parameters: [stubarr[1],membercontext.baseclass,stubarr[0]]
+									parameters: [stubarr[1], membercontext.baseclass, stubarr[0]]
 								});
 								if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 									// We got data back
@@ -606,19 +606,19 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 								};
 								sig.documentation = signatureHelpDocumentationCache.doc;
 							}
-							
+
 							sig.parameters = formalSpecToParamsArr(sig.label);
-							if (["%Open","%OpenId"].includes(member)) {
+							if (["%Open", "%OpenId"].includes(member)) {
 								sig.label += ` As ${membercontext.baseclass}`;
 							} else if (memobj.ReturnType != "") {
 								sig.label += ` As ${memobj.ReturnType}`;
 							}
 
-							signatureHelpStartPosition = Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1);
+							signatureHelpStartPosition = Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1);
 							return {
 								signatures: [sig],
 								activeSignature: 0,
-								activeParameter: determineActiveParam(doc.getText(Range.create(Position.create(sigstartln,parsed[sigstartln][sigstarttkn].p+1),params.position)))
+								activeParameter: determineActiveParam(doc.getText(Range.create(Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1), params.position)))
 							};
 						}
 					}

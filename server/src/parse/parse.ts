@@ -48,7 +48,7 @@ export function parseDocument(languageId: string, fileExt: string, text: string)
 		const doctoparse = ' '.repeat(firstline.length) + text.slice(firstline.length);
 
 		// parse the rest of the document using Studio libraries
-		let restcolors: compressedline[] = Tokenize(doctoparse,moniker,false,flags);
+		const restcolors: compressedline[] = Tokenize(doctoparse,moniker,false,flags);
 
 		// at this point the original restcolors[0] will be either an array with a single whitespace item or an empty array
 		// - either way, overwriting that array with the routine line coloring works
@@ -78,7 +78,7 @@ function getFirstLine(documenttext: string): string {
 	}
 }
 
-let languageoffsets: {[index:number] : number} = {};
+const languageoffsets: {[index:number] : number} = {};
 
 export function getLegend(): SemanticTokensLegend {
 	const legend: string[] = [];

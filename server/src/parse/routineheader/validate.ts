@@ -86,7 +86,7 @@ export function validateKeywordValue(linesource: LineSource, keyword: string, va
                     throw Error('Missing value for LanguageMode');
                 }
         
-                let valuemode = Number(value);
+                const valuemode = Number(value);
                 if (isNaN(valuemode) || valuemode < 0) {
                     throw Error('LanguageMode must be an integer')
                 }

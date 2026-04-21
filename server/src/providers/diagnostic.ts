@@ -1,4 +1,4 @@
-import { 
+import {
 	Diagnostic,
 	Position,
 	Range,
@@ -42,14 +42,14 @@ function addRangeToMapVal(map: Map<string, Range[]>, key: string, range: Range) 
 	else {
 		ranges.push(range);
 	}
-	map.set(key,ranges);
+	map.set(key, ranges);
 };
 
 const syntaxError = "Syntax error";
 
 /** Normalize the description for this error token */
 function normalizeErrorDesc(e?: string): string {
-	return !e || e.includes("HRESULT") ? syntaxError : e[0].toUpperCase() + e.slice(1).replace(/'/g,"\"");
+	return !e || e.includes("HRESULT") ? syntaxError : e[0].toUpperCase() + e.slice(1).replace(/'/g, "\"");
 }
 
 /**
@@ -63,16 +63,16 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 	const server: ServerSpec = await getServerSpec(doc.uri);
 	const settings = await getLanguageServerSettings(doc.uri);
-	let diagnostics: Diagnostic[] = [];
+	const diagnostics: Diagnostic[] = [];
 
 	/** Check if syntax errors should be reported for `language`. */
 	const reportSyntaxErrors = (language: number): boolean => {
 		return !(<string[]>settings.diagnostics.suppressSyntaxErrors).includes(<string>lexerLanguages.find(ll => ll.index == language)?.moniker);
 	};
 
-	var files: StudioOpenDialogFile[] = [];
-	var inheritedpackages: string[] = [];
-	var querydata: QueryData;
+	let files: StudioOpenDialogFile[] = [];
+	let inheritedpackages: string[] = [];
+	let querydata: QueryData;
 	let isPersistent: boolean = false;
 	if (settings.diagnostics.routines || settings.diagnostics.classes || settings.diagnostics.deprecation) {
 		if (settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
@@ -81,7 +81,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition UNION ALL %PARALLEL " +
 					"SELECT DISTINCT BY ($PIECE(Name,'.',1,$LENGTH(Name,'.')-1)) Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) " +
 					"UNION ALL %PARALLEL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
-				parameters: ["*.mac,*.int,*.obj",1,1,1,1,1,0,"NOT (Name %PATTERN '.E1\".\"0.1\"G\"1N1\".obj\"' AND $LENGTH(Name,'.') > 3)","*.inc",1,1,1,1,0,0]
+				parameters: ["*.mac,*.int,*.obj", 1, 1, 1, 1, 1, 0, "NOT (Name %PATTERN '.E1\".\"0.1\"G\"1N1\".obj\"' AND $LENGTH(Name,'.') > 3)", "*.inc", 1, 1, 1, 1, 0, 0]
 			};
 		}
 		else if (!settings.diagnostics.routines && (settings.diagnostics.classes || settings.diagnostics.deprecation)) {
@@ -96,11 +96,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			querydata = {
 				query: "SELECT DISTINCT BY ($PIECE(Name,'.',1,$LENGTH(Name,'.')-1)) Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) " +
 					"UNION ALL %PARALLEL SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
-				parameters: ["*.mac,*.int,*.obj",1,1,1,1,1,0,"NOT (Name %PATTERN '.E1\".\"0.1\"G\"1N1\".obj\"' AND $LENGTH(Name,'.') > 3)","*.inc",1,1,1,1,0,0]
+				parameters: ["*.mac,*.int,*.obj", 1, 1, 1, 1, 1, 0, "NOT (Name %PATTERN '.E1\".\"0.1\"G\"1N1\".obj\"' AND $LENGTH(Name,'.') > 3)", "*.inc", 1, 1, 1, 1, 0, 0]
 			};
 		}
 
-		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 		if (Array.isArray(respdata?.data?.result?.content)) {
 			files = respdata.data.result.content;
 		}
@@ -108,9 +108,9 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	if (doc.languageId == "objectscript-class" && (
 		settings.diagnostics.classes || settings.diagnostics.deprecation || settings.diagnostics.sqlReserved
 	)) {
-		var clsname = "";
-		var hassupers = false;
-		let supers: string[] = [""];
+		let clsname = "";
+		let hassupers = false;
+		const supers: string[] = [""];
 
 		// Find the class name and if the class has supers
 		for (let i = 0; i < parsed.length; i++) {
@@ -120,23 +120,23 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 				// This line starts with a UDL keyword
 
-				var keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c))).toLowerCase();
+				const keyword = doc.getText(Range.create(Position.create(i, parsed[i][0].p), Position.create(i, parsed[i][0].p + parsed[i][0].c))).toLowerCase();
 				if (keyword === "class") {
-					clsname = doc.getText(findFullRange(i,parsed,1,parsed[i][1].p,parsed[i][1].p+parsed[i][1].c));
+					clsname = doc.getText(findFullRange(i, parsed, 1, parsed[i][1].p, parsed[i][1].p + parsed[i][1].c));
 					for (let j = 1; j < parsed[i].length; j++) {
 						if (
 							parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-							doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase() == "extends"
+							doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() == "extends"
 						) {
 							// The 'Extends' keyword is present
 							hassupers = true;
 							if (!settings.diagnostics.sqlReserved) break;
 						} else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex && hassupers) {
-							supers.push(supers.pop() + doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)));
+							supers.push(supers.pop() + doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)));
 						} else if (
 							parsed[i][j].l == ld.cls_langindex &&
 							parsed[i][j].s == ld.cls_delim_attrindex &&
-							[")","[","{"].includes(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)))
+							[")", "[", "{"].includes(doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)))
 						) {
 							// This is the end of the superclass list
 							break;
@@ -152,17 +152,17 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				query: "SELECT $LISTTOSTRING(Importall) AS Importall, $FIND(PrimarySuper,'~%Library.Persistent~') AS IsPersistent FROM %Dictionary.CompiledClass WHERE Name = ?",
 				parameters: [clsname]
 			};
-			const pkgrespdata = await makeRESTRequest("POST",1,"/action/query",server,pkgquerydata);
+			const pkgrespdata = await makeRESTRequest("POST", 1, "/action/query", server, pkgquerydata);
 			if (pkgrespdata?.data?.result?.content?.length == 1) {
 				// We got data back
 				inheritedpackages = pkgrespdata.data.result.content[0].Importall != "" ?
-					pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',') : [];
+					pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g, '').split(',') : [];
 				isPersistent = isPersistent || pkgrespdata.data.result.content[0].IsPersistent > 0;
 			}
 		}
 		if (!settings.diagnostics.sqlReserved) isPersistent = false;
 	}
-	
+
 	const firstlineisroutine: boolean =
 
 		// The document is not empty and the first line is not empty
@@ -172,13 +172,13 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		parsed[0][0].l == ld.cos_langindex && parsed[0][0].s == ld.cos_command_attrindex &&
 
 		// The document begins with "ROUTINE" (case-insensitive)
-		doc.getText(Range.create(Position.create(0,parsed[0][0].p),Position.create(0,parsed[0][0].p+parsed[0][0].c))).toLowerCase() === "routine";
+		doc.getText(Range.create(Position.create(0, parsed[0][0].p), Position.create(0, parsed[0][0].p + parsed[0][0].c))).toLowerCase() === "routine";
 
-	if (!firstlineisroutine && ["objectscript","objectscript-int","objectscript-macros"].includes(doc.languageId)) {
+	if (!firstlineisroutine && ["objectscript", "objectscript-int", "objectscript-macros"].includes(doc.languageId)) {
 		// The ROUTINE header is required
 		diagnostics.push({
 			severity: DiagnosticSeverity.Error,
-			range: Range.create(0,0,0,0),
+			range: Range.create(0, 0, 0, 0),
 			message: "ROUTINE header is required",
 			source: "InterSystems Language Server"
 		});
@@ -188,18 +188,18 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			if (parsed[0][t].s == 0) {
 				const errorDesc = normalizeErrorDesc(parsed[0][t].e);
 				if (
-					t > 0 && parsed[0][t-1].s == 0 &&
+					t > 0 && parsed[0][t - 1].s == 0 &&
 					diagnostics.length &&
-					[syntaxError,diagnostics[diagnostics.length-1].message].includes(errorDesc)
+					[syntaxError, diagnostics[diagnostics.length - 1].message].includes(errorDesc)
 				) {
 					// This error token is a continuation of the same underlying error
-					diagnostics[diagnostics.length-1].range.end = Position.create(0,parsed[0][t].p+parsed[0][t].c);
+					diagnostics[diagnostics.length - 1].range.end = Position.create(0, parsed[0][t].p + parsed[0][t].c);
 				}
 				else {
 					// This is a token for a new error
 					diagnostics.push({
 						severity: DiagnosticSeverity.Error,
-						range: Range.create(0,parsed[0][t].p,0,parsed[0][t].p+parsed[0][t].c),
+						range: Range.create(0, parsed[0][t].p, 0, parsed[0][t].p + parsed[0][t].c),
 						message: errorDesc,
 						source: 'InterSystems Language Server'
 					});
@@ -241,17 +241,17 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	for (let i = startline; i < parsed.length; i++) {
 		if (!parsed[i]?.length) continue;
 
-		const lineText = doc.getText(Range.create(i,0,i+1,0));
+		const lineText = doc.getText(Range.create(i, 0, i + 1, 0));
 		if (doc.languageId != "objectscript-int" && !ifZeroStartPos) {
 			const ifZeroStartMatch = lineText.match(ifZeroStart);
 			if (ifZeroStartMatch) {
-				ifZeroStartPos = Position.create(i,ifZeroStartMatch[0].length);
+				ifZeroStartPos = Position.create(i, ifZeroStartMatch[0].length);
 				continue; // No more diagnostics on this line
 			}
 		} else if (ifZeroStartPos && ifZeroEnd.test(lineText)) {
 			if (i > (ifZeroStartPos.line + 1)) diagnostics.push({
 				severity: DiagnosticSeverity.Hint,
-				range: Range.create(ifZeroStartPos,Position.create(i,0)),
+				range: Range.create(ifZeroStartPos, Position.create(i, 0)),
 				message: "Unused code detected",
 				tags: [DiagnosticTag.Unnecessary],
 				source: 'InterSystems Language Server'
@@ -265,29 +265,29 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			const symbolstart: number = parsed[i][j].p;
 			const symbolend: number = parsed[i][j].p + parsed[i][j].c;
 
-			if (j > 0 && parsed[i][j].l === parsed[i][j-1].l && parsed[i][j].s === parsed[i][j-1].s && !ifZeroStartPos) {
+			if (j > 0 && parsed[i][j].l === parsed[i][j - 1].l && parsed[i][j].s === parsed[i][j - 1].s && !ifZeroStartPos) {
 				// This token is the same as the last
 
 				if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
 					const errorDesc = normalizeErrorDesc(parsed[i][j].e);
-					const errorRange = Range.create(i,symbolstart,i,symbolend);
+					const errorRange = Range.create(i, symbolstart, i, symbolend);
 					if (doc.getText(errorRange).trim()) {
 						if (
 							!lastErrWasWhitespace &&
-							parsed[i][j].l == parsed[i][j-1].l &&
+							parsed[i][j].l == parsed[i][j - 1].l &&
 							diagnostics.length &&
-							[syntaxError,diagnostics[diagnostics.length-1].message].includes(errorDesc)
+							[syntaxError, diagnostics[diagnostics.length - 1].message].includes(errorDesc)
 						) {
 							// This error token is a continuation of the same underlying error
-							diagnostics[diagnostics.length-1].range.end = Position.create(i,symbolend);
+							diagnostics[diagnostics.length - 1].range.end = Position.create(i, symbolend);
 						}
 						else {
 							// This is a token for a new error
 							diagnostics.push({
 								severity: DiagnosticSeverity.Error,
 								range: {
-									start: Position.create(i,symbolstart),
-									end: Position.create(i,symbolend)
+									start: Position.create(i, symbolstart),
+									end: Position.create(i, symbolend)
 								},
 								message: errorDesc,
 								source: 'InterSystems Language Server'
@@ -302,7 +302,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			else {
 				if (parsed[i][j].s === ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l) && !ifZeroStartPos) {
 					// This is an error token
-					const errorRange = Range.create(i,symbolstart,i,symbolend);
+					const errorRange = Range.create(i, symbolstart, i, symbolend);
 					// Don't create a diagnostic for this error if it's just whitespace.
 					// This can happen because the parsers can report a syntax error token
 					// that spans only whitespace, and it won't be filtered out
@@ -326,7 +326,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					!ifZeroStartPos
 				) {
 					// This is an OptionTrackWarning (unset local variable)
-					const varrange = Range.create(Position.create(i,symbolstart),Position.create(i,symbolend));
+					const varrange = Range.create(Position.create(i, symbolstart), Position.create(i, symbolend));
 					diagnostics.push({
 						severity: DiagnosticSeverity.Warning,
 						range: varrange,
@@ -336,13 +336,13 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex &&
-					j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex &&
-					doc.getText(Range.create(i,parsed[i][j-1].p,i,parsed[i][j-1].p+parsed[i][j-1].c)).toLowerCase() === "class"
+					j !== 0 && parsed[i][j - 1].l == ld.cls_langindex && parsed[i][j - 1].s == ld.cls_keyword_attrindex &&
+					doc.getText(Range.create(i, parsed[i][j - 1].p, i, parsed[i][j - 1].p + parsed[i][j - 1].c)).toLowerCase() === "class"
 				) {
 					// This is the class name in the class definition line
 
 					// Check if the class name has a package
-					const wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
+					const wordrange = findFullRange(i, parsed, j, symbolstart, symbolend);
 					const word = doc.getText(wordrange);
 					if (!word.includes(".")) {
 						// The class name doesn't have a package, so report an error diagnostic here
@@ -358,21 +358,21 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						for (let k = j + 1; k < parsed[i].length; k++) {
 							if (hasSqlTableName) {
 								if (parsed[i][k].l == ld.cls_langindex && (
-									parsed[i][k].s == ld.cls_sqliden_attrindex || 
+									parsed[i][k].s == ld.cls_sqliden_attrindex ||
 									parsed[i][k].s == ld.error_attrindex || (
 										parsed[i][k].s == ld.cls_delim_attrindex &&
-										[",","]"].includes(doc.getText(Range.create(i,parsed[i][k].p,i,parsed[i][k].p+parsed[i][k].c)))
+										[",", "]"].includes(doc.getText(Range.create(i, parsed[i][k].p, i, parsed[i][k].p + parsed[i][k].c)))
 									)
 								)) {
 									if (parsed[i][k].s == ld.cls_sqliden_attrindex) {
-										sqlTableName = Range.create(i,parsed[i][k].p,i,parsed[i][k].p+parsed[i][k].c);
+										sqlTableName = Range.create(i, parsed[i][k].p, i, parsed[i][k].p + parsed[i][k].c);
 									}
 									break;
 								}
 							} else if (
 								parsed[i][k].l == ld.cls_langindex &&
 								parsed[i][k].s == ld.cls_keyword_attrindex &&
-								doc.getText(Range.create(i,parsed[i][k].p,i,parsed[i][k].p+parsed[i][k].c)).toLowerCase() == "sqltablename"
+								doc.getText(Range.create(i, parsed[i][k].p, i, parsed[i][k].p + parsed[i][k].c)).toLowerCase() == "sqltablename"
 							) {
 								hasSqlTableName = true;
 							}
@@ -401,28 +401,28 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-					doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase() === "parameter" &&
+					doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() === "parameter" &&
 					settings.diagnostics.parameters
 				) {
 					// This line is a UDL Parameter definition
 
-					const endsWithSemi = 
-						parsed[i][parsed[i].length-1].l == ld.cls_langindex &&
-						parsed[i][parsed[i].length-1].s == ld.cls_delim_attrindex &&
-						doc.getText(Range.create(i,parsed[i][parsed[i].length-1].p,i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)) == ";";
-					if (isPersistent && parsed[i].length > 3 && doc.getText(Range.create(i,parsed[i][1].p,i,parsed[i][1].p+parsed[i][1].c)) == "DEFAULTGLOBAL") {
+					const endsWithSemi =
+						parsed[i][parsed[i].length - 1].l == ld.cls_langindex &&
+						parsed[i][parsed[i].length - 1].s == ld.cls_delim_attrindex &&
+						doc.getText(Range.create(i, parsed[i][parsed[i].length - 1].p, i, parsed[i][parsed[i].length - 1].p + parsed[i][parsed[i].length - 1].c)) == ";";
+					if (isPersistent && parsed[i].length > 3 && doc.getText(Range.create(i, parsed[i][1].p, i, parsed[i][1].p + parsed[i][1].c)) == "DEFAULTGLOBAL") {
 						// Check if the provided value is a valid global name, with leading caret
 						let inKeywords = false;
 						for (let tkn = 2; tkn < parsed[i].length; tkn++) {
 							if (parsed[i][tkn].l == ld.cls_langindex && parsed[i][tkn].s == ld.cls_delim_attrindex) {
-								const delim = doc.getText(Range.create(i,parsed[i][tkn].p,i,parsed[i][tkn].p+parsed[i][tkn].c));
+								const delim = doc.getText(Range.create(i, parsed[i][tkn].p, i, parsed[i][tkn].p + parsed[i][tkn].c));
 								if (inKeywords && delim == "]") {
 									inKeywords = false;
 								} else if (!inKeywords && delim == "[") {
 									inKeywords = true;
 								} else if (!inKeywords && delim == "=" && tkn < (parsed[i].length - 1)) {
 									const valueEndTkn = parsed[i].length - (endsWithSemi ? 2 : 1);
-									const valueRange = Range.create(i,parsed[i][tkn+1].p,i,parsed[i][valueEndTkn].p+parsed[i][valueEndTkn].c);
+									const valueRange = Range.create(i, parsed[i][tkn + 1].p, i, parsed[i][valueEndTkn].p + parsed[i][valueEndTkn].c);
 									const valueText = doc.getText(valueRange);
 									if (!valueText.startsWith("{") && !/^"\^[%\x41-\xFF]([\x41-\xFF\d.]*[\x41-\xFF\d])?"$/.test(valueText)) {
 										// The value is neither a valid global name nor a compile-time expression
@@ -441,10 +441,10 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					if (
 						parsed[i].length > 3 &&
 						parsed[i][2].l == ld.cls_langindex && parsed[i][2].s === ld.cls_keyword_attrindex &&
-						doc.getText(Range.create(i,parsed[i][2].p,i,parsed[i][2].p+parsed[i][2].c)).toLowerCase() === "as"
+						doc.getText(Range.create(i, parsed[i][2].p, i, parsed[i][2].p + parsed[i][2].c)).toLowerCase() === "as"
 					) {
 						// This Parameter has a type
-						const tokenrange = Range.create(i,parsed[i][3].p,i,parsed[i][3].p+parsed[i][3].c);
+						const tokenrange = Range.create(i, parsed[i][3].p, i, parsed[i][3].p + parsed[i][3].c);
 						const tokentext = doc.getText(tokenrange).toUpperCase();
 						const thistypedoc = parameterTypes.find((typedoc) => typedoc.name === tokentext);
 						if (thistypedoc === undefined) {
@@ -461,14 +461,14 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 							// See if this Parameter has a value
 							let valuetkn: number;
-							const delimtext = doc.getText(Range.create(i,parsed[i][4].p,i,parsed[i][4].p+parsed[i][4].c));
+							const delimtext = doc.getText(Range.create(i, parsed[i][4].p, i, parsed[i][4].p + parsed[i][4].c));
 							if (delimtext === "[") {
 								// Loop through the line to find the closing brace
 								let closingtkn: number;
 								for (let ptkn = 5; ptkn < parsed[i].length; ptkn++) {
 									if (
 										parsed[i][ptkn].l == ld.cls_langindex && parsed[i][ptkn].s === ld.cls_delim_attrindex &&
-										doc.getText(Range.create(i,parsed[i][ptkn].p,i,parsed[i][ptkn].p+parsed[i][ptkn].c)) === "]"
+										doc.getText(Range.create(i, parsed[i][ptkn].p, i, parsed[i][ptkn].p + parsed[i][ptkn].c)) === "]"
 									) {
 										closingtkn = ptkn;
 										break;
@@ -477,7 +477,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								// Check if the token following the closing brace is =
 								if (
 									closingtkn && parsed[i].length > closingtkn &&
-									doc.getText(Range.create(i,parsed[i][closingtkn+1].p,i,parsed[i][closingtkn+1].p+parsed[i][closingtkn+1].c)) === "="
+									doc.getText(Range.create(i, parsed[i][closingtkn + 1].p, i, parsed[i][closingtkn + 1].p + parsed[i][closingtkn + 1].c)) === "="
 								) {
 									// There is a value following the =
 									valuetkn = closingtkn + 2;
@@ -491,10 +491,10 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								// Delimiter is a ; so there isn't a value to evaluate
 							}
 
-							if (valuetkn && parsed[i].length > valuetkn+1) {
+							if (valuetkn && parsed[i].length > valuetkn + 1) {
 								const valueEndTkn = parsed[i].length - (endsWithSemi ? 2 : 1);
-								const valtext = doc.getText(Range.create(i,parsed[i][valuetkn].p,i,parsed[i][valuetkn].p+parsed[i][valuetkn].c));
-								const valrange = Range.create(i,parsed[i][valuetkn].p,i,parsed[i][valueEndTkn].p+parsed[i][valueEndTkn].c);
+								const valtext = doc.getText(Range.create(i, parsed[i][valuetkn].p, i, parsed[i][valuetkn].p + parsed[i][valuetkn].c));
+								const valrange = Range.create(i, parsed[i][valuetkn].p, i, parsed[i][valueEndTkn].p + parsed[i][valueEndTkn].c);
 								if (
 									(thistypedoc.name === "STRING" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_str_attrindex)) ||
 									(thistypedoc.name === "COSEXPRESSION" && (parsed[i][valuetkn].l !== ld.cls_langindex || parsed[i][valuetkn].s !== ld.cls_str_attrindex)) ||
@@ -514,12 +514,12 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								}
 								else if (thistypedoc.name === "CLASSNAME" && settings.diagnostics.classes) {
 									// Validate the class name in the string
-									let classname: string = valtext.slice(1,-1);
+									let classname: string = valtext.slice(1, -1);
 									if (classname.startsWith("%") && !classname.includes(".")) {
 										classname = `%Library.${classname.slice(1)}`;
 									}
 									// Check if class exists
-									const filtered = files.filter(file => file.Name === classname+".cls");
+									const filtered = files.filter(file => file.Name === classname + ".cls");
 									if (filtered.length !== 1 && !classname.startsWith("%SYSTEM.")) {
 										diagnostics.push({
 											severity: DiagnosticSeverity.Warning,
@@ -538,18 +538,18 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						if (parsed[i][ptkn].s == ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
 							const errorDesc = normalizeErrorDesc(parsed[i][j].e);
 							if (
-								parsed[i][ptkn].l == parsed[i][ptkn-1].l &&
-								parsed[i][ptkn-1].s == 0 &&
+								parsed[i][ptkn].l == parsed[i][ptkn - 1].l &&
+								parsed[i][ptkn - 1].s == 0 &&
 								diagnostics.length &&
-								[syntaxError,diagnostics[diagnostics.length-1].message].includes(errorDesc)
+								[syntaxError, diagnostics[diagnostics.length - 1].message].includes(errorDesc)
 							) {
 								// This error token is a continuation of the same underlying error
-								diagnostics[diagnostics.length-1].range.end = Position.create(i,parsed[i][ptkn].p+parsed[i][ptkn].c);
+								diagnostics[diagnostics.length - 1].range.end = Position.create(i, parsed[i][ptkn].p + parsed[i][ptkn].c);
 							}
 							else {
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
-									range: Range.create(i,parsed[i][ptkn].p,i,parsed[i][ptkn].p+parsed[i][ptkn].c),
+									range: Range.create(i, parsed[i][ptkn].p, i, parsed[i][ptkn].p + parsed[i][ptkn].c),
 									message: errorDesc,
 									source: 'InterSystems Language Server'
 								});
@@ -561,7 +561,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					j === 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-					doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase() === "import"
+					doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() === "import"
 				) {
 					// This is the UDL Import line
 
@@ -570,32 +570,32 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					for (let imptkn = 1; imptkn < parsed[i].length; imptkn++) {
 						if (parsed[i][imptkn].s == ld.error_attrindex && reportSyntaxErrors(parsed[i][j].l)) {
 							if (
-								parsed[i][imptkn-1].s == ld.error_attrindex && !doc.getText(Range.create(
-									i,parsed[i][imptkn].p-1,
-									i,parsed[i][imptkn].p
+								parsed[i][imptkn - 1].s == ld.error_attrindex && !doc.getText(Range.create(
+									i, parsed[i][imptkn].p - 1,
+									i, parsed[i][imptkn].p
 								)).trim()
 							) {
 								// The previous token is an error without a space in between, so extend the existing syntax error Diagnostic to cover this token
-								diagnostics[diagnostics.length-1].range.end = Position.create(i,parsed[i][imptkn].p+parsed[i][imptkn].c);
+								diagnostics[diagnostics.length - 1].range.end = Position.create(i, parsed[i][imptkn].p + parsed[i][imptkn].c);
 							}
 							else {
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
-									range: Range.create(i,parsed[i][imptkn].p,i,parsed[i][imptkn].p+parsed[i][imptkn].c),
+									range: Range.create(i, parsed[i][imptkn].p, i, parsed[i][imptkn].p + parsed[i][imptkn].c),
 									message: syntaxError,
 									source: 'InterSystems Language Server'
 								});
 							}
 						}
 						if (parsed[i][imptkn].l == ld.cls_langindex && parsed[i][imptkn].s == ld.cls_clsname_attrindex) {
-							const pkgrange = findFullRange(i,parsed,imptkn,parsed[i][imptkn].p,parsed[i][imptkn].p + parsed[i][imptkn].c);
+							const pkgrange = findFullRange(i, parsed, imptkn, parsed[i][imptkn].p, parsed[i][imptkn].p + parsed[i][imptkn].c);
 							const pkg = doc.getText(pkgrange);
 							if (!inheritedpackages.includes(pkg)) {
 								inheritedpackages.push(pkg);
 							}
 							if (
 								files.length > 0 && settings.diagnostics.classes && lastpkgend != pkgrange.end.character &&
-								!files.some(f => f.Name.startsWith(pkg+".") && f.Name.endsWith(".cls"))
+								!files.some(f => f.Name.startsWith(pkg + ".") && f.Name.endsWith(".cls"))
 							) {
 								// This package does not exist
 								diagnostics.push({
@@ -614,17 +614,17 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				else if (
 					files.length > 0 &&
 					((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
-					(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
+						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
 					(settings.diagnostics.classes || settings.diagnostics.deprecation) && !ifZeroStartPos
 				) {
 					// This is a class name
 
 					// Don't validate a class name that follows the "Class" keyword
-					if (j !== 0 && parsed[i][j-1].l == ld.cls_langindex && parsed[i][j-1].s == ld.cls_keyword_attrindex) {
+					if (j !== 0 && parsed[i][j - 1].l == ld.cls_langindex && parsed[i][j - 1].s == ld.cls_keyword_attrindex) {
 						// The previous token is a UDL keyword
 						const prevkeytext = doc.getText(Range.create(
-							i,parsed[i][j-1].p,
-							i,parsed[i][j-1].p+parsed[i][j-1].c
+							i, parsed[i][j - 1].p,
+							i, parsed[i][j - 1].p + parsed[i][j - 1].c
 						)).toLowerCase();
 						if (prevkeytext === "class") {
 							continue;
@@ -632,13 +632,13 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					}
 
 					// Get the full text of the selection
-					let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
+					const wordrange = findFullRange(i, parsed, j, symbolstart, symbolend);
 					let word = doc.getText(wordrange);
 					if (word.charAt(0) === ".") {
 						// This might be $SYSTEM.ClassName
 						const prevseven = doc.getText(Range.create(
-							i,wordrange.start.character-7,
-							i,wordrange.start.character
+							i, wordrange.start.character - 7,
+							i, wordrange.start.character
 						));
 						if (prevseven.toUpperCase() !== "$SYSTEM") {
 							// This classname is invalid
@@ -658,18 +658,18 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					}
 					if (word.charAt(0) === '"') {
 						// This classname is delimited with ", so strip them
-						word = word.slice(1,-1);
+						word = word.slice(1, -1);
 					}
 
 					if (currentNs == baseNs) {
 						// Normalize the class name if there are imports
-						var possiblecls = {num: 0};
-						let normalizedname = await normalizeClassname(doc,parsed,word,server,i,files,possiblecls,inheritedpackages);
+						const possiblecls = { num: 0 };
+						const normalizedname = await normalizeClassname(doc, parsed, word, server, i, files, possiblecls, inheritedpackages);
 
 						if (normalizedname === "" && possiblecls.num > 0) {
 							// The class couldn't be resolved with the imports
 							if (settings.diagnostics.classes) {
-								let diagnostic: Diagnostic = {
+								const diagnostic: Diagnostic = {
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
 									message: `Class name "${word}" is ambiguous`,
@@ -680,11 +680,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						}
 						else {
 							// Check if class exists
-							const filtered = files.filter(file => file.Name === normalizedname+".cls");
+							const filtered = files.filter(file => file.Name === normalizedname + ".cls");
 							if (filtered.length !== 1) {
 								// Exempt %SYSTEM classes because some of them don't have ^oddDEF entries
 								if (settings.diagnostics.classes && !word.startsWith("%SYSTEM.")) {
-									let diagnostic: Diagnostic = {
+									const diagnostic: Diagnostic = {
 										severity: DiagnosticSeverity.Error,
 										range: wordrange,
 										message: `Class "${word}" does not exist in namespace "${baseNs}"`,
@@ -695,7 +695,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							}
 							else if (settings.diagnostics.deprecation) {
 								// The class exists, so add it to the map
-								addRangeToMapVal(classes,normalizedname,wordrange);
+								addRangeToMapVal(classes, normalizedname, wordrange);
 							}
 						}
 					} else if (currentNs != "" && settings.diagnostics.classes && !word.startsWith("%SYSTEM.")) {
@@ -710,23 +710,22 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						}
 						else {
 							// Add this class to the map
-							addRangeToMapVal(otherNsDocs,`${currentNs}:::${
-								!word.includes(".") && word.startsWith("%") ? `%Library.${word.slice(1)}` : word
-							}.cls`,wordrange);
+							addRangeToMapVal(otherNsDocs, `${currentNs}:::${!word.includes(".") && word.startsWith("%") ? `%Library.${word.slice(1)}` : word
+								}.cls`, wordrange);
 						}
 					}
 				}
 				else if (
 					files.length > 0 &&
 					((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) ||
-					(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_rtnname_attrindex)) &&
+						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_rtnname_attrindex)) &&
 					settings.diagnostics.routines && !ifZeroStartPos
 				) {
 					// This is a routine name
 
 					// Get the full text of the selection
-					let wordrange = findFullRange(i,parsed,j,symbolstart,symbolend);
-					let word = doc.getText(wordrange);
+					const wordrange = findFullRange(i, parsed, j, symbolstart, symbolend);
+					const word = doc.getText(wordrange);
 
 					// Determine if this is an include file
 					let isinc = false;
@@ -734,11 +733,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						isinc = true;
 					} else {
 						if (
-							parsed[i][j-1].l == ld.cos_langindex &&
-							parsed[i][j-1].s == ld.cos_ppc_attrindex &&
+							parsed[i][j - 1].l == ld.cos_langindex &&
+							parsed[i][j - 1].s == ld.cos_ppc_attrindex &&
 							doc.getText(Range.create(
-								i,parsed[i][j-1].p,
-								i,parsed[i][j-1].p+parsed[i][j-1].c
+								i, parsed[i][j - 1].p,
+								i, parsed[i][j - 1].p + parsed[i][j - 1].c
 							)).toLowerCase() === "include"
 						) {
 							isinc = true;
@@ -748,7 +747,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					if (currentNs == baseNs) {
 						// Check if the routine exists
 						if (isinc) {
-							if (!files.some(file => file.Name == (word+".inc"))) {
+							if (!files.some(file => file.Name == (word + ".inc"))) {
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
@@ -756,8 +755,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									source: 'InterSystems Language Server'
 								});
 							}
-						} else if (word.length && /^%?[\d\.\p{L}]*$/u.test(word)) { // Need validation to avoid creating a bad regex
-							const regex = new RegExp(`^${word.replace(/\./g,"\.")}\.(mac|int|obj)$`);
+						} else if (word.length && /^%?[\d.\p{L}]*$/u.test(word)) { // Need validation to avoid creating a bad regex
+							const regex = new RegExp(`^${word.replace(/\./g, ".")}\\.(mac|int|obj)$`);
 							if (!files.some(file => regex.test(file.Name))) {
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
@@ -769,28 +768,28 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						}
 					} else if (currentNs != "") {
 						// Add this document to the map
-						addRangeToMapVal(otherNsDocs,`${currentNs}:::${word}${isinc ? ".inc" : ".mac"}`,wordrange);
+						addRangeToMapVal(otherNsDocs, `${currentNs}:::${word}${isinc ? ".inc" : ".mac"}`, wordrange);
 					}
 				}
 				else if (
 					files.length > 0 &&
 					parsed[i][j].l == ld.cos_langindex && (
-					parsed[i][j].s == ld.cos_prop_attrindex || parsed[i][j].s == ld.cos_method_attrindex ||
-					parsed[i][j].s == ld.cos_attr_attrindex || parsed[i][j].s == ld.cos_mem_attrindex) &&
+						parsed[i][j].s == ld.cos_prop_attrindex || parsed[i][j].s == ld.cos_method_attrindex ||
+						parsed[i][j].s == ld.cos_attr_attrindex || parsed[i][j].s == ld.cos_mem_attrindex) &&
 					settings.diagnostics.deprecation
 				) {
 					// This is a class member (property/parameter/method)
 
 					// Get the full text of the member
-					const memberrange = findFullRange(i,parsed,j,symbolstart,symbolend);
-					var member = doc.getText(memberrange);
+					const memberrange = findFullRange(i, parsed, j, symbolstart, symbolend);
+					let member = doc.getText(memberrange);
 					if (member.charAt(0) === "#") {
 						member = member.slice(1);
 					}
-					const unquotedname = quoteUDLIdentifier(member,0);
+					const unquotedname = quoteUDLIdentifier(member, 0);
 
 					// Find the dot token
-					var dottkn = 0;
+					let dottkn = 0;
 					for (let tkn = 0; tkn < parsed[i].length; tkn++) {
 						if (parsed[i][tkn].p >= memberrange.start.character) {
 							break;
@@ -799,18 +798,18 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					}
 
 					// Get the base class that this member is in
-					const membercontext = await getClassMemberContext(doc,parsed,dottkn,i,server,files,inheritedpackages);
+					const membercontext = await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages);
 					if (membercontext.baseclass !== "") {
 						// We could determine the class, so add the member to the correct map
 
 						const memberstr: string = membercontext.baseclass + ":::" + unquotedname;
 						if (parsed[i][j].s == ld.cos_prop_attrindex) {
 							// This is a parameter
-							addRangeToMapVal(parameters,memberstr,memberrange);
+							addRangeToMapVal(parameters, memberstr, memberrange);
 						}
 						else if (parsed[i][j].s == ld.cos_method_attrindex) {
 							// This is a method
-							addRangeToMapVal(methods,memberstr,memberrange);
+							addRangeToMapVal(methods, memberstr, memberrange);
 						}
 						else if (
 							parsed[i][j].s == ld.cos_attr_attrindex &&
@@ -818,32 +817,32 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							membercontext.baseclass !== "%Library.DynamicObject"
 						) {
 							// This is a non-JSON property
-							addRangeToMapVal(properties,memberstr,memberrange);
+							addRangeToMapVal(properties, memberstr, memberrange);
 						}
 						else if (parsed[i][j].s == ld.cos_mem_attrindex) {
 							// This is a generic member
 
 							if (membercontext.baseclass.startsWith("%SYSTEM.")) {
 								// This is always a method
-								addRangeToMapVal(methods,memberstr,memberrange);
+								addRangeToMapVal(methods, memberstr, memberrange);
 							}
 							else {
 								// This can be a method or property
-								addRangeToMapVal(methods,memberstr,memberrange);
-								addRangeToMapVal(properties,memberstr,memberrange);
+								addRangeToMapVal(methods, memberstr, memberrange);
+								addRangeToMapVal(properties, memberstr, memberrange);
 							}
 						}
 					}
 				}
 				else if (
 					settings.diagnostics.zutil && !ifZeroStartPos && parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_sysf_attrindex &&
-					/^\$zu(til)?$/i.test(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c))) && j < parsed[i].length - 1
+					/^\$zu(til)?$/i.test(doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c))) && j < parsed[i].length - 1
 				) {
 					// This is a $ZUTIL call
 
 					// Determine if this is a known function
 					let brk = false;
-					let nums: string[] = [];
+					const nums: string[] = [];
 					for (let ln = i; ln < parsed.length; ln++) {
 						if (parsed[ln] == undefined || parsed[ln].length == 0) {
 							continue;
@@ -854,7 +853,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								brk = true;
 								break;
 							}
-							const tknText = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+							const tknText = doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c));
 							if (parsed[ln][tkn].s == ld.cos_delim_attrindex) {
 								if (nums.length) {
 									const argList = nums.join(",") + tknText;
@@ -865,7 +864,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									) {
 										// This is a known function, so create a Diagnostic
 										const diag: Diagnostic = {
-											range: Range.create(i,parsed[i][j].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c),
+											range: Range.create(i, parsed[i][j].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
 											severity: DiagnosticSeverity.Warning,
 											source: 'InterSystems Language Server',
 											message: ""
@@ -883,9 +882,9 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 												// This is a namespace switch
 												const nsTkn = tkn == parsed[ln].length - 1 ? 0 : tkn + 1;
 												const nsLn = nsTkn == 0 ? ln + 1 : ln;
-												const nsText = doc.getText(Range.create(nsLn,parsed[nsLn][nsTkn].p,nsLn,parsed[nsLn][nsTkn].p+parsed[nsLn][nsTkn].c));
+												const nsText = doc.getText(Range.create(nsLn, parsed[nsLn][nsTkn].p, nsLn, parsed[nsLn][nsTkn].p + parsed[nsLn][nsTkn].c));
 												if (parsed[nsLn][nsTkn].s == ld.cos_str_attrindex && validNsRegex.test(nsText)) {
-													currentNs = nsText.slice(1,-1).toUpperCase();
+													currentNs = nsText.slice(1, -1).toUpperCase();
 													if (currentNs != baseNs) {
 														nsNestedBlockLevel = 1;
 													}
@@ -932,7 +931,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_sysv_attrindex &&
-					["$namespace","$znspace"].includes(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase())
+					["$namespace", "$znspace"].includes(doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase())
 				) {
 					// This is a potential namespace switch
 
@@ -950,11 +949,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								break;
 							}
 							if (parsed[ln][tkn].s == ld.cos_command_attrindex) {
-								if (["s","set"].includes(doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)).toLowerCase())) {
+								if (["s", "set"].includes(doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)).toLowerCase())) {
 									isSet = true;
 									if (
-										tkn < parsed[ln].length - 1 && parsed[ln][tkn+1].l == ld.cos_langindex && parsed[ln][tkn+1].s === ld.cos_delim_attrindex &&
-										doc.getText(Range.create(ln,parsed[ln][tkn+1].p,ln,parsed[ln][tkn+1].p+parsed[ln][tkn+1].c)) == ":"
+										tkn < parsed[ln].length - 1 && parsed[ln][tkn + 1].l == ld.cos_langindex && parsed[ln][tkn + 1].s === ld.cos_delim_attrindex &&
+										doc.getText(Range.create(ln, parsed[ln][tkn + 1].p, ln, parsed[ln][tkn + 1].p + parsed[ln][tkn + 1].c)) == ":"
 									) {
 										hasPc = true;
 									}
@@ -991,9 +990,9 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 										break;
 									}
 									if (foundOp) {
-										const nsText = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+										const nsText = doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c));
 										if (parsed[ln][tkn].s == ld.cos_str_attrindex && validNsRegex.test(nsText)) {
-											currentNs = nsText.slice(1,-1).toUpperCase();
+											currentNs = nsText.slice(1, -1).toUpperCase();
 											if (currentNs != baseNs) {
 												nsNestedBlockLevel = 1;
 											}
@@ -1011,7 +1010,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									}
 									if (
 										parsed[ln][tkn].s == ld.cos_oper_attrindex &&
-										doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == "="
+										doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)) == "="
 									) {
 										foundOp = true;
 									}
@@ -1025,18 +1024,18 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_command_attrindex &&
-					/^zn(space)?$/i.test((doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c))))
+					/^zn(space)?$/i.test((doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c))))
 				) {
 					// This is a potential namespace switch
 
 					if (j < parsed[i].length - 1) {
-						const nextTknText = doc.getText(Range.create(i,parsed[i][j+1].p,i,parsed[i][j+1].p+parsed[i][j+1].c));
+						const nextTknText = doc.getText(Range.create(i, parsed[i][j + 1].p, i, parsed[i][j + 1].p + parsed[i][j + 1].c));
 						if (
-							parsed[i][j+1].l == ld.cos_langindex &&
-							parsed[i][j+1].s == ld.cos_str_attrindex &&
+							parsed[i][j + 1].l == ld.cos_langindex &&
+							parsed[i][j + 1].s == ld.cos_str_attrindex &&
 							validNsRegex.test(nextTknText)
 						) {
-							currentNs = nextTknText.slice(1,-1).toUpperCase();
+							currentNs = nextTknText.slice(1, -1).toUpperCase();
 							if (currentNs != baseNs) {
 								nsNestedBlockLevel = 1;
 							}
@@ -1053,14 +1052,14 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 				else if (
 					j == 0 && parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
-					isPersistent && parsed[i].length > 2 && ["property","relationship"].includes(
-						doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase()
+					isPersistent && parsed[i].length > 2 && ["property", "relationship"].includes(
+						doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase()
 					)
 				) {
 					// This is the start of a UDL Property definition
 
-					const propRange = Range.create(i,parsed[i][1].p,i,parsed[i][1].p+parsed[i][1].c);
-					const propName = quoteUDLIdentifier(doc.getText(propRange),0);
+					const propRange = Range.create(i, parsed[i][1].p, i, parsed[i][1].p + parsed[i][1].c);
+					const propName = quoteUDLIdentifier(doc.getText(propRange), 0);
 
 					// Check if a SqlFieldName is present
 					let sqlFieldName: Range, hasSqlFieldName = false, inKeywords = false, brk = false;
@@ -1069,7 +1068,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							ln != i && parsed[ln]?.length && parsed[ln][0].l == ld.cls_langindex && (
 								parsed[ln][0].s == ld.cls_desc_attrindex || (
 									parsed[ln][0].s == ld.cls_keyword_attrindex &&
-									isClassMember(doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][0].p+parsed[ln][0].c)))
+									isClassMember(doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c)))
 								)
 							)
 						) {
@@ -1079,15 +1078,15 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						for (let k = 0; k < parsed[ln].length; k++) {
 							if (hasSqlFieldName) {
 								if (parsed[ln][k].l == ld.cls_langindex && (
-									parsed[ln][k].s == ld.cls_sqliden_attrindex || 
+									parsed[ln][k].s == ld.cls_sqliden_attrindex ||
 									parsed[ln][k].s == ld.error_attrindex || (
 										parsed[ln][k].s == ld.cls_delim_attrindex &&
 										inKeywords &&
-										[",","]"].includes(doc.getText(Range.create(ln,parsed[ln][k].p,ln,parsed[ln][k].p+parsed[ln][k].c)))
+										[",", "]"].includes(doc.getText(Range.create(ln, parsed[ln][k].p, ln, parsed[ln][k].p + parsed[ln][k].c)))
 									)
 								)) {
 									if (parsed[ln][k].s == ld.cls_sqliden_attrindex) {
-										sqlFieldName = Range.create(ln,parsed[ln][k].p,ln,parsed[ln][k].p+parsed[ln][k].c);
+										sqlFieldName = Range.create(ln, parsed[ln][k].p, ln, parsed[ln][k].p + parsed[ln][k].c);
 									}
 									brk = true;
 									break;
@@ -1095,13 +1094,13 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							} else if (
 								parsed[ln][k].l == ld.cls_langindex &&
 								parsed[ln][k].s == ld.cls_keyword_attrindex &&
-								doc.getText(Range.create(ln,parsed[ln][k].p,ln,parsed[ln][k].p+parsed[ln][k].c)).toLowerCase() == "sqlfieldname"
+								doc.getText(Range.create(ln, parsed[ln][k].p, ln, parsed[ln][k].p + parsed[ln][k].c)).toLowerCase() == "sqlfieldname"
 							) {
 								hasSqlFieldName = true;
 							} else if (
 								parsed[ln][k].l == ld.cls_langindex &&
 								parsed[ln][k].s == ld.cls_delim_attrindex &&
-								doc.getText(Range.create(ln,parsed[ln][k].p,ln,parsed[ln][k].p+parsed[ln][k].c)) == "["
+								doc.getText(Range.create(ln, parsed[ln][k].p, ln, parsed[ln][k].p + parsed[ln][k].c)) == "["
 							) {
 								inKeywords = true;
 							}
@@ -1132,7 +1131,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					// Determine if we're still in the different namespace
 
 					if (parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_brace_attrindex) {
-						const brace = doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
+						const brace = doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c));
 						if (brace == "{") {
 							nsNestedBlockLevel++;
 						}
@@ -1176,15 +1175,15 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				"SELECT Name, Parent AS Class, 'property' AS MemberType FROM %Dictionary.CompiledProperty WHERE Deprecated = 1 AND Parent %INLIST $LISTFROMSTRING(?) UNION ALL %PARALLEL " +
 				"SELECT Name, NULL AS Class, 'class' AS MemberType FROM %Dictionary.CompiledClass WHERE Deprecated = 1 AND Name %INLIST $LISTFROMSTRING(?)",
 			parameters: [
-				[...new Set([...methods.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),
-				[...new Set([...parameters.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),
-				[...new Set([...properties.keys()].map(elem => {return elem.split(":::")[0]}))].join(","),
+				[...new Set([...methods.keys()].map(elem => { return elem.split(":::")[0] }))].join(","),
+				[...new Set([...parameters.keys()].map(elem => { return elem.split(":::")[0] }))].join(","),
+				[...new Set([...properties.keys()].map(elem => { return elem.split(":::")[0] }))].join(","),
 				[...classes.keys()].join(",")
 			]
 		};
 
 		// Make the request
-		const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
 
@@ -1192,7 +1191,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				// Create a Diagnostic for each Range that this class or member appears in the document
 
 				const memberstr: string = row.Class + ":::" + row.Name;
-				let ranges: Range[] | undefined = undefined;
+				let ranges: Range[] | undefined;
 				if (row.MemberType === "method") {
 					ranges = methods.get(memberstr);
 				}
@@ -1223,26 +1222,26 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		// Query the database for the existence of documents in other namespaces
 
 		const namespaces = new Set<string>();
-		otherNsDocs.forEach((v,k) => namespaces.add(k.split(":::")[0]));
+		otherNsDocs.forEach((v, k) => namespaces.add(k.split(":::")[0]));
 		for (const namespace of namespaces) {
 			// Build the query
 			let querydata: QueryData;
 			const otherClasses: string[] = [];
 			const otherRtns: string[] = [];
-			otherNsDocs.forEach((v,k) => {
+			otherNsDocs.forEach((v, k) => {
 				const [ns, doc] = k.split(":::");
 				if (ns == namespace) {
 					switch (doc.slice(-3)) {
 						case "cls":
-							otherClasses.push(doc.slice(0,-4));
+							otherClasses.push(doc.slice(0, -4));
 							break;
 						case "inc":
 							otherRtns.push(doc);
 							break;
 						default:
 							otherRtns.push(doc);
-							otherRtns.push(`${doc.slice(0,-3)}int`);
-							otherRtns.push(`${doc.slice(0,-3)}obj`);
+							otherRtns.push(`${doc.slice(0, -3)}int`);
+							otherRtns.push(`${doc.slice(0, -3)}obj`);
 					}
 				}
 			});
@@ -1252,7 +1251,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition WHERE Name %INLIST $LISTFROMSTRING(?) " +
 						"UNION ALL %PARALLEL " +
 						"SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE Name %INLIST $LISTFROMSTRING(?)",
-					parameters: [otherClasses.join(","),"*.mac,*.inc,*.int,*.obj",1,1,1,1,1,0,otherRtns.join(",")]
+					parameters: [otherClasses.join(","), "*.mac,*.inc,*.int,*.obj", 1, 1, 1, 1, 1, 0, otherRtns.join(",")]
 				};
 			}
 			else if (otherClasses.length) {
@@ -1266,24 +1265,24 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				// Check for just routines
 				querydata = {
 					query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE Name %INLIST $LISTFROMSTRING(?)",
-					parameters: ["*.mac,*.inc,*.int,*.obj",1,1,1,1,1,0,otherRtns.join(",")]
+					parameters: ["*.mac,*.inc,*.int,*.obj", 1, 1, 1, 1, 1, 0, otherRtns.join(",")]
 				};
 			}
 
 			// Make the request
-			const respdata = await makeRESTRequest("POST",1,"/action/query",{ ...server, namespace },querydata);
+			const respdata = await makeRESTRequest("POST", 1, "/action/query", { ...server, namespace }, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
 
 				// Report Diagnostics for files that aren't in the returned data
-				respdata.data.result.content.forEach((e) => otherNsDocs.delete(`${namespace}:::${(e.Name.endsWith(".int") || e.Name.endsWith(".obj")) ? `${e.Name.slice(0,-3)}mac` : e.Name}`));
-				otherNsDocs.forEach((v,k) => {
+				respdata.data.result.content.forEach((e) => otherNsDocs.delete(`${namespace}:::${(e.Name.endsWith(".int") || e.Name.endsWith(".obj")) ? `${e.Name.slice(0, -3)}mac` : e.Name}`));
+				otherNsDocs.forEach((v, k) => {
 					const [ns, doc] = k.split(":::");
 					if (ns == namespace) {
 						v.forEach((range) => diagnostics.push({
 							severity: DiagnosticSeverity.Error,
 							range,
-							message: `${doc.endsWith("cls") ? "Class" : doc.endsWith("inc") ? "Include file" : "Routine"} "${doc.slice(0,-4)}" does not exist in namespace "${ns}"`,
+							message: `${doc.endsWith("cls") ? "Class" : doc.endsWith("inc") ? "Include file" : "Routine"} "${doc.slice(0, -4)}" does not exist in namespace "${ns}"`,
 							source: 'InterSystems Language Server'
 						}));
 					}

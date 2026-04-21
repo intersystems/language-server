@@ -49,7 +49,7 @@ export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<Typ
 				// This is a class name
 				
 				// Get the full text of the selection
-				let wordrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
+				const wordrange = findFullRange(params.position.line,parsed,i,symbolstart,symbolend);
 				let word = doc.getText(wordrange);
 				if (word.charAt(0) === ".") {
 					// This might be $SYSTEM.ClassName
@@ -107,7 +107,7 @@ export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<Typ
 
 	if (cls != null) {
 		// Normalize the class name if there are imports
-		let normalizedname = await normalizeClassname(doc,parsed,cls,server,params.position.line);
+		const normalizedname = await normalizeClassname(doc,parsed,cls,server,params.position.line);
 
 		// Get the uri for this class
 		const uri: string | null = await connection.sendRequest("intersystems/uri/forDocument",`${normalizedname}.cls`);

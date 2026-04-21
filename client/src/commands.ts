@@ -33,9 +33,9 @@ export async function overrideClassMembers() {
 	let seenextends = false;
 	for (let linenum = 0; linenum < openDoc.lineCount; linenum++) {
 		const linetxt = openDoc.lineAt(linenum).text;
-		if (linetxt.slice(0,5).toLowerCase() === "class") {
+		if (linetxt.slice(0, 5).toLowerCase() === "class") {
 			// This is the class definition line
-			const linewords = linetxt.replace(/\s{2,}/g," ").split(" ");
+			const linewords = linetxt.replace(/\s{2,}/g, " ").split(" ");
 			if (linewords.length > 2 && linewords[2].toLowerCase() == "extends") {
 				seenextends = true;
 			}
@@ -44,7 +44,7 @@ export async function overrideClassMembers() {
 	}
 	if (!seenextends) {
 		// This class has no superclasses, so tell the user and exit
-		window.showInformationMessage("The current class has no superclasses.","Dismiss");
+		window.showInformationMessage("The current class has no superclasses.", "Dismiss");
 		return;
 	}
 
@@ -56,19 +56,19 @@ export async function overrideClassMembers() {
 		cursorvalid = true;
 	}
 	if (cursorvalid) {
-		docposvalid = await client.sendRequest("intersystems/refactor/validateOverrideCursor",{
+		docposvalid = await client.sendRequest("intersystems/refactor/validateOverrideCursor", {
 			uri: openDoc.uri.toString(),
 			line: selection.active.line
 		});
 	}
 	if (!cursorvalid || !docposvalid) {
 		// We can't insert new class members at the cursor position, so tell the user and exit
-		window.showInformationMessage("Cursor must be in the class definition body and with nothing selected.","Dismiss");
+		window.showInformationMessage("Cursor must be in the class definition body and with nothing selected.", "Dismiss");
 		return;
 	}
 
 	// Ask the user to select the type of member that they want to override
-	const selectedType = await window.showQuickPick(["Method","Parameter","Projection","Property","Query","Trigger","XData"],{
+	const selectedType = await window.showQuickPick(["Method", "Parameter", "Projection", "Property", "Query", "Trigger", "XData"], {
 		title: "Pick the type of class member to override"
 	});
 	if (!selectedType) {
@@ -88,18 +88,18 @@ export async function overrideClassMembers() {
 	}
 
 	// Ask the server for all overridable members of the selected type
-	const overridableMembers: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listOverridableMembers",{
+	const overridableMembers: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listOverridableMembers", {
 		uri: openDoc.uri.toString(),
 		memberType: selectedType
 	});
 	if (!overridableMembers?.length) {
 		// There are no members of this type to override, so tell the user and exit
-		window.showInformationMessage(`There are no inherited ${plural} that are overridable.`,"Dismiss");
+		window.showInformationMessage(`There are no inherited ${plural} that are overridable.`, "Dismiss");
 		return;
 	}
 
 	// Ask the user to select which members they want to override
-	const selectedMembers = await window.showQuickPick(overridableMembers,{
+	const selectedMembers = await window.showQuickPick(overridableMembers, {
 		title: `Pick the ${plural} to override`,
 		matchOnDescription: true,
 		matchOnDetail: true,
@@ -111,7 +111,7 @@ export async function overrideClassMembers() {
 	}
 
 	// Ask the server to compute the workspace edit that the client should apply
-	const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addOverridableMembers",{
+	const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addOverridableMembers", {
 		uri: openDoc.uri.toString(),
 		members: selectedMembers,
 		cursor: selection.active,
@@ -130,7 +130,7 @@ export async function selectParameterType(uri: string, parameterRange: Range) {
 	const allparametertypes: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listParameterTypes");
 
 	// Ask the user to select a parameter type
-	const selectedParameter = await window.showQuickPick(allparametertypes,{
+	const selectedParameter = await window.showQuickPick(allparametertypes, {
 		title: "Pick the Parameter type",
 		matchOnDescription: true,
 		canPickMany: false
@@ -152,7 +152,7 @@ export async function selectParameterType(uri: string, parameterRange: Range) {
 	};
 
 	// Apply the workspace edit
-	workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(edit));	
+	workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(edit));
 }
 
 /**
@@ -160,23 +160,24 @@ export async function selectParameterType(uri: string, parameterRange: Range) {
  */
 export async function selectImportPackage(uri: string, classname: string) {
 	// Ask for all import packages
-	const allimportpackages: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listImportPackages",{
+	const allimportpackages: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listImportPackages", {
 		uri: uri,
 		classmame: classname
 	});
 
+	let selectedPackage: QuickPickItem;
 	if (allimportpackages.length === 0) {
 		// There are no packages of this class, so tell the user and exit
-		window.showInformationMessage("There are no packages for \'" + classname + "\'","Dismiss");
+		window.showInformationMessage("There are no packages for '" + classname + "'", "Dismiss");
 		return;
 	} else if (allimportpackages.length === 1) {
 		// There is only one package, the user does not need to choose
-		var selectedPackage = allimportpackages[0];
+		selectedPackage = allimportpackages[0];
 	} else {
 		// Ask the user to select an import package
-		var selectedPackage = await window.showQuickPick(allimportpackages,{
+		selectedPackage = await window.showQuickPick(allimportpackages, {
 			title: "Pick the package to import",
-			canPickMany: false 
+			canPickMany: false
 		});
 		if (!selectedPackage) {
 			// No package was selected
@@ -185,13 +186,13 @@ export async function selectImportPackage(uri: string, classname: string) {
 	}
 
 	// Ask the server to compute the workspace edit
-	const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addImportPackage",{
+	const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addImportPackage", {
 		uri: uri,
 		packagename: selectedPackage.label,
 	});
 
 	// Apply the workspace edit
-	workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
+	workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));
 }
 
 /**
@@ -199,26 +200,27 @@ export async function selectImportPackage(uri: string, classname: string) {
  */
 export async function extractMethod(uri: string, lnstart: number, lnend: number, lnmethod: number, newmethodtype: string) {
 	// Get the list of class member names
-	const symbols =  await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
-	var clsmembers: string[] = [];
+	const symbols = await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
+	const clsmembers: string[] = [];
 	for (let clsmember = 0; clsmember < symbols[0].children.length; clsmember++) {
 		clsmembers.push(symbols[0].children[clsmember].name);
 	}
 
-	var newmethodname = await window.showInputBox({
+	let newmethodname = await window.showInputBox({
 		title: "Enter the name of the new method",
 		value: "newmethod",
 		validateInput: (newmethodname: string) => {
 			if (newmethodname === "") {
 				return "Empty method name";
 			}
-			var testname: string = newmethodname;
+			let testname: string = newmethodname;
 			if (
 				(newmethodname.charAt(0) !== '"' || newmethodname.charAt(newmethodname.length) !== '"') &&
+				// eslint-disable-next-line no-control-regex
 				newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g) === null
 			) {
 				// Input contains forbidden characters so double exisiting " and add leading and trailing "
-				testname = '"' + newmethodname.replace(/\"/g,'""') + '"';
+				testname = '"' + newmethodname.replace('"', '""') + '"';
 			}
 			if (testname.length > 220) {
 				return "Name is too long";
@@ -234,13 +236,14 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 		return;
 	}
 	// Format name 
+	// eslint-disable-next-line no-control-regex
 	if (newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g) === null) {
 		// Add quotes if the name does not start with a letter or %, then followed by letter/number/ascii>128
-		newmethodname = '"' + newmethodname.replace(/\"/g,'""') + '"';
+		newmethodname = '"' + newmethodname.replace('"', '""') + '"';
 	}
 
 	// Ask the server to compute the workspace edit
-	const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addMethod",{
+	const lspWorkspaceEdit: WorkspaceEdit = await client.sendRequest("intersystems/refactor/addMethod", {
 		uri: uri,
 		newmethodname: newmethodname,
 		lnstart: lnstart,
@@ -250,40 +253,40 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 	});
 
 	// Apply the workspace edit
-	await workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));	
+	await workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));
 
 	// Highlight and scroll to new extracted method
 	const activeEditor = window.activeTextEditor;
 	if (activeEditor.document.uri.toString() === uri) {
 		// Selection of the extracted method
 		const anchor = lspWorkspaceEdit.changes[uri][0].range.start;
-		var methodstring: string = "";
-		for (let edit = 0; edit < lspWorkspaceEdit.changes[uri].length-2; edit++) {
+		let methodstring: string = "";
+		for (let edit = 0; edit < lspWorkspaceEdit.changes[uri].length - 2; edit++) {
 			methodstring += lspWorkspaceEdit.changes[uri][edit].newText;
 		}
 		const methodsize = methodstring.split("\n").length - 1;
-		const range: Range = new Range(new Position(anchor.line+1,0),new Position(anchor.line+methodsize,1));
-		
+		const range: Range = new Range(new Position(anchor.line + 1, 0), new Position(anchor.line + methodsize, 1));
+
 		// Selection of the method call
-		const anchor2 = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].range.start;
-		const linesize = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length-1].newText.length;
+		const anchor2 = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length - 1].range.start;
+		const linesize = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length - 1].newText.length;
 		const range2: Range = new Range(
-			new Position(anchor2.line+methodsize+1,anchor2.character),
-			new Position(anchor2.line+methodsize+1,anchor2.character+linesize+1)
+			new Position(anchor2.line + methodsize + 1, anchor2.character),
+			new Position(anchor2.line + methodsize + 1, anchor2.character + linesize + 1)
 		);
 
 		// Scroll to the extracted method
 		activeEditor.revealRange(range);
-		
+
 		// Highlight extracted method and method call
 		const color: string = "#ffff0020";	// Transparent yellow 
 		const timeout: number = 2000; // Highlight disapears after 2 seconds
 		const decoration = window.createTextEditorDecorationType({
 			backgroundColor: color
 		});
-		activeEditor.setDecorations(decoration,[range,range2]);
-		await new Promise(r => setTimeout(r, timeout)); 
-		setTimeout(function(){decoration.dispose();}, 0); 
+		activeEditor.setDecorations(decoration, [range, range2]);
+		await new Promise(r => setTimeout(r, timeout));
+		setTimeout(function () { decoration.dispose(); }, 0);
 	}
 }
 
@@ -310,7 +313,7 @@ export async function showSymbolInClass(uri: string, memberType: string, memberN
 			editor = await window.showTextDocument(uriObj);
 		}
 		editor.selection = new Selection(symbol.selectionRange.start, symbol.selectionRange.end);
-    	editor.revealRange(symbol.selectionRange, TextEditorRevealType.InCenter);
+		editor.revealRange(symbol.selectionRange, TextEditorRevealType.InCenter);
 	}
 }
 
@@ -318,7 +321,7 @@ export async function showSymbolInClass(uri: string, memberType: string, memberN
  * Callback function for the `intersystems.language-server.setSelection` command.
  */
 export function setSelection(editor: TextEditor, _edit: TextEditorEdit, startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
-	const range = new Range(startLine,startCharacter,endLine,endCharacter);
+	const range = new Range(startLine, startCharacter, endLine, endCharacter);
 	editor.selection = new Selection(range.start, range.end);
 	editor.revealRange(range, TextEditorRevealType.InCenter);
 }

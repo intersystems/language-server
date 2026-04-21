@@ -18,9 +18,9 @@ import systemVariables = require("../documentation/systemVariables.json");
 async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] | null> {
 	const result: TextEdit[] = [];
 	const doc = documents.get(uri);
-	if (doc === undefined) {return null;}
+	if (doc === undefined) { return null; }
 	const parsed = await getParsedDocument(uri);
-	if (parsed === undefined) {return null;}
+	if (parsed === undefined) { return null; }
 	const settings = await getLanguageServerSettings(uri);
 	const server: ServerSpec = await getServerSpec(doc.uri);
 
@@ -29,21 +29,21 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 
 		// Find the last non-empty line
 		let lastnonempty = parsed.length - 1;
-		for (let nl = parsed.length-1; nl >= 0; nl--) {
+		for (let nl = parsed.length - 1; nl >= 0; nl--) {
 			if (parsed[nl].length === 0) {
 				continue;
 			}
 			lastnonempty = nl;
 			break;
 		}
-		range = Range.create(0, 0, lastnonempty, parsed[lastnonempty][parsed[lastnonempty].length-1].p + parsed[lastnonempty][parsed[lastnonempty].length-1].c);
+		range = Range.create(0, 0, lastnonempty, parsed[lastnonempty][parsed[lastnonempty].length - 1].p + parsed[lastnonempty][parsed[lastnonempty].length - 1].c);
 	}
 
 	let classes: StudioOpenDialogFile[] = [];
 	let inheritedpackages: string[] | undefined = undefined;
 	if (settings.formatting.expandClassNames) {
 		// Get all classes
-		const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 			query: "SELECT Name||'.cls' AS Name FROM %Dictionary.ClassDefinition",
 			parameters: []
 		});
@@ -62,15 +62,15 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 				else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 					// This line starts with a UDL keyword
 
-					let keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c))).toLowerCase();
+					const keyword = doc.getText(Range.create(Position.create(i, parsed[i][0].p), Position.create(i, parsed[i][0].p + parsed[i][0].c))).toLowerCase();
 					if (keyword === "class") {
-						clsname = doc.getText(findFullRange(i,parsed,1,parsed[i][1].p,parsed[i][1].p+parsed[i][1].c));
+						clsname = doc.getText(findFullRange(i, parsed, 1, parsed[i][1].p, parsed[i][1].p + parsed[i][1].c));
 						for (let j = 1; j < parsed[i].length; j++) {
 							if (
 								parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
 								doc.getText(Range.create(
-									Position.create(i,parsed[i][j].p),
-									Position.create(i,parsed[i][j].p+parsed[i][j].c)
+									Position.create(i, parsed[i][j].p),
+									Position.create(i, parsed[i][j].p + parsed[i][j].c)
 								)).toLowerCase() === "extends"
 							) {
 								// The 'Extends' keyword is present
@@ -87,11 +87,11 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 					query: "SELECT $LISTTOSTRING(Importall) AS Importall FROM %Dictionary.CompiledClass WHERE Name = ?",
 					parameters: [clsname]
 				};
-				const pkgrespdata = await makeRESTRequest("POST",1,"/action/query",server,pkgquerydata);
+				const pkgrespdata = await makeRESTRequest("POST", 1, "/action/query", server, pkgquerydata);
 				if (pkgrespdata?.data?.result?.content?.length == 1) {
 					// We got data back
 					inheritedpackages = pkgrespdata.data.result.content[0].Importall != "" ?
-						pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',') : [];
+						pkgrespdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g, '').split(',') : [];
 				}
 			}
 		}
@@ -112,19 +112,19 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 			}
 			if (parsed[line][token].l == ld.cos_langindex && parsed[line][token].s == ld.cos_command_attrindex) {
 				// This is an ObjectScript command
-		
-				const commandrange = Range.create(Position.create(line,parsed[line][token].p),Position.create(line,parsed[line][token].p + parsed[line][token].c));
+
+				const commandrange = Range.create(Position.create(line, parsed[line][token].p), Position.create(line, parsed[line][token].p + parsed[line][token].c));
 				const commandtext = doc.getText(commandrange);
-				var commanddoc: CommandDoc | undefined;
+				let commanddoc: CommandDoc | undefined;
 				if (commandtext.toUpperCase() === "H") {
 					// This is "halt" or "hang"
-					commanddoc = haltOrHang(doc,parsed,line,token);
+					commanddoc = haltOrHang(doc, parsed, line, token);
 				}
 				else {
 					commanddoc = commands.find((el) => el.label === commandtext.toUpperCase() || el.alias.includes(commandtext.toUpperCase()));
 				}
 				if (commanddoc !== undefined) {
-					var idealcommandtext = "";
+					let idealcommandtext: string;
 					if (settings.formatting.commands.length === "short" && commanddoc.alias.length === 2) {
 						idealcommandtext = commanddoc.alias[1];
 					}
@@ -140,14 +140,14 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 						}
 						else if (idealcommandtext.charAt(0) === "Z") {
 							if (idealcommandtext.charAt(1) === "Z") {
-								idealcommandtext = idealcommandtext.slice(0,3) + idealcommandtext.slice(3).toLowerCase();
+								idealcommandtext = idealcommandtext.slice(0, 3) + idealcommandtext.slice(3).toLowerCase();
 							}
 							else {
-								idealcommandtext = idealcommandtext.slice(0,2) + idealcommandtext.slice(2).toLowerCase();
+								idealcommandtext = idealcommandtext.slice(0, 2) + idealcommandtext.slice(2).toLowerCase();
 							}
 						}
 						else {
-							idealcommandtext = idealcommandtext.slice(0,1) + idealcommandtext.slice(1).toLowerCase();
+							idealcommandtext = idealcommandtext.slice(0, 1) + idealcommandtext.slice(1).toLowerCase();
 						}
 					}
 					if (commandtext !== idealcommandtext) {
@@ -161,12 +161,12 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 			}
 			else if (parsed[line][token].l == ld.cos_langindex && parsed[line][token].s == ld.cos_sysf_attrindex) {
 				// This is a system function
-		
-				const sysfrange = Range.create(Position.create(line,parsed[line][token].p),Position.create(line,parsed[line][token].p + parsed[line][token].c));
+
+				const sysfrange = Range.create(Position.create(line, parsed[line][token].p), Position.create(line, parsed[line][token].p + parsed[line][token].c));
 				const sysftext = doc.getText(sysfrange);
 				const sysfdoc = systemFunctions.find((el) => el.label === sysftext.toUpperCase() || el.alias.includes(sysftext.toUpperCase()));
 				if (sysfdoc !== undefined) {
-					var idealsysftext = "";
+					let idealsysftext: string;
 					if (settings.formatting.system.length === "short" && sysfdoc.alias.length === 2) {
 						idealsysftext = sysfdoc.alias[1];
 					}
@@ -177,50 +177,48 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 						idealsysftext = idealsysftext.toLowerCase();
 					}
 					else if (settings.formatting.system.case === "word") {
-						if (idealsysftext === "$BITCOUNT") {idealsysftext = "$BitCount";}
-						else if (idealsysftext === "$BITFIND") {idealsysftext = "$BitFind";}
-						else if (idealsysftext === "$BITLOGIC") {idealsysftext = "$BitLogic";}
-						else if (idealsysftext === "$CLASSMETHOD") {idealsysftext = "$ClassMethod";}
-						else if (idealsysftext === "$CLASSNAME") {idealsysftext = "$ClassName";}
-						else if (idealsysftext === "$FNUMBER") {idealsysftext = "$FNumber";}
-						else if (idealsysftext === "$INUMBER") {idealsysftext = "$INumber";}
-						else if (idealsysftext === "$ISOBJECT") {idealsysftext = "$IsObject";}
-						else if (idealsysftext === "$ISVALIDNUM") {idealsysftext = "$IsValidNum";}
-						else if (idealsysftext === "$ISVALIDDOUBLE") {idealsysftext = "$IsValidDouble";}
-						else if (idealsysftext === "$ISVECTOR") {idealsysftext = "$IsVector";}
-						else if (idealsysftext === "$LISTBUILD") {idealsysftext = "$ListBuild";}
-						else if (idealsysftext === "$LISTDATA") {idealsysftext = "$ListData";}
-						else if (idealsysftext === "$LISTFIND") {idealsysftext = "$ListFind";}
-						else if (idealsysftext === "$LISTFROMSTRING") {idealsysftext = "$ListFromString";}
-						else if (idealsysftext === "$LISTGET") {idealsysftext = "$ListGet";}
-						else if (idealsysftext === "$LISTLENGTH") {idealsysftext = "$ListLength";}
-						else if (idealsysftext === "$LISTNEXT") {idealsysftext = "$ListNext";}
-						else if (idealsysftext === "$LISTSAME") {idealsysftext = "$ListSame";}
-						else if (idealsysftext === "$LISTTOSTRING") {idealsysftext = "$ListToString";}
-						else if (idealsysftext === "$LISTUPDATE") {idealsysftext = "$ListUpdate";}
-						else if (idealsysftext === "$LISTVALID") {idealsysftext = "$ListValid";}
-						else if (idealsysftext === "$NCONVERT") {idealsysftext = "$NConvert";}
-						else if (idealsysftext === "$PREFETCHOFF") {idealsysftext = "$PrefetchOff";}
-						else if (idealsysftext === "$PREFETCHON") {idealsysftext = "$PrefetchOn";}
-						else if (idealsysftext === "$QLENGTH") {idealsysftext = "$QLength";}
-						else if (idealsysftext === "$QSUBSCRIPT") {idealsysftext = "$QSubscript";}
-						else if (idealsysftext === "$SCONVERT") {idealsysftext = "$SConvert";}
-						else if (idealsysftext === "$SORTBEGIN") {idealsysftext = "$SortBegin";}
-						else if (idealsysftext === "$SORTEND") {idealsysftext = "$SortEnd";}
-						else if (idealsysftext === "$VECTORDEFINED") {idealsysftext = "$VectorDefined";}
+						if (idealsysftext === "$BITCOUNT") { idealsysftext = "$BitCount"; }
+						else if (idealsysftext === "$BITFIND") { idealsysftext = "$BitFind"; }
+						else if (idealsysftext === "$BITLOGIC") { idealsysftext = "$BitLogic"; }
+						else if (idealsysftext === "$CLASSMETHOD") { idealsysftext = "$ClassMethod"; }
+						else if (idealsysftext === "$CLASSNAME") { idealsysftext = "$ClassName"; }
+						else if (idealsysftext === "$FNUMBER") { idealsysftext = "$FNumber"; }
+						else if (idealsysftext === "$INUMBER") { idealsysftext = "$INumber"; }
+						else if (idealsysftext === "$ISOBJECT") { idealsysftext = "$IsObject"; }
+						else if (idealsysftext === "$ISVALIDNUM") { idealsysftext = "$IsValidNum"; }
+						else if (idealsysftext === "$ISVALIDDOUBLE") { idealsysftext = "$IsValidDouble"; }
+						else if (idealsysftext === "$ISVECTOR") { idealsysftext = "$IsVector"; }
+						else if (idealsysftext === "$LISTBUILD") { idealsysftext = "$ListBuild"; }
+						else if (idealsysftext === "$LISTDATA") { idealsysftext = "$ListData"; }
+						else if (idealsysftext === "$LISTFIND") { idealsysftext = "$ListFind"; }
+						else if (idealsysftext === "$LISTFROMSTRING") { idealsysftext = "$ListFromString"; }
+						else if (idealsysftext === "$LISTGET") { idealsysftext = "$ListGet"; }
+						else if (idealsysftext === "$LISTLENGTH") { idealsysftext = "$ListLength"; }
+						else if (idealsysftext === "$LISTNEXT") { idealsysftext = "$ListNext"; }
+						else if (idealsysftext === "$LISTSAME") { idealsysftext = "$ListSame"; }
+						else if (idealsysftext === "$LISTTOSTRING") { idealsysftext = "$ListToString"; }
+						else if (idealsysftext === "$LISTUPDATE") { idealsysftext = "$ListUpdate"; }
+						else if (idealsysftext === "$LISTVALID") { idealsysftext = "$ListValid"; }
+						else if (idealsysftext === "$NCONVERT") { idealsysftext = "$NConvert"; }
+						else if (idealsysftext === "$PREFETCHOFF") { idealsysftext = "$PrefetchOff"; }
+						else if (idealsysftext === "$PREFETCHON") { idealsysftext = "$PrefetchOn"; }
+						else if (idealsysftext === "$QLENGTH") { idealsysftext = "$QLength"; }
+						else if (idealsysftext === "$QSUBSCRIPT") { idealsysftext = "$QSubscript"; }
+						else if (idealsysftext === "$SCONVERT") { idealsysftext = "$SConvert"; }
+						else if (idealsysftext === "$SORTBEGIN") { idealsysftext = "$SortBegin"; }
+						else if (idealsysftext === "$SORTEND") { idealsysftext = "$SortEnd"; }
+						else if (idealsysftext === "$VECTORDEFINED") { idealsysftext = "$VectorDefined"; }
 						else if (idealsysftext.charAt(1) === "W") {
-							idealsysftext = idealsysftext.slice(0,3) + idealsysftext.slice(3).toLowerCase();
+							idealsysftext = idealsysftext.slice(0, 3) + idealsysftext.slice(3).toLowerCase();
 						}
 						else if (idealsysftext.charAt(1) === "Z" && idealsysftext.charAt(2) !== "O" && idealsysftext.charAt(2) !== "F") {
-							idealsysftext = idealsysftext.slice(0,3) + idealsysftext.slice(3).toLowerCase();
+							idealsysftext = idealsysftext.slice(0, 3) + idealsysftext.slice(3).toLowerCase();
 						}
 						else {
-							idealsysftext = idealsysftext.slice(0,2) + idealsysftext.slice(2).toLowerCase();
+							idealsysftext = idealsysftext.slice(0, 2) + idealsysftext.slice(2).toLowerCase();
 						}
 					}
-					else {
-		
-					}
+					else { /* empty */ }
 					if (sysftext !== idealsysftext) {
 						// Replace old text with the new text
 						result.push({
@@ -232,14 +230,14 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 			}
 			else if (parsed[line][token].l == ld.cos_langindex && parsed[line][token].s == ld.cos_ssysv_attrindex) {
 				// This is a structured system variable
-		
-				const ssysvrange = Range.create(Position.create(line,parsed[line][token].p),Position.create(line,parsed[line][token].p + parsed[line][token].c));
+
+				const ssysvrange = Range.create(Position.create(line, parsed[line][token].p), Position.create(line, parsed[line][token].p + parsed[line][token].c));
 				const ssysvtext = doc.getText(ssysvrange);
 				if (ssysvtext !== "^$") {
 					if (ssysvtext.indexOf("^$") === -1) {
-						const ssysvdoc = structuredSystemVariables.find((el) => el.label === "^$"+ssysvtext.toUpperCase() || el.alias.includes("^$"+ssysvtext.toUpperCase()));
+						const ssysvdoc = structuredSystemVariables.find((el) => el.label === "^$" + ssysvtext.toUpperCase() || el.alias.includes("^$" + ssysvtext.toUpperCase()));
 						if (ssysvdoc !== undefined) {
-							var idealssysvtext = "";
+							let idealssysvtext: string;
 							if (settings.formatting.system.length === "short" && ssysvdoc.alias.length === 2) {
 								idealssysvtext = ssysvdoc.alias[1].slice(2);
 							}
@@ -250,7 +248,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 								idealssysvtext = idealssysvtext.toLowerCase();
 							}
 							else if (settings.formatting.system.case === "word") {
-								idealssysvtext = idealssysvtext.slice(0,1) + idealssysvtext.slice(1).toLowerCase();
+								idealssysvtext = idealssysvtext.slice(0, 1) + idealssysvtext.slice(1).toLowerCase();
 							}
 							if (ssysvtext !== idealssysvtext) {
 								// Replace old text with the new text
@@ -264,7 +262,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 					else {
 						const ssysvdoc = structuredSystemVariables.find((el) => el.label === ssysvtext.toUpperCase() || el.alias.includes(ssysvtext.toUpperCase()));
 						if (ssysvdoc !== undefined) {
-							var idealssysvtext = "";
+							let idealssysvtext: string;
 							if (settings.formatting.system.length === "short" && ssysvdoc.alias.length === 2) {
 								idealssysvtext = ssysvdoc.alias[1];
 							}
@@ -275,7 +273,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 								idealssysvtext = idealssysvtext.toLowerCase();
 							}
 							else if (settings.formatting.system.case === "word") {
-								idealssysvtext = idealssysvtext.slice(0,3) + idealssysvtext.slice(3).toLowerCase();
+								idealssysvtext = idealssysvtext.slice(0, 3) + idealssysvtext.slice(3).toLowerCase();
 							}
 							if (ssysvtext !== idealssysvtext) {
 								// Replace old text with the new text
@@ -290,14 +288,14 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 			}
 			else if (parsed[line][token].l == ld.cos_langindex && parsed[line][token].s == ld.cos_sysv_attrindex) {
 				// This is a system variable
-		
-				const sysvrange = Range.create(Position.create(line,parsed[line][token].p),Position.create(line,parsed[line][token].p + parsed[line][token].c));
+
+				const sysvrange = Range.create(Position.create(line, parsed[line][token].p), Position.create(line, parsed[line][token].p + parsed[line][token].c));
 				const sysvtext = doc.getText(sysvrange);
 				const sysvdoc = systemVariables.find((el) => el.label === sysvtext.toUpperCase() || el.alias.includes(sysvtext.toUpperCase()));
 				if (sysvdoc !== undefined) {
-					var idealsysvtext = "";
+					let idealsysvtext: string;
 					if (settings.formatting.system.length === "short" && sysvdoc.alias.length === 2) {
-						if (sysvtext.toUpperCase() === "$SYSTEM" && parsed[line][token+1].l == ld.cos_langindex && parsed[line][token+1].s == ld.cos_clsname_attrindex) {
+						if (sysvtext.toUpperCase() === "$SYSTEM" && parsed[line][token + 1].l == ld.cos_langindex && parsed[line][token + 1].s == ld.cos_clsname_attrindex) {
 							// $SYSTEM is being used as part of a class name and can't be shortened
 							idealsysvtext = sysvdoc.label;
 						}
@@ -313,10 +311,10 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 					}
 					else if (settings.formatting.system.case === "word") {
 						if (idealsysvtext.charAt(1) === "Z") {
-							idealsysvtext = idealsysvtext.slice(0,3) + idealsysvtext.slice(3).toLowerCase();
+							idealsysvtext = idealsysvtext.slice(0, 3) + idealsysvtext.slice(3).toLowerCase();
 						}
 						else {
-							idealsysvtext = idealsysvtext.slice(0,2) + idealsysvtext.slice(2).toLowerCase();
+							idealsysvtext = idealsysvtext.slice(0, 2) + idealsysvtext.slice(2).toLowerCase();
 						}
 					}
 					if (sysvtext !== idealsysvtext) {
@@ -330,10 +328,10 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 			}
 			else if (parsed[line][token].l == ld.cos_langindex && parsed[line][token].s == ld.cos_zcom_attrindex) {
 				// This is an unknown Z command
-		
-				const unkncrange = Range.create(Position.create(line,parsed[line][token].p),Position.create(line,parsed[line][token].p + parsed[line][token].c));
+
+				const unkncrange = Range.create(Position.create(line, parsed[line][token].p), Position.create(line, parsed[line][token].p + parsed[line][token].c));
 				const unknctext = doc.getText(unkncrange);
-				var idealunknctext = unknctext;
+				let idealunknctext = unknctext;
 				if (settings.formatting.commands.case === "upper") {
 					idealunknctext = idealunknctext.toUpperCase();
 				}
@@ -341,7 +339,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 					idealunknctext = idealunknctext.toLowerCase();
 				}
 				else {
-					idealunknctext = idealunknctext.slice(0,2).toUpperCase() + idealunknctext.slice(2).toLowerCase();
+					idealunknctext = idealunknctext.slice(0, 2).toUpperCase() + idealunknctext.slice(2).toLowerCase();
 				}
 				if (unknctext !== idealunknctext) {
 					result.push({
@@ -352,10 +350,10 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 			}
 			else if (parsed[line][token].l == ld.cos_langindex && (parsed[line][token].s == ld.cos_uknzfunc_attrindex || parsed[line][token].s == ld.cos_uknzvar_attrindex)) {
 				// This is an unknown Z function or variable
-		
-				const unknsrange = Range.create(Position.create(line,parsed[line][token].p),Position.create(line,parsed[line][token].p + parsed[line][token].c));
+
+				const unknsrange = Range.create(Position.create(line, parsed[line][token].p), Position.create(line, parsed[line][token].p + parsed[line][token].c));
 				const unknstext = doc.getText(unknsrange);
-				var idealunknstext = unknstext;
+				let idealunknstext = unknstext;
 				if (settings.formatting.system.case === "upper") {
 					idealunknstext = idealunknstext.toUpperCase();
 				}
@@ -363,7 +361,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 					idealunknstext = idealunknstext.toLowerCase();
 				}
 				else {
-					idealunknstext = idealunknstext.slice(0,3).toUpperCase() + idealunknstext.slice(3).toLowerCase();
+					idealunknstext = idealunknstext.slice(0, 3).toUpperCase() + idealunknstext.slice(3).toLowerCase();
 				}
 				if (unknstext !== idealunknstext) {
 					result.push({
@@ -375,18 +373,18 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 			else if (
 				classes.length > 0 &&
 				((parsed[line][token].l == ld.cls_langindex && parsed[line][token].s == ld.cls_clsname_attrindex) ||
-				(parsed[line][token].l == ld.cos_langindex && parsed[line][token].s == ld.cos_clsname_attrindex)) &&
-				(token == 0 || (token > 0 && (parsed[line][token-1].l != parsed[line][token].l || parsed[line][token-1].s != parsed[line][token].s))) &&
+					(parsed[line][token].l == ld.cos_langindex && parsed[line][token].s == ld.cos_clsname_attrindex)) &&
+				(token == 0 || (token > 0 && (parsed[line][token - 1].l != parsed[line][token].l || parsed[line][token - 1].s != parsed[line][token].s))) &&
 				settings.formatting.expandClassNames
 			) {
 				// This is the first token of a class name
 
 				// Don't format a class name that follows the "Class" keyword
-				if (token !== 0 && parsed[line][token-1].l == ld.cls_langindex && parsed[line][token-1].s == ld.cls_keyword_attrindex) {
+				if (token !== 0 && parsed[line][token - 1].l == ld.cls_langindex && parsed[line][token - 1].s == ld.cls_keyword_attrindex) {
 					// The previous token is a UDL keyword
 					const prevkeytext = doc.getText(Range.create(
-						Position.create(line,parsed[line][token-1].p),
-						Position.create(line,parsed[line][token-1].p+parsed[line][token-1].c)
+						Position.create(line, parsed[line][token - 1].p),
+						Position.create(line, parsed[line][token - 1].p + parsed[line][token - 1].c)
 					)).toLowerCase();
 					if (prevkeytext === "class") {
 						continue;
@@ -396,15 +394,15 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 				if (
 					token !== 0 && parsed[line][0].l == ld.cls_langindex && parsed[line][0].s == ld.cls_keyword_attrindex &&
 					doc.getText(Range.create(
-						Position.create(line,parsed[line][0].p),
-						Position.create(line,parsed[line][0].p+parsed[line][0].c)
+						Position.create(line, parsed[line][0].p),
+						Position.create(line, parsed[line][0].p + parsed[line][0].c)
 					)).toLowerCase() == "import"
 				) {
 					break;
 				}
 
 				// Get the full text of the selection
-				let wordrange = findFullRange(line,parsed,token,parsed[line][token].p,parsed[line][token].p+parsed[line][token].c);
+				const wordrange = findFullRange(line, parsed, token, parsed[line][token].p, parsed[line][token].p + parsed[line][token].c);
 				let word = doc.getText(wordrange);
 				if (word.charAt(0) === ".") {
 					// Can't format $SYSTEM.ClassName
@@ -412,13 +410,13 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 				}
 				if (word.charAt(0) === '"') {
 					// This classname is delimited with ", so strip them
-					word = word.slice(1,-1);
+					word = word.slice(1, -1);
 				}
 
 				if (!word.includes(".")) {
 					// Normalize the class name
-					let possiblecls = {num: 0};
-					let normalizedname = await normalizeClassname(doc,parsed,word,server,line,classes,possiblecls,inheritedpackages);
+					const possiblecls = { num: 0 };
+					const normalizedname = await normalizeClassname(doc, parsed, word, server, line, classes, possiblecls, inheritedpackages);
 					if (normalizedname != "") {
 						result.push({
 							range: wordrange,

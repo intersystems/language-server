@@ -5,27 +5,27 @@ import { compressedline, LanguageServerConfiguration, ServerSpec } from './types
 /**
  * TextDocument URI's mapped to the tokenized representation of the document.
  */
-export let parsedDocuments: Map<string, compressedline[] | undefined> = new Map();
+export const parsedDocuments: Map<string, compressedline[] | undefined> = new Map();
 
 /**
  * Node IPC connection between the server and client.
  */
-export let connection = createConnection();
+export const connection = createConnection();
 
 /**
  * TextDocument manager.
  */
-export let documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
+export const documents: TextDocuments<TextDocument> = new TextDocuments(TextDocument);
 
 /**
  * TextDocument URI's mapped to the document's semantic tokens builder.
  */
-export let tokenBuilders: Map<string, SemanticTokensBuilder> = new Map();
+export const tokenBuilders: Map<string, SemanticTokensBuilder> = new Map();
 
 /**
  * TextDocument URI's mapped to the InterSystems server that the document belongs to.
  */
-export let serverSpecs: Map<string, ServerSpec> = new Map();
+export const serverSpecs: Map<string, ServerSpec> = new Map();
 
 /**
  * An array containing the names and descriptions of all core Property data type parameters.

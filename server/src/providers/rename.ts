@@ -10,9 +10,9 @@ export async function onPrepareRename(params: TextDocumentPositionParams) {
 	if (parsed === undefined) {return null;}
 
 	if (doc.languageId === "objectscript-class") {
-		var result: Range | null = null;
+		let result: Range | null = null;
 
-		var symbollang: number = -1;
+		let symbollang: number = -1;
 		for (let i = 0; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
 			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
@@ -47,7 +47,7 @@ export async function onPrepareRename(params: TextDocumentPositionParams) {
 			}
 			else {
 				// Check if this method is ProcedureBlock
-				var methodprocedureblock: boolean | undefined = undefined;
+				let methodprocedureblock: boolean | undefined = undefined;
 				if (
 					parsed[params.position.line][0].l === ld.cls_langindex && parsed[params.position.line][0].s === ld.cls_keyword_attrindex &&
 					doc.getText(Range.create(
@@ -140,7 +140,7 @@ export async function onPrepareRename(params: TextDocumentPositionParams) {
 
 				if (methodprocedureblock === undefined) {
 					// Defer to the class's setting
-					var classprocedureblock: boolean = true;
+					let classprocedureblock: boolean = true;
 					for (let line = 0; line <= params.position.line; line++) {
 						if (parsed[line].length === 0) {
 							continue;
@@ -206,9 +206,9 @@ export async function onRenameRequest(params: RenameParams) {
 	if (parsed === undefined) {return null;}
 
 	// Loop through the line that we're on to find the token type and old name
-	var oldname: string = "";
-	var lang: number = -1;
-	var type: number = -1;
+	let oldname: string = "";
+	let lang: number = -1;
+	let type: number = -1;
 	for (let i = 0; i < parsed[params.position.line].length; i++) {
 		const symbolstart: number = parsed[params.position.line][i].p;
 		const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
@@ -241,7 +241,7 @@ export async function onRenameRequest(params: RenameParams) {
 	}
 
 	// Compute the TextEdits
-	var edits: TextEdit[] = [];
+	const edits: TextEdit[] = [];
 	if (lang === ld.cos_langindex) {
 		// Loop up in the file and compute edits on every line until you reach the method definition
 		for (let line1 = params.position.line-1; line1 >= 0; line1--) {
@@ -254,7 +254,7 @@ export async function onRenameRequest(params: RenameParams) {
 				}
 				else {
 					// Loop through the line looking for the parameter definition
-					var foundparamdefn = false;
+					let foundparamdefn = false;
 					for (let udltkn = 0; udltkn < parsed[line1].length; udltkn++) {
 						if (parsed[line1][udltkn].l == ld.cls_langindex && parsed[line1][udltkn].s == ld.cls_param_attrindex) {
 							// This token is a UDL parameter

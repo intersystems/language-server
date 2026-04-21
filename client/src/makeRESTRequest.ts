@@ -30,7 +30,7 @@ export type ServerSpec = {
  * @param checksum Optional checksum. Only passed for SASchema requests.
  * @param params Optional URL parameters. Only passed for GET /doc/ requests.
  */
-export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse<any> | undefined> {
+export async function makeRESTRequest(method: "GET" | "POST" | "HEAD", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse<any> | undefined> {
 	if (server.host === "") {
 		// No server connection is configured
 		client.warn("Cannot make required REST request because no server connection is configured.");
@@ -56,7 +56,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 	}
 
 	// Build the URL
-	let url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/${api ? `v${server.apiVersion}/${server.namespace}${path}` : "" }`);
+	const url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/${api ? `v${server.apiVersion}/${server.namespace}${path}` : ""}`);
 
 	// Create the HTTPS agent
 	const httpsAgent = new https.Agent({ rejectUnauthorized: workspace.getConfiguration("http").get("proxyStrictSSL") });
@@ -66,11 +66,11 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 
 	// Make the request
 	try {
+		let respdata: AxiosResponse;
 		if (checksum !== undefined) {
 			// This is a SASchema request
-			
+
 			// Make the initial request
-			var respdata: AxiosResponse;
 			respdata = await axios.request(
 				{
 					method: "GET",
@@ -80,7 +80,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 						"Cookie": cookies.join(" ")
 					},
 					withCredentials: true,
-  					httpsAgent,
+					httpsAgent,
 					validateStatus: function (status) {
 						return status < 500;
 					}
@@ -94,7 +94,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 						method: "GET",
 						url: url,
 						withCredentials: true,
-  						httpsAgent,
+						httpsAgent,
 						headers: {
 							"Cookie": cookies.join(" ")
 						}
@@ -122,7 +122,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 							password: server.password
 						},
 						withCredentials: true,
-  						httpsAgent
+						httpsAgent
 					}
 				);
 				cookies = await updateCookies(respdata.headers['set-cookie'] || [], server);
@@ -133,7 +133,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 							method: "GET",
 							url: url,
 							withCredentials: true,
-  							httpsAgent,
+							httpsAgent,
 							headers: {
 								"Cookie": cookies.join(" ")
 							}
@@ -158,8 +158,6 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 		}
 		else {
 			// This is a different request
-	
-			var respdata: AxiosResponse;
 			if (data !== undefined) {
 				respdata = await axios.request(
 					{
@@ -171,7 +169,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 							"Cookie": cookies.join(" ")
 						},
 						withCredentials: true,
-  						httpsAgent,
+						httpsAgent,
 						validateStatus: function (status) {
 							return status < 500;
 						}
@@ -193,7 +191,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 								password: server.password
 							},
 							withCredentials: true,
-  							httpsAgent
+							httpsAgent
 						}
 					);
 				}
@@ -205,7 +203,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 						method: method,
 						url: url,
 						withCredentials: true,
-  						httpsAgent,
+						httpsAgent,
 						params: params,
 						headers: {
 							"Cookie": cookies.join(" ")
@@ -227,7 +225,7 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 								password: server.password
 							},
 							withCredentials: true,
-  							httpsAgent,
+							httpsAgent,
 							params: params
 						}
 					);
@@ -237,13 +235,12 @@ export async function makeRESTRequest(method: "GET"|"POST"|"HEAD", api: number, 
 			return respdata;
 		}
 	} catch (error) {
-		client.warn(`Error making REST request ${method} ${path}: ${
-			typeof error == "string"
-				? error
-				: error instanceof Error
+		client.warn(`Error making REST request ${method} ${path}: ${typeof error == "string"
+			? error
+			: error instanceof Error
 				? error.toString()
 				: JSON.stringify(error)
-		}`);
+			}`);
 		return undefined;
 	}
 };

@@ -58,7 +58,7 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 			}
 		}
 
-		let newText: string[] = doc.getText().split("\n");
+		const newText: string[] = doc.getText().split("\n");
 		let lastMemberKeyword: string = "";
 		let lastMemberName: string = "";
 		let lastMemberKeywordLine: number = -1;
@@ -99,7 +99,7 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 		// Embedded language is HTML
 
 		// Find the offset of the token at params.position
-		let newText: string[] = doc.getText().split("\n");
+		const newText: string[] = doc.getText().split("\n");
 		let thistoken: number = 0;
 		for (let i = 0; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
@@ -189,7 +189,7 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
         // Embedded language is CSS
 
 		// Only keep CSS in this code block (excluding embeddings)
-		let newText: string[] = doc.getText().split("\n");
+		const newText: string[] = doc.getText().split("\n");
 		let startLine: number = 0;
 		let endLine: number = parsed.length - 1;
 		let found = false;
@@ -248,7 +248,7 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
         // Embedded language is JavaScript
 
 		// Only keep JavaScript in this code block (excluding embeddings)
-		let newText: string[] = doc.getText().split("\n");
+		const newText: string[] = doc.getText().split("\n");
 		let startLine: number = 0;
 		let endLine: number = parsed.length - 1;
 		let found = false;

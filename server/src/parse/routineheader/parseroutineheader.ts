@@ -27,7 +27,7 @@ export type routineheadertype = {'compressedline': compressedline, 'routineheade
  */
 export function colorRoutineLine(routineline: string): routineheadertype {
 
-    let linesource: LineSource = new LineSource(routineline);
+    const linesource: LineSource = new LineSource(routineline);
 
     // color the routine line, catching exceptions thrown by the parser
     let routineheaderinfo: routineheaderinfotype = {'routinename': ''};
@@ -56,7 +56,7 @@ export function colorRoutineLine(routineline: string): routineheadertype {
         linesource.commitError(rubbishError);
     }
 
-    let result: routineheadertype = {'compressedline': linesource.getColoring()};
+    const result: routineheadertype = {'compressedline': linesource.getColoring()};
     if (!linesource.anyErrors()) {
         result.routineheaderinfo = routineheaderinfo;
     }
@@ -91,7 +91,7 @@ function colorRoutineLineImpl(linesource: LineSource): routineheaderinfotype {
     // parse routine name
     linesource.skipWhitespace();
     const routinename = parseRoutineName(linesource);    
-    let routineheaderinfo: routineheaderinfotype = {'routinename': routinename};    
+    const routineheaderinfo: routineheaderinfotype = {'routinename': routinename};    
 
     // parse options if there's a '[' ..
     linesource.skipWhitespace();
@@ -156,7 +156,7 @@ function parseRoutineName(linesource: LineSource): string {
  */
 function parseOptionsList(linesource: LineSource, routineheaderinfo: routineheaderinfotype) {
 
-    let seenkeywords = {};
+    const seenkeywords = {};
     while (!linesource.ended()) {
 
         // parse KEY=VALUE

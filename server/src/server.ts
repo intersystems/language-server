@@ -152,17 +152,17 @@ connection.languages.semanticTokens.onDelta(onSemanticTokensDelta);
 
 connection.onNotification("intersystems/server/passwordChange",
 	(serverName: string) => {
-		var invalid: string[] = [];
-		for (let [uri, server] of serverSpecs.entries()) {
+		const invalid: string[] = [];
+		for (const [uri, server] of serverSpecs.entries()) {
 			if (server.serverName == serverName) {
 				invalid.push(uri);
 			}
 		}
-		for (let uri of invalid) {
+		for (const uri of invalid) {
 			serverSpecs.delete(uri);
 		}
-		var toRemove: ServerSpec | undefined = undefined;
-		for (let server of schemaCaches.keys()) {
+		let toRemove: ServerSpec | undefined = undefined;
+		for (const server of schemaCaches.keys()) {
 			if (server.serverName == serverName) {
 				toRemove = server;
 				break;

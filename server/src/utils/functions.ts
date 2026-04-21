@@ -20,21 +20,21 @@ const turndown = new TurndownService({
 });
 turndown.remove("style");
 turndown.keep(["span", "table", "tr", "td", "u"]);
-turndown.addRule("pre",{
+turndown.addRule("pre", {
 	filter: "pre",
 	replacement: function (content: string, node: HTMLElement) {
 		let lang = "";
-		content = content.replace(/\\\\/g,"\\").replace(/\\\[/g,"[").replace(/\\\]/g,"]")
-			.replace(/&amp;/g,"&").replace(/&amp;/g,"&")
-			.replace(/&lt;/g,"<").replace(/&gt;/g,">");
-		let attrVal = node.getAttribute("LANGUAGE");
+		content = content.replace(/\\\\/g, "\\").replace(/\\\[/g, "[").replace(/\\\]/g, "]")
+			.replace(/&amp;/g, "&").replace(/&amp;/g, "&")
+			.replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+		const attrVal = node.getAttribute("LANGUAGE");
 		if (attrVal == null) {
 			try {
-				let obj = JSON.parse(content);
+				const obj = JSON.parse(content);
 				if (typeof obj == "object") {
 					lang = "json";
 				}
-			} catch {}
+			} catch { /* empty */ }
 		}
 		else {
 			switch (attrVal.split("!").shift().toUpperCase()) {
@@ -67,19 +67,19 @@ turndown.addRule("pre",{
 					break;
 			}
 		}
-		
+
 		return "\n```" + lang + "\n" + content + "\n```\n";
 	}
 });
-turndown.addRule("documaticLinks",{
-	filter: ["class","method","property","query","parameter"],
+turndown.addRule("documaticLinks", {
+	filter: ["class", "method", "property", "query", "parameter"],
 	replacement: function (content: string, node: HTMLElement) {
-		const methodOrQuery = ["METHOD","QUERY"].includes(node.nodeName);
+		const methodOrQuery = ["METHOD", "QUERY"].includes(node.nodeName);
 		const wrapper = node.nodeName == "CLASS" ? "***" : "**";
-		return `${wrapper}${methodOrQuery ? content.replace(/\(\)/g,"") : content}${methodOrQuery ? "()" : ""}${wrapper}`;
+		return `${wrapper}${methodOrQuery ? content.replace(/\(\)/g, "") : content}${methodOrQuery ? "()" : ""}${wrapper}`;
 	}
 });
-turndown.addRule("documaticArgs",{
+turndown.addRule("documaticArgs", {
 	filter: "args",
 	replacement: function (content: string, node: HTMLElement) {
 		if (node.children.length > 0) {
@@ -87,16 +87,16 @@ turndown.addRule("documaticArgs",{
 		}
 	}
 });
-turndown.addRule("documaticArg",{
+turndown.addRule("documaticArg", {
 	filter: "arg",
 	replacement: function (content: string, node: HTMLElement) {
-		let attrVal = node.getAttribute("name");
+		const attrVal = node.getAttribute("name");
 		if (attrVal !== null) {
 			return `\n- \`${attrVal}\` - ${content}`;
 		}
 	}
 });
-turndown.addRule("documaticReturn",{
+turndown.addRule("documaticReturn", {
 	filter: "return",
 	replacement: function (content: string) {
 		return `\n#### Return Value:\n${content}\n`;
@@ -112,20 +112,20 @@ turndown.addRule("documaticReturn",{
  * @param token The offset of the command in the line.
  */
 export function haltOrHang(doc: TextDocument, parsed: compressedline[], line: number, token: number): CommandDoc | undefined {
-	if (parsed[line][token+1] === undefined) {
+	if (parsed[line][token + 1] === undefined) {
 		// This is a "halt"
 		return commands.find((el) => el.label === "HALT");
 	}
 	else {
-		var nexttokentext = doc.getText(Range.create(Position.create(line,parsed[line][token+1].p),Position.create(line,parsed[line][token+1].p + parsed[line][token+1].c)));
+		let nexttokentext = doc.getText(Range.create(Position.create(line, parsed[line][token + 1].p), Position.create(line, parsed[line][token + 1].p + parsed[line][token + 1].c)));
 		if (nexttokentext === ":") {
 			// There's a postconditional
-			nexttokentext = doc.getText(Range.create(Position.create(line,parsed[line][token+2].p),Position.create(line,parsed[line][token+2].p + parsed[line][token+2].c)));
-			const restofline = doc.getText(Range.create(Position.create(line,parsed[line][token+2].p + parsed[line][token+2].c),Position.create(line+1,0))).trim();
+			nexttokentext = doc.getText(Range.create(Position.create(line, parsed[line][token + 2].p), Position.create(line, parsed[line][token + 2].p + parsed[line][token + 2].c)));
+			const restofline = doc.getText(Range.create(Position.create(line, parsed[line][token + 2].p + parsed[line][token + 2].c), Position.create(line + 1, 0))).trim();
 			if (nexttokentext === "(") {
-				var opencount = 1;
-				var closecount = 0;
-				var lastclose = 0;
+				let opencount = 1;
+				let closecount = 0;
+				let lastclose = 0;
 				for (let i = 0; i < restofline.length; i++) {
 					if (restofline.charAt(i) === "(") {
 						opencount++;
@@ -134,11 +134,11 @@ export function haltOrHang(doc: TextDocument, parsed: compressedline[], line: nu
 						closecount++;
 					}
 					if (opencount === closecount) {
-						lastclose= i;
+						lastclose = i;
 						break;
 					}
 				}
-				if (lastclose === restofline.length-1) {
+				if (lastclose === restofline.length - 1) {
 					// This is a "halt"
 					return commands.find((el) => el.label === "HALT");
 				}
@@ -200,7 +200,7 @@ export function findFullRange(line: number, parsed: compressedline[], lineidx: n
 		if ((newidx == -1) || (parsed[line][newidx].l != parsed[line][lineidx].l) || (parsed[line][newidx].s != parsed[line][lineidx].s)) {
 			break;
 		}
-		else if (parsed[line][newidx].p+parsed[line][newidx].c !== parsed[line][newidx+1].p) {
+		else if (parsed[line][newidx].p + parsed[line][newidx].c !== parsed[line][newidx + 1].p) {
 			// There's whitespace in between the next token and this one
 			break;
 		}
@@ -213,13 +213,13 @@ export function findFullRange(line: number, parsed: compressedline[], lineidx: n
 		if ((parsed[line][newidx] === undefined) || (parsed[line][newidx].l != parsed[line][lineidx].l) || (parsed[line][newidx].s != parsed[line][lineidx].s)) {
 			break;
 		}
-		else if (parsed[line][newidx].p !== parsed[line][newidx-1].p+parsed[line][newidx-1].c) {
+		else if (parsed[line][newidx].p !== parsed[line][newidx - 1].p + parsed[line][newidx - 1].c) {
 			// There's whitespace in between the previous token and this one
 			break;
 		}
 		rangeend = parsed[line][newidx].p + parsed[line][newidx].c;
 	}
-	return Range.create(Position.create(line,rangestart),Position.create(line,rangeend));
+	return Range.create(Position.create(line, rangestart), Position.create(line, rangeend));
 };
 
 /**
@@ -248,8 +248,8 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 			}
 			else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 				// This line starts with a UDL keyword
-	
-				const keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
+
+				const keyword = doc.getText(Range.create(i, parsed[i][0].p, i, parsed[i][0].p + parsed[i][0].c));
 				if (keyword.toLowerCase() == "class") {
 					let seenextends = false;
 					for (let j = 1; j < parsed[i].length; j++) {
@@ -259,16 +259,16 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 								if (result.superclasses.length == 0) {
 									result.superclasses.push("");
 								}
-								result.superclasses[result.superclasses.length-1] += doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
+								result.superclasses[result.superclasses.length - 1] += doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c));
 							}
 							else {
-								result.docname += doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c));
+								result.docname += doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c));
 							}
 						}
 						else if (
 							parsed[i][j].l == ld.cls_langindex &&
 							parsed[i][j].s == ld.cls_keyword_attrindex &&
-							doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)).toLowerCase() == "extends"
+							doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() == "extends"
 						) {
 							seenextends = true;
 						}
@@ -279,7 +279,7 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 								break;
 							}
 							else {
-								if (parsed[i][j+1].l == ld.cls_langindex && parsed[i][j+1].s == ld.cls_clsname_attrindex) {
+								if (parsed[i][j + 1].l == ld.cls_langindex && parsed[i][j + 1].s == ld.cls_clsname_attrindex) {
 									// This is a "," or the opening "("
 									result.superclasses.push("");
 								}
@@ -293,16 +293,16 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 					break;
 				}
 				else if (keyword.toLowerCase() === "include" && parsed[i].length > 1) {
-					result.includes = doc.getText(Range.create(i,parsed[i][1].p,i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c))
-						.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
+					result.includes = doc.getText(Range.create(i, parsed[i][1].p, i, parsed[i][parsed[i].length - 1].p + parsed[i][parsed[i].length - 1].c))
+						.replace("(", "").replace(")", "").replace(/\s+/g, "").split(",");
 				}
 				else if (keyword.toLowerCase() === "includegenerator" && parsed[i].length > 1) {
-					result.includegenerators = doc.getText(Range.create(i,parsed[i][1].p,i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c))
-						.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
+					result.includegenerators = doc.getText(Range.create(i, parsed[i][1].p, i, parsed[i][parsed[i].length - 1].p + parsed[i][parsed[i].length - 1].c))
+						.replace("(", "").replace(")", "").replace(/\s+/g, "").split(",");
 				}
 				else if (keyword.toLowerCase() === "import" && parsed[i].length > 1) {
-					result.imports = doc.getText(Range.create(i,parsed[i][1].p,i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c))
-						.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
+					result.imports = doc.getText(Range.create(i, parsed[i][1].p, i, parsed[i][parsed[i].length - 1].p + parsed[i][parsed[i].length - 1].c))
+						.replace("(", "").replace(")", "").replace(/\s+/g, "").split(",");
 				}
 			}
 		}
@@ -313,32 +313,32 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 			if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
 				// This is the definition for the method that the macro is in
 				if (sql && doc.getText(Range.create(
-					k,parsed[k][0].p,
-					k,parsed[k][0].p+parsed[k][0].c
+					k, parsed[k][0].p,
+					k, parsed[k][0].p + parsed[k][0].c
 				)).toLowerCase() == "Query") sqlIsClassQuery = true;
 				if (
-					parsed[k][parsed[k].length-1].l == ld.cls_langindex && parsed[k][parsed[k].length-1].s == ld.cls_delim_attrindex &&
+					parsed[k][parsed[k].length - 1].l == ld.cls_langindex && parsed[k][parsed[k].length - 1].s == ld.cls_delim_attrindex &&
 					doc.getText(Range.create(
-						k,parsed[k][parsed[k].length-1].p,
-						k,parsed[k][parsed[k].length-1].p+parsed[k][parsed[k].length-1].c
+						k, parsed[k][parsed[k].length - 1].p,
+						k, parsed[k][parsed[k].length - 1].p + parsed[k][parsed[k].length - 1].c
 					)) === "("
 				) {
 					// This is a multi-line method definition
-					for (let mline = k+1; mline < parsed.length; mline++) {
+					for (let mline = k + 1; mline < parsed.length; mline++) {
 						if (
-							parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
+							parsed[mline][parsed[mline].length - 1].l == ld.cls_langindex && parsed[mline][parsed[mline].length - 1].s == ld.cls_delim_attrindex &&
 							doc.getText(Range.create(
-								mline,parsed[mline][parsed[mline].length-1].p,
-								mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c
+								mline, parsed[mline][parsed[mline].length - 1].p,
+								mline, parsed[mline][parsed[mline].length - 1].p + parsed[mline][parsed[mline].length - 1].c
 							)) !== ","
 						) {
 							// We've passed the argument lines so look for the CodeMode keyword on this line
 							for (let l = 1; l < parsed[mline].length; l++) {
 								if (parsed[mline][l].l == ld.cls_langindex && parsed[mline][l].s == ld.cls_keyword_attrindex) {
-									const kw = doc.getText(Range.create(mline,parsed[mline][l].p,mline,parsed[mline][l].p+parsed[mline][l].c));
+									const kw = doc.getText(Range.create(mline, parsed[mline][l].p, mline, parsed[mline][l].p + parsed[mline][l].c));
 									if (kw.toLowerCase() == "codemode") {
 										// The CodeMode keyword is set
-										const kwval = doc.getText(Range.create(mline,parsed[mline][l+2].p,mline,parsed[mline][l+2].p+parsed[mline][l+2].c));
+										const kwval = doc.getText(Range.create(mline, parsed[mline][l + 2].p, mline, parsed[mline][l + 2].p + parsed[mline][l + 2].c));
 										if (kwval.toLowerCase() == "generator" || kwval.toLowerCase() == "objectgenerator") {
 											result.mode = "generator";
 										}
@@ -354,10 +354,10 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 					// This is a single-line method definition so look for the CodeMode keyword on this line
 					for (let l = 1; l < parsed[k].length; l++) {
 						if (parsed[k][l].l == ld.cls_langindex && parsed[k][l].s == ld.cls_keyword_attrindex) {
-							const kw = doc.getText(Range.create(k,parsed[k][l].p,k,parsed[k][l].p+parsed[k][l].c));
+							const kw = doc.getText(Range.create(k, parsed[k][l].p, k, parsed[k][l].p + parsed[k][l].c));
 							if (kw.toLowerCase() == "codemode") {
 								// The CodeMode keyword is set
-								const kwval = doc.getText(Range.create(k,parsed[k][l+2].p,k,parsed[k][l+2].p+parsed[k][l+2].c));
+								const kwval = doc.getText(Range.create(k, parsed[k][l + 2].p, k, parsed[k][l + 2].p + parsed[k][l + 2].c));
 								if (kwval.toLowerCase() == "generator" || kwval.toLowerCase() == "objectgenerator") {
 									result.mode = "generator";
 								}
@@ -388,8 +388,8 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 					parsed[i][j].l == ld.html_langindex &&
 					parsed[i][j].s == ld.html_tag_attrindex &&
 					doc.getText(Range.create(
-						i,parsed[i][j].p,
-						i,parsed[i][j].p+parsed[i][j].c
+						i, parsed[i][j].p,
+						i, parsed[i][j].p + parsed[i][j].c
 					)).toLowerCase() == "csp:class"
 				) {
 					// This is the start of a CSP:CLASS HTML element
@@ -400,8 +400,8 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 					parsed[i][j].l == ld.html_langindex &&
 					parsed[i][j].s == ld.html_delim_attrindex &&
 					doc.getText(Range.create(
-						i,parsed[i][j].p,
-						i,parsed[i][j].p+parsed[i][j].c
+						i, parsed[i][j].p,
+						i, parsed[i][j].p + parsed[i][j].c
 					)) == ">"
 				) {
 					// This is a tag close delimiter
@@ -411,8 +411,8 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 				else if (inclasstag && parsed[i][j].l == ld.html_langindex && parsed[i][j].s == ld.html_name_attrindex) {
 					// This is an attribute of a CSP:CLASS HTML element
 					const nametext: string = doc.getText(Range.create(
-						i,parsed[i][j].p,
-						i,parsed[i][j].p+parsed[i][j].c
+						i, parsed[i][j].p,
+						i, parsed[i][j].p + parsed[i][j].c
 					)).toLowerCase();
 					if (nametext == "super" || nametext == "import" || nametext == "includes") {
 						searchname = nametext;
@@ -421,9 +421,9 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 				else if (searchname !== "" && parsed[i][j].l == ld.html_langindex && parsed[i][j].s == ld.html_str_attrindex) {
 					// This is the value of the last attribute that we saw
 					const valuearr: string[] = doc.getText(Range.create(
-						i,parsed[i][j].p,
-						i,parsed[i][j].p+parsed[i][j].c
-					)).slice(1,-1).split(",");
+						i, parsed[i][j].p,
+						i, parsed[i][j].p + parsed[i][j].c
+					)).slice(1, -1).split(",");
 					if (searchname == "super") {
 						result.superclasses = valuearr;
 					}
@@ -444,7 +444,7 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 		for (let i = 0; i < line; i++) {
 			if (i === 0 && doc.languageId != "objectscript-class") {
 				// Get the routine name from the ROUTINE header line
-				const fullline = doc.getText(Range.create(0,0,0,parsed[0][parsed[0].length-1].p+parsed[0][parsed[0].length-1].c));
+				const fullline = doc.getText(Range.create(0, 0, 0, parsed[0][parsed[0].length - 1].p + parsed[0][parsed[0].length - 1].c));
 				result.docname = fullline.split(" ")[1] + ".mac";
 			}
 			else if (parsed[i].length === 0) {
@@ -452,10 +452,10 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 			}
 			else if (parsed[i][0].l == ld.cos_langindex && parsed[i][0].s == ld.cos_ppc_attrindex) {
 				// This is a preprocessor command
-				const command = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][1].p+parsed[i][1].c));
+				const command = doc.getText(Range.create(i, parsed[i][0].p, i, parsed[i][1].p + parsed[i][1].c));
 				if (command.toLowerCase() == "#include") {
-					result.includes.push(doc.getText(Range.create(i,parsed[i][2].p,i,parsed[i][2].p+parsed[i][2].c)));
-				} 
+					result.includes.push(doc.getText(Range.create(i, parsed[i][2].p, i, parsed[i][2].p + parsed[i][2].c)));
+				}
 			}
 		}
 	}
@@ -472,14 +472,14 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
  * @param selector The variable that we're looking for.
  */
 export function parseDimLine(doc: TextDocument, parsed: compressedline[], line: number, selector: string): DimResult {
-	let result: DimResult = {
+	const result: DimResult = {
 		founddim: false,
 		class: ""
 	};
 	for (let k = 2; k < parsed[line].length; k++) {
 		if (parsed[line][k].s === ld.cos_localdec_attrindex || parsed[line][k].s === ld.cos_localvar_attrindex) {
 			// This is a declared local variable or a public variable
-			var localvar = doc.getText(Range.create(Position.create(line,parsed[line][k].p),Position.create(line,parsed[line][k].p+parsed[line][k].c)));
+			const localvar = doc.getText(Range.create(Position.create(line, parsed[line][k].p), Position.create(line, parsed[line][k].p + parsed[line][k].c)));
 			if (localvar === selector) {
 				// This is the #Dim for the selector
 				result.founddim = true;
@@ -488,9 +488,9 @@ export function parseDimLine(doc: TextDocument, parsed: compressedline[], line: 
 		else if (parsed[line][k].s === ld.cos_command_attrindex) {
 			// This is the "As" keyword
 			if (result.founddim) {
-				const nextword = doc.getText(Range.create(Position.create(line,parsed[line][k+1].p),Position.create(line,parsed[line][k+1].p+parsed[line][k+1].c)));
-				if (parsed[line][k+1].s === ld.cos_clsname_attrindex) {
-					result.class = doc.getText(findFullRange(line,parsed,k+1,parsed[line][k+1].p,parsed[line][k+1].p+parsed[line][k+1].c));
+				const nextword = doc.getText(Range.create(Position.create(line, parsed[line][k + 1].p), Position.create(line, parsed[line][k + 1].p + parsed[line][k + 1].c)));
+				if (parsed[line][k + 1].s === ld.cos_clsname_attrindex) {
+					result.class = doc.getText(findFullRange(line, parsed, k + 1, parsed[line][k + 1].p, parsed[line][k + 1].p + parsed[line][k + 1].c));
 				}
 				else if (nextword.toLowerCase() === "list") {
 					result.class = "%Collection.ListOfObj";
@@ -521,35 +521,35 @@ export function parseDimLine(doc: TextDocument, parsed: compressedline[], line: 
  * @param inheritedpackages An array containing packages imported by superclasses of this class.
  */
 export async function getImports(doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec, inheritedpackages?: string[]): Promise<string[]> {
-	var result: string[] = [];
+	let result: string[] = [];
 	if (doc.languageId === "objectscript-class") {
 		// Look for the "Import" keyword
-		var hassupers = false;
-		var clsname = "";
+		let hassupers = false;
+		let clsname = "";
 		for (let i = 0; i < parsed.length; i++) {
 			if (parsed[i].length === 0) {
 				continue;
 			}
 			else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 				// This line starts with a UDL keyword
-	
-				var keyword = doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][0].p+parsed[i][0].c))).toLowerCase();
+
+				const keyword = doc.getText(Range.create(Position.create(i, parsed[i][0].p), Position.create(i, parsed[i][0].p + parsed[i][0].c))).toLowerCase();
 				if (keyword === "import" && parsed[i].length > 1) {
-					var codes = doc.getText(Range.create(Position.create(i,parsed[i][1].p),Position.create(i,parsed[i][parsed[i].length-1].p+parsed[i][parsed[i].length-1].c)));
-					result = codes.replace("(","").replace(")","").replace(/\s+/g,"").split(",");
+					const codes = doc.getText(Range.create(Position.create(i, parsed[i][1].p), Position.create(i, parsed[i][parsed[i].length - 1].p + parsed[i][parsed[i].length - 1].c)));
+					result = codes.replace("(", "").replace(")", "").replace(/\s+/g, "").split(",");
 				}
 				else if (keyword === "class") {
 					// Add the current package if it's not explicitly imported
-					clsname = doc.getText(findFullRange(i,parsed,1,parsed[i][1].p,parsed[i][1].p+parsed[i][1].c));
-					if (!result.includes(clsname.slice(0,clsname.lastIndexOf(".")))) {
-						result.push(clsname.slice(0,clsname.lastIndexOf(".")));
+					clsname = doc.getText(findFullRange(i, parsed, 1, parsed[i][1].p, parsed[i][1].p + parsed[i][1].c));
+					if (!result.includes(clsname.slice(0, clsname.lastIndexOf(".")))) {
+						result.push(clsname.slice(0, clsname.lastIndexOf(".")));
 					}
 					for (let j = 1; j < parsed[i].length; j++) {
 						if (
 							parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(
-								Position.create(i,parsed[i][j].p),
-								Position.create(i,parsed[i][j].p+parsed[i][j].c)
+								Position.create(i, parsed[i][j].p),
+								Position.create(i, parsed[i][j].p + parsed[i][j].c)
 							)).toLowerCase() === "extends"
 						) {
 							// The 'Extends' keyword is present
@@ -574,13 +574,13 @@ export async function getImports(doc: TextDocument, parsed: compressedline[], li
 				parsed[i].length > 2 &&
 				(parsed[i][0].l == ld.cos_langindex && parsed[i][0].s == ld.cos_ppc_attrindex) &&
 				(parsed[i][1].l == ld.cos_langindex && parsed[i][1].s == ld.cos_ppc_attrindex) &&
-				(doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][1].p+parsed[i][1].c))).toLowerCase() === "#import")
+				(doc.getText(Range.create(Position.create(i, parsed[i][0].p), Position.create(i, parsed[i][1].p + parsed[i][1].c))).toLowerCase() === "#import")
 			) {
 				// This is a #import
-				const restofline = doc.getText(Range.create(Position.create(i,parsed[i][2].p),Position.create(i+1,0)));
+				const restofline = doc.getText(Range.create(Position.create(i, parsed[i][2].p), Position.create(i + 1, 0)));
 				const packages = restofline.match(/(%?[a-z]+(\.a-z)*)/gi);
 				if (packages !== null) {
-					for (let p of packages) {
+					for (const p of packages) {
 						if (!result.includes(p)) {
 							result.push(p);
 						}
@@ -592,7 +592,7 @@ export async function getImports(doc: TextDocument, parsed: compressedline[], li
 		if (hassupers) {
 			if (inheritedpackages !== undefined) {
 				// inheritedpackages was passed in from `onDiagnostics()`
-				for (let pkg of inheritedpackages) {
+				for (const pkg of inheritedpackages) {
 					if (!result.includes(pkg)) {
 						result.push(pkg);
 					}
@@ -603,12 +603,12 @@ export async function getImports(doc: TextDocument, parsed: compressedline[], li
 					query: "SELECT $LISTTOSTRING(Importall) AS Importall FROM %Dictionary.CompiledClass WHERE Name = ?",
 					parameters: [clsname]
 				};
-				const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 				if (respdata?.data?.result?.content?.length == 1) {
 					// We got data back
 					if (respdata.data.result.content[0].Importall != "") {
-						const pkgs = respdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g,'').split(',');
-						for (let pkg of pkgs) {
+						const pkgs = respdata.data.result.content[0].Importall.replace(/[^\x20-\x7E]/g, '').split(',');
+						for (const pkg of pkgs) {
 							if (!result.includes(pkg)) {
 								result.push(pkg);
 							}
@@ -625,13 +625,13 @@ export async function getImports(doc: TextDocument, parsed: compressedline[], li
 				parsed[i].length > 2 &&
 				(parsed[i][0].l == ld.cos_langindex && parsed[i][0].s == ld.cos_ppc_attrindex) &&
 				(parsed[i][1].l == ld.cos_langindex && parsed[i][1].s == ld.cos_ppc_attrindex) &&
-				(doc.getText(Range.create(Position.create(i,parsed[i][0].p),Position.create(i,parsed[i][1].p+parsed[i][1].c))).toLowerCase() === "#import")
+				(doc.getText(Range.create(Position.create(i, parsed[i][0].p), Position.create(i, parsed[i][1].p + parsed[i][1].c))).toLowerCase() === "#import")
 			) {
 				// This is a #import
-				const restofline = doc.getText(Range.create(Position.create(i,parsed[i][2].p),Position.create(i+1,0)));
+				const restofline = doc.getText(Range.create(Position.create(i, parsed[i][2].p), Position.create(i + 1, 0)));
 				const packages = restofline.match(/(%?[a-z]+(\.a-z)*)/gi);
 				if (packages !== null) {
-					for (let p of packages) {
+					for (const p of packages) {
 						if (!result.includes(p)) {
 							result.push(p);
 						}
@@ -667,7 +667,7 @@ export async function normalizeClassname(
 	doc: TextDocument, parsed: compressedline[], clsname: string, server: ServerSpec, line: number,
 	allfiles?: StudioOpenDialogFile[], possiblecls?: PossibleClasses, inheritedpackages?: string[]
 ): Promise<string> {
-	var result = "";
+	let result = "";
 
 	if (clsname === "") {
 		// Can't normalize an empty string
@@ -687,7 +687,7 @@ export async function normalizeClassname(
 		// Any class name that contains a "." is fully resolved
 		return clsname;
 	}
-	const imports = await getImports(doc,parsed,line,server,inheritedpackages);
+	const imports = await getImports(doc, parsed, line, server, inheritedpackages);
 	if (imports.length > 0) {
 		if (allfiles === undefined) {
 			// Get all potential fully qualified classnames
@@ -695,7 +695,7 @@ export async function normalizeClassname(
 				query: "SELECT Name FROM %Dictionary.ClassDefinition WHERE $PIECE(Name,'.',$LENGTH(Name,'.')) = ?",
 				parameters: [clsname]
 			};
-			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				if (respdata.data.result.content.length === 1) {
 					// We got back exactly one class
@@ -703,14 +703,14 @@ export async function normalizeClassname(
 					const clsobj = respdata.data.result.content[0];
 					if (clsobj.Name === clsname) {
 						// The one class we got back is exactly the one we were looking for
-						result = clsname; 
+						result = clsname;
 					}
 					else {
 						// The class isn't an exact match. Check if any of the imports appear.
-						var foundimport = false;
+						let foundimport = false;
 						for (let j = 0; j < imports.length; j++) {
-							const numdots = imports[j].replace(/[^\.]/g,"").length;
-							if (clsobj.Name.indexOf(imports[j]) === 0 && clsobj.Name.replace(/[^\.]/g,"").length === numdots+1) {
+							const numdots = imports[j].replace(/[^.]/g, "").length;
+							if (clsobj.Name.indexOf(imports[j]) === 0 && clsobj.Name.replace(/[^.]/g, "").length === numdots + 1) {
 								foundimport = true;
 								break;
 							}
@@ -722,11 +722,11 @@ export async function normalizeClassname(
 				}
 				if (respdata.data.result.content.length > 1) {
 					// We got data back
-					
+
 					const potential = respdata.data.result.content.filter((clsobj) => {
 						for (let j = 0; j < imports.length; j++) {
-							const numdots = imports[j].replace(/[^\.]/g,"").length;
-							if (clsobj.Name.indexOf(imports[j]) === 0 && clsobj.Name.replace(/[^\.]/g,"").length === numdots+1) {
+							const numdots = imports[j].replace(/[^.]/g, "").length;
+							if (clsobj.Name.indexOf(imports[j]) === 0 && clsobj.Name.replace(/[^.]/g, "").length === numdots + 1) {
 								return true;
 							}
 						}
@@ -740,40 +740,40 @@ export async function normalizeClassname(
 		}
 		else {
 			// This was called from computeDiagnosics(), which already has an array of all the classes in the database
-			const filtered = allfiles.filter(file => file.Name.indexOf("."+clsname+".cls") !== -1);
+			const filtered = allfiles.filter(file => file.Name.indexOf("." + clsname + ".cls") !== -1);
 			if (filtered.length === 1) {
 				const clsobj = filtered[0];
-				if (clsobj.Name.slice(0,-4) === clsname) {
+				if (clsobj.Name.slice(0, -4) === clsname) {
 					// The one class we got back is exactly the one we were looking for
-					result = clsname; 
+					result = clsname;
 				}
 				else {
 					// The class isn't an exact match. Check if any of the imports appear.
-					var foundimport = false;
+					let foundimport = false;
 					for (let j = 0; j < imports.length; j++) {
-						const numdots = imports[j].replace(/[^\.]/g,"").length;
-						if (clsobj.Name.indexOf(imports[j]) === 0 && clsobj.Name.replace(/[^\.]/g,"").length === numdots+2) {
+						const numdots = imports[j].replace(/[^.]/g, "").length;
+						if (clsobj.Name.indexOf(imports[j]) === 0 && clsobj.Name.replace(/[^.]/g, "").length === numdots + 2) {
 							foundimport = true;
 							break;
 						}
 					}
 					if (foundimport) {
-						result = clsobj.Name.slice(0,-4);
+						result = clsobj.Name.slice(0, -4);
 					}
 				}
 			}
 			else if (filtered.length > 1) {
 				const potential = filtered.filter((clsobj) => {
 					for (let j = 0; j < imports.length; j++) {
-						const numdots = imports[j].replace(/[^\.]/g,"").length;
-						if (clsobj.Name.indexOf(imports[j]) === 0 && clsobj.Name.replace(/[^\.]/g,"").length === numdots+2) {
+						const numdots = imports[j].replace(/[^.]/g, "").length;
+						if (clsobj.Name.indexOf(imports[j]) === 0 && clsobj.Name.replace(/[^.]/g, "").length === numdots + 2) {
 							return true;
 						}
 					}
 					return false;
 				});
 				if (potential.length === 1) {
-					result = potential[0].Name.slice(0,-4);
+					result = potential[0].Name.slice(0, -4);
 				}
 				else if (potential.length > 1 && possiblecls !== undefined) {
 					possiblecls.num = potential.length;
@@ -808,25 +808,25 @@ export async function getClassMemberContext(
 		baseclass: "",
 		context: ""
 	};
-	
+
 	if (
 		doc.getText(Range.create(
-			line,parsed[line][dot].p,
-			line,parsed[line][dot].p+parsed[line][dot].c
+			line, parsed[line][dot].p,
+			line, parsed[line][dot].p + parsed[line][dot].c
 		)) === ".."
 	) {
 		// This is relative dot syntax
-			
+
 		// Find the class name
-		result.baseclass = currentClass(doc,parsed);
+		result.baseclass = currentClass(doc, parsed);
 		// Find the type of this method
-		for (let k = line-1; k >= 0; k--) {
+		for (let k = line - 1; k >= 0; k--) {
 			if (parsed[k].length === 0) {
 				continue;
 			}
 			if (parsed[k][0].l == ld.cls_langindex && parsed[k][0].s == ld.cls_keyword_attrindex) {
 				// This is the definition for the method that the selector is in
-				const keytext = doc.getText(Range.create(k,parsed[k][0].p,k,parsed[k][0].p+parsed[k][0].c));
+				const keytext = doc.getText(Range.create(k, parsed[k][0].p, k, parsed[k][0].p + parsed[k][0].c));
 				if (keytext.toLowerCase() === "method") {
 					result.context = "instance";
 				}
@@ -838,22 +838,22 @@ export async function getClassMemberContext(
 		}
 	}
 	else if (
-		dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_delim_attrindex &&
+		dot > 0 && parsed[line][dot - 1].l == ld.cos_langindex && parsed[line][dot - 1].s == ld.cos_delim_attrindex &&
 		doc.getText(Range.create(
-			line,parsed[line][dot-1].p,
-			line,parsed[line][dot-1].p+parsed[line][dot-1].c
+			line, parsed[line][dot - 1].p,
+			line, parsed[line][dot - 1].p + parsed[line][dot - 1].c
 		)) === ")"
 	) {
 		// The token before the dot is a close parenthesis
 
-		if (dot-1 > 0 && parsed[line][dot-2].l == ld.cos_langindex && parsed[line][dot-2].s == ld.cos_clsname_attrindex) {
+		if (dot - 1 > 0 && parsed[line][dot - 2].l == ld.cos_langindex && parsed[line][dot - 2].s == ld.cos_clsname_attrindex) {
 			// This is the end of a ##class
 
-			const clstext = doc.getText(findFullRange(line,parsed,dot-2,parsed[line][dot-2].p,parsed[line][dot-2].p+parsed[line][dot-2].c));
+			const clstext = doc.getText(findFullRange(line, parsed, dot - 2, parsed[line][dot - 2].p, parsed[line][dot - 2].p + parsed[line][dot - 2].c));
 			if (clstext.charAt(0) === '"') {
 				// This class name is delimited with double quotes and is fully qualified
 				result = {
-					baseclass: clstext.slice(1,-1),
+					baseclass: clstext.slice(1, -1),
 					context: "class"
 				};
 			}
@@ -861,7 +861,7 @@ export async function getClassMemberContext(
 				result = {
 					baseclass: await normalizeClassname(
 						doc, parsed,
-						doc.getText(findFullRange(line,parsed,dot-2,parsed[line][dot-2].p,parsed[line][dot-2].p+parsed[line][dot-2].c)),
+						doc.getText(findFullRange(line, parsed, dot - 2, parsed[line][dot - 2].p, parsed[line][dot - 2].p + parsed[line][dot - 2].c)),
 						server, line, allfiles, undefined, inheritedpackages
 					),
 					context: "class"
@@ -872,28 +872,28 @@ export async function getClassMemberContext(
 			// This is potentially a chained method call
 
 			// Loop backwards in the file and look for the first open parenthesis that isn't closed
-			const [openln, opentkn] = findOpenParen(doc,parsed,line,dot-1);
+			const [openln, opentkn] = findOpenParen(doc, parsed, line, dot - 1);
 
 			if (openln !== -1 && opentkn !== -1) {
 				// We found an open parenthesis token that wasn't closed
 
 				// Check the language and attribute of the token before the "("
 				if (
-					parsed[openln][opentkn-1].l == ld.cos_langindex && 
-					(parsed[openln][opentkn-1].s == ld.cos_method_attrindex || parsed[openln][opentkn-1].s == ld.cos_mem_attrindex)
+					parsed[openln][opentkn - 1].l == ld.cos_langindex &&
+					(parsed[openln][opentkn - 1].s == ld.cos_method_attrindex || parsed[openln][opentkn - 1].s == ld.cos_mem_attrindex)
 				) {
 					// This is a method or multidimensional property
-					
+
 					// Get the full text of the member
 					const member = quoteUDLIdentifier(doc.getText(Range.create(
-						openln,parsed[openln][opentkn-1].p,
-						openln,parsed[openln][opentkn-1].p+parsed[openln][opentkn-1].c
-					)),0);
+						openln, parsed[openln][opentkn - 1].p,
+						openln, parsed[openln][opentkn - 1].p + parsed[openln][opentkn - 1].c
+					)), 0);
 
 					// Get the base class that this member is in
-					const membercontext = await getClassMemberContext(doc,parsed,opentkn-2,openln,server);
+					const membercontext = await getClassMemberContext(doc, parsed, opentkn - 2, openln, server);
 					if (membercontext.baseclass != "") {
-						const cls = await getMemberType(parsed,openln,opentkn-1,membercontext.baseclass,member,server);
+						const cls = await getMemberType(parsed, openln, opentkn - 1, membercontext.baseclass, member, server);
 						if (cls) {
 							result = {
 								baseclass: cls,
@@ -905,43 +905,43 @@ export async function getClassMemberContext(
 			}
 		}
 	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_clsname_attrindex) {
+	else if (dot > 0 && parsed[line][dot - 1].l == ld.cos_langindex && parsed[line][dot - 1].s == ld.cos_clsname_attrindex) {
 		// The token before the dot is part of a class name
 
 		result = {
-			baseclass: "%SYSTEM".concat(doc.getText(findFullRange(line,parsed,dot-1,parsed[line][dot-1].p,parsed[line][dot-1].p+parsed[line][dot-1].c))),
+			baseclass: "%SYSTEM".concat(doc.getText(findFullRange(line, parsed, dot - 1, parsed[line][dot - 1].p, parsed[line][dot - 1].p + parsed[line][dot - 1].c))),
 			context: "system"
 		};
 	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (
-		parsed[line][dot-1].s == ld.cos_param_attrindex ||
-		parsed[line][dot-1].s == ld.cos_localdec_attrindex ||
-		parsed[line][dot-1].s == ld.cos_localvar_attrindex ||
-		parsed[line][dot-1].s == ld.cos_otw_attrindex ||
-		parsed[line][dot-1].s == ld.cos_localundec_attrindex || (
+	else if (dot > 0 && parsed[line][dot - 1].l == ld.cos_langindex && (
+		parsed[line][dot - 1].s == ld.cos_param_attrindex ||
+		parsed[line][dot - 1].s == ld.cos_localdec_attrindex ||
+		parsed[line][dot - 1].s == ld.cos_localvar_attrindex ||
+		parsed[line][dot - 1].s == ld.cos_otw_attrindex ||
+		parsed[line][dot - 1].s == ld.cos_localundec_attrindex || (
 			// This macro token looks like a variable reference, so attempt to compute intellisense for it.
 			// For example, $$$TRACE(var.|) or $$$TRACE(a,var.|) but not $$$TRACE(var.a.|)
 			doc.languageId != "objectscript-macros" &&
-			parsed[line][dot-1].s == ld.cos_macro_attrindex &&
+			parsed[line][dot - 1].s == ld.cos_macro_attrindex &&
 			/^[%\p{L}][\p{L}\d]{0,30}$/u.test(doc.getText(Range.create(
-				line,parsed[line][dot-1].p,
-				line,parsed[line][dot-1].p+parsed[line][dot-1].c
+				line, parsed[line][dot - 1].p,
+				line, parsed[line][dot - 1].p + parsed[line][dot - 1].c
 			))) && (
-				dot-1 == 0 || parsed[line][dot-2].s != ld.cos_macro_attrindex || doc.getText(Range.create(
-					line,parsed[line][dot-2].p,
-					line,parsed[line][dot-2].p+parsed[line][dot-2].c
+				dot - 1 == 0 || parsed[line][dot - 2].s != ld.cos_macro_attrindex || doc.getText(Range.create(
+					line, parsed[line][dot - 2].p,
+					line, parsed[line][dot - 2].p + parsed[line][dot - 2].c
 				)) == ","
 			)
 		)
 	)) {
 		// The token before the dot is a parameter, local variable, public variable or warning variable
-		const varClass = await determineVariableClass(doc,parsed,line,dot-1,server,allfiles,inheritedpackages);
+		const varClass = await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages);
 		if (varClass) result = { baseclass: varClass, context: "instance" };
 	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_sysv_attrindex) {
+	else if (dot > 0 && parsed[line][dot - 1].l == ld.cos_langindex && parsed[line][dot - 1].s == ld.cos_sysv_attrindex) {
 		// The token before the dot is a system variable
 
-		const thisvar = doc.getText(findFullRange(line,parsed,dot-1,parsed[line][dot-1].p,parsed[line][dot-1].p+parsed[line][dot-1].c)).toLowerCase();
+		const thisvar = doc.getText(findFullRange(line, parsed, dot - 1, parsed[line][dot - 1].p, parsed[line][dot - 1].p + parsed[line][dot - 1].c)).toLowerCase();
 		if (thisvar === "$this") {
 			// Find the class name
 			for (let i = 0; i < parsed.length; i++) {
@@ -950,12 +950,12 @@ export async function getClassMemberContext(
 				}
 				else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 					// This line starts with a UDL keyword
-		
-					var keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
+
+					const keyword = doc.getText(Range.create(i, parsed[i][0].p, i, parsed[i][0].p + parsed[i][0].c));
 					if (keyword.toLowerCase() === "class") {
 						for (let j = 1; j < parsed[i].length; j++) {
 							if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
-								result.baseclass = result.baseclass.concat(doc.getText(Range.create(i,parsed[i][j].p,i,parsed[i][j].p+parsed[i][j].c)));
+								result.baseclass = result.baseclass.concat(doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)));
 								result.context = "instance";
 							}
 							else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
@@ -970,31 +970,31 @@ export async function getClassMemberContext(
 		}
 	}
 	else if (
-		dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && (
-			(parsed[line][dot-1].s == ld.cos_attr_attrindex && dot >= 2) ||
-			parsed[line][dot-1].s == ld.cos_instvar_attrindex
+		dot > 0 && parsed[line][dot - 1].l == ld.cos_langindex && (
+			(parsed[line][dot - 1].s == ld.cos_attr_attrindex && dot >= 2) ||
+			parsed[line][dot - 1].s == ld.cos_instvar_attrindex
 		)
 	) {
 		// The token before the dot is an object attribute
 
 		// This is a chained reference, so get the base class of the previous token
-		const cls = parsed[line][dot-1].s == ld.cos_instvar_attrindex 
-			? currentClass(doc,parsed) : 
-			(await getClassMemberContext(doc,parsed,dot-2,line,server,allfiles,inheritedpackages)).baseclass;
-		if (!["","%Library.DynamicArray","%Library.DynamicObject"].includes(cls)) {
+		const cls = parsed[line][dot - 1].s == ld.cos_instvar_attrindex
+			? currentClass(doc, parsed) :
+			(await getClassMemberContext(doc, parsed, dot - 2, line, server, allfiles, inheritedpackages)).baseclass;
+		if (!["", "%Library.DynamicArray", "%Library.DynamicObject"].includes(cls)) {
 			// We got a base class for the previous token
 			// Skip JSON base classes because they don't have any UDL Properties
 			const attrtxt = quoteUDLIdentifier(doc.getText(Range.create(
-				line,parsed[line][dot-1].p,
-				line,parsed[line][dot-1].p+parsed[line][dot-1].c
-			)).slice(parsed[line][dot-1].s == ld.cos_instvar_attrindex ? 2 : 0),0);
+				line, parsed[line][dot - 1].p,
+				line, parsed[line][dot - 1].p + parsed[line][dot - 1].c
+			)).slice(parsed[line][dot - 1].s == ld.cos_instvar_attrindex ? 2 : 0), 0);
 
 			// Query the database to find the type of this attribute, if it has one
 			const querydata: QueryData = {
 				query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Name = ?",
-				parameters: [cls,attrtxt]
+				parameters: [cls, attrtxt]
 			};
-			const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
 				result = {
 					baseclass: respdata.data.result.content[0].RuntimeType,
@@ -1003,11 +1003,11 @@ export async function getClassMemberContext(
 			}
 		}
 	}
-	else if (dot > 0 && parsed[line][dot-1].l == ld.cos_langindex && parsed[line][dot-1].s == ld.cos_jsonb_attrindex) {
+	else if (dot > 0 && parsed[line][dot - 1].l == ld.cos_langindex && parsed[line][dot - 1].s == ld.cos_jsonb_attrindex) {
 		// The token before the dot is a JSON bracket
 
 		result.context = "instance";
-		switch (doc.getText(Range.create(line,parsed[line][dot-1].p,line,parsed[line][dot-1].p+parsed[line][dot-1].c))) {
+		switch (doc.getText(Range.create(line, parsed[line][dot - 1].p, line, parsed[line][dot - 1].p + parsed[line][dot - 1].c))) {
 			case "}":
 				result.baseclass = "%Library.DynamicObject";
 				break;
@@ -1030,7 +1030,7 @@ export async function getClassMemberContext(
  * @param checksum Optional checksum. Only passed for SASchema requests.
  * @param params Optional URL parameters. Only passed for GET /doc/ requests.
  */
-export async function makeRESTRequest(method: "GET"|"POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<any | undefined> {
+export async function makeRESTRequest(method: "GET" | "POST", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<any | undefined> {
 	// As of version 2.0.0, REST requests are made on the client side
 	return connection.sendRequest("intersystems/server/makeRESTRequest", {
 		method,
@@ -1053,7 +1053,7 @@ export async function getServerSpec(uri: string): Promise<ServerSpec> {
 	if (spec !== undefined) {
 		return spec;
 	}
-	const newspec: ServerSpec = await connection.sendRequest("intersystems/server/resolveFromUri",uri);
+	const newspec: ServerSpec = await connection.sendRequest("intersystems/server/resolveFromUri", uri);
 	serverSpecs.set(uri, newspec);
 	return newspec;
 };
@@ -1067,24 +1067,24 @@ export async function getServerSpec(uri: string): Promise<ServerSpec> {
  */
 export async function createDefinitionUri(paramsUri: string, filename: string, ext: string): Promise<string> {
 	try {
-		let newuri: string | null = await connection.sendRequest("intersystems/uri/forDocument",filename+ext);
+		let newuri: string | null = await connection.sendRequest("intersystems/uri/forDocument", filename + ext);
 		if (newuri === "") {
 			// The active version of the main extension doesn't expose DocumentContentProvider.getUri().
 			// Therefore, we need to use the old functionality.
-			
-			var thisdocuri: string = paramsUri;
-			if (paramsUri.slice(0,4) === "file") {
-				thisdocuri = await connection.sendRequest("intersystems/uri/localToVirtual",paramsUri);
+
+			let thisdocuri: string = paramsUri;
+			if (paramsUri.slice(0, 4) === "file") {
+				thisdocuri = await connection.sendRequest("intersystems/uri/localToVirtual", paramsUri);
 			}
-			var urijson = URI.parse(thisdocuri).toJSON();
-			urijson.path = "/" + filename.replace(/\./g,"/") + ext;
-			
+			const urijson = URI.parse(thisdocuri).toJSON();
+			urijson.path = "/" + filename.replace(/\./g, "/") + ext;
+
 			// Remove the "csp" query parameter if it's present
 			if (urijson.query !== undefined) {
-				var queryparams: string[] = urijson.query.split("&");
-				const cspidx: number = Math.max(queryparams.indexOf("csp"),queryparams.indexOf("csp=1"));
+				const queryparams: string[] = urijson.query.split("&");
+				const cspidx: number = Math.max(queryparams.indexOf("csp"), queryparams.indexOf("csp=1"));
 				if (cspidx >= 0) {
-					queryparams.splice(cspidx,1);
+					queryparams.splice(cspidx, 1);
 				}
 				urijson.query = queryparams.join("&");
 			}
@@ -1115,18 +1115,18 @@ export function isMacroDefinedAbove(doc: TextDocument, parsed: compressedline[],
 	let result: number = -1;
 
 	// Scan up through the file, looking for macro definitions
-	for (let ln = line-1; ln >= 0; ln--) {
+	for (let ln = line - 1; ln >= 0; ln--) {
 		if (!parsed[ln]?.length) continue;
 		if (parsed[ln].length > 1 && parsed[ln][0].l == ld.cos_langindex && parsed[ln][0].s == ld.cos_ppc_attrindex) {
 			// This line begins with a preprocessor command
 			const ppctext = doc.getText(Range.create(
-				ln,parsed[ln][1].p,
-				ln,parsed[ln][1].p+parsed[ln][1].c
+				ln, parsed[ln][1].p,
+				ln, parsed[ln][1].p + parsed[ln][1].c
 			)).toLowerCase();
 			if (
-				parsed[ln].length > 2 && ["define","def1arg","undef"].includes(ppctext) && doc.getText(Range.create(
-					ln,parsed[ln][2].p,
-					ln,parsed[ln][2].p+parsed[ln][2].c
+				parsed[ln].length > 2 && ["define", "def1arg", "undef"].includes(ppctext) && doc.getText(Range.create(
+					ln, parsed[ln][2].p,
+					ln, parsed[ln][2].p + parsed[ln][2].c
 				)) == macro
 			) {
 				// We found the (un-)definition for the selected macro
@@ -1158,37 +1158,37 @@ export async function findMethodParameterClass(
 	doc: TextDocument, parsed: compressedline[], line: number, server: ServerSpec,
 	thisparam: string, allfiles?: StudioOpenDialogFile[], inheritedpackages?: string[]
 ): Promise<ClassMemberContext | undefined> {
-	var result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined = undefined;
 	for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 		if (parsed[line][tkn].l == ld.cls_langindex && parsed[line][tkn].s == ld.cls_param_attrindex) {
 			// This is a parameter
 			const paramtext = doc.getText(Range.create(
-				Position.create(line,parsed[line][tkn].p),
-				Position.create(line,parsed[line][tkn].p+parsed[line][tkn].c)
+				Position.create(line, parsed[line][tkn].p),
+				Position.create(line, parsed[line][tkn].p + parsed[line][tkn].c)
 			));
 			if (thisparam === paramtext) {
 				// This is the correct parameter
-				if (parsed[line][tkn+1].l == ld.cls_langindex && parsed[line][tkn+1].s == ld.cls_keyword_attrindex) {
+				if (parsed[line][tkn + 1].l == ld.cls_langindex && parsed[line][tkn + 1].s == ld.cls_keyword_attrindex) {
 					// The token following the parameter name is "as", so this parameter has a type
-					const clsname = doc.getText(findFullRange(line,parsed,tkn+2,parsed[line][tkn+2].p,parsed[line][tkn+2].p+parsed[line][tkn+2].c));
+					const clsname = doc.getText(findFullRange(line, parsed, tkn + 2, parsed[line][tkn + 2].p, parsed[line][tkn + 2].p + parsed[line][tkn + 2].c));
 					result = {
-						baseclass: await normalizeClassname(doc,parsed,clsname,server,line,allfiles,undefined,inheritedpackages),
+						baseclass: await normalizeClassname(doc, parsed, clsname, server, line, allfiles, undefined, inheritedpackages),
 						context: "instance"
 					};
 				}
 				else if (
-					parsed[line][tkn+1].l == ld.cls_langindex && parsed[line][tkn+1].s == ld.cls_delim_attrindex &&
+					parsed[line][tkn + 1].l == ld.cls_langindex && parsed[line][tkn + 1].s == ld.cls_delim_attrindex &&
 					doc.getText(Range.create(
-						Position.create(line,parsed[line][tkn+1].p),
-						Position.create(line,parsed[line][tkn+1].p+parsed[line][tkn+1].c)
+						Position.create(line, parsed[line][tkn + 1].p),
+						Position.create(line, parsed[line][tkn + 1].p + parsed[line][tkn + 1].c)
 					)) === "..."
 				) {
 					// The token following the parameter name is "...", so this is a variable argument parameter
-					if (parsed[line][tkn+2].l == ld.cls_langindex && parsed[line][tkn+2].s == ld.cls_keyword_attrindex) {
+					if (parsed[line][tkn + 2].l == ld.cls_langindex && parsed[line][tkn + 2].s == ld.cls_keyword_attrindex) {
 						// The token following the "..." is "as", so this parameter has a type
-						const clsname = doc.getText(findFullRange(line,parsed,tkn+3,parsed[line][tkn+3].p,parsed[line][tkn+3].p+parsed[line][tkn+3].c));
+						const clsname = doc.getText(findFullRange(line, parsed, tkn + 3, parsed[line][tkn + 3].p, parsed[line][tkn + 3].p + parsed[line][tkn + 3].c));
 						result = {
-							baseclass: await normalizeClassname(doc,parsed,clsname,server,line,allfiles,undefined,inheritedpackages),
+							baseclass: await normalizeClassname(doc, parsed, clsname, server, line, allfiles, undefined, inheritedpackages),
 							context: "instance"
 						};
 					}
@@ -1208,14 +1208,14 @@ export async function findMethodParameterClass(
  * @param type The type of this system object.
  * @param settings The language server configuration settings.
  */
-export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", settings: LanguageServerConfiguration): string {
-	var result: string = "";
+export function normalizeSystemName(name: string, type: "sf" | "sv" | "ssv" | "unkn", settings: LanguageServerConfiguration): string {
+	let result: string = "";
 	if (type === "sf") {
 		// This is a system function
 
 		const sysfdoc = systemFunctions.find((el) => el.label === name.toUpperCase());
 		if (sysfdoc !== undefined) {
-			var idealsysftext = "";
+			let idealsysftext: string;
 			if (settings.formatting.system.length === "short" && sysfdoc.alias.length === 2) {
 				idealsysftext = sysfdoc.alias[1];
 			}
@@ -1226,43 +1226,43 @@ export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", 
 				idealsysftext = idealsysftext.toLowerCase();
 			}
 			else if (settings.formatting.system.case === "word") {
-				if (idealsysftext === "$BITCOUNT") {idealsysftext = "$BitCount";}
-				else if (idealsysftext === "$BITFIND") {idealsysftext = "$BitFind";}
-				else if (idealsysftext === "$BITLOGIC") {idealsysftext = "$BitLogic";}
-				else if (idealsysftext === "$CLASSMETHOD") {idealsysftext = "$ClassMethod";}
-				else if (idealsysftext === "$CLASSNAME") {idealsysftext = "$ClassName";}
-				else if (idealsysftext === "$FNUMBER") {idealsysftext = "$FNumber";}
-				else if (idealsysftext === "$INUMBER") {idealsysftext = "$INumber";}
-				else if (idealsysftext === "$ISOBJECT") {idealsysftext = "$IsObject";}
-				else if (idealsysftext === "$ISVALIDNUM") {idealsysftext = "$IsValidNum";}
-				else if (idealsysftext === "$ISVALIDDOUBLE") {idealsysftext = "$IsValidDouble";}
-				else if (idealsysftext === "$LISTBUILD") {idealsysftext = "$ListBuild";}
-				else if (idealsysftext === "$LISTDATA") {idealsysftext = "$ListData";}
-				else if (idealsysftext === "$LISTFIND") {idealsysftext = "$ListFind";}
-				else if (idealsysftext === "$LISTFROMSTRING") {idealsysftext = "$ListFromString";}
-				else if (idealsysftext === "$LISTGET") {idealsysftext = "$ListGet";}
-				else if (idealsysftext === "$LISTLENGTH") {idealsysftext = "$ListLength";}
-				else if (idealsysftext === "$LISTNEXT") {idealsysftext = "$ListNext";}
-				else if (idealsysftext === "$LISTSAME") {idealsysftext = "$ListSame";}
-				else if (idealsysftext === "$LISTTOSTRING") {idealsysftext = "$ListToString";}
-				else if (idealsysftext === "$LISTUPDATE") {idealsysftext = "$ListUpdate";}
-				else if (idealsysftext === "$LISTVALID") {idealsysftext = "$ListValid";}
-				else if (idealsysftext === "$NCONVERT") {idealsysftext = "$NConvert";}
-				else if (idealsysftext === "$PREFETCHOFF") {idealsysftext = "$PrefetchOff";}
-				else if (idealsysftext === "$PREFETCHON") {idealsysftext = "$PrefetchOn";}
-				else if (idealsysftext === "$QLENGTH") {idealsysftext = "$QLength";}
-				else if (idealsysftext === "$QSUBSCRIPT") {idealsysftext = "$QSubscript";}
-				else if (idealsysftext === "$SCONVERT") {idealsysftext = "$SConvert";}
-				else if (idealsysftext === "$SORTBEGIN") {idealsysftext = "$SortBegin";}
-				else if (idealsysftext === "$SORTEND") {idealsysftext = "$SortEnd";}
+				if (idealsysftext === "$BITCOUNT") { idealsysftext = "$BitCount"; }
+				else if (idealsysftext === "$BITFIND") { idealsysftext = "$BitFind"; }
+				else if (idealsysftext === "$BITLOGIC") { idealsysftext = "$BitLogic"; }
+				else if (idealsysftext === "$CLASSMETHOD") { idealsysftext = "$ClassMethod"; }
+				else if (idealsysftext === "$CLASSNAME") { idealsysftext = "$ClassName"; }
+				else if (idealsysftext === "$FNUMBER") { idealsysftext = "$FNumber"; }
+				else if (idealsysftext === "$INUMBER") { idealsysftext = "$INumber"; }
+				else if (idealsysftext === "$ISOBJECT") { idealsysftext = "$IsObject"; }
+				else if (idealsysftext === "$ISVALIDNUM") { idealsysftext = "$IsValidNum"; }
+				else if (idealsysftext === "$ISVALIDDOUBLE") { idealsysftext = "$IsValidDouble"; }
+				else if (idealsysftext === "$LISTBUILD") { idealsysftext = "$ListBuild"; }
+				else if (idealsysftext === "$LISTDATA") { idealsysftext = "$ListData"; }
+				else if (idealsysftext === "$LISTFIND") { idealsysftext = "$ListFind"; }
+				else if (idealsysftext === "$LISTFROMSTRING") { idealsysftext = "$ListFromString"; }
+				else if (idealsysftext === "$LISTGET") { idealsysftext = "$ListGet"; }
+				else if (idealsysftext === "$LISTLENGTH") { idealsysftext = "$ListLength"; }
+				else if (idealsysftext === "$LISTNEXT") { idealsysftext = "$ListNext"; }
+				else if (idealsysftext === "$LISTSAME") { idealsysftext = "$ListSame"; }
+				else if (idealsysftext === "$LISTTOSTRING") { idealsysftext = "$ListToString"; }
+				else if (idealsysftext === "$LISTUPDATE") { idealsysftext = "$ListUpdate"; }
+				else if (idealsysftext === "$LISTVALID") { idealsysftext = "$ListValid"; }
+				else if (idealsysftext === "$NCONVERT") { idealsysftext = "$NConvert"; }
+				else if (idealsysftext === "$PREFETCHOFF") { idealsysftext = "$PrefetchOff"; }
+				else if (idealsysftext === "$PREFETCHON") { idealsysftext = "$PrefetchOn"; }
+				else if (idealsysftext === "$QLENGTH") { idealsysftext = "$QLength"; }
+				else if (idealsysftext === "$QSUBSCRIPT") { idealsysftext = "$QSubscript"; }
+				else if (idealsysftext === "$SCONVERT") { idealsysftext = "$SConvert"; }
+				else if (idealsysftext === "$SORTBEGIN") { idealsysftext = "$SortBegin"; }
+				else if (idealsysftext === "$SORTEND") { idealsysftext = "$SortEnd"; }
 				else if (idealsysftext.charAt(1) === "W") {
-					idealsysftext = idealsysftext.slice(0,3) + idealsysftext.slice(3).toLowerCase();
+					idealsysftext = idealsysftext.slice(0, 3) + idealsysftext.slice(3).toLowerCase();
 				}
 				else if (idealsysftext.charAt(1) === "Z" && idealsysftext.charAt(2) !== "O" && idealsysftext.charAt(2) !== "F") {
-					idealsysftext = idealsysftext.slice(0,3) + idealsysftext.slice(3).toLowerCase();
+					idealsysftext = idealsysftext.slice(0, 3) + idealsysftext.slice(3).toLowerCase();
 				}
 				else {
-					idealsysftext = idealsysftext.slice(0,2) + idealsysftext.slice(2).toLowerCase();
+					idealsysftext = idealsysftext.slice(0, 2) + idealsysftext.slice(2).toLowerCase();
 				}
 			}
 			result = idealsysftext;
@@ -1273,7 +1273,7 @@ export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", 
 
 		const ssysvdoc = structuredSystemVariables.find((el) => el.label === name.toUpperCase());
 		if (ssysvdoc !== undefined) {
-			var idealssysvtext = "";
+			let idealssysvtext: string;
 			if (settings.formatting.system.length === "short" && ssysvdoc.alias.length === 2) {
 				idealssysvtext = ssysvdoc.alias[1];
 			}
@@ -1284,7 +1284,7 @@ export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", 
 				idealssysvtext = idealssysvtext.toLowerCase();
 			}
 			else if (settings.formatting.system.case === "word") {
-				idealssysvtext = idealssysvtext.slice(0,3) + idealssysvtext.slice(3).toLowerCase();
+				idealssysvtext = idealssysvtext.slice(0, 3) + idealssysvtext.slice(3).toLowerCase();
 			}
 			result = idealssysvtext;
 		}
@@ -1294,7 +1294,7 @@ export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", 
 
 		const sysvdoc = systemVariables.find((el) => el.label === name.toUpperCase());
 		if (sysvdoc !== undefined) {
-			var idealsysvtext = "";
+			let idealsysvtext: string;
 			if (settings.formatting.system.length === "short" && sysvdoc.alias.length === 2) {
 				idealsysvtext = sysvdoc.alias[1];
 			}
@@ -1306,10 +1306,10 @@ export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", 
 			}
 			else if (settings.formatting.system.case === "word") {
 				if (idealsysvtext.charAt(1) === "Z") {
-					idealsysvtext = idealsysvtext.slice(0,3) + idealsysvtext.slice(3).toLowerCase();
+					idealsysvtext = idealsysvtext.slice(0, 3) + idealsysvtext.slice(3).toLowerCase();
 				}
 				else {
-					idealsysvtext = idealsysvtext.slice(0,2) + idealsysvtext.slice(2).toLowerCase();
+					idealsysvtext = idealsysvtext.slice(0, 2) + idealsysvtext.slice(2).toLowerCase();
 				}
 			}
 			result = idealsysvtext;
@@ -1318,7 +1318,7 @@ export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", 
 	else {
 		// This is an unknown Z function or variable
 
-		var idealunknstext = name;
+		let idealunknstext = name;
 		if (settings.formatting.system.case === "upper") {
 			idealunknstext = idealunknstext.toUpperCase();
 		}
@@ -1326,7 +1326,7 @@ export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", 
 			idealunknstext = idealunknstext.toLowerCase();
 		}
 		else {
-			idealunknstext = idealunknstext.slice(0,3).toUpperCase() + idealunknstext.slice(3).toLowerCase();
+			idealunknstext = idealunknstext.slice(0, 3).toUpperCase() + idealunknstext.slice(3).toLowerCase();
 		}
 		result = idealunknstext;
 	}
@@ -1340,15 +1340,15 @@ export function normalizeSystemName(name: string, type: "sf"|"sv"|"ssv"|"unkn", 
  * @param direction Pass 1 to add quotes if necessary, 0 to remove existing quotes.
  */
 export function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string {
-	var result: string = identifier;
+	let result: string = identifier;
 	if (direction === 0 && identifier.indexOf('"') === 0) {
 		// Remove first and last characters
-		result = result.slice(1,-1);
+		result = result.slice(1, -1);
 		// Turn any "" into "
-		result = result.replace(/""/g,'"');
+		result = result.replace(/""/g, '"');
 	}
 	else if (direction === 1 && identifier.indexOf('"') !== 0) {
-		var needsquoting: boolean = false;
+		let needsquoting: boolean = false;
 		for (let i = 0; i < result.length; i++) {
 			const char: string = result.charAt(i);
 			const code: number = result.charCodeAt(i);
@@ -1367,7 +1367,7 @@ export function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string
 		}
 		if (needsquoting) {
 			// Turn any " into ""
-			result = result.replace(/"/g,'""');
+			result = result.replace(/"/g, '""');
 			// Add " to start and end of identifier
 			result = '"' + result + '"';
 		}
@@ -1405,27 +1405,27 @@ async function determineParameterClass(
 			else if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
 				// This is the method definition
 				if (
-					parsed[j][parsed[j].length-1].l == ld.cls_langindex && parsed[j][parsed[j].length-1].s == ld.cls_delim_attrindex &&
+					parsed[j][parsed[j].length - 1].l == ld.cls_langindex && parsed[j][parsed[j].length - 1].s == ld.cls_delim_attrindex &&
 					doc.getText(Range.create(
-						j,parsed[j][parsed[j].length-1].p,
-						j,parsed[j][parsed[j].length-1].p+parsed[j][parsed[j].length-1].c
+						j, parsed[j][parsed[j].length - 1].p,
+						j, parsed[j][parsed[j].length - 1].p + parsed[j][parsed[j].length - 1].c
 					)) === "("
 				) {
 					// This is a multi-line method definition
-					for (let mline = j+1; mline < parsed.length; mline++) {
+					for (let mline = j + 1; mline < parsed.length; mline++) {
 						// Loop through the line and look for this parameter
 
-						const paramcon = await findMethodParameterClass(doc,parsed,mline,server,varText,allfiles,inheritedpackages);
+						const paramcon = await findMethodParameterClass(doc, parsed, mline, server, varText, allfiles, inheritedpackages);
 						if (paramcon !== undefined) {
 							// We found the parameter
 							result = paramcon;
 							break;
 						}
 						else if (
-							parsed[mline][parsed[mline].length-1].l == ld.cls_langindex && parsed[mline][parsed[mline].length-1].s == ld.cls_delim_attrindex &&
+							parsed[mline][parsed[mline].length - 1].l == ld.cls_langindex && parsed[mline][parsed[mline].length - 1].s == ld.cls_delim_attrindex &&
 							doc.getText(Range.create(
-								mline,parsed[mline][parsed[mline].length-1].p,
-								mline,parsed[mline][parsed[mline].length-1].p+parsed[mline][parsed[mline].length-1].c
+								mline, parsed[mline][parsed[mline].length - 1].p,
+								mline, parsed[mline][parsed[mline].length - 1].p + parsed[mline][parsed[mline].length - 1].c
 							)) !== ","
 						) {
 							// We've reached the end of the method definition
@@ -1435,7 +1435,7 @@ async function determineParameterClass(
 				}
 				else {
 					// This is a single-line method definition
-					const paramcon = await findMethodParameterClass(doc,parsed,j,server,varText);
+					const paramcon = await findMethodParameterClass(doc, parsed, j, server, varText);
 					if (paramcon !== undefined) {
 						result = paramcon;
 					}
@@ -1552,12 +1552,12 @@ async function determineDeclaredLocalVarClass(
 				break;
 			}
 			else if (
-				["objectscript","objectscript-int"].includes(doc.languageId) && firstLabel &&
+				["objectscript", "objectscript-int"].includes(doc.languageId) && firstLabel &&
 				parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex
 			) {
 				// This is the first label above the variable
-				
-				if (labelIsProcedureBlock(doc,parsed,j) != undefined) {
+
+				if (labelIsProcedureBlock(doc, parsed, j) != undefined) {
 					// This variable is in a procedure block, so stop scanning
 					break;
 				}
@@ -1566,14 +1566,14 @@ async function determineDeclaredLocalVarClass(
 			}
 			else if (parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_ppc_attrindex) {
 				// This is a preprocessor command
-				const command = doc.getText(Range.create(j,parsed[j][0].p,j,parsed[j][1].p+parsed[j][1].c));
+				const command = doc.getText(Range.create(j, parsed[j][0].p, j, parsed[j][1].p + parsed[j][1].c));
 				if (command.toLowerCase() === "#dim") {
 					// This is a #Dim
-					const dimresult = parseDimLine(doc,parsed,j,varText);
+					const dimresult = parseDimLine(doc, parsed, j, varText);
 					founddim = dimresult.founddim;
 					if (founddim) {
 						result = {
-							baseclass: await normalizeClassname(doc,parsed,dimresult.class,server,j,allfiles,undefined,inheritedpackages),
+							baseclass: await normalizeClassname(doc, parsed, dimresult.class, server, j, allfiles, undefined, inheritedpackages),
 							context: "instance"
 						};
 					}
@@ -1636,24 +1636,24 @@ async function parseSetCommand(
 			}
 			if (
 				ln == line && tkn == token + 1 && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s === ld.cos_delim_attrindex &&
-				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == ":"
+				doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)) == ":"
 			) {
 				// This Set has a postconditional
 				inPostconditional = true;
 			}
-			if (inPostconditional && pcParenCount == 0 && tkn > 0 && parsed[ln][tkn].p > (parsed[ln][tkn-1].p+parsed[ln][tkn-1].c)) {
+			if (inPostconditional && pcParenCount == 0 && tkn > 0 && parsed[ln][tkn].p > (parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c)) {
 				// We've hit the end of the postconditional
 				inPostconditional = false;
 			}
 			if (
 				inPostconditional && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s === ld.cos_delim_attrindex &&
-				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == "("
+				doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)) == "("
 			) {
 				pcParenCount++;
 			}
 			if (
 				inPostconditional && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s === ld.cos_delim_attrindex &&
-				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == ")"
+				doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)) == ")"
 			) {
 				pcParenCount--;
 				if (pcParenCount == 0) {
@@ -1668,26 +1668,26 @@ async function parseSetCommand(
 					parsed[ln][tkn].s == ld.cos_localdec_attrindex || parsed[ln][tkn].s == ld.cos_localvar_attrindex ||
 					parsed[ln][tkn].s == ld.cos_param_attrindex
 				) &&
-				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == selector &&
+				doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)) == selector &&
 				// Variable isn't followed by a dot or a subscript
-				!(tkn+1 < parsed[ln].length && parsed[ln][tkn+1].l == ld.cos_langindex && (
-					parsed[ln][tkn+1].s == ld.cos_objdot_attrindex || (
-						parsed[ln][tkn+1].s == ld.cos_delim_attrindex &&
-						doc.getText(Range.create(ln,parsed[ln][tkn+1].p,ln,parsed[ln][tkn+1].p+parsed[ln][tkn+1].c)) == "("
+				!(tkn + 1 < parsed[ln].length && parsed[ln][tkn + 1].l == ld.cos_langindex && (
+					parsed[ln][tkn + 1].s == ld.cos_objdot_attrindex || (
+						parsed[ln][tkn + 1].s == ld.cos_delim_attrindex &&
+						doc.getText(Range.create(ln, parsed[ln][tkn + 1].p, ln, parsed[ln][tkn + 1].p + parsed[ln][tkn + 1].c)) == "("
 					)
 				)) &&
 				// Variable isn't preceded by the indirection operator
-				!(tkn-1 >= 0 && parsed[ln][tkn-1].l == ld.cos_langindex && parsed[ln][tkn-1].s == ld.cos_indir_attrindex)
+				!(tkn - 1 >= 0 && parsed[ln][tkn - 1].l == ld.cos_langindex && parsed[ln][tkn - 1].s == ld.cos_indir_attrindex)
 			) {
 				// We found the variable, so now look for the assignment operator
 				foundVar = true;
 			}
 			if (
 				foundVar && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_oper_attrindex &&
-				doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == "="
+				doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)) == "="
 			) {
 				// We found the assignment operator, so now we need to see what the value is
-				operatorTuple = [ln,tkn];
+				operatorTuple = [ln, tkn];
 			}
 			if (operatorTuple && !firstExprTuple && ((tkn == operatorTuple[1] + 1) || (ln == operatorTuple[0] + 1 && tkn == 0))) {
 				// This is the token immediately after the assignment operator or a leading parenthesis
@@ -1695,11 +1695,11 @@ async function parseSetCommand(
 				if (
 					parsed[ln][tkn].l == ld.cos_langindex &&
 					parsed[ln][tkn].s == ld.cos_delim_attrindex &&
-					doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == "("
+					doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)) == "("
 				) {
 					// This is a leading open parenthesis. A Set value can be enclosed in an arbitrary number of these.
 					exprLeadingParenCount++;
-					operatorTuple = [ln,tkn];
+					operatorTuple = [ln, tkn];
 				}
 				else if (parsed[ln][tkn].l == ld.cos_langindex && (
 					// ##class
@@ -1708,15 +1708,15 @@ async function parseSetCommand(
 					(
 						parsed[ln][tkn].s == ld.cos_sysv_attrindex &&
 						doc.getText(
-							Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+							Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
 						).toLowerCase() == "$system" &&
-						tkn < parsed[ln].length - 1 && parsed[ln][tkn+1].l == ld.cos_langindex &&
-						parsed[ln][tkn+1].s == ld.cos_clsname_attrindex
+						tkn < parsed[ln].length - 1 && parsed[ln][tkn + 1].l == ld.cos_langindex &&
+						parsed[ln][tkn + 1].s == ld.cos_clsname_attrindex
 					) ||
 					// ..
 					(
 						parsed[ln][tkn].s == ld.cos_objdot_attrindex &&
-						doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)) == ".."
+						doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)) == ".."
 					) ||
 					// JSON bracket
 					parsed[ln][tkn].s == ld.cos_jsonb_attrindex ||
@@ -1724,7 +1724,7 @@ async function parseSetCommand(
 					(
 						parsed[ln][tkn].s == ld.cos_sysv_attrindex &&
 						doc.getText(
-							Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c)
+							Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
 						).toLowerCase() == "$this"
 					) ||
 					// i%var
@@ -1737,7 +1737,7 @@ async function parseSetCommand(
 					parsed[ln][tkn].s == ld.cos_localundec_attrindex
 				)) {
 					exprParenLevel = exprLeadingParenCount;
-					firstExprTuple = [ln,tkn];
+					firstExprTuple = [ln, tkn];
 				}
 				else {
 					// Exit the loop because we've already found
@@ -1752,12 +1752,12 @@ async function parseSetCommand(
 					parsed[ln][tkn].s == ld.error_attrindex || (
 						parsed[ln][tkn].s == ld.cos_label_attrindex &&
 						tkn == 0 && parsed[ln][tkn].p == 0
-				)) {
+					)) {
 					// We've reached the end of the Set
 					brk = true;
 					break;
 				} else if (parsed[ln][tkn].s == ld.cos_delim_attrindex) {
-					const delimText = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+					const delimText = doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c));
 					if (delimText == "(") {
 						exprParenLevel++;
 					} else if (delimText == ")") {
@@ -1773,7 +1773,7 @@ async function parseSetCommand(
 					parsed[ln][tkn].s == ld.cos_attr_attrindex ||
 					parsed[ln][tkn].s == ld.cos_mem_attrindex
 				)) {
-					lastMemTuple = [ln,tkn];
+					lastMemTuple = [ln, tkn];
 				}
 			}
 		}
@@ -1788,8 +1788,8 @@ async function parseSetCommand(
 			const [memLn, memTkn] = lastMemTuple;
 			if (parsed[memLn][memTkn].s != ld.cos_prop_attrindex) {
 				// Parameters don't have meaningful types
-				if (diagnostic && parsed[memLn][memTkn].s == ld.cos_method_attrindex && ["%New","%Open","%OpenId"].includes(
-					doc.getText(Range.create(memLn,parsed[memLn][memTkn].p,memLn,parsed[memLn][memTkn].p+parsed[memLn][memTkn].c))
+				if (diagnostic && parsed[memLn][memTkn].s == ld.cos_method_attrindex && ["%New", "%Open", "%OpenId"].includes(
+					doc.getText(Range.create(memLn, parsed[memLn][memTkn].p, memLn, parsed[memLn][memTkn].p + parsed[memLn][memTkn].c))
 				)) {
 					// Don't query the server when calculating diagnostics for performance reasons
 					// Check if this is %New/%Open/%OpenId without a chained reference, which doesn't need a server query
@@ -1802,13 +1802,13 @@ async function parseSetCommand(
 							for (let clstkn = exprTkn + 5; clstkn < parsed[exprLn].length; clstkn++) {
 								if (
 									parsed[exprLn][clstkn].l == ld.cos_langindex && parsed[exprLn][clstkn].s == ld.cos_method_attrindex &&
-									["%New","%Open","%OpenId"].includes(
-										doc.getText(Range.create(exprLn,parsed[exprLn][clstkn].p,exprLn,parsed[exprLn][clstkn].p+parsed[exprLn][clstkn].c))
+									["%New", "%Open", "%OpenId"].includes(
+										doc.getText(Range.create(exprLn, parsed[exprLn][clstkn].p, exprLn, parsed[exprLn][clstkn].p + parsed[exprLn][clstkn].c))
 									)
 								) {
 									// This is ##class(cls).%New/%Open/%OpenId( so save the class name
 									result = doc.getText(
-										findFullRange(exprLn,parsed,exprTkn+2,parsed[exprLn][exprTkn+2].p,parsed[exprLn][exprTkn+2].p+parsed[exprLn][exprTkn+2].c)
+										findFullRange(exprLn, parsed, exprTkn + 2, parsed[exprLn][exprTkn + 2].p, parsed[exprLn][exprTkn + 2].p + parsed[exprLn][exprTkn + 2].c)
 									);
 									break;
 								}
@@ -1817,7 +1817,7 @@ async function parseSetCommand(
 					} else if (
 						parsed[exprLn][exprTkn].l == ld.cos_langindex && parsed[exprLn][exprTkn].s == ld.cos_sysv_attrindex &&
 						doc.getText(
-							Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
+							Range.create(exprLn, parsed[exprLn][exprTkn].p, exprLn, parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c)
 						).toLowerCase() == "$system"
 					) {
 						// This is $SYSTEM followed by a class name
@@ -1828,13 +1828,13 @@ async function parseSetCommand(
 							for (let clstkn = exprTkn + 3; clstkn < parsed[exprLn].length; clstkn++) {
 								if (
 									parsed[exprLn][clstkn].l == ld.cos_langindex && parsed[exprLn][clstkn].s == ld.cos_method_attrindex &&
-									["%New","%Open","%OpenId"].includes(
-										doc.getText(Range.create(exprLn,parsed[exprLn][clstkn].p,exprLn,parsed[exprLn][clstkn].p+parsed[exprLn][clstkn].c))
+									["%New", "%Open", "%OpenId"].includes(
+										doc.getText(Range.create(exprLn, parsed[exprLn][clstkn].p, exprLn, parsed[exprLn][clstkn].p + parsed[exprLn][clstkn].c))
 									)
 								) {
 									// This is $SYSTEM.cls.%New/%Open/%OpenId( so find the name of the class
 									result = `%SYSTEM${doc.getText(
-										findFullRange(exprLn,parsed,exprTkn+1,parsed[exprLn][exprTkn+1].p,parsed[exprLn][exprTkn+1].p+parsed[exprLn][exprTkn+1].c)
+										findFullRange(exprLn, parsed, exprTkn + 1, parsed[exprLn][exprTkn + 1].p, parsed[exprLn][exprTkn + 1].p + parsed[exprLn][exprTkn + 1].c)
 									)}`;
 									break;
 								}
@@ -1842,28 +1842,28 @@ async function parseSetCommand(
 						}
 					} else if (
 						parsed[exprLn][exprTkn].l == ld.cos_langindex && parsed[exprLn][exprTkn].s == ld.cos_objdot_attrindex &&
-						doc.getText(Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)) == ".."
+						doc.getText(Range.create(exprLn, parsed[exprLn][exprTkn].p, exprLn, parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c)) == ".."
 					) {
 						// This is relative dot syntax
 
 						// Check if the method being called is %New(), %Open() or %OpenId()
 						if (
-							(exprTkn + 2) < parsed[exprLn].length && 
-							parsed[exprLn][exprTkn+1].l == ld.cos_langindex && parsed[exprLn][exprTkn+1].s == ld.cos_method_attrindex &&
-							["%New","%Open","%OpenId"].includes(
-								doc.getText(Range.create(exprLn,parsed[exprLn][exprTkn+1].p,exprLn,parsed[exprLn][exprTkn+1].p+parsed[exprLn][exprTkn+1].c))
+							(exprTkn + 2) < parsed[exprLn].length &&
+							parsed[exprLn][exprTkn + 1].l == ld.cos_langindex && parsed[exprLn][exprTkn + 1].s == ld.cos_method_attrindex &&
+							["%New", "%Open", "%OpenId"].includes(
+								doc.getText(Range.create(exprLn, parsed[exprLn][exprTkn + 1].p, exprLn, parsed[exprLn][exprTkn + 1].p + parsed[exprLn][exprTkn + 1].c))
 							)
 						) {
-							result = currentClass(doc,parsed);
+							result = currentClass(doc, parsed);
 						}
 					}
 				} else if (!diagnostic) {
 					// Get the class that this member is in, then query the server for the ReturnType
-					const memberrange = findFullRange(memLn,parsed,memTkn,parsed[memLn][memTkn].p,parsed[memLn][memTkn].p+parsed[memLn][memTkn].c);
-					const unquotedname = quoteUDLIdentifier(doc.getText(memberrange),0);
+					const memberrange = findFullRange(memLn, parsed, memTkn, parsed[memLn][memTkn].p, parsed[memLn][memTkn].p + parsed[memLn][memTkn].c);
+					const unquotedname = quoteUDLIdentifier(doc.getText(memberrange), 0);
 					// Find the dot token
 					let dottkn = 0;
-					for (let tkn = 0; tkn < parsed[memLn].length; tkn ++) {
+					for (let tkn = 0; tkn < parsed[memLn].length; tkn++) {
 						if (parsed[memLn][tkn].p >= memberrange.start.character) {
 							break;
 						}
@@ -1871,18 +1871,18 @@ async function parseSetCommand(
 					}
 
 					// Get the base class that this member is in
-					const membercontext = await getClassMemberContext(doc,parsed,dottkn,memLn,server);
+					const membercontext = await getClassMemberContext(doc, parsed, dottkn, memLn, server);
 					if (membercontext.baseclass) {
-						result = await getMemberType(parsed,memLn,memTkn,membercontext.baseclass,unquotedname,server);
+						result = await getMemberType(parsed, memLn, memTkn, membercontext.baseclass, unquotedname, server);
 					}
 				}
 			}
 		} else {
 			// There wasn't a member reference, so try to determine the type from the start of the expression
-			const nextTkn = nextToken(parsed,exprLn,exprTkn);
+			const nextTkn = nextToken(parsed, exprLn, exprTkn);
 			if (parsed[exprLn][exprTkn].s == ld.cos_jsonb_attrindex) {
 				switch (doc.getText(
-					Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
+					Range.create(exprLn, parsed[exprLn][exprTkn].p, exprLn, parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c)
 				)) {
 					case "{":
 						result = "%Library.DynamicObject";
@@ -1893,18 +1893,18 @@ async function parseSetCommand(
 			} else if (
 				parsed[exprLn][exprTkn].s == ld.cos_sysv_attrindex &&
 				doc.getText(
-					Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
+					Range.create(exprLn, parsed[exprLn][exprTkn].p, exprLn, parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c)
 				).toLowerCase() == "$this"
 			) {
-				result = currentClass(doc,parsed);
+				result = currentClass(doc, parsed);
 			} else if (!diagnostic && parsed[exprLn][exprTkn].s == ld.cos_instvar_attrindex) {
-				const cls = currentClass(doc,parsed);
+				const cls = currentClass(doc, parsed);
 				if (cls) {
-					const respdata = await makeRESTRequest("POST",1,"/action/query",server,{
+					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 						query: "SELECT RuntimeType FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
 						parameters: [cls, quoteUDLIdentifier(doc.getText(
-							Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
-						).slice(2),0)]
+							Range.create(exprLn, parsed[exprLn][exprTkn].p, exprLn, parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c)
+						).slice(2), 0)]
 					});
 					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 						result = respdata.data.result.content[0].RuntimeType;
@@ -1917,19 +1917,19 @@ async function parseSetCommand(
 				parsed[exprLn][exprTkn].s == ld.cos_otw_attrindex ||
 				parsed[exprLn][exprTkn].s == ld.cos_localundec_attrindex
 			) && nextTkn && (
-				parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_command_attrindex ||
-				parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_zcom_attrindex || (
-					parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_delim_attrindex &&
-					doc.getText(Range.create(
-						nextTkn[0],parsed[nextTkn[0]][nextTkn[1]].p,nextTkn[0],
-						parsed[nextTkn[0]][nextTkn[1]].p+parsed[nextTkn[0]][nextTkn[1]].c)
-					) == ","
-			// Protect against infinite recursion
-			)) && doc.getText(
-				Range.create(exprLn,parsed[exprLn][exprTkn].p,exprLn,parsed[exprLn][exprTkn].p+parsed[exprLn][exprTkn].c)
-			) != selector) {
+					parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_command_attrindex ||
+					parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_zcom_attrindex || (
+						parsed[nextTkn[0]][nextTkn[1]].s == ld.cos_delim_attrindex &&
+						doc.getText(Range.create(
+							nextTkn[0], parsed[nextTkn[0]][nextTkn[1]].p, nextTkn[0],
+							parsed[nextTkn[0]][nextTkn[1]].p + parsed[nextTkn[0]][nextTkn[1]].c)
+						) == ","
+						// Protect against infinite recursion
+					)) && doc.getText(
+						Range.create(exprLn, parsed[exprLn][exprTkn].p, exprLn, parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c)
+					) != selector) {
 				// The expression is an unsubscripted variable reference
-				result = await determineVariableClass(doc,parsed,exprLn,exprTkn,server);
+				result = await determineVariableClass(doc, parsed, exprLn, exprTkn, server);
 			}
 		}
 	}
@@ -1969,12 +1969,12 @@ async function determineUndeclaredLocalVarClass(
 			break;
 		}
 		else if (
-			["objectscript","objectscript-int"].includes(doc.languageId) && firstLabel &&
+			["objectscript", "objectscript-int"].includes(doc.languageId) && firstLabel &&
 			parsed[j][0].l == ld.cos_langindex && parsed[j][0].s == ld.cos_label_attrindex
 		) {
 			// This is the first label above the variable
-			
-			if (labelIsProcedureBlock(doc,parsed,j) != undefined) {
+
+			if (labelIsProcedureBlock(doc, parsed, j) != undefined) {
 				// This variable is in a procedure block, so stop scanning
 				break;
 			}
@@ -1986,13 +1986,13 @@ async function determineUndeclaredLocalVarClass(
 			for (let k = 0; k < parsed[j].length; k++) {
 				if (
 					parsed[j][k].l == ld.cos_langindex && parsed[j][k].s === ld.cos_command_attrindex &&
-					["s","set"].includes(doc.getText(Range.create(j,parsed[j][k].p,j,parsed[j][k].p+parsed[j][k].c)).toLowerCase())
+					["s", "set"].includes(doc.getText(Range.create(j, parsed[j][k].p, j, parsed[j][k].p + parsed[j][k].c)).toLowerCase())
 				) {
 					// This is a Set command
-					const setCls = await parseSetCommand(doc,parsed,j,k,varText,server,Array.isArray(allfiles),line,tkn);
+					const setCls = await parseSetCommand(doc, parsed, j, k, varText, server, Array.isArray(allfiles), line, tkn);
 					if (setCls) {
 						result = {
-							baseclass: await normalizeClassname(doc,parsed,setCls,server,j,allfiles,undefined,inheritedpackages),
+							baseclass: await normalizeClassname(doc, parsed, setCls, server, j, allfiles, undefined, inheritedpackages),
 							context: "instance"
 						};
 						break;
@@ -2001,9 +2001,9 @@ async function determineUndeclaredLocalVarClass(
 				// Don't check for by reference syntax if we're calculating diagnostics for performance reasons
 				if (
 					!allfiles && parsed[j][k].l == ld.cos_langindex && parsed[j][k].s == ld.cos_oper_attrindex &&
-					doc.getText(Range.create(j,parsed[j][k].p,j,parsed[j][k].p+parsed[j][k].c)) == "."
+					doc.getText(Range.create(j, parsed[j][k].p, j, parsed[j][k].p + parsed[j][k].c)) == "."
 				) {
-					const next = nextToken(parsed,j,k);
+					const next = nextToken(parsed, j, k);
 					// Check if the variable passed by reference is the one we care about
 					if (next && parsed[next[0]][next[1]].l == ld.cos_langindex &&
 						(
@@ -2012,45 +2012,45 @@ async function determineUndeclaredLocalVarClass(
 							parsed[next[0]][next[1]].s == ld.cos_param_attrindex
 						) &&
 						doc.getText(Range.create(
-							next[0],parsed[next[0]][next[1]].p,
-							next[0],parsed[next[0]][next[1]].p+parsed[next[0]][next[1]].c
+							next[0], parsed[next[0]][next[1]].p,
+							next[0], parsed[next[0]][next[1]].p + parsed[next[0]][next[1]].c
 						)) == varText
 					) {
 						// Find the start of the method
-						const [startLn, startTkn] = findOpenParen(doc,parsed,j,k);
-						if (startLn != -1 && startTkn != -1 && 
-							parsed[startLn][startTkn-1].l == ld.cos_langindex && 
+						const [startLn, startTkn] = findOpenParen(doc, parsed, j, k);
+						if (startLn != -1 && startTkn != -1 &&
+							parsed[startLn][startTkn - 1].l == ld.cos_langindex &&
 							(
-								parsed[startLn][startTkn-1].s == ld.cos_method_attrindex ||
-								parsed[startLn][startTkn-1].s == ld.cos_mem_attrindex
+								parsed[startLn][startTkn - 1].s == ld.cos_method_attrindex ||
+								parsed[startLn][startTkn - 1].s == ld.cos_mem_attrindex
 							)
 						) {
 							// Determine which argument number this is
 							const argNum = determineActiveParam(doc.getText(Range.create(
-								startLn,parsed[startLn][startTkn].p+1,
-								j,parsed[j][k].p
+								startLn, parsed[startLn][startTkn].p + 1,
+								j, parsed[j][k].p
 							))) + 1;
 
 							// Get the full text of the member
 							const member = doc.getText(Range.create(
-								startLn,parsed[startLn][startTkn-1].p,
-								startLn,parsed[startLn][startTkn-1].p+parsed[startLn][startTkn-1].c
+								startLn, parsed[startLn][startTkn - 1].p,
+								startLn, parsed[startLn][startTkn - 1].p + parsed[startLn][startTkn - 1].c
 							));
-							const unquotedname = quoteUDLIdentifier(member,0);
+							const unquotedname = quoteUDLIdentifier(member, 0);
 
 							// Get the base class that this member is in
-							const membercontext = await getClassMemberContext(doc,parsed,startTkn-2,startLn,server);
+							const membercontext = await getClassMemberContext(doc, parsed, startTkn - 2, startLn, server);
 							if (membercontext.baseclass != "" && argNum > 0) {
 								// Get the method signature
 								const querydata = member == "%New" ? {
 									// Get the information for both %New and %OnNew
 									query: "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-									parameters: [argNum,membercontext.baseclass,unquotedname,"%OnNew"]
+									parameters: [argNum, membercontext.baseclass, unquotedname, "%OnNew"]
 								} : {
 									query: "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-									parameters: [argNum,membercontext.baseclass,unquotedname]
+									parameters: [argNum, membercontext.baseclass, unquotedname]
 								};
-								const respdata = await makeRESTRequest("POST",1,"/action/query",server,querydata);
+								const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 								if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 									// We got data back
 
@@ -2068,7 +2068,7 @@ async function determineUndeclaredLocalVarClass(
 											// This is a method generated by member inheritance, so we need to get its metadata from the proper subtable
 
 											const stubarr = respdata.data.result.content[0].Stub.split(".");
-											var stubquery = "";
+											let stubquery = "";
 											if (stubarr[2] == "i") {
 												// This is a method generated from an index
 												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledIndexMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
@@ -2086,9 +2086,9 @@ async function determineUndeclaredLocalVarClass(
 												stubquery = "SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 											}
 											if (stubquery != "") {
-												const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
+												const stubrespdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 													query: stubquery,
-													parameters: [argNum,stubarr[1],membercontext.baseclass,stubarr[0]]
+													parameters: [argNum, stubarr[1], membercontext.baseclass, stubarr[0]]
 												});
 												if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 													// We got data back
@@ -2162,8 +2162,8 @@ async function determineUndeclaredLocalVarClass(
 export function beautifyFormalSpec(FormalSpec: string, markdown = false): string {
 	let result = "", inParen = 0, inQuote = false, inParam = true, inCls = false, inDefault = false;
 	const markdownChars = [
-		"\\","`","*","_","{","}","(",")","[",
-		"]","<",">","#","+","-",".","!","|"
+		"\\", "`", "*", "_", "{", "}", "(", ")", "[",
+		"]", "<", ">", "#", "+", "-", ".", "!", "|"
 	];
 	for (const c of FormalSpec) {
 		if (!inParen && !inQuote) {
@@ -2183,12 +2183,12 @@ export function beautifyFormalSpec(FormalSpec: string, markdown = false): string
 					inDefault = false;
 					break;
 				case "*":
-					if (markdown) result = result.slice(0,-1);
+					if (markdown) result = result.slice(0, -1);
 					result += "Output ";
 					if (markdown) result += "*";
 					break;
 				case "&":
-					if (markdown) result = result.slice(0,-1);
+					if (markdown) result = result.slice(0, -1);
 					result += "ByRef ";
 					if (markdown) result += "*";
 					break;
@@ -2280,13 +2280,13 @@ export function findOpenParen(doc: TextDocument, parsed: compressedline[], line:
 	let openln = -1;
 	let opentkn = -1;
 	for (let ln = line; ln >= 0; ln--) {
-		var starttkn = parsed[ln].length-1;
+		let starttkn = parsed[ln].length - 1;
 		if (ln === line) {
-			starttkn = token-1;
+			starttkn = token - 1;
 		}
 		for (let tkn = starttkn; tkn >= 0; tkn--) {
 			if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_delim_attrindex) {
-				const delimtext = doc.getText(Range.create(Position.create(ln,parsed[ln][tkn].p),Position.create(ln,parsed[ln][tkn].p+parsed[ln][tkn].c)));
+				const delimtext = doc.getText(Range.create(Position.create(ln, parsed[ln][tkn].p), Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)));
 				if (delimtext === "(") {
 					if (numclosed === 0) {
 						openln = ln;
@@ -2306,7 +2306,7 @@ export function findOpenParen(doc: TextDocument, parsed: compressedline[], line:
 			break;
 		}
 	}
-	return [openln,opentkn];
+	return [openln, opentkn];
 }
 
 /**
@@ -2315,14 +2315,14 @@ export function findOpenParen(doc: TextDocument, parsed: compressedline[], line:
  * @param html The class documentation HTML string to convert.
  */
 export function documaticHtmlToMarkdown(html: string): string {
-	let root = parse(html);
+	const root = parse(html);
 	for (const elem of root.getElementsByTagName("example")) {
 		const newElem = parse("<pre></pre>").getElementsByTagName("pre")[0];
-		newElem.setAttribute("language",elem.getAttribute("language") ?? "COS");
-		newElem.textContent = elem.innerHTML.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-		elem.parentNode.exchangeChild(elem,newElem);
+		newElem.setAttribute("language", elem.getAttribute("language") ?? "COS");
+		newElem.textContent = elem.innerHTML.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+		elem.parentNode.exchangeChild(elem, newElem);
 	}
-	return turndown.turndown(root.toString().replace(/&/g,"&amp;"));
+	return turndown.turndown(root.toString().replace(/&/g, "&amp;"));
 }
 
 /**
@@ -2340,23 +2340,23 @@ export function documaticHtmlToMarkdown(html: string): string {
 export function determineClassNameParameterClass(doc: TextDocument, parsed: compressedline[], line: number, token: number, completion = false): string {
 	if (
 		completion &&
-		[ld.error_attrindex,ld.cls_delim_attrindex].includes(parsed[line][token].s) &&
-		["(","()"].includes(doc.getText(Range.create(
+		[ld.error_attrindex, ld.cls_delim_attrindex].includes(parsed[line][token].s) &&
+		["(", "()"].includes(doc.getText(Range.create(
 			line,
 			parsed[line][token].p,
 			line,
-			parsed[line][token].p+parsed[line][token].c
+			parsed[line][token].p + parsed[line][token].c
 		))) && token > 0 &&
-		parsed[line][token-1].l == ld.cls_langindex &&
-		parsed[line][token-1].s == ld.cls_clsname_attrindex
+		parsed[line][token - 1].l == ld.cls_langindex &&
+		parsed[line][token - 1].s == ld.cls_clsname_attrindex
 	) {
 		// When doing completion for (, the ( may be an
 		// error token, or the () can be a single delimiter token,
 		//  so we need to handle those special cases
 		return doc.getText(findFullRange(
-			line,parsed,token-1,
-			parsed[line][token-1].p,
-			parsed[line][token-1].p+parsed[line][token-1].c
+			line, parsed, token - 1,
+			parsed[line][token - 1].p,
+			parsed[line][token - 1].p + parsed[line][token - 1].c
 		));
 	}
 	let openCount = 1, clsName = "";
@@ -2366,18 +2366,18 @@ export function determineClassNameParameterClass(doc: TextDocument, parsed: comp
 				line,
 				parsed[line][tkn].p,
 				line,
-				parsed[line][tkn].p+parsed[line][tkn].c
+				parsed[line][tkn].p + parsed[line][tkn].c
 			));
 			if (delimText == ")") {
 				openCount++;
 			} else if (delimText == "(") {
 				openCount--;
 				if (openCount == 0) {
-					if (tkn > 0 && parsed[line][tkn-1].l == ld.cls_langindex && parsed[line][tkn-1].s == ld.cls_clsname_attrindex) {
+					if (tkn > 0 && parsed[line][tkn - 1].l == ld.cls_langindex && parsed[line][tkn - 1].s == ld.cls_clsname_attrindex) {
 						clsName = doc.getText(findFullRange(
-							line,parsed,tkn-1,
-							parsed[line][tkn-1].p,
-							parsed[line][tkn-1].p+parsed[line][tkn-1].c
+							line, parsed, tkn - 1,
+							parsed[line][tkn - 1].p,
+							parsed[line][tkn - 1].p + parsed[line][tkn - 1].c
 						));
 					}
 					break;
@@ -2407,9 +2407,9 @@ export function storageKeywordsKeyForToken(doc: TextDocument, parsed: compressed
 			continue;
 		}
 		if (parsed[j][0].l == ld.cls_langindex && parsed[j][0].s == ld.cls_keyword_attrindex) {
-			const keytext = doc.getText(Range.create(j,parsed[j][0].p,j,parsed[j][0].p+parsed[j][0].c));
+			const keytext = doc.getText(Range.create(j, parsed[j][0].p, j, parsed[j][0].p + parsed[j][0].c));
 			if (keytext.toLowerCase() == "storage") {
-				if (doc.getText(Range.create(j,0,j+1,0)).trim().endsWith("{")) {
+				if (doc.getText(Range.create(j, 0, j + 1, 0)).trim().endsWith("{")) {
 					storageStart = j + 1;
 				}
 				else {
@@ -2440,7 +2440,7 @@ export function storageKeywordsKeyForToken(doc: TextDocument, parsed: compressed
 		}
 		const open: string[] = [];
 		for (let xmlline = storageStart; xmlline <= line; xmlline++) {
-			var endtkn: number = parsed[xmlline].length - 1;
+			let endtkn: number = parsed[xmlline].length - 1;
 			if (xmlline === line) {
 				// Don't parse past the completion position
 				endtkn = token - 1;
@@ -2449,42 +2449,42 @@ export function storageKeywordsKeyForToken(doc: TextDocument, parsed: compressed
 				if (parsed[xmlline][xmltkn].l == ld.cls_langindex && parsed[xmlline][xmltkn].s == ld.cls_delim_attrindex) {
 					// This is a UDL delimiter 
 					const tokentext = doc.getText(Range.create(
-						xmlline,parsed[xmlline][xmltkn].p,
-						xmlline,parsed[xmlline][xmltkn].p+parsed[xmlline][xmltkn].c
+						xmlline, parsed[xmlline][xmltkn].p,
+						xmlline, parsed[xmlline][xmltkn].p + parsed[xmlline][xmltkn].c
 					));
-					if (tokentext === "<" && xmltkn != endtkn && parsed[xmlline][xmltkn+1].s == ld.cls_xmlelemname_attrindex) {
+					if (tokentext === "<" && xmltkn != endtkn && parsed[xmlline][xmltkn + 1].s == ld.cls_xmlelemname_attrindex) {
 						open.push(doc.getText(Range.create(
-							xmlline,parsed[xmlline][xmltkn+1].p,
-							xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c
+							xmlline, parsed[xmlline][xmltkn + 1].p,
+							xmlline, parsed[xmlline][xmltkn + 1].p + parsed[xmlline][xmltkn + 1].c
 						)));
 					}
 					else if (tokentext === "/") {
-						if (xmltkn != endtkn && parsed[xmlline][xmltkn+1].s == ld.cls_delim_attrindex) {
+						if (xmltkn != endtkn && parsed[xmlline][xmltkn + 1].s == ld.cls_delim_attrindex) {
 							if (doc.getText(Range.create(
-								xmlline,parsed[xmlline][xmltkn+1].p,
-								xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c
+								xmlline, parsed[xmlline][xmltkn + 1].p,
+								xmlline, parsed[xmlline][xmltkn + 1].p + parsed[xmlline][xmltkn + 1].c
 							)) === ">") {
 								// The previous element has been closed
 								open.pop();
 							}
 						}
-						else if (xmltkn != 0 && parsed[xmlline][xmltkn-1].s == ld.cls_delim_attrindex) {
+						else if (xmltkn != 0 && parsed[xmlline][xmltkn - 1].s == ld.cls_delim_attrindex) {
 							if (xmltkn != endtkn && doc.getText(Range.create(
-								xmlline,parsed[xmlline][xmltkn-1].p,
-								xmlline,parsed[xmlline][xmltkn-1].p+parsed[xmlline][xmltkn-1].c
+								xmlline, parsed[xmlline][xmltkn - 1].p,
+								xmlline, parsed[xmlline][xmltkn - 1].p + parsed[xmlline][xmltkn - 1].c
 							)) === "<") {
 								// The upcoming element is being closed
 								open.splice(open.lastIndexOf(doc.getText(Range.create(
-									xmlline,parsed[xmlline][xmltkn+1].p,
-									xmlline,parsed[xmlline][xmltkn+1].p+parsed[xmlline][xmltkn+1].c
-								))),1);
+									xmlline, parsed[xmlline][xmltkn + 1].p,
+									xmlline, parsed[xmlline][xmltkn + 1].p + parsed[xmlline][xmltkn + 1].c
+								))), 1);
 							}
 						}
 					}
 				}
 			}
 		}
-		result = "STORAGE" + (ignoreLastOpen ? open.slice(0,-1) : open).join("").toUpperCase();
+		result = "STORAGE" + (ignoreLastOpen ? open.slice(0, -1) : open).join("").toUpperCase();
 	}
 	return result;
 }
@@ -2530,13 +2530,13 @@ export function labelIsProcedureBlock(doc: TextDocument, parsed: compressedline[
 		parsed[line][lastLabelTkn + 1].s == ld.cos_delim_attrindex &&
 		doc.getText(
 			Range.create(
-				line,parsed[line][lastLabelTkn + 1].p,
-				line,parsed[line][lastLabelTkn + 1].p+parsed[line][lastLabelTkn + 1].c
+				line, parsed[line][lastLabelTkn + 1].p,
+				line, parsed[line][lastLabelTkn + 1].p + parsed[line][lastLabelTkn + 1].c
 			)
 		) == "("
 	) {
 		// Walk the parsed document until we hit the end of the procedure definition
-		
+
 		let openparen = 0;
 		let inparam = true;
 		let brk = false;
@@ -2547,7 +2547,7 @@ export function labelIsProcedureBlock(doc: TextDocument, parsed: compressedline[
 					continue;
 				}
 				else if (parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_delim_attrindex) {
-					const delim = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+					const delim = doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c));
 					if (inparam) {
 						if (delim == "(") {
 							openparen++;
@@ -2579,8 +2579,8 @@ export function labelIsProcedureBlock(doc: TextDocument, parsed: compressedline[
 					}
 				}
 				else if (!inparam && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_command_attrindex) {
-					const command = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
-					if (["public","private"].includes(command.toLowerCase())) {
+					const command = doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c));
+					if (["public", "private"].includes(command.toLowerCase())) {
 						// The access modifier can be present with our without a brace, so ignore it
 						continue;
 					}
@@ -2591,7 +2591,7 @@ export function labelIsProcedureBlock(doc: TextDocument, parsed: compressedline[
 					}
 				}
 				else if (!inparam && parsed[ln][tkn].l == ld.cos_langindex && parsed[ln][tkn].s == ld.cos_brace_attrindex) {
-					const brace = doc.getText(Range.create(ln,parsed[ln][tkn].p,ln,parsed[ln][tkn].p+parsed[ln][tkn].c));
+					const brace = doc.getText(Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c));
 					if (brace == "{") {
 						// This is an open brace, so this label is procedure block
 						currentLabelIsProcedureBlock = true;
@@ -2632,9 +2632,9 @@ export function currentClass(doc: TextDocument, parsed: compressedline[]): strin
 		else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
 			// This line starts with a UDL keyword
 
-			const keyword = doc.getText(Range.create(i,parsed[i][0].p,i,parsed[i][0].p+parsed[i][0].c));
+			const keyword = doc.getText(Range.create(i, parsed[i][0].p, i, parsed[i][0].p + parsed[i][0].c));
 			if (keyword.toLowerCase() === "class") {
-				result = doc.getText(findFullRange(i,parsed,1,parsed[i][1].p,parsed[i][1].p+parsed[i][1].c));
+				result = doc.getText(findFullRange(i, parsed, 1, parsed[i][1].p, parsed[i][1].p + parsed[i][1].c));
 				break;
 			}
 		}
@@ -2674,22 +2674,22 @@ export async function determineVariableClass(
 		// Can't use findFullRange() on a macro token because it will capture
 		// everything, including the trailing dot that triggered the completion.
 		// A macro token should only occur here for completion requests.
-		Range.create(line,parsed[line][tkn].p,line,parsed[line][tkn].p+parsed[line][tkn].c) :
-		findFullRange(line,parsed,tkn,parsed[line][tkn].p,parsed[line][tkn].p+parsed[line][tkn].c)
+		Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c) :
+		findFullRange(line, parsed, tkn, parsed[line][tkn].p, parsed[line][tkn].p + parsed[line][tkn].c)
 	);
-	if ([ld.cos_param_attrindex,ld.cos_macro_attrindex].includes(parsed[line][tkn].s)) {
+	if ([ld.cos_param_attrindex, ld.cos_macro_attrindex].includes(parsed[line][tkn].s)) {
 		// Check if the parameter has a declared type in the formal spec
 		// A macro token might be a parameter, so need to check that too
-		const paramcon = await determineParameterClass(doc,parsed,line,varText,server,allfiles,inheritedpackages);
+		const paramcon = await determineParameterClass(doc, parsed, line, varText, server, allfiles, inheritedpackages);
 		if (paramcon?.baseclass) return paramcon.baseclass;
 	}
 	if (parsed[line][tkn].s != ld.cos_localundec_attrindex && parsed[line][tkn].s != ld.cos_param_attrindex) {
 		// Check if the variable is #Dim'd or a known percent variable
-		const varContext = await determineDeclaredLocalVarClass(doc,parsed,line,varText,server,allfiles,inheritedpackages);
+		const varContext = await determineDeclaredLocalVarClass(doc, parsed, line, varText, server, allfiles, inheritedpackages);
 		if (varContext?.baseclass) return varContext.baseclass;
 	}
 	// Fall back to inferring the type from a Set or pass by reference
-	const localundeccon = await determineUndeclaredLocalVarClass(doc,parsed,line,tkn,varText,server,allfiles,inheritedpackages);
+	const localundeccon = await determineUndeclaredLocalVarClass(doc, parsed, line, tkn, varText, server, allfiles, inheritedpackages);
 	return localundeccon?.baseclass ?? "";
 }
 
@@ -2712,42 +2712,42 @@ export function isClassMember(keyword: string): boolean {
 export async function getMemberType(parsed: compressedline[], line: number, tkn: number, cls: string, member: string, server: ServerSpec): Promise<string> {
 	if (
 		// We assume these methods always return an instance of the class
-		(["%New","%Open","%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) ||
+		(["%New", "%Open", "%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) ||
 		// Config class Open methods function like %Open(Id)
 		(cls.startsWith("Config.") && member == "Open" && server.namespace.toUpperCase() == "%SYS")
 	) {
 		return cls;
 	}
 	let result = "";
-	let data: QueryData = {
+	const data: QueryData = {
 		query: "",
 		parameters: []
 	};
 	if (parsed[line][tkn].s == ld.cos_method_attrindex) {
 		// This is a method
 		data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
-		data.parameters = [cls,member];
+		data.parameters = [cls, member];
 	}
 	else if (parsed[line][tkn].s == ld.cos_attr_attrindex) {
 		// This is a property
 		data.query = "SELECT RuntimeType AS Type, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?";
-		data.parameters = [cls,member];
+		data.parameters = [cls, member];
 	}
 	else {
 		// This is a generic member
 		if (cls.startsWith("%SYSTEM.")) {
 			// This is always a method
 			data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
-			data.parameters = [cls,member];
+			data.parameters = [cls, member];
 		}
 		else {
 			// This can be a method or property
 			data.query = "SELECT ReturnType AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL ";
 			data.query = data.query.concat("SELECT RuntimeType AS Type, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?");
-			data.parameters = [cls,member,cls,member];
+			data.parameters = [cls, member, cls, member];
 		}
 	}
-	const respdata = await makeRESTRequest("POST",1,"/action/query",server,data);
+	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 	if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 		// We got data back
 
@@ -2774,9 +2774,9 @@ export async function getMemberType(parsed: compressedline[], line: number, tkn:
 				stubquery = "SELECT ReturnType AS Type FROM %Dictionary.CompiledConstraintMethod WHERE Name = ? AND parent->Parent = ? AND parent->Name = ?";
 			}
 			if (stubquery != "") {
-				const stubrespdata = await makeRESTRequest("POST",1,"/action/query",server,{
+				const stubrespdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 					query: stubquery,
-					parameters: [stubarr[1],cls,stubarr[0]]
+					parameters: [stubarr[1], cls, stubarr[0]]
 				});
 				if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 					// We got data back
@@ -2814,11 +2814,11 @@ export function urlMapAttribute(doc: TextDocument, parsed: compressedline[], lin
 	for (let ln = line; ln >= 0; ln--) {
 		if (parsed[ln]?.length < 2) continue;
 		if (parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex) {
-			const keyword = doc.getText(Range.create(ln,parsed[ln][0].p,ln,parsed[ln][0].p+parsed[ln][0].c));
+			const keyword = doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c));
 			if (isClassMember(keyword)) {
 				// We found the definition of the containg class member
 				if (keyword.toLowerCase() == "xdata") {
-					inUrlMap = doc.getText(Range.create(ln,parsed[ln][1].p,ln,parsed[ln][1].p+parsed[ln][1].c)) == "UrlMap";
+					inUrlMap = doc.getText(Range.create(ln, parsed[ln][1].p, ln, parsed[ln][1].p + parsed[ln][1].c)) == "UrlMap";
 				}
 				break;
 			}
@@ -2828,22 +2828,22 @@ export function urlMapAttribute(doc: TextDocument, parsed: compressedline[], lin
 
 	// Determine if this is the value of a Call or Forward attribute
 	let attr = "";
-	const prev1 = prevToken(parsed,line,token);
-	const prev2 = prev1 ? prevToken(parsed,prev1[0],prev1[1]) : undefined;
+	const prev1 = prevToken(parsed, line, token);
+	const prev2 = prev1 ? prevToken(parsed, prev1[0], prev1[1]) : undefined;
 	if (
 		prev1 && prev2 &&
 		parsed[prev1[0]][prev1[1]].l == ld.xml_langindex && parsed[prev1[0]][prev1[1]].s == ld.xml_tagdelim_attrindex && doc.getText(Range.create(
-			prev1[0],parsed[prev1[0]][prev1[1]].p,
-			prev1[0],parsed[prev1[0]][prev1[1]].p+parsed[prev1[0]][prev1[1]].c
+			prev1[0], parsed[prev1[0]][prev1[1]].p,
+			prev1[0], parsed[prev1[0]][prev1[1]].p + parsed[prev1[0]][prev1[1]].c
 		)) == "=" &&
 		parsed[prev2[0]][prev2[1]].l == ld.xml_langindex && parsed[prev2[0]][prev2[1]].s == ld.xml_attr_attrindex
 	) {
 		attr = doc.getText(Range.create(
-			prev2[0],parsed[prev2[0]][prev2[1]].p,
-			prev2[0],parsed[prev2[0]][prev2[1]].p+parsed[prev2[0]][prev2[1]].c
+			prev2[0], parsed[prev2[0]][prev2[1]].p,
+			prev2[0], parsed[prev2[0]][prev2[1]].p + parsed[prev2[0]][prev2[1]].c
 		));
 	}
-	if (!["Call","Forward"].includes(attr)) return "";
+	if (!["Call", "Forward"].includes(attr)) return "";
 }
 
 /** Find the token immediately preceding the one at [`ln`, `tkn`]  */
@@ -2866,7 +2866,7 @@ export function macroDefToDoc(def: string[], header = false): MarkupContent {
 	const stripMppContinue = (line: string): string => {
 		let result = line.trimEnd();
 		if (result.toLowerCase().endsWith("##continue")) {
-			result = result.slice(0,-10).trimEnd();
+			result = result.slice(0, -10).trimEnd();
 		}
 		return result;
 	};
@@ -2905,10 +2905,10 @@ export function determineActiveParam(text: string): number {
 				if (!inComment) inQuote = !inQuote;
 				break;
 			case "/":
-				if (!inQuote && !inComment && (idx < text.length - 1) && text[idx+1] == "*") inComment = true;
+				if (!inQuote && !inComment && (idx < text.length - 1) && text[idx + 1] == "*") inComment = true;
 				break;
 			case "*":
-				if (inComment && (idx < text.length - 1) && text[idx+1] == "/") inComment = false;
+				if (inComment && (idx < text.length - 1) && text[idx + 1] == "/") inComment = false;
 				break;
 			case ",":
 				if (!inQuote && !inComment && !openBraceCount && !openParenCount) activeParam++;
@@ -2917,17 +2917,17 @@ export function determineActiveParam(text: string): number {
 	return activeParam;
 }
 
-const showInternalCache: Map<string,boolean> = new Map();
+const showInternalCache: Map<string, boolean> = new Map();
 
 /** Determine if class members with the `Internal` keyword and system globals should be shown in the completion list */
 export async function showInternalForServer(server: ServerSpec): Promise<boolean> {
 	const key = `${server.host}::${server.port}::${server.pathPrefix}::${server.username}`;
 	let result = showInternalCache.get(key);
 	if (result != undefined) return result;
-	result = await makeRESTRequest("POST",1,"/action/query",server,{
+	result = await makeRESTRequest("POST", 1, "/action/query", server, {
 		query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?)",
-		parameters: ["%Library.ConstraintRelationship.cls",1,1,1,1,0,0]
+		parameters: ["%Library.ConstraintRelationship.cls", 1, 1, 1, 1, 0, 0]
 	}).then((respdata) => respdata?.data?.result?.content?.length > 0).catch(() => false);
-	showInternalCache.set(key,result);
+	showInternalCache.set(key, result);
 	return result;
 }

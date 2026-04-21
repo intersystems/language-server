@@ -1790,17 +1790,23 @@
     "compile": "tsc -b",
     "watch": "tsc -b -w",
     "clean": "rimraf client/out && rimraf server/out",
+    "lint": "eslint client/src server/src",
+    "lint-fix": "eslint --fix client/src server/src",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
   },
   "devDependencies": {
+    "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.33",
     "@vscode/vsce": "^3.7.1",
+    "eslint": "^10.2.1",
+    "globals": "^17.5.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
     "ovsx": "^0.10.7",
     "rimraf": "^6.0.1",
     "ts-loader": "^9.5.2",
     "typescript": "^5.5.4",
+    "typescript-eslint": "^8.59.0",
     "webpack": "^5.100.2",
     "webpack-cli": "^6.0.1"
   },
