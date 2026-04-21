@@ -4,10 +4,10 @@ import { findFullRange, getLanguageServerSettings, getParsedDocument, getServerS
 import { CommandDoc, StudioOpenDialogFile, ServerSpec } from '../utils/types';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
-import commands = require("../documentation/commands.json");
-import structuredSystemVariables = require("../documentation/structuredSystemVariables.json");
-import systemFunctions = require("../documentation/systemFunctions.json");
-import systemVariables = require("../documentation/systemVariables.json");
+import commands from "../documentation/commands.json";
+import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
+import systemFunctions from "../documentation/systemFunctions.json";
+import systemVariables from "../documentation/systemVariables.json";
 
 /**
  * Run the formatter on `range` of document `uri`.

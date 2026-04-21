@@ -4,25 +4,25 @@ import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from '../utils/types';
 import { documents, corePropertyParams, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
-import commands = require("../documentation/commands.json");
-import structuredSystemVariables = require("../documentation/structuredSystemVariables.json");
-import systemFunctions = require("../documentation/systemFunctions.json");
-import systemVariables = require("../documentation/systemVariables.json");
-import parameterTypes = require("../documentation/parameterTypes.json");
-import preprocessorDirectives = require("../documentation/preprocessor.json");
+import commands from "../documentation/commands.json";
+import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
+import systemFunctions from "../documentation/systemFunctions.json";
+import systemVariables from "../documentation/systemVariables.json";
+import parameterTypes from "../documentation/parameterTypes.json";
+import preprocessorDirectives from "../documentation/preprocessor.json";
 
-import classKeywords = require("../documentation/keywords/Class.json");
-import constraintKeywords = require("../documentation/keywords/Constraint.json");
-import foreignkeyKeywords = require("../documentation/keywords/ForeignKey.json");
-import indexKeywords = require("../documentation/keywords/Index.json");
-import methodKeywords = require("../documentation/keywords/Method.json");
-import parameterKeywords = require("../documentation/keywords/Parameter.json");
-import projectionKeywords = require("../documentation/keywords/Projection.json");
-import propertyKeywords = require("../documentation/keywords/Property.json");
-import queryKeywords = require("../documentation/keywords/Query.json");
-import storageKeywords = require("../documentation/keywords/Storage.json");
-import triggerKeywords = require("../documentation/keywords/Trigger.json");
-import xdataKeywords = require("../documentation/keywords/XData.json");
+import classKeywords from "../documentation/keywords/Class.json";
+import constraintKeywords from "../documentation/keywords/Constraint.json";
+import foreignkeyKeywords from "../documentation/keywords/ForeignKey.json";
+import indexKeywords from "../documentation/keywords/Index.json";
+import methodKeywords from "../documentation/keywords/Method.json";
+import parameterKeywords from "../documentation/keywords/Parameter.json";
+import projectionKeywords from "../documentation/keywords/Projection.json";
+import propertyKeywords from "../documentation/keywords/Property.json";
+import queryKeywords from "../documentation/keywords/Query.json";
+import storageKeywords from "../documentation/keywords/Storage.json";
+import triggerKeywords from "../documentation/keywords/Trigger.json";
+import xdataKeywords from "../documentation/keywords/XData.json";
 
 function documaticLink(server: ServerSpec, cls: string): string {
 	return `[${cls}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?LIBRARY=${encodeURIComponent(server.namespace.toUpperCase())
@@ -108,7 +108,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex || (
 					parsed[params.position.line][i].l == ld.sql_langindex &&
 					parsed[params.position.line][i].s == ld.sql_iden_attrindex &&
-					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$$"
+					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$"
 				)
 			) {
 				// This is a macro
@@ -128,7 +128,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					macrotext = macrotext.slice(0, parenIdx);
 					macrorange.end = Position.create(params.position.line, symbolstart + macrotext.length);
 				}
-				if (macrotext.slice(0, 3) == "$$$") {
+				if (macrotext.slice(0, 3) == "$$") {
 					macrotext = macrotext.slice(3);
 				}
 

@@ -11,7 +11,7 @@ import {
 
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
-import parameterTypes = require("../documentation/parameterTypes.json");
+import parameterTypes from "../documentation/parameterTypes.json";
 
 import * as ld from '../utils/languageDefinitions';
 import { compressedline, QueryData, ServerSpec } from '../utils/types';

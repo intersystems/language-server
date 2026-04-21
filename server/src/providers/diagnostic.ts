@@ -23,8 +23,8 @@ import {
 import { zutilFunctions, lexerLanguages, documents } from '../utils/variables';
 import { ServerSpec, StudioOpenDialogFile, QueryData } from '../utils/types';
 import * as ld from '../utils/languageDefinitions';
-import parameterTypes = require("../documentation/parameterTypes.json");
-import sqlReservedWords = require("../documentation/sqlReservedWords.json");
+import parameterTypes from "../documentation/parameterTypes.json";
+import sqlReservedWords from "../documentation/sqlReservedWords.json";
 
 /**
  * Helper method  that appends `range` to value of `key` in `map`

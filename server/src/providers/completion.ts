@@ -4,23 +4,23 @@ import { ServerSpec, QueryData, KeywordDoc, MacroContext, compressedline, Langua
 import { documents, corePropertyParams, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 
-import structuredSystemVariables = require("../documentation/structuredSystemVariables.json");
-import systemFunctions = require("../documentation/systemFunctions.json");
-import systemVariables = require("../documentation/systemVariables.json");
-import parameterTypes = require("../documentation/parameterTypes.json");
-import preprocessorDirectives = require("../documentation/preprocessor.json");
+import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
+import systemFunctions from "../documentation/systemFunctions.json";
+import systemVariables from "../documentation/systemVariables.json";
+import parameterTypes from "../documentation/parameterTypes.json";
+import preprocessorDirectives from "../documentation/preprocessor.json";
 
-import classKeywords = require("../documentation/keywords/Class.json");
-import foreignkeyKeywords = require("../documentation/keywords/ForeignKey.json");
-import indexKeywords = require("../documentation/keywords/Index.json");
-import methodKeywords = require("../documentation/keywords/Method.json");
-import parameterKeywords = require("../documentation/keywords/Parameter.json");
-import projectionKeywords = require("../documentation/keywords/Projection.json");
-import propertyKeywords = require("../documentation/keywords/Property.json");
-import queryKeywords = require("../documentation/keywords/Query.json");
-import storageKeywords = require("../documentation/keywords/Storage.json");
-import triggerKeywords = require("../documentation/keywords/Trigger.json");
-import xdataKeywords = require("../documentation/keywords/XData.json");
+import classKeywords from "../documentation/keywords/Class.json";
+import foreignkeyKeywords from "../documentation/keywords/ForeignKey.json";
+import indexKeywords from "../documentation/keywords/Index.json";
+import methodKeywords from "../documentation/keywords/Method.json";
+import parameterKeywords from "../documentation/keywords/Parameter.json";
+import projectionKeywords from "../documentation/keywords/Projection.json";
+import propertyKeywords from "../documentation/keywords/Property.json";
+import queryKeywords from "../documentation/keywords/Query.json";
+import storageKeywords from "../documentation/keywords/Storage.json";
+import triggerKeywords from "../documentation/keywords/Trigger.json";
+import xdataKeywords from "../documentation/keywords/XData.json";
 import { TextDocument } from 'vscode-languageserver-textdocument';
 
 /**

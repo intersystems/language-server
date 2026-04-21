@@ -7,13 +7,13 @@ import { ServerSpec, StudioOpenDialogFile, QueryData, compressedline, CommandDoc
 import { parsedDocuments, connection, serverSpecs, languageServerSettings, documents, classMemberTypes } from './variables';
 import * as ld from './languageDefinitions';
 
-import commands = require("../documentation/commands.json");
-import structuredSystemVariables = require("../documentation/structuredSystemVariables.json");
-import systemFunctions = require("../documentation/systemFunctions.json");
-import systemVariables = require("../documentation/systemVariables.json");
+import commands from "../documentation/commands.json";
+import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
+import systemFunctions from "../documentation/systemFunctions.json";
+import systemVariables from "../documentation/systemVariables.json";
 
 // Initialize turndown and tune it for Documatic HTML
-const TurndownService = require("turndown").default;
+import { default as TurndownService } from "turndown";
 const turndown = new TurndownService({
 	codeBlockStyle: "fenced",
 	blankReplacement: (content, node: HTMLElement) => node.nodeName == 'SPAN' ? node.outerHTML : ''
@@ -72,7 +72,7 @@ turndown.addRule("pre", {
 	}
 });
 turndown.addRule("documaticLinks", {
-	filter: ["class", "method", "property", "query", "parameter"],
+	filter: ["class", "method", "property", "query", "parameter"] as any,
 	replacement: function (content: string, node: HTMLElement) {
 		const methodOrQuery = ["METHOD", "QUERY"].includes(node.nodeName);
 		const wrapper = node.nodeName == "CLASS" ? "***" : "**";
@@ -80,7 +80,7 @@ turndown.addRule("documaticLinks", {
 	}
 });
 turndown.addRule("documaticArgs", {
-	filter: "args",
+	filter: "args" as any,
 	replacement: function (content: string, node: HTMLElement) {
 		if (node.children.length > 0) {
 			return `\n#### Arguments:\n${content}\n`;
@@ -88,7 +88,7 @@ turndown.addRule("documaticArgs", {
 	}
 });
 turndown.addRule("documaticArg", {
-	filter: "arg",
+	filter: "arg" as any,
 	replacement: function (content: string, node: HTMLElement) {
 		const attrVal = node.getAttribute("name");
 		if (attrVal !== null) {
@@ -97,7 +97,7 @@ turndown.addRule("documaticArg", {
 	}
 });
 turndown.addRule("documaticReturn", {
-	filter: "return",
+	filter: "return" as any,
 	replacement: function (content: string) {
 		return `\n#### Return Value:\n${content}\n`;
 	}
