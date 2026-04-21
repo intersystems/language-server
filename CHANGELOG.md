@@ -1,7 +1,8 @@
 # Changelog
 
-## [2.8.3] - 2026-XX-XX
+## [2.8.3] - 2026-04-14
 - Fix issue [#395](https://github.com/intersystems/language-server/issues/395): Hover info for method that takes no argument has extraneous * character
+- Fix issue [#396](https://github.com/intersystems/language-server/issues/396): Upgrade dependencies
 
 ## [2.8.2] - 2026-01-21
 - Fix issue [#392](https://github.com/intersystems/language-server/issues/392): Restore support for a wide array of Linux distros

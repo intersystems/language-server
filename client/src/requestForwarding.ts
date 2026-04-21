@@ -1,4 +1,4 @@
-import { commands, CompletionList, Hover, Position, SignatureHelp, TextDocumentContentProvider, Uri } from 'vscode';
+import { commands, CompletionList, Hover, Position, ProviderResult, SignatureHelp, TextDocumentContentProvider, Uri } from 'vscode';
 import { Middleware } from 'vscode-languageclient';
 import { client } from './extension';
 
@@ -136,7 +136,7 @@ export class ISCEmbeddedContentProvider implements TextDocumentContentProvider {
 
 	constructor() {}
 
-	provideTextDocumentContent(uri: Uri): Promise<string> {
+	provideTextDocumentContent(uri: Uri): ProviderResult<string> {
 		// Get the isclexer language number and position from the URI authority
 		const language: number = Number(uri.authority.split(":")[0]);
 		const positionText = uri.authority.split(":")[1];

@@ -11,7 +11,6 @@ import {
 	authentication
 } from 'vscode';
 
-import * as Cache from 'vscode-cache';
 import {
 	DocumentSelector,
 	LanguageClient,
@@ -40,11 +39,11 @@ export let client: LanguageClient;
 /**
  * Cache for cookies from REST requests to InterSystems servers.
  */
-let cookiesCache: Cache;
+const cookiesCache: Map<string, string[]> = new Map();
 
-export async function updateCookies(newCookies: string[], server: ServerSpec): Promise<string[]> {
+export function updateCookies(newCookies: string[], server: ServerSpec): string[] {
 	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
-	const cookies = cookiesCache.get(key, []);
+	const cookies = cookiesCache.get(key) ?? [];
 	newCookies.forEach((cookie) => {
 	  const [cookieName] = cookie.split("=");
 	  const index = cookies.findIndex((el) => el.startsWith(cookieName));
@@ -54,15 +53,15 @@ export async function updateCookies(newCookies: string[], server: ServerSpec): P
 		cookies.push(cookie);
 	  }
 	});
-	await cookiesCache.put(key, cookies);
+	cookiesCache.set(key, cookies);
 	return cookies;
 }
 
 export function getCookies(server: ServerSpec): string[] {
-	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`, []);
+	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`) ?? [];
 }
 
-let objectScriptApi;
+let objectScriptApi: any;
 let serverManagerApi: serverManager.ServerManagerAPI;
 
 /** Resolved connection information for each workspace folder */
@@ -80,10 +79,9 @@ type MakeRESTRequestParams = {
 
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
-	const objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript");
+	const objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript")!;
 	objectScriptApi = objectScriptExt.isActive ? objectScriptExt.exports : await objectScriptExt.activate();
 
-	cookiesCache = new Cache(context, "cookies");
 	// The server is implemented in node
 	const serverModule = context.asAbsolutePath(
 		path.join('server', 'out', 'server.js')
@@ -258,7 +256,7 @@ export async function activate(context: ExtensionContext) {
 					// Can't use the FileSystem with a DocumentContentProvider, so fetch the text directly from the server
 					const uriParams = new URLSearchParams(uri.query);
 					const fileName =
-						uriParams.has("csp") && ["", "1"].includes(uriParams.get("csp"))
+						uriParams.has("csp") && ["", "1"].includes(uriParams.get("csp") ?? "")
 							? uri.path.slice(1)
 							: uri.path.split("/").slice(1).join(".");
 					const docParams = 
@@ -303,7 +301,7 @@ export async function activate(context: ExtensionContext) {
 			"intersystems.language-server",
 			workspace.workspaceFolders != undefined ? workspace.workspaceFolders[0] : undefined
 		).get("suggestTheme") === true &&
-		!workbenchConfig.get<string>("colorTheme").startsWith("InterSystems Default ")
+		!workbenchConfig.get<string>("colorTheme")?.startsWith("InterSystems Default ")
 	) {
 		// Suggest an InterSystems default theme depending on the current active theme type
 		if (window.activeColorTheme.kind === ColorThemeKind.Light) {
@@ -393,7 +391,7 @@ export async function deactivate(): Promise<void> {
 			makeRESTRequest(
 				"HEAD",
 				0,
-				undefined,
+				"",
 				serverSpec,
 				undefined,
 				undefined,
