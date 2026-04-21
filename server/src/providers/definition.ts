@@ -1,6 +1,6 @@
 import { Position, TextDocumentPositionParams, Range, LocationLink } from 'vscode-languageserver/node';
 import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineClassNameParameterClass, getParsedDocument, currentClass, getTextForUri, isClassMember, memberRegex, prevToken, urlMapAttribute } from '../utils/functions';
+import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineClassNameParameterClass, getParsedDocument, currentClass, getTextForUri, isClassMember, memberRegex, urlMapAttribute } from '../utils/functions';
 import { ServerSpec, QueryData, compressedline } from '../utils/types';
 import { documents, corePropertyParams, classMemberTypes, mppContinue } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
@@ -330,7 +330,10 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					member = member.slice(2);
 				}
 				let unquotedname = quoteUDLIdentifier(member, 0);
-				if (unquotedname == "%New") unquotedname = "%OnNew", member = "%OnNew";
+				if (unquotedname == "%New") {
+					unquotedname = "%OnNew";
+					member = "%OnNew"
+				};
 
 				// If this is a class file, determine what class we're in
 				let thisclass = "";

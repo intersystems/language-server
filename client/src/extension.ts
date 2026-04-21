@@ -31,6 +31,248 @@ import {
 	selectParameterType,
 	setSelection
 } from './commands';
+/**
+ * Send a REST request to an InterSystems server via the Atelier API.
+ *
+ * Handles cookie-based session management with automatic fallback to basic authentication
+ * when cookies are missing or expired. For SASchema requests (when a checksum is provided),
+ * supports conditional fetching via the `If-None-Match` header and handles asynchronous
+ * schema recalculation (HTTP 202) by issuing follow-up requests.
+ *
+ * @param method - The HTTP method to use for the request. Must be one of `"GET"`, `"POST"`, or `"HEAD"`.
+ * @param api - The minimum Atelier API version required for this request. A value of `0` indicates
+ *   a non-API request (e.g., `HEAD /` for session logout), which skips the namespace and path in the URL
+ *   and suppresses re-authentication on 401 responses.
+ * @param path - The path portion of the URL, appended after the API version and namespace
+ *   (e.g., `"/doc/MyClass.cls"`).
+ * @param server - The {@link ServerSpec} object describing the target InterSystems server connection,
+ *   including host, port, credentials, and API version information.
+ * @param data - Optional request body payload, typically provided for `POST` requests.
+ *   When present, the `Content-Type` header is set to `application/json`.
+ * @param checksum - Optional ETag checksum string used for SASchema requests. When provided,
+ *   the request is sent as a conditional `GET` with an `If-None-Match` header. A `304` response
+ *   indicates the schema is unchanged and causes the function to return `undefined`.
+ * @param params - Optional URL query parameters object. Only used for `GET` requests
+ *   (e.g., `GET /doc/` requests).
+ * @returns A promise that resolves to the {@link AxiosResponse} from the server, or `undefined`
+ *   if the request could not be made (e.g., no server configured, inactive connection,
+ *   unsupported API version, missing password), if the schema has not changed (`304`),
+ *   or if an error occurred during the request.
+ */
+export async function makeRESTRequest(method: "GET" | "POST" | "HEAD", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse<any> | undefined> {
+	if (server.host === "") {
+		// No server connection is configured
+		client.warn("Cannot make required REST request because no server connection is configured.");
+		return undefined;
+	}
+	if (!server.active) {
+		// Server connection is inactive
+		return undefined;
+	}
+	if (api > server.apiVersion) {
+		// The server doesn't support the Atelier API version required to make this request
+		client.warn(
+			"Cannot make required REST request to server " +
+			`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
+			`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`
+		);
+		return undefined;
+	}
+	if (server.username != undefined && server.username != "" && typeof server.password === "undefined") {
+		// A username without a password isn't allowed
+		client.warn("Cannot make required REST request because the configured server connection has a username but no password.");
+		return undefined;
+	}
+
+	// Build the URL
+	const url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/${api ? `v${server.apiVersion}/${server.namespace}${path}` : ""}`);
+
+	// Create the HTTPS agent
+	const httpsAgent = new https.Agent({ rejectUnauthorized: workspace.getConfiguration("http").get("proxyStrictSSL") });
+
+	// Get the cookies
+	let cookies: string[] = getCookies(server);
+
+	// Make the request
+	try {
+		let respdata: AxiosResponse;
+		if (checksum !== undefined) {
+			// This is a SASchema request
+
+			// Make the initial request
+			respdata = await axios.request(
+				{
+					method: "GET",
+					url: url,
+					headers: {
+						"if-none-match": checksum,
+						"Cookie": cookies.join(" ")
+					},
+					withCredentials: true,
+					httpsAgent,
+					validateStatus: function (status) {
+						return status < 500;
+					}
+				}
+			);
+			cookies = updateCookies(respdata.headers['set-cookie'] || [], server);
+			if (respdata.status === 202) {
+				// The schema is being recalculated so we need to make another call to get it
+				respdata = await axios.request(
+					{
+						method: "GET",
+						url: url,
+						withCredentials: true,
+						httpsAgent,
+						headers: {
+							"Cookie": cookies.join(" ")
+						}
+					},
+				);
+				updateCookies(respdata.headers['set-cookie'] || [], server);
+				return respdata;
+			}
+			else if (respdata.status === 304) {
+				// The schema hasn't changed
+				return undefined;
+			}
+			else if (respdata.status === 401) {
+				// Either we had no cookies or they expired, so resend the request with basic auth
+
+				respdata = await axios.request(
+					{
+						method: "GET",
+						url: url,
+						headers: {
+							"if-none-match": checksum
+						},
+						auth: {
+							username: server.username,
+							password: server.password
+						},
+						withCredentials: true,
+						httpsAgent
+					}
+				);
+				cookies = updateCookies(respdata.headers['set-cookie'] || [], server);
+				if (respdata.status === 202) {
+					// The schema is being recalculated so we need to make another call to get it
+					respdata = await axios.request(
+						{
+							method: "GET",
+							url: url,
+							withCredentials: true,
+							httpsAgent,
+							headers: {
+								"Cookie": cookies.join(" ")
+							}
+						}
+					);
+					updateCookies(respdata.headers['set-cookie'] || [], server);
+					return respdata;
+				}
+				else if (respdata.status === 304) {
+					// The schema hasn't changed
+					return undefined;
+				}
+				else {
+					// We got the schema
+					return respdata;
+				}
+			}
+			else {
+				// We got the schema
+				return respdata;
+			}
+		}
+		else {
+			// This is a different request
+			if (data !== undefined) {
+				respdata = await axios.request(
+					{
+						method: method,
+						url: url,
+						data: data,
+						headers: {
+							'Content-Type': 'application/json',
+							"Cookie": cookies.join(" ")
+						},
+						withCredentials: true,
+						httpsAgent,
+						validateStatus: function (status) {
+							return status < 500;
+						}
+					}
+				);
+				if (respdata.status === 401) {
+					// Either we had no cookies or they expired, so resend the request with basic auth
+
+					respdata = await axios.request(
+						{
+							method: method,
+							url: url,
+							data: data,
+							headers: {
+								'Content-Type': 'application/json'
+							},
+							auth: {
+								username: server.username,
+								password: server.password
+							},
+							withCredentials: true,
+							httpsAgent
+						}
+					);
+				}
+				updateCookies(respdata.headers['set-cookie'] || [], server);
+			}
+			else {
+				respdata = await axios.request(
+					{
+						method: method,
+						url: url,
+						withCredentials: true,
+						httpsAgent,
+						params: params,
+						headers: {
+							"Cookie": cookies.join(" ")
+						},
+						validateStatus: function (status) {
+							return status < 500;
+						}
+					}
+				);
+				if (respdata.status === 401 && api) { // api is only 0 when calling HEAD / to log out of the session
+					// Either we had no cookies or they expired, so resend the request with basic auth
+
+					respdata = await axios.request(
+						{
+							method: method,
+							url: url,
+							auth: {
+								username: server.username,
+								password: server.password
+							},
+							withCredentials: true,
+							httpsAgent,
+							params: params
+						}
+					);
+				}
+				updateCookies(respdata.headers['set-cookie'] || [], server);
+			}
+			return respdata;
+		}
+	} catch (error) {
+		client.warn(`Error making REST request ${method} ${path}: ${typeof error == "string"
+			? error
+			: error instanceof Error
+				? error.toString()
+				: JSON.stringify(error)
+			}`);
+		return undefined;
+	}
+};
 import { makeRESTRequest, ServerSpec } from './makeRESTRequest';
 import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from './requestForwarding';
 
@@ -45,13 +287,13 @@ export function updateCookies(newCookies: string[], server: ServerSpec): string[
 	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
 	const cookies = cookiesCache.get(key) ?? [];
 	newCookies.forEach((cookie) => {
-	  const [cookieName] = cookie.split("=");
-	  const index = cookies.findIndex((el) => el.startsWith(cookieName));
-	  if (index >= 0) {
-		cookies[index] = cookie;
-	  } else {
-		cookies.push(cookie);
-	  }
+		const [cookieName] = cookie.split("=");
+		const index = cookies.findIndex((el) => el.startsWith(cookieName));
+		if (index >= 0) {
+			cookies[index] = cookie;
+		} else {
+			cookies.push(cookie);
+		}
 	});
 	cookiesCache.set(key, cookies);
 	return cookies;
@@ -68,7 +310,7 @@ let serverManagerApi: serverManager.ServerManagerAPI;
 const wsFolderServerSpecs: Map<string, ServerSpec> = new Map();
 
 type MakeRESTRequestParams = {
-	method: "GET"|"POST";
+	method: "GET" | "POST";
 	api: number;
 	path: string;
 	server: ServerSpec;
@@ -159,10 +401,10 @@ export async function activate(context: ExtensionContext) {
 		// The server manager extension is installed
 		serverManagerApi = serverManagerExt.isActive ? serverManagerExt.exports : await serverManagerExt.activate();
 		serverManagerApi.onDidChangePassword()((serverName: string) => {
-			for (const [k,v] of wsFolderServerSpecs.entries()) {
+			for (const [k, v] of wsFolderServerSpecs.entries()) {
 				if (v.serverName == serverName) wsFolderServerSpecs.delete(k);
 			}
-			client.sendNotification("intersystems/server/passwordChange",serverName);
+			client.sendNotification("intersystems/server/passwordChange", serverName);
 		});
 	}
 
@@ -184,7 +426,7 @@ export async function activate(context: ExtensionContext) {
 				typeof serverSpec.password === "undefined" &&
 				// A supported version of the Server Manager is installed
 				serverManagerExt != undefined &&
-				gt(serverManagerExt.packageJSON.version,"3.0.0")
+				gt(serverManagerExt.packageJSON.version, "3.0.0")
 			) {
 				// The main extension didn't provide a password, so we must 
 				// get it from the server manager's authentication provider.
@@ -220,7 +462,7 @@ export async function activate(context: ExtensionContext) {
 			return newuri.toString();
 		}),
 		client.onRequest("intersystems/uri/forDocument", (document: string): string | null => {
-			if (lte(objectScriptExt.packageJSON.version,"1.0.10")) {
+			if (lte(objectScriptExt.packageJSON.version, "1.0.10")) {
 				// If the active version of vscode-objectscript doesn't expose
 				// DocumentContentProvider.getUri(), just return the empty string.
 				return "";
@@ -259,13 +501,13 @@ export async function activate(context: ExtensionContext) {
 						uriParams.has("csp") && ["", "1"].includes(uriParams.get("csp") ?? "")
 							? uri.path.slice(1)
 							: uri.path.split("/").slice(1).join(".");
-					const docParams = 
+					const docParams =
 						params.server.apiVersion >= 4 && workspace.getConfiguration("objectscript",
 							workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase())
 						).get<boolean>("multilineMethodArgs")
 							? { format: "udl-multiline" }
 							: undefined;
-					const resp = await makeRESTRequest("GET",1,`/doc/${fileName}`,params.server,undefined,undefined,docParams);
+					const resp = await makeRESTRequest("GET", 1, `/doc/${fileName}`, params.server, undefined, undefined, docParams);
 					return resp?.data?.result?.content || [];
 				} else {
 					// Read the contents of the file at uri
@@ -278,18 +520,18 @@ export async function activate(context: ExtensionContext) {
 		}),
 
 		// Register commands
-		commands.registerCommand("intersystems.language-server.overrideClassMembers",overrideClassMembers),
-		commands.registerCommand("intersystems.language-server.selectParameterType",selectParameterType),
-		commands.registerCommand("intersystems.language-server.selectImportPackage",selectImportPackage),
-		commands.registerCommand("intersystems.language-server.extractMethod",extractMethod),
-		commands.registerCommand("intersystems.language-server.showSymbolInClass",showSymbolInClass),
-		commands.registerTextEditorCommand("intersystems.language-server.setSelection",setSelection),
+		commands.registerCommand("intersystems.language-server.overrideClassMembers", overrideClassMembers),
+		commands.registerCommand("intersystems.language-server.selectParameterType", selectParameterType),
+		commands.registerCommand("intersystems.language-server.selectImportPackage", selectImportPackage),
+		commands.registerCommand("intersystems.language-server.extractMethod", extractMethod),
+		commands.registerCommand("intersystems.language-server.showSymbolInClass", showSymbolInClass),
+		commands.registerTextEditorCommand("intersystems.language-server.setSelection", setSelection),
 
 		// Register EvaluatableExpressionProvider
-		languages.registerEvaluatableExpressionProvider(documentSelector,new ObjectScriptEvaluatableExpressionProvider()),
+		languages.registerEvaluatableExpressionProvider(documentSelector, new ObjectScriptEvaluatableExpressionProvider()),
 
 		// Register embedded language request forwarding content provider
-		workspace.registerTextDocumentContentProvider("isc-embedded-content",new ISCEmbeddedContentProvider())
+		workspace.registerTextDocumentContentProvider("isc-embedded-content", new ISCEmbeddedContentProvider())
 	);
 
 	// Start the client. This will also launch the server
@@ -312,10 +554,10 @@ export async function activate(context: ExtensionContext) {
 					"Don't Ask Again"
 				).then((answer) => {
 					if (answer === "Yes") {
-						workbenchConfig.update("colorTheme","InterSystems Default Light Modern",true);
+						workbenchConfig.update("colorTheme", "InterSystems Default Light Modern", true);
 					}
 					else if (answer === "Don't Ask Again") {
-						workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+						workspace.getConfiguration("intersystems.language-server").update("suggestTheme", false, true);
 					}
 				});
 			}
@@ -328,13 +570,13 @@ export async function activate(context: ExtensionContext) {
 					"Don't Ask Again"
 				).then((answer) => {
 					if (answer === "Globally") {
-						workbenchConfig.update("colorTheme","InterSystems Default Light Modern",true);
+						workbenchConfig.update("colorTheme", "InterSystems Default Light Modern", true);
 					}
 					else if (answer === "Only This Workspace") {
-						workbenchConfig.update("colorTheme","InterSystems Default Light Modern",false);
+						workbenchConfig.update("colorTheme", "InterSystems Default Light Modern", false);
 					}
 					else if (answer === "Don't Ask Again") {
-						workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+						workspace.getConfiguration("intersystems.language-server").update("suggestTheme", false, true);
 					}
 				});
 			}
@@ -347,10 +589,10 @@ export async function activate(context: ExtensionContext) {
 					"Don't Ask Again"
 				).then((answer) => {
 					if (answer === "Yes") {
-						workbenchConfig.update("colorTheme","InterSystems Default Dark Modern",true);
+						workbenchConfig.update("colorTheme", "InterSystems Default Dark Modern", true);
 					}
 					else if (answer === "Don't Ask Again") {
-						workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+						workspace.getConfiguration("intersystems.language-server").update("suggestTheme", false, true);
 					}
 				});
 			}
@@ -363,13 +605,13 @@ export async function activate(context: ExtensionContext) {
 					"Don't Ask Again"
 				).then((answer) => {
 					if (answer === "Globally") {
-						workbenchConfig.update("colorTheme","InterSystems Default Dark Modern",true);
+						workbenchConfig.update("colorTheme", "InterSystems Default Dark Modern", true);
 					}
 					else if (answer === "Only This Workspace") {
-						workbenchConfig.update("colorTheme","InterSystems Default Dark Modern",false);
+						workbenchConfig.update("colorTheme", "InterSystems Default Dark Modern", false);
 					}
 					else if (answer === "Don't Ask Again") {
-						workspace.getConfiguration("intersystems.language-server").update("suggestTheme",false,true);
+						workspace.getConfiguration("intersystems.language-server").update("suggestTheme", false, true);
 					}
 				});
 			}

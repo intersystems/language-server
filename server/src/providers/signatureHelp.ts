@@ -548,11 +548,6 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 							sig.parameters = formalSpecToParamsArr(sig.label);
 							sig.label += ` As ${membercontext.baseclass}`;
 							signatureHelpStartPosition = Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1);
-							const newsignature = {
-								signatures: [sig],
-								activeSignature: 0,
-								activeParameter: determineActiveParam(doc.getText(Range.create(Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1), params.position)))
-							};
 						} else {
 							// If there's no %OnNew, then %New shouldn't have arguments
 						}

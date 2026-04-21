@@ -92,7 +92,7 @@ class Element {
 
 	getChildren(): string[] {
 		const resolved: string[] = [];
-		for (const [key, _] of this.children) {
+		for (const key of this.children.keys()) {
 			resolved.push(this.schema.convertI2E(key));
 		}
 		return resolved;

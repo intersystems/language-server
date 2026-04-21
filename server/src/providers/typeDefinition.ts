@@ -1,6 +1,6 @@
 import { TextDocumentPositionParams, Position, Range } from 'vscode-languageserver';
-import { getServerSpec, findFullRange, quoteUDLIdentifier, makeRESTRequest, createDefinitionUri, determineVariableClass, getClassMemberContext, getParsedDocument, getTextForUri, currentClass, getMemberType } from '../utils/functions';
-import { ServerSpec, QueryData } from '../utils/types';
+import { getServerSpec, findFullRange, quoteUDLIdentifier, createDefinitionUri, determineVariableClass, getClassMemberContext, getParsedDocument, getTextForUri, currentClass, getMemberType } from '../utils/functions';
+import { ServerSpec } from '../utils/types';
 import { documents } from '../utils/variables';
 import * as ld from '../utils/languageDefinitions';
 

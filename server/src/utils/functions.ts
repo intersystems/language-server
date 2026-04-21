@@ -1097,7 +1097,7 @@ export async function createDefinitionUri(paramsUri: string, filename: string, e
 		}
 		return newuri;
 	}
-	catch (error) {
+	catch {
 		return "";
 	}
 };
