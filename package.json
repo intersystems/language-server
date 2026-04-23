@@ -1814,5 +1814,8 @@
   },
   "extensionDependencies": [
     "intersystems-community.vscode-objectscript"
-  ]
+  ],
+  "prettier": {
+    "useTabs": true
+  }
 }
