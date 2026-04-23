@@ -6,84 +6,94 @@ import {
 	CodeActionKind,
 	CodeActionParams,
 	CodeAction,
-	Command
-} from 'vscode-languageserver/node';
+	Command,
+} from "vscode-languageserver/node";
 
-import { TextDocument } from 'vscode-languageserver-textdocument';
+import { TextDocument } from "vscode-languageserver-textdocument";
 
 import parameterTypes from "../documentation/parameterTypes.json";
 
-import * as ld from '../utils/languageDefinitions';
-import { compressedline, QueryData, ServerSpec } from '../utils/types';
-import { getServerSpec, findFullRange, makeRESTRequest, quoteUDLIdentifier, parseDimLine, getLanguageServerSettings, getParsedDocument, memberRegex, showInternalForServer } from '../utils/functions';
-import { documents, connection, zutilFunctions } from '../utils/variables';
+import * as ld from "../utils/languageDefinitions";
+import { compressedline, QueryData, ServerSpec } from "../utils/types";
+import {
+	getServerSpec,
+	findFullRange,
+	makeRESTRequest,
+	quoteUDLIdentifier,
+	parseDimLine,
+	getLanguageServerSettings,
+	getParsedDocument,
+	memberRegex,
+	showInternalForServer,
+} from "../utils/functions";
+import { documents, connection, zutilFunctions } from "../utils/variables";
 
 /**
  * Represents an item that can be selected from a list of items.
  */
 type QuickPickItem = {
-	description?: string,
-	detail?: string,
-	label: string
+	description?: string;
+	detail?: string;
+	label: string;
 };
 
 /**
  * The parameter literal for the `intersystems/refactor/addOverridableMembers` request.
  */
 type AddOverridableMembersParams = {
-	uri: string,
-	members: QuickPickItem[],
-	cursor: Position,
-	memberType: string
+	uri: string;
+	members: QuickPickItem[];
+	cursor: Position;
+	memberType: string;
 };
 
 /**
  * The parameter literal for the `intersystems/refactor/validateOverrideCursor` request.
  */
 type ValidateOverrideCursorParams = {
-	uri: string,
-	line: number
+	uri: string;
+	line: number;
 };
 
 /**
  * The parameter literal for the `intersystems/refactor/listOverridableMembers` request.
  */
 type ListOverridableMembersParams = {
-	uri: string,
-	memberType: string
+	uri: string;
+	memberType: string;
 };
 
 /**
  * The parameter literal for the `intersystems/refactor/listImportPackages` request.
  */
 type ListImportPackagesParams = {
-	uri: string,
-	classmame: string
+	uri: string;
+	classmame: string;
 };
 
 /**
  * The parameter literal for the `intersystems/refactor/listImportPackage` request.
  */
 type AddImportPackageParams = {
-	uri: string,
-	packagename: string
+	uri: string;
+	packagename: string;
 };
 
 /**
  * The parameter literal for the `intersystems/refactor/addMethod` request.
  */
 type AddMethodParams = {
-	uri: string,
-	newmethodname: string,
-	lnstart: number,
-	lnend: number,
-	lnmethod: number,
-	newmethodtype: string
+	uri: string;
+	newmethodname: string;
+	lnstart: number;
+	lnend: number;
+	lnmethod: number;
+	newmethodtype: string;
 };
 
 /**
  * Parse lines of ObjectScript code that contains Set and look to see if it contains selector.
- * 
+ *
  * @param doc The TextDocument that the line is in.
  * @param parsed The tokenized representation of doc.
  * @param line The line to parse.
@@ -94,18 +104,23 @@ function parseSet(doc: TextDocument, parsed: compressedline[], line: number, tok
 	let ispostconditional: boolean = false;
 	let countparen: number = 0;
 	for (let ln = line; ln < parsed.length; ln++) {
-		if (parsed[ln].length === 0) { // Empty line
+		if (parsed[ln].length === 0) {
+			// Empty line
 			continue;
 		}
 		for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
-			if (ln === line && tkn < token) { // Skip all tokens before Set token
+			if (ln === line && tkn < token) {
+				// Skip all tokens before Set token
 				continue;
 			}
-			if (ln === line && tkn === token) { // This is the Set token
-				const nexttkntext: string = doc.getText(Range.create(
-					Position.create(ln, parsed[ln][tkn + 1].p),
-					Position.create(ln, parsed[ln][tkn + 1].p + parsed[ln][tkn + 1].c)
-				));
+			if (ln === line && tkn === token) {
+				// This is the Set token
+				const nexttkntext: string = doc.getText(
+					Range.create(
+						Position.create(ln, parsed[ln][tkn + 1].p),
+						Position.create(ln, parsed[ln][tkn + 1].p + parsed[ln][tkn + 1].c),
+					),
+				);
 				if (nexttkntext === ":") {
 					// This is a postconditional
 					ispostconditional = true;
@@ -114,18 +129,20 @@ function parseSet(doc: TextDocument, parsed: compressedline[], line: number, tok
 			}
 
 			if (!ispostconditional) {
-				// This is the setting part of the Set command 
+				// This is the setting part of the Set command
 				if (
-					parsed[ln][tkn].s === ld.cos_localvar_attrindex ||	// Public variable
-					parsed[ln][tkn].s === ld.cos_param_attrindex ||	// Parameter variable
-					parsed[ln][tkn].s === ld.cos_localdec_attrindex ||	// Local declared
-					parsed[ln][tkn].s === ld.cos_localundec_attrindex	// Local undeclared
+					parsed[ln][tkn].s === ld.cos_localvar_attrindex || // Public variable
+					parsed[ln][tkn].s === ld.cos_param_attrindex || // Parameter variable
+					parsed[ln][tkn].s === ld.cos_localdec_attrindex || // Local declared
+					parsed[ln][tkn].s === ld.cos_localundec_attrindex // Local undeclared
 				) {
 					// This is a variable that can be Set
-					const thisvar = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					));
+					const thisvar = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					);
 					if (thisvar === selector) {
 						// This is the Set for the selector
 						return true;
@@ -137,26 +154,30 @@ function parseSet(doc: TextDocument, parsed: compressedline[], line: number, tok
 			} else {
 				// This is the conditional part of the Set command
 				if (parsed[ln][tkn].s === ld.cos_delim_attrindex) {
-					const delimtext: string = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					));
+					const delimtext: string = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					);
 					if (delimtext === "(") {
 						countparen++;
 					} else if (delimtext === ")") {
 						countparen--;
 					}
 				} else if (
-					parsed[ln][tkn].s === ld.cos_localvar_attrindex ||	// Public variable
-					parsed[ln][tkn].s === ld.cos_param_attrindex ||	// Parameter variable
-					parsed[ln][tkn].s === ld.cos_localdec_attrindex ||	// Local declared
-					parsed[ln][tkn].s === ld.cos_localundec_attrindex	// Local undeclared
+					parsed[ln][tkn].s === ld.cos_localvar_attrindex || // Public variable
+					parsed[ln][tkn].s === ld.cos_param_attrindex || // Parameter variable
+					parsed[ln][tkn].s === ld.cos_localdec_attrindex || // Local declared
+					parsed[ln][tkn].s === ld.cos_localundec_attrindex // Local undeclared
 				) {
 					// This variable is in the condition
-					const thisvar = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					));
+					const thisvar = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					);
 					if (thisvar === selector) {
 						// The selector is used in the condition first, it is not set
 						return false;
@@ -164,10 +185,12 @@ function parseSet(doc: TextDocument, parsed: compressedline[], line: number, tok
 				}
 
 				// First charater after the current token
-				const btwtkntext: string = doc.getText(Range.create(
-					Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
-					Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c + 1)
-				));
+				const btwtkntext: string = doc.getText(
+					Range.create(
+						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c + 1),
+					),
+				);
 
 				if (countparen === 0 && btwtkntext === " ") {
 					ispostconditional = false;
@@ -176,11 +199,11 @@ function parseSet(doc: TextDocument, parsed: compressedline[], line: number, tok
 		}
 	}
 	return false;
-};
+}
 
 /**
  * Add an argument to the signature (method definition) and the method arguments (method call)
- * 
+ *
  * @param argName Argument name to add to the signature and method arguments
  * @param isByRef Determine whether the argument is a ByRef argument
  * @param argType Argument type to add to the signature and method arguments
@@ -188,7 +211,14 @@ function parseSet(doc: TextDocument, parsed: compressedline[], line: number, tok
  * @param methodArguments Method arguments
  * @param comma Delimiter between arguments
  */
-function prepareExtractMethodSignature(argName: string, isByRef: boolean, argType: string, signature: string, methodArguments: string, comma: string): string[] {
+function prepareExtractMethodSignature(
+	argName: string,
+	isByRef: boolean,
+	argType: string,
+	signature: string,
+	methodArguments: string,
+	comma: string,
+): string[] {
 	if (signature !== "") {
 		signature += comma;
 		methodArguments += ", ";
@@ -208,13 +238,17 @@ function prepareExtractMethodSignature(argName: string, isByRef: boolean, argTyp
  */
 export async function listOverridableMembers(params: ListOverridableMembersParams): Promise<QuickPickItem[]> {
 	const doc = documents.get(params.uri);
-	if (doc === undefined) { return []; }
+	if (doc === undefined) {
+		return [];
+	}
 	if (doc.languageId !== "objectscript-class") {
 		// Can't override class members if the document isn't a class
 		return [];
 	}
 	const parsed = await getParsedDocument(params.uri);
-	if (parsed === undefined) { return []; }
+	if (parsed === undefined) {
+		return [];
+	}
 	const server: ServerSpec = await getServerSpec(params.uri);
 	const result: QuickPickItem[] = [];
 
@@ -223,7 +257,8 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 	for (let ln = 0; ln < parsed.length; ln++) {
 		if (!parsed[ln]?.length) continue;
 		if (
-			parsed[ln][0].l == ld.cls_langindex && parsed[ln][0].s == ld.cls_keyword_attrindex &&
+			parsed[ln][0].l == ld.cls_langindex &&
+			parsed[ln][0].s == ld.cls_keyword_attrindex &&
 			doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c)).toLowerCase() == "class"
 		) {
 			thisclass = doc.getText(findFullRange(ln, parsed, 1, parsed[ln][1].p, parsed[ln][1].p + parsed[ln][1].c));
@@ -234,12 +269,12 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 	if (thisclass !== "") {
 		// We found the name of this class
 
-		const showInternalStr = await showInternalForServer(server) ? "" : " AND Internal = 0";
+		const showInternalStr = (await showInternalForServer(server)) ? "" : " AND Internal = 0";
 		// Build the list of QuickPickItems
 		if (params.memberType === "Method") {
 			const querydata: QueryData = {
 				query: `SELECT Name, Origin, ClassMethod, ReturnType FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Stub IS NULL AND Origin != ? AND Final = 0 AND NotInheritable = 0${showInternalStr}`,
-				parameters: [thisclass, thisclass]
+				parameters: [thisclass, thisclass],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -248,23 +283,21 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 						result.push({
 							label: memobj.Name,
 							description: memobj.ReturnType,
-							detail: "ClassMethod, Origin class: " + memobj.Origin
+							detail: "ClassMethod, Origin class: " + memobj.Origin,
 						});
-					}
-					else {
+					} else {
 						result.push({
 							label: memobj.Name,
 							description: memobj.ReturnType,
-							detail: "Method, Origin class: " + memobj.Origin
+							detail: "Method, Origin class: " + memobj.Origin,
 						});
 					}
 				}
 			}
-		}
-		else if (params.memberType === "Parameter") {
+		} else if (params.memberType === "Parameter") {
 			const querydata: QueryData = {
 				query: `SELECT Name, Origin, Type FROM %Dictionary.CompiledParameter WHERE Parent = ? AND Origin != ? AND Final = 0${showInternalStr}`,
-				parameters: [thisclass, thisclass]
+				parameters: [thisclass, thisclass],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -272,15 +305,14 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 					result.push({
 						label: memobj.Name,
 						description: memobj.Type,
-						detail: "Origin class: " + memobj.Origin
+						detail: "Origin class: " + memobj.Origin,
 					});
 				}
 			}
-		}
-		else if (params.memberType === "Projection") {
+		} else if (params.memberType === "Projection") {
 			const querydata: QueryData = {
 				query: `SELECT Name, Origin, Type FROM %Dictionary.CompiledProjection WHERE Parent = ? AND Origin != ?${showInternalStr}`,
-				parameters: [thisclass, thisclass]
+				parameters: [thisclass, thisclass],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -288,15 +320,14 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 					result.push({
 						label: memobj.Name,
 						description: memobj.Type,
-						detail: "Origin class: " + memobj.Origin
+						detail: "Origin class: " + memobj.Origin,
 					});
 				}
 			}
-		}
-		else if (params.memberType === "Property") {
+		} else if (params.memberType === "Property") {
 			const querydata: QueryData = {
 				query: `SELECT Name, Origin, Type FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Origin != ? AND Final = 0${showInternalStr}`,
-				parameters: [thisclass, thisclass]
+				parameters: [thisclass, thisclass],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -304,15 +335,14 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 					result.push({
 						label: memobj.Name,
 						description: memobj.Type,
-						detail: "Origin class: " + memobj.Origin
+						detail: "Origin class: " + memobj.Origin,
 					});
 				}
 			}
-		}
-		else if (params.memberType === "Query") {
+		} else if (params.memberType === "Query") {
 			const querydata: QueryData = {
 				query: `SELECT Name, Origin, Type FROM %Dictionary.CompiledQuery WHERE Parent = ? AND Origin != ? AND Final = 0${showInternalStr}`,
-				parameters: [thisclass, thisclass]
+				parameters: [thisclass, thisclass],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -320,15 +350,14 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 					result.push({
 						label: memobj.Name,
 						description: memobj.Type,
-						detail: "Origin class: " + memobj.Origin
+						detail: "Origin class: " + memobj.Origin,
 					});
 				}
 			}
-		}
-		else if (params.memberType === "Trigger") {
+		} else if (params.memberType === "Trigger") {
 			const querydata: QueryData = {
 				query: `SELECT Name, Origin, Event FROM %Dictionary.CompiledTrigger WHERE Parent = ? AND Origin != ? AND Final = 0${showInternalStr}`,
-				parameters: [thisclass, thisclass]
+				parameters: [thisclass, thisclass],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -336,15 +365,14 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 					result.push({
 						label: memobj.Name,
 						description: memobj.Event,
-						detail: "Origin class: " + memobj.Origin
+						detail: "Origin class: " + memobj.Origin,
 					});
 				}
 			}
-		}
-		else if (params.memberType === "XData") {
+		} else if (params.memberType === "XData") {
 			const querydata: QueryData = {
 				query: `SELECT Name, Origin, MimeType FROM %Dictionary.CompiledXData WHERE Parent = ? AND Origin != ?${showInternalStr}`,
-				parameters: [thisclass, thisclass]
+				parameters: [thisclass, thisclass],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (respdata !== undefined && respdata.data.result.content.length > 0) {
@@ -352,7 +380,7 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 					result.push({
 						label: memobj.Name,
 						description: memobj.MimeType,
-						detail: "Origin class: " + memobj.Origin
+						detail: "Origin class: " + memobj.Origin,
 					});
 				}
 			}
@@ -367,13 +395,17 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
  */
 export async function addOverridableMembers(params: AddOverridableMembersParams): Promise<WorkspaceEdit> {
 	const doc = documents.get(params.uri);
-	if (doc === undefined) { return {}; }
+	if (doc === undefined) {
+		return {};
+	}
 	if (doc.languageId !== "objectscript-class") {
 		// Can't override class members if the document isn't a class
 		return {};
 	}
 	const parsed = await getParsedDocument(params.uri);
-	if (parsed === undefined) { return {}; }
+	if (parsed === undefined) {
+		return {};
+	}
 	const server: ServerSpec = await getServerSpec(params.uri);
 
 	// Insert the new members at the cursor position (offset by one line)
@@ -381,7 +413,7 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 	insertpos.line++;
 	const change: TextEdit = {
 		range: Range.create(insertpos, insertpos),
-		newText: ""
+		newText: "",
 	};
 
 	// Loop through the QuickPickItem array and map all origin classes to the members
@@ -395,23 +427,23 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 				membersarr.push(quoteUDLIdentifier(member.label, 1));
 				membersPerOrigin.set(origin, membersarr);
 			}
-		}
-		else {
+		} else {
 			// Add this origin class to the map with this member in the members array
 			membersPerOrigin.set(origin, [quoteUDLIdentifier(member.label, 1)]);
 		}
 	}
 
 	const memberKeywords =
-		params.memberType == "Method" ? "Method|ClassMethod|ClientMethod" :
-			params.memberType == "Property" ? "Property|Relationship" :
-				params.memberType;
+		params.memberType == "Method"
+			? "Method|ClassMethod|ClientMethod"
+			: params.memberType == "Property"
+				? "Property|Relationship"
+				: params.memberType;
 
 	// Get the text of all origin classes that we need
 	const respdata = await makeRESTRequest("POST", 1, "/docs", server, [...membersPerOrigin.keys()]);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (const cls of respdata.data.result.content) {
-
 			// For each member in this class, add it to the 'newText' string
 			const members = membersPerOrigin.get(cls.name);
 			if (members !== undefined) {
@@ -424,8 +456,7 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 						const firstword = cls.content[ln].split(" ", 1)[0].toLowerCase();
 						if (cls.content[ln].slice(0, 3) === "///") {
 							desclinect++;
-						}
-						else if (regex.test(cls.content[ln])) {
+						} else if (regex.test(cls.content[ln])) {
 							// This is the right member
 
 							// Add the description lines to the 'newtText' string if there are any
@@ -444,15 +475,16 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 								change.newText = change.newText + line + "\n";
 
 								if (
-									(firstword.indexOf("property") !== -1) || (firstword.indexOf("relationship") !== -1) ||
-									(firstword.indexOf("parameter") !== -1) || (firstword.indexOf("projection") !== -1)
+									firstword.indexOf("property") !== -1 ||
+									firstword.indexOf("relationship") !== -1 ||
+									firstword.indexOf("parameter") !== -1 ||
+									firstword.indexOf("projection") !== -1
 								) {
 									// Look for the end of the member
 									if (cls.content[mln].trim().slice(-1) === ";") {
 										break;
 									}
-								}
-								else {
+								} else {
 									// Look for the start of the member's implementation
 									if (cls.content[mln].trim() === "{") {
 										// Add a blank line and closing curly brace
@@ -466,8 +498,7 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 
 							// Add a trailing newline
 							change.newText = change.newText + "\n";
-						}
-						else {
+						} else {
 							desclinect = 0;
 						}
 					}
@@ -478,8 +509,8 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 
 	return {
 		changes: {
-			[params.uri]: [change]
-		}
+			[params.uri]: [change],
+		},
 	};
 }
 
@@ -488,32 +519,45 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
  */
 export async function validateOverrideCursor(params: ValidateOverrideCursorParams): Promise<boolean> {
 	const doc = documents.get(params.uri);
-	if (doc === undefined) { return false; }
+	if (doc === undefined) {
+		return false;
+	}
 	if (doc.languageId !== "objectscript-class") {
 		// Can't override class members if the document isn't a class
 		return false;
 	}
 	const parsed = await getParsedDocument(params.uri);
-	if (parsed === undefined) { return false; }
+	if (parsed === undefined) {
+		return false;
+	}
 
 	// Check that the first non-empty line above the cursor ends with a UDL token
 	let abovevalid = false;
 	for (let ln = params.line - 1; ln >= 0; ln--) {
 		if (parsed[ln].length > 0) {
 			if (parsed[ln][parsed[ln].length - 1].l === ld.cls_langindex) {
-				if (parsed[ln].length === 1 && doc.getText(Range.create(
-					Position.create(ln, parsed[ln][0].p),
-					Position.create(ln, parsed[ln][0].p + parsed[ln][0].c))) === "{"
+				if (
+					parsed[ln].length === 1 &&
+					doc.getText(
+						Range.create(Position.create(ln, parsed[ln][0].p), Position.create(ln, parsed[ln][0].p + parsed[ln][0].c)),
+					) === "{"
 				) {
 					// This line only contains a UDL open curly brace, so check that the preceding line is the class definition
-					if (parsed[ln - 1][0].l === ld.cls_langindex && parsed[ln - 1][0].s === ld.cls_keyword_attrindex && doc.getText(Range.create(
-						Position.create(ln - 1, parsed[ln - 1][0].p),
-						Position.create(ln - 1, parsed[ln - 1][0].p + parsed[ln - 1][0].c))).toLowerCase() === "class"
+					if (
+						parsed[ln - 1][0].l === ld.cls_langindex &&
+						parsed[ln - 1][0].s === ld.cls_keyword_attrindex &&
+						doc
+							.getText(
+								Range.create(
+									Position.create(ln - 1, parsed[ln - 1][0].p),
+									Position.create(ln - 1, parsed[ln - 1][0].p + parsed[ln - 1][0].c),
+								),
+							)
+							.toLowerCase() === "class"
 					) {
 						abovevalid = true;
 					}
-				}
-				else {
+				} else {
 					abovevalid = true;
 				}
 			}
@@ -534,7 +578,7 @@ export async function validateOverrideCursor(params: ValidateOverrideCursorParam
 		}
 	}
 
-	return (abovevalid && belowvalid);
+	return abovevalid && belowvalid;
 }
 
 /**
@@ -546,7 +590,7 @@ export function listParameterTypes(): QuickPickItem[] {
 	for (let i = 0; i < parameterTypes.length; i++) {
 		result.push({
 			label: parameterTypes[i].name,
-			description: parameterTypes[i].documentation
+			description: parameterTypes[i].documentation,
 		});
 	}
 	return result;
@@ -562,14 +606,15 @@ export async function listImportPackages(params: ListImportPackagesParams): Prom
 
 	// Fetch the list of import packages
 	const querydata: QueryData = {
-		query: "SELECT $PIECE(Name,'.',1,$LENGTH(Name,'.')-2) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE $PIECE(Name,'.',$LENGTH(Name,'.')-1) = ?",
-		parameters: ["*.cls", 1, 1, 1, 1, 0, 0, classname]
+		query:
+			"SELECT $PIECE(Name,'.',1,$LENGTH(Name,'.')-2) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) WHERE $PIECE(Name,'.',$LENGTH(Name,'.')-1) = ?",
+		parameters: ["*.cls", 1, 1, 1, 1, 0, 0, classname],
 	};
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (const packobj of respdata.data.result.content) {
 			result.push({
-				label: packobj.Package
+				label: packobj.Package,
 			});
 		}
 	}
@@ -581,9 +626,13 @@ export async function listImportPackages(params: ListImportPackagesParams): Prom
  */
 export async function addImportPackage(params: AddImportPackageParams): Promise<WorkspaceEdit> {
 	const doc = documents.get(params.uri);
-	if (doc === undefined) { return {}; }
+	if (doc === undefined) {
+		return {};
+	}
 	const parsed = await getParsedDocument(params.uri);
-	if (parsed === undefined) { return {}; }
+	if (parsed === undefined) {
+		return {};
+	}
 
 	// Compute the TextEdits
 	const edits: TextEdit[] = [];
@@ -592,36 +641,42 @@ export async function addImportPackage(params: AddImportPackageParams): Promise<
 			continue;
 		}
 		if (parsed[ln][0].l === ld.cls_langindex && parsed[ln][0].s === ld.cls_keyword_attrindex) {
-			const keyword: string = doc.getText(Range.create(
-				Position.create(ln, parsed[ln][0].p),
-				Position.create(ln, parsed[ln][0].p + parsed[ln][0].c)
-			)).toLowerCase();
+			const keyword: string = doc
+				.getText(
+					Range.create(Position.create(ln, parsed[ln][0].p), Position.create(ln, parsed[ln][0].p + parsed[ln][0].c)),
+				)
+				.toLowerCase();
 			if (keyword === "import") {
 				if (
 					parsed[ln][1].l === ld.cls_langindex &&
 					parsed[ln][1].s === ld.cls_delim_attrindex &&
-					doc.getText(Range.create(Position.create(ln, parsed[ln][1].p), Position.create(ln, parsed[ln][1].p + parsed[ln][1].c))) === "("
+					doc.getText(
+						Range.create(Position.create(ln, parsed[ln][1].p), Position.create(ln, parsed[ln][1].p + parsed[ln][1].c)),
+					) === "("
 				) {
 					// There are several imported packages already
 					const lastparentkn = parsed[ln][parsed[ln].length - 1];
 					edits.push({
 						range: Range.create(Position.create(ln, lastparentkn.p), Position.create(ln, lastparentkn.p)),
-						newText: ", " + params.packagename
+						newText: ", " + params.packagename,
 					});
 				} else {
-					// There is only one imported package 
+					// There is only one imported package
 					const startcurrentpackagetkn = parsed[ln][1];
 					const endcurrentpackagetkn = parsed[ln][parsed[ln].length - 1];
 					edits.push({
-						range: Range.create(Position.create(ln, startcurrentpackagetkn.p), Position.create(ln, startcurrentpackagetkn.p)),
-						newText: "("
+						range: Range.create(
+							Position.create(ln, startcurrentpackagetkn.p),
+							Position.create(ln, startcurrentpackagetkn.p),
+						),
+						newText: "(",
 					});
 					edits.push({
 						range: Range.create(
 							Position.create(ln, endcurrentpackagetkn.p + endcurrentpackagetkn.c),
-							Position.create(ln, endcurrentpackagetkn.p + endcurrentpackagetkn.c)
+							Position.create(ln, endcurrentpackagetkn.p + endcurrentpackagetkn.c),
 						),
-						newText: ", " + params.packagename + ")"
+						newText: ", " + params.packagename + ")",
 					});
 				}
 				break;
@@ -629,7 +684,7 @@ export async function addImportPackage(params: AddImportPackageParams): Promise<
 				// There is no "Import" keyword
 				edits.push({
 					range: Range.create(Position.create(0, 0), Position.create(0, 0)),
-					newText: "Import " + params.packagename + "\n\n"
+					newText: "Import " + params.packagename + "\n\n",
 				});
 				break;
 			}
@@ -638,8 +693,8 @@ export async function addImportPackage(params: AddImportPackageParams): Promise<
 
 	return {
 		changes: {
-			[params.uri]: edits
-		}
+			[params.uri]: edits,
+		},
 	};
 }
 
@@ -648,20 +703,24 @@ export async function addImportPackage(params: AddImportPackageParams): Promise<
  */
 export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit | null> {
 	const doc = documents.get(params.uri);
-	if (doc === undefined) { return null; }
+	if (doc === undefined) {
+		return null;
+	}
 	const parsed = await getParsedDocument(params.uri);
-	if (parsed === undefined) { return null; }
-	const lnstart = params.lnstart;	// First non-empty line of the selection
-	const lnend = params.lnend;			// Last non-empty line of the selection
+	if (parsed === undefined) {
+		return null;
+	}
+	const lnstart = params.lnstart; // First non-empty line of the selection
+	const lnend = params.lnend; // Last non-empty line of the selection
 
 	// Compute the TextEdits
 	const edits: TextEdit[] = [];
 
-	// Adapt to VSCode Workspace settings 
+	// Adapt to VSCode Workspace settings
 	const vscodesettings = await connection.workspace.getConfiguration([
 		{ scopeUri: params.uri, section: "editor.tabSize" },
 		{ scopeUri: params.uri, section: "editor.insertSpaces" },
-		{ scopeUri: params.uri, section: "objectscript.multilineMethodArgs" }
+		{ scopeUri: params.uri, section: "objectscript.multilineMethodArgs" },
 	]);
 	const tabSize = vscodesettings[0];
 	const insertSpaces = vscodesettings[1];
@@ -680,7 +739,8 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 	// Find the location of the method insertion above the donor method
 	let insertpos: Position = Position.create(0, 0);
 	for (let ln = params.lnmethod - 1; ln > 0; ln--) {
-		if (parsed[ln].length === 0) { // Empty line
+		if (parsed[ln].length === 0) {
+			// Empty line
 			insertpos = Position.create(ln, 0);
 			break;
 		} else if (parsed[ln][0].l === ld.cls_langindex && parsed[ln][0].s === ld.cls_desc_attrindex) {
@@ -698,12 +758,13 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 	let endprocedureblocksearch: boolean = false;
 	let nexttkn: number = 0;
 	let methodprocedureblock: boolean | undefined = undefined;
-	const donorargs: [string, boolean, string][] = []; 				// List of arguments of the donor method
-	let donorarg: [string, boolean, string] = ["", false, ""]; 	// Argument properties: Name, ByRef/Output, Type/Parameters) 
+	const donorargs: [string, boolean, string][] = []; // List of arguments of the donor method
+	let donorarg: [string, boolean, string] = ["", false, ""]; // Argument properties: Name, ByRef/Output, Type/Parameters)
 	let previoustknln = params.lnmethod;
 	let previoustkn = 0;
 	for (let ln = params.lnmethod; ln < lnstart; ln++) {
-		if (parsed[ln].length === 0) { // Empty line
+		if (parsed[ln].length === 0) {
+			// Empty line
 			continue;
 		}
 		for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
@@ -711,9 +772,11 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 				nexttkn++;
 				if (nexttkn === 2 && parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_num_attrindex) {
 					// This is the value of the procedureblock (0 or 1)
-					const procedureblockvalue = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c))
+					const procedureblockvalue = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
 					);
 					if (procedureblockvalue === "0") {
 						methodprocedureblock = false;
@@ -725,18 +788,20 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 				}
 			}
 			if (parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_delim_attrindex) {
-				const delimtext = doc.getText(Range.create(
-					Position.create(ln, parsed[ln][tkn].p),
-					Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c))
+				const delimtext = doc.getText(
+					Range.create(
+						Position.create(ln, parsed[ln][tkn].p),
+						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+					),
 				);
 				if (delimtext === "(") {
 					countparen++;
 				} else if (delimtext === ")") {
 					countparen--;
 					if (donorarg[0] !== "" && countparen === 0) {
-						// This is the end of the last method argument 
-						donorargs.push(donorarg);	// Record Name, ByRef/Output, and Type/Parameters of the argument 
-						donorarg = ["", false, ""];	// Re-initialize the argument information array
+						// This is the end of the last method argument
+						donorargs.push(donorarg); // Record Name, ByRef/Output, and Type/Parameters of the argument
+						donorarg = ["", false, ""]; // Re-initialize the argument information array
 					}
 				} else if (delimtext === "{") {
 					countbrace++;
@@ -749,45 +814,65 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 					countbrace--;
 				} else if (donorarg[0] !== "" && (delimtext === "," || delimtext === "=") && countparen === 1) {
 					// This is the end of the argument or the start of the default value (to skip)
-					donorargs.push(donorarg);	// Record Name, ByRef/Output, and Type/Parameters of the argument 
-					donorarg = ["", false, ""];	// Re-initialize the argument information array
+					donorargs.push(donorarg); // Record Name, ByRef/Output, and Type/Parameters of the argument
+					donorarg = ["", false, ""]; // Re-initialize the argument information array
 				}
 			} else if (parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_keyword_attrindex) {
-				const keywordtext: string = doc.getText(Range.create(
-					Position.create(ln, parsed[ln][tkn].p),
-					Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-				)).toLowerCase();
+				const keywordtext: string = doc
+					.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					)
+					.toLowerCase();
 				if (keywordtext === "procedureblock") {
 					foundprocedureblock = true;
 				}
 			}
-			if (donorarg[0] === "" && parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_param_attrindex) {
-				// This is a cls parameter 
+			if (
+				donorarg[0] === "" &&
+				parsed[ln][tkn].l === ld.cls_langindex &&
+				parsed[ln][tkn].s === ld.cls_param_attrindex
+			) {
+				// This is a cls parameter
 
 				// Record parameter variable name
-				donorarg[0] = doc.getText(Range.create(
-					Position.create(ln, parsed[ln][tkn].p),
-					Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-				));
+				donorarg[0] = doc.getText(
+					Range.create(
+						Position.create(ln, parsed[ln][tkn].p),
+						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+					),
+				);
 
 				// Check Prefix
-				if (parsed[previoustknln][previoustkn].l === ld.cls_langindex &&
+				if (
+					parsed[previoustknln][previoustkn].l === ld.cls_langindex &&
 					parsed[previoustknln][previoustkn].s === ld.cls_keyword_attrindex
 				) {
 					// There is a "Output" or "ByRef" prefix -> add keyword "ByRef" to the signature and "." in argument (Ignore ByVal)
-					const keywordtext: string = doc.getText(Range.create(
-						Position.create(previoustknln, parsed[previoustknln][previoustkn].p),
-						Position.create(previoustknln, parsed[previoustknln][previoustkn].p + parsed[previoustknln][previoustkn].c)
-					)).toLowerCase();
+					const keywordtext: string = doc
+						.getText(
+							Range.create(
+								Position.create(previoustknln, parsed[previoustknln][previoustkn].p),
+								Position.create(
+									previoustknln,
+									parsed[previoustknln][previoustkn].p + parsed[previoustknln][previoustkn].c,
+								),
+							),
+						)
+						.toLowerCase();
 					if (keywordtext === "output" || keywordtext === "byref") {
 						donorarg[1] = true;
 					}
 				}
 			} else if (donorarg[0] !== "" && parsed[ln][tkn].l === ld.cls_langindex) {
 				// This is the text after the cls parameter
-				const tkntext: string = doc.getText(Range.create(
-					Position.create(ln, parsed[ln][tkn].p),
-					Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c))
+				const tkntext: string = doc.getText(
+					Range.create(
+						Position.create(ln, parsed[ln][tkn].p),
+						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+					),
 				);
 				if (tkntext.charAt(0) === "." || tkntext === ")" || countparen > 1) {
 					// This is a class type or parameter text (in parenthesis) - no space
@@ -804,32 +889,42 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 		}
 	}
 
-	let procedurekeyword: string = "";	// This is the ProcedureBlock keyword to add to methodkeywords
+	let procedurekeyword: string = ""; // This is the ProcedureBlock keyword to add to methodkeywords
 	let isprocedureblock: boolean = true;
 	if (methodprocedureblock === undefined) {
-		// Scan for ProcedureBlock Class Keyword 
+		// Scan for ProcedureBlock Class Keyword
 		for (let ln = 0; ln < params.lnmethod; ln++) {
-			if (parsed[ln].length === 0) { // Empty line
+			if (parsed[ln].length === 0) {
+				// Empty line
 				continue;
 			}
 			if (parsed[ln][0].l === ld.cls_langindex && parsed[ln][0].s === ld.cls_keyword_attrindex) {
-				const keywordtext: string = doc.getText(Range.create(
-					Position.create(ln, parsed[ln][0].p),
-					Position.create(ln, parsed[ln][0].p + parsed[ln][0].c)
-				)).toLowerCase();
+				const keywordtext: string = doc
+					.getText(
+						Range.create(Position.create(ln, parsed[ln][0].p), Position.create(ln, parsed[ln][0].p + parsed[ln][0].c)),
+					)
+					.toLowerCase();
 				if (keywordtext === "class") {
 					// This is the line of Class definition
 					for (let tkn = 1; tkn < parsed[ln].length; tkn++) {
 						if (parsed[ln][tkn].l === ld.cls_langindex && parsed[ln][tkn].s === ld.cls_keyword_attrindex) {
-							const keywordtext: string = doc.getText(Range.create(
-								Position.create(ln, parsed[ln][tkn].p),
-								Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-							)).toLowerCase();
+							const keywordtext: string = doc
+								.getText(
+									Range.create(
+										Position.create(ln, parsed[ln][tkn].p),
+										Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+									),
+								)
+								.toLowerCase();
 							if (keywordtext === "procedureblock") {
-								const previoustkn = doc.getText(Range.create(
-									Position.create(ln, parsed[ln][tkn - 1].p),
-									Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c)
-								)).toLowerCase();
+								const previoustkn = doc
+									.getText(
+										Range.create(
+											Position.create(ln, parsed[ln][tkn - 1].p),
+											Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c),
+										),
+									)
+									.toLowerCase();
 								if (previoustkn === "not") {
 									isprocedureblock = false;
 								}
@@ -856,43 +951,46 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 	let methodkeywords: string = "";
 
 	// #Dim manipulation variables
-	const dimadd: string[] = [];			// List of #Dim to add in the extracted method
-	const todellinevar: number[] = [];	// #Dim lines where variables will need to be removed
-	const todelvar: string[] = [];		// Variables to remove from the #Dim declaration
+	const dimadd: string[] = []; // List of #Dim to add in the extracted method
+	const todellinevar: number[] = []; // #Dim lines where variables will need to be removed
+	const todelvar: string[] = []; // Variables to remove from the #Dim declaration
 
 	if (isprocedureblock) {
-		// The method is a procedure block 
-		const publicvar: string[] = [];		// List of public variables 
-		const parametervar: string[] = [];	// List of cos parameters (arguments of the donor method)
+		// The method is a procedure block
+		const publicvar: string[] = []; // List of public variables
+		const parametervar: string[] = []; // List of cos parameters (arguments of the donor method)
 
-		let dimvar: string[] = [];			// List of variables that can be declared by a #Dim: local declared variables and public variables
-		const dimlocation: number[] = [];		// List of locations (line) of the #Dim in the code selection
+		let dimvar: string[] = []; // List of variables that can be declared by a #Dim: local declared variables and public variables
+		const dimlocation: number[] = []; // List of locations (line) of the #Dim in the code selection
 
-		let undeclaredvar: string[] = [];			// List of undeclared variables
-		const undeclaredlocation: number[][] = [];	// List of locations (line, token) of the undeclared variable in the code selection
-		const setlocation: number[][] = [];			// List of locations (line, token) of the Set command in the code selection
-		const undeclaredbyrefvar: string[] = [];		// List of undeclared variables ByRef or Output
+		let undeclaredvar: string[] = []; // List of undeclared variables
+		const undeclaredlocation: number[][] = []; // List of locations (line, token) of the undeclared variable in the code selection
+		const setlocation: number[][] = []; // List of locations (line, token) of the Set command in the code selection
+		const undeclaredbyrefvar: string[] = []; // List of undeclared variables ByRef or Output
 
-		let declaredvar: string[] = [];				// List of declared variables
-		const declaredlocation: number[][] = [];		// List of locations (line, token) of the declared variable in the code selection
-		const declaredbyrefvar: string[] = [];		// List of declared variables ByRef or Output
-		const setdim: string[] = [];					// List of declared variables that are Set by default by #Dim
+		let declaredvar: string[] = []; // List of declared variables
+		const declaredlocation: number[][] = []; // List of locations (line, token) of the declared variable in the code selection
+		const declaredbyrefvar: string[] = []; // List of declared variables ByRef or Output
+		const setdim: string[] = []; // List of declared variables that are Set by default by #Dim
 
-		const initializeddeclaredvar: string[] = []	// List of declared variables initialize by a for loop
-		const initializedundeclaredvar: string[] = []	// List of undeclared variables initialize by a for loop
+		const initializeddeclaredvar: string[] = []; // List of declared variables initialize by a for loop
+		const initializedundeclaredvar: string[] = []; // List of undeclared variables initialize by a for loop
 
 		// Scan through the selection: look for variables, #Dim, and Set
 		for (let ln = lnstart; ln <= lnend; ln++) {
-			if (parsed[ln].length === 0) { // Empty line
+			if (parsed[ln].length === 0) {
+				// Empty line
 				continue;
 			}
 			for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
 				if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_localvar_attrindex) {
-					// This is a public variable 
-					const localvar: string = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					));
+					// This is a public variable
+					const localvar: string = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					);
 					if (!publicvar.includes(localvar) && localvar.charAt(0) !== "%") {
 						// Only add public variables that do not start with %
 						publicvar.push(localvar);
@@ -902,20 +1000,24 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 						dimvar.push(localvar);
 					}
 				} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_param_attrindex) {
-					// This is parameter variable 
-					const param: string = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					));
+					// This is parameter variable
+					const param: string = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					);
 					if (!parametervar.includes(param)) {
 						parametervar.push(param);
 					}
 				} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_localdec_attrindex) {
-					// This is local declared variable 
-					const thisvar: string = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					));
+					// This is local declared variable
+					const thisvar: string = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					);
 					if (!dimvar.includes(thisvar)) {
 						// Add the local declared variables to the list of variables that can be declared by #Dim
 						dimvar.push(thisvar);
@@ -923,10 +1025,12 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 					if (
 						tkn > 0 &&
 						parsed[ln][tkn - 1].s === ld.cos_oper_attrindex &&
-						doc.getText(Range.create(
-							Position.create(ln, parsed[ln][tkn - 1].p),
-							Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c)
-						)) === "."
+						doc.getText(
+							Range.create(
+								Position.create(ln, parsed[ln][tkn - 1].p),
+								Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c),
+							),
+						) === "."
 					) {
 						// The declared variable is ByRef or Output of a method
 						if (!declaredbyrefvar.includes(thisvar)) {
@@ -939,14 +1043,18 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 						// Check if the first call of the variable is a #Dim, and check if the variable is set by #Dim's default value
 						if (
 							parsed[ln].length > 1 &&
-							parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex &&
-							parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex
+							parsed[ln][0].l === ld.cos_langindex &&
+							parsed[ln][0].s === ld.cos_ppc_attrindex &&
+							parsed[ln][1].l === ld.cos_langindex &&
+							parsed[ln][1].s === ld.cos_ppc_attrindex
 						) {
 							// This is 2 preprocessor command
-							const thisdim: string = doc.getText(Range.create(
-								Position.create(ln, parsed[ln][0].p),
-								Position.create(ln, parsed[ln][1].p + parsed[ln][1].c)
-							));
+							const thisdim: string = doc.getText(
+								Range.create(
+									Position.create(ln, parsed[ln][0].p),
+									Position.create(ln, parsed[ln][1].p + parsed[ln][1].c),
+								),
+							);
 							if (thisdim.toLowerCase() === "#dim") {
 								// The first call of the variable is a #Dim -> skip
 								skip = true;
@@ -976,25 +1084,29 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 								parsed[ln][tkn - 1].l === ld.cos_langindex &&
 								parsed[ln][tkn - 1].s === ld.cos_command_attrindex
 							) {
-								const commandtext: string = doc.getText(Range.create(
-									Position.create(ln, parsed[ln][tkn - 1].p),
-									Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c)
-								)).toLowerCase();
+								const commandtext: string = doc
+									.getText(
+										Range.create(
+											Position.create(ln, parsed[ln][tkn - 1].p),
+											Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c),
+										),
+									)
+									.toLowerCase();
 								if (commandtext === "for" || commandtext === "f") {
 									// This variable has been initialized by a For loop
 									initializeddeclaredvar.push(thisvar);
 								}
 							}
 						}
-
-
 					}
 				} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_localundec_attrindex) {
-					// This is local undeclared variable 
-					const thisvar: string = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					));
+					// This is local undeclared variable
+					const thisvar: string = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					);
 					if (!undeclaredvar.includes(thisvar)) {
 						undeclaredvar.push(thisvar);
 						undeclaredlocation.push([ln, tkn]);
@@ -1005,10 +1117,14 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 							parsed[ln][tkn - 1].l === ld.cos_langindex &&
 							parsed[ln][tkn - 1].s === ld.cos_command_attrindex
 						) {
-							const commandtext: string = doc.getText(Range.create(
-								Position.create(ln, parsed[ln][tkn - 1].p),
-								Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c)
-							)).toLowerCase();
+							const commandtext: string = doc
+								.getText(
+									Range.create(
+										Position.create(ln, parsed[ln][tkn - 1].p),
+										Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c),
+									),
+								)
+								.toLowerCase();
 							if (commandtext === "for" || commandtext === "f") {
 								// This variable has been initialized by a For loop
 								initializedundeclaredvar.push(thisvar);
@@ -1018,10 +1134,12 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 					if (
 						tkn > 0 &&
 						parsed[ln][tkn - 1].s === ld.cos_oper_attrindex &&
-						doc.getText(Range.create(
-							Position.create(ln, parsed[ln][tkn - 1].p),
-							Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c)
-						)) === "."
+						doc.getText(
+							Range.create(
+								Position.create(ln, parsed[ln][tkn - 1].p),
+								Position.create(ln, parsed[ln][tkn - 1].p + parsed[ln][tkn - 1].c),
+							),
+						) === "."
 					) {
 						// The undeclared variable is ByRef or Output of a method
 						if (!undeclaredbyrefvar.includes(thisvar)) {
@@ -1029,10 +1147,14 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 						}
 					}
 				} else if (parsed[ln][tkn].l === ld.cos_langindex && parsed[ln][tkn].s === ld.cos_command_attrindex) {
-					const thisvar: string = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					)).toLowerCase();
+					const thisvar: string = doc
+						.getText(
+							Range.create(
+								Position.create(ln, parsed[ln][tkn].p),
+								Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+							),
+						)
+						.toLowerCase();
 					if (thisvar === "set" || thisvar === "s") {
 						// This is a set command
 						setlocation.push([ln, tkn]); // save location
@@ -1043,14 +1165,15 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 			// Save the line number if the line contains a #Dim
 			if (
 				parsed[ln].length > 1 &&
-				parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex &&
-				parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex
+				parsed[ln][0].l === ld.cos_langindex &&
+				parsed[ln][0].s === ld.cos_ppc_attrindex &&
+				parsed[ln][1].l === ld.cos_langindex &&
+				parsed[ln][1].s === ld.cos_ppc_attrindex
 			) {
 				// This is 2 preprocessor command
-				const thisvar: string = doc.getText(Range.create(
-					Position.create(ln, parsed[ln][0].p),
-					Position.create(ln, parsed[ln][1].p + parsed[ln][1].c)
-				));
+				const thisvar: string = doc.getText(
+					Range.create(Position.create(ln, parsed[ln][0].p), Position.create(ln, parsed[ln][1].p + parsed[ln][1].c)),
+				);
 				if (thisvar.toLowerCase() === "#dim") {
 					dimlocation.push(ln);
 				}
@@ -1085,19 +1208,33 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 		if (parametervar.length > 0 && donorargs.length > 0) {
 			for (let arg = 0; arg < donorargs.length; arg++) {
 				if (parametervar.includes(donorargs[arg][0])) {
-					[signature, methodarguments] = prepareExtractMethodSignature(donorargs[arg][0], donorargs[arg][1], donorargs[arg][2], signature, methodarguments, comma);
+					[signature, methodarguments] = prepareExtractMethodSignature(
+						donorargs[arg][0],
+						donorargs[arg][1],
+						donorargs[arg][2],
+						signature,
+						methodarguments,
+						comma,
+					);
 					countarg++;
 				}
 			}
 		}
 
-		// Update "undeclaredvar" array: delete the variables that are ByRef/Output of a method 
-		undeclaredvar = undeclaredvar.filter(undeclared => !undeclaredbyrefvar.includes(undeclared));
+		// Update "undeclaredvar" array: delete the variables that are ByRef/Output of a method
+		undeclaredvar = undeclaredvar.filter((undeclared) => !undeclaredbyrefvar.includes(undeclared));
 
 		// Add the undeclared variable ByRef to the signature
 		if (undeclaredbyrefvar.length > 0) {
 			for (let ivar = 0; ivar < undeclaredbyrefvar.length; ivar++) {
-				[signature, methodarguments] = prepareExtractMethodSignature(undeclaredbyrefvar[ivar], true, "", signature, methodarguments, comma);
+				[signature, methodarguments] = prepareExtractMethodSignature(
+					undeclaredbyrefvar[ivar],
+					true,
+					"",
+					signature,
+					methodarguments,
+					comma,
+				);
 				countarg++;
 			}
 		}
@@ -1105,10 +1242,10 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 		// Check if the undeclared variable has been initialized by a For loop in in the selection block
 		if (undeclaredvar.length > 0 && initializedundeclaredvar.length > 0) {
 			// Update "undeclaredvar" array: delete the variables that already have been initialized by the For loop of the selection
-			undeclaredvar = undeclaredvar.filter(undeclared => !initializedundeclaredvar.includes(undeclared));
+			undeclaredvar = undeclaredvar.filter((undeclared) => !initializedundeclaredvar.includes(undeclared));
 		}
 		// Check if the undeclared variable has been set in the selection block
-		const foundsetundeclaredvar: string[] = [];	// List of undeclared variables that have been Set in the selection block 
+		const foundsetundeclaredvar: string[] = []; // List of undeclared variables that have been Set in the selection block
 		// (before the undeclared variable)
 		if (undeclaredvar.length > 0 && setlocation.length > 0) {
 			for (let ivar = 0; ivar < undeclaredvar.length; ivar++) {
@@ -1116,11 +1253,17 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 				const tkn = undeclaredlocation[ivar][1];
 				for (let iloc = 0; iloc < setlocation.length; iloc++) {
 					if (
-						setlocation[iloc][0] < ln ||								// Line of Set is above the undeclared variable
-						(setlocation[iloc][0] == ln && setlocation[iloc][1] < tkn)	// Set and the undeclared variable are on the same line, but Set is before
+						setlocation[iloc][0] < ln || // Line of Set is above the undeclared variable
+						(setlocation[iloc][0] == ln && setlocation[iloc][1] < tkn) // Set and the undeclared variable are on the same line, but Set is before
 					) {
 						// The Set is before the variable
-						const foundset: boolean = parseSet(doc, parsed, setlocation[iloc][0], setlocation[iloc][1], undeclaredvar[ivar]);
+						const foundset: boolean = parseSet(
+							doc,
+							parsed,
+							setlocation[iloc][0],
+							setlocation[iloc][1],
+							undeclaredvar[ivar],
+						);
 						if (foundset) {
 							// The undeclared variable is Set in the code selection
 							foundsetundeclaredvar.push(undeclaredvar[ivar]);
@@ -1130,13 +1273,20 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 				}
 			}
 			// Update "undeclaredvar" array: delete the variables that already have been Set before the variable and within the code selection
-			undeclaredvar = undeclaredvar.filter(undeclared => !foundsetundeclaredvar.includes(undeclared));
+			undeclaredvar = undeclaredvar.filter((undeclared) => !foundsetundeclaredvar.includes(undeclared));
 		}
 
 		// Add the undeclared variable (not Set in the selection) to the signature
 		if (undeclaredvar.length > 0) {
 			for (let ivar = 0; ivar < undeclaredvar.length; ivar++) {
-				[signature, methodarguments] = prepareExtractMethodSignature(undeclaredvar[ivar], false, "", signature, methodarguments, comma);
+				[signature, methodarguments] = prepareExtractMethodSignature(
+					undeclaredvar[ivar],
+					false,
+					"",
+					signature,
+					methodarguments,
+					comma,
+				);
 				countarg++;
 			}
 		}
@@ -1144,15 +1294,15 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 		// Check if the declared variable has been initialized by a For loop in in the selection block
 		if (declaredvar.length > 0 && initializeddeclaredvar.length > 0) {
 			// Update "declaredvar" array: delete the variables that already have been initialized by the For loop of the selection
-			declaredvar = declaredvar.filter(declared => !initializeddeclaredvar.includes(declared));
+			declaredvar = declaredvar.filter((declared) => !initializeddeclaredvar.includes(declared));
 		}
 		// Check if the declared variable has been set by #Dim default value in in the selection block
 		if (declaredvar.length > 0 && setdim.length > 0) {
-			// Update "declaredvar" array: delete the variables that already have been Set as a default value in the #Dim of the selection 
-			declaredvar = declaredvar.filter(declared => !setdim.includes(declared));
+			// Update "declaredvar" array: delete the variables that already have been Set as a default value in the #Dim of the selection
+			declaredvar = declaredvar.filter((declared) => !setdim.includes(declared));
 		}
 		// Check if the declared variable has been set by Set in in the selection block
-		const foundsetdeclaredvar: string[] = [];	// List of declared variables that have been Set in the selection block 
+		const foundsetdeclaredvar: string[] = []; // List of declared variables that have been Set in the selection block
 		// (before the declared variable)
 		if (declaredvar.length > 0 && setlocation.length > 0) {
 			for (let ivar = 0; ivar < declaredvar.length; ivar++) {
@@ -1160,11 +1310,17 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 				const tkn = declaredlocation[ivar][1];
 				for (let iloc = 0; iloc < setlocation.length; iloc++) {
 					if (
-						setlocation[iloc][0] < ln ||								// Line of Set is above the ueclared variable
-						(setlocation[iloc][0] == ln && setlocation[iloc][1] < tkn)	// Set and the declared variable are on the same line, but Set is before
+						setlocation[iloc][0] < ln || // Line of Set is above the ueclared variable
+						(setlocation[iloc][0] == ln && setlocation[iloc][1] < tkn) // Set and the declared variable are on the same line, but Set is before
 					) {
 						// The Set is before the variable
-						const foundset: boolean = parseSet(doc, parsed, setlocation[iloc][0], setlocation[iloc][1], declaredvar[ivar]);
+						const foundset: boolean = parseSet(
+							doc,
+							parsed,
+							setlocation[iloc][0],
+							setlocation[iloc][1],
+							declaredvar[ivar],
+						);
 						if (foundset) {
 							// The declared variable is Set in the code selection
 							foundsetdeclaredvar.push(declaredvar[ivar]);
@@ -1174,7 +1330,7 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 				}
 			}
 			// Update "declaredvar" array: delete the variables that already have been set before the variable and within code selection
-			declaredvar = declaredvar.filter(declared => !foundsetdeclaredvar.includes(declared));
+			declaredvar = declaredvar.filter((declared) => !foundsetdeclaredvar.includes(declared));
 		}
 
 		// Check if the public variable or the local declared variable (dimvar) is declared (dimlocation) in the selection block
@@ -1194,7 +1350,14 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 							if (declaredbyrefvar.includes(dimvar[idimvar])) {
 								isByRef = true;
 							}
-							[signature, methodarguments] = prepareExtractMethodSignature(dimvar[idimvar], isByRef, " As " + dimresult.class, signature, methodarguments, comma);
+							[signature, methodarguments] = prepareExtractMethodSignature(
+								dimvar[idimvar],
+								isByRef,
+								" As " + dimresult.class,
+								signature,
+								methodarguments,
+								comma,
+							);
 							countarg++;
 
 							// Record the variables to be removed from the #Dim declarations
@@ -1206,33 +1369,37 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 				}
 			}
 			// Update "dimvar" array: delete the variables that already have been declared in the code selection
-			dimvar = dimvar.filter(dim => !founddimvar.includes(dim));
+			dimvar = dimvar.filter((dim) => !founddimvar.includes(dim));
 		}
 
-		// Scan for #Dim above selection block 
+		// Scan for #Dim above selection block
 		for (let ln = lnstart - 1; ln > params.lnmethod; ln--) {
-			if (parsed[ln].length === 0) {// Empty line
+			if (parsed[ln].length === 0) {
+				// Empty line
 				continue;
 			}
 			if (dimvar.length > 0) {
 				const todel: string[] = []; // List of variables that have been declared at line ln
 				if (
 					parsed[ln].length > 1 &&
-					parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_ppc_attrindex &&
-					parsed[ln][1].l === ld.cos_langindex && parsed[ln][1].s === ld.cos_ppc_attrindex
+					parsed[ln][0].l === ld.cos_langindex &&
+					parsed[ln][0].s === ld.cos_ppc_attrindex &&
+					parsed[ln][1].l === ld.cos_langindex &&
+					parsed[ln][1].s === ld.cos_ppc_attrindex
 				) {
 					// This is 2 preprocessor command
-					const thisvar: string = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][0].p),
-						Position.create(ln, parsed[ln][1].p + parsed[ln][1].c)
-					));
-					if (thisvar.toLowerCase() === "#dim") { // This is a #Dim declaration
+					const thisvar: string = doc.getText(
+						Range.create(Position.create(ln, parsed[ln][0].p), Position.create(ln, parsed[ln][1].p + parsed[ln][1].c)),
+					);
+					if (thisvar.toLowerCase() === "#dim") {
+						// This is a #Dim declaration
 						let dimaddtext: string = "";
 						let dimtype: string = "";
 						// Check whether the variables have been declared by this #Dim
 						for (let idimvar = 0; idimvar < dimvar.length; idimvar++) {
 							const dimresult = parseDimLine(doc, parsed, ln, dimvar[idimvar]);
-							if (dimresult.founddim) { // The variable has been declared by a #Dim. 
+							if (dimresult.founddim) {
+								// The variable has been declared by a #Dim.
 								dimtype = dimresult.class;
 								todel.push(dimvar[idimvar]);
 								if (declaredvar.includes(dimvar[idimvar]) || declaredbyrefvar.includes(dimvar[idimvar])) {
@@ -1243,10 +1410,17 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 									if (declaredbyrefvar.includes(dimvar[idimvar])) {
 										isByRef = true;
 									}
-									[signature, methodarguments] = prepareExtractMethodSignature(dimvar[idimvar], isByRef, " As " + dimtype, signature, methodarguments, comma);
+									[signature, methodarguments] = prepareExtractMethodSignature(
+										dimvar[idimvar],
+										isByRef,
+										" As " + dimtype,
+										signature,
+										methodarguments,
+										comma,
+									);
 									countarg++;
 								} else {
-									// There is a #Dim above the selection and 
+									// There is a #Dim above the selection and
 									// the public variable or the declared variable has been set in the selection
 									if (dimaddtext === "") {
 										dimaddtext += "#Dim " + dimvar[idimvar];
@@ -1263,7 +1437,7 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 					}
 				}
 				// Update "dimvar" array: delete the variables that already have been declared above code selection, at line ln
-				dimvar = dimvar.filter(dim => !todel.includes(dim));
+				dimvar = dimvar.filter((dim) => !todel.includes(dim));
 			} else {
 				// All the #Dim have been found
 				break;
@@ -1274,9 +1448,8 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 		if (multilinearg === true && server.apiVersion >= 4 && countarg > 1) {
 			signature = "\n" + tab + signature;
 		}
-
 	} else {
-		// The method is a not procedure block 
+		// The method is a not procedure block
 		if (procedurekeyword !== "") {
 			methodkeywords = "[ " + procedurekeyword + " ]";
 		}
@@ -1294,9 +1467,19 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 		docommandtext = docommandtext.toUpperCase();
 	}
 
-	edits.push({ // Open the method
+	edits.push({
+		// Open the method
 		range: Range.create(insertpos, insertpos),
-		newText: "\n/// \n" + params.newmethodtype + " " + params.newmethodname + "(" + signature + ") " + methodkeywords + "\n{\n"
+		newText:
+			"\n/// \n" +
+			params.newmethodtype +
+			" " +
+			params.newmethodname +
+			"(" +
+			signature +
+			") " +
+			methodkeywords +
+			"\n{\n",
 	});
 
 	// Add #Dim variable declaration for local declared variables and public variables
@@ -1304,28 +1487,28 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 		for (let dimln = dimadd.length - 1; dimln >= 0; dimln--) {
 			edits.push({
 				range: Range.create(insertpos, insertpos),
-				newText: tab + dimadd[dimln] + "\n"
+				newText: tab + dimadd[dimln] + "\n",
 			});
 		}
 		edits.push({
 			range: Range.create(insertpos, insertpos),
-			newText: "\n"
+			newText: "\n",
 		});
 	}
 
 	let foundfirstindent: boolean = false;
 	let firstwhitespace: string = "";
-	for (let ln = lnstart; ln <= lnend; ln++) { // Add the selection block in the method
+	for (let ln = lnstart; ln <= lnend; ln++) {
+		// Add the selection block in the method
 		if (parsed[ln].length === 0) {
 			edits.push({
 				range: Range.create(insertpos, insertpos),
-				newText: "\n"
+				newText: "\n",
 			});
 		} else {
-			const whitespace = doc.getText(Range.create(
-				Position.create(ln, 0),
-				Position.create(ln, parsed[ln][0].p)
-			)).replace(/\t/g, " ".repeat(tabSize));
+			const whitespace = doc
+				.getText(Range.create(Position.create(ln, 0), Position.create(ln, parsed[ln][0].p)))
+				.replace(/\t/g, " ".repeat(tabSize));
 			if (!foundfirstindent) {
 				if (!(parsed[ln][0].l === ld.cos_langindex && parsed[ln][0].s === ld.cos_label_attrindex)) {
 					// This is the first non-label line, record the indent
@@ -1348,17 +1531,23 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 				for (let tkn = 2; tkn < parsed[ln].length; tkn++) {
 					if (parsed[ln][tkn].s === ld.cos_localdec_attrindex || parsed[ln][tkn].s === ld.cos_localvar_attrindex) {
 						// This is a declared variable or a public variable
-						const thisvar: string = doc.getText(Range.create(
-							Position.create(ln, parsed[ln][tkn].p),
-							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-						));
+						const thisvar: string = doc.getText(
+							Range.create(
+								Position.create(ln, parsed[ln][tkn].p),
+								Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+							),
+						);
 						if (todelvar.includes(thisvar)) {
 							// This is a declared variable that has been declard in the signature, it needs to be removed
 							if (
-								doc.getText(Range.create(
-									Position.create(ln, parsed[ln][3].p),
-									Position.create(ln, parsed[ln][3].p + parsed[ln][3].c)
-								)).toLowerCase() === "as"
+								doc
+									.getText(
+										Range.create(
+											Position.create(ln, parsed[ln][3].p),
+											Position.create(ln, parsed[ln][3].p + parsed[ln][3].c),
+										),
+									)
+									.toLowerCase() === "as"
 							) {
 								// Only the variable that needs to be removed is declared in the #Dim line -> delete the entire line
 								dimtext = "";
@@ -1373,10 +1562,14 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 					} else if (parsed[ln][tkn].s === ld.cos_command_attrindex) {
 						// This is the "As" keyword
 						// Add the type and default values
-						dimtype = " As " + doc.getText(Range.create(
-							Position.create(ln, parsed[ln][tkn + 1].p),
-							Position.create(ln, parsed[ln][parsed[ln].length - 1].p + parsed[ln][parsed[ln].length - 1].c)
-						));
+						dimtype =
+							" As " +
+							doc.getText(
+								Range.create(
+									Position.create(ln, parsed[ln][tkn + 1].p),
+									Position.create(ln, parsed[ln][parsed[ln].length - 1].p + parsed[ln][parsed[ln].length - 1].c),
+								),
+							);
 						break;
 					}
 				}
@@ -1385,37 +1578,45 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 					dimtext = "#Dim " + dimtext + dimtype;
 					edits.push({
 						range: Range.create(insertpos, insertpos),
-						newText: gapspace + dimtext + "\n"
+						newText: gapspace + dimtext + "\n",
 					});
 				}
 			} else {
 				edits.push({
 					range: Range.create(insertpos, insertpos),
-					newText: gapspace + doc.getText(Range.create(
-						Position.create(ln, parsed[ln][0].p),
-						Position.create(ln, parsed[ln][parsed[ln].length - 1].p + parsed[ln][parsed[ln].length - 1].c)
-					)) + "\n"
+					newText:
+						gapspace +
+						doc.getText(
+							Range.create(
+								Position.create(ln, parsed[ln][0].p),
+								Position.create(ln, parsed[ln][parsed[ln].length - 1].p + parsed[ln][parsed[ln].length - 1].c),
+							),
+						) +
+						"\n",
 				});
 			}
 		}
 	}
-	edits.push({ // Close method
+	edits.push({
+		// Close method
 		range: Range.create(insertpos, insertpos),
-		newText: "}\n"
+		newText: "}\n",
 	});
 	if (firstwhitespace === "") {
 		firstwhitespace = tab;
 	}
-	edits.push({ // Replace code selection with do.. command
+	edits.push({
+		// Replace code selection with do.. command
 		range: Range.create(
 			Position.create(lnstart, 0),
-			Position.create(lnend, parsed[lnend][parsed[lnend].length - 1].p + parsed[lnend][parsed[lnend].length - 1].c)),
-		newText: firstwhitespace + docommandtext + " .." + params.newmethodname + "(" + methodarguments + ")"
+			Position.create(lnend, parsed[lnend][parsed[lnend].length - 1].p + parsed[lnend][parsed[lnend].length - 1].c),
+		),
+		newText: firstwhitespace + docommandtext + " .." + params.newmethodname + "(" + methodarguments + ")",
 	});
 	return {
 		changes: {
-			[params.uri]: edits
-		}
+			[params.uri]: edits,
+		},
 	};
 }
 
@@ -1424,29 +1625,33 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
  */
 export async function onCodeAction(params: CodeActionParams): Promise<CodeAction[] | null> {
 	const doc = documents.get(params.textDocument.uri);
-	if (doc === undefined) { return null; }
+	if (doc === undefined) {
+		return null;
+	}
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) { return null; }
+	if (parsed === undefined) {
+		return null;
+	}
 	const settings = await getLanguageServerSettings(doc.uri);
 
 	const result: CodeAction[] = [];
 	if (!Array.isArray(params.context.only) || params.context.only.includes(CodeActionKind.Refactor)) {
 		result.push({
-			title: 'Wrap in Try/Catch',
-			kind: CodeActionKind.Refactor
-		})
-		result.push({
-			title: 'Extract to method',
+			title: "Wrap in Try/Catch",
 			kind: CodeActionKind.Refactor,
-		})
+		});
+		result.push({
+			title: "Extract to method",
+			kind: CodeActionKind.Refactor,
+		});
 
 		if (doc.languageId === "objectscript-macros") {
 			// Can't wrap macro definitions in try/catch, so return disabled CodeAction
 			result[0].disabled = {
-				reason: "Can't wrap macro definitions in a Try/Catch block"
+				reason: "Can't wrap macro definitions in a Try/Catch block",
 			};
 			result[1].disabled = {
-				reason: "Can't extract macro definitions into a new method"
+				reason: "Can't extract macro definitions into a new method",
 			};
 			return result;
 		}
@@ -1460,18 +1665,20 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 		let firstbraceisopen: boolean = true;
 		let countopenbraces: number = 0;
 
-		let lnstart: number = 0	// First non-empty line
-		let lnend: number = 0	// Last non-empty line
+		let lnstart: number = 0; // First non-empty line
+		let lnend: number = 0; // Last non-empty line
 
-		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {	// Loop through each line of the selection
+		for (let ln = params.range.start.line; ln <= params.range.end.line; ln++) {
+			// Loop through each line of the selection
 			try {
-				if (parsed[ln].length === 0) {	// Empty line
+				if (parsed[ln].length === 0) {
+					// Empty line
 					continue;
 				}
 			} catch {
 				// Return disabled CodeAction
 				result[0].disabled = {
-					reason: "Cannot select empty last line of document"
+					reason: "Cannot select empty last line of document",
 				};
 				result[1].disabled = result[0].disabled;
 				return result;
@@ -1480,19 +1687,22 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 			if (lnstart === 0) {
 				lnstart = ln;
 			}
-			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) { // Check that first token of the selection is objectscript
+			if (!checkedstart && parsed[ln][0].l == ld.cos_langindex) {
+				// Check that first token of the selection is objectscript
 				startiscos = true;
 				checkedstart = true;
-			}
-			else if (!checkedstart && parsed[ln][0].l !== ld.cos_langindex) {
+			} else if (!checkedstart && parsed[ln][0].l !== ld.cos_langindex) {
 				break;
 			}
-			for (let tkn = 0; tkn < parsed[ln].length; tkn++) { // Loop through each token on the line
-				if (parsed[ln][tkn].l == ld.cls_langindex) { // Break if token is cls
+			for (let tkn = 0; tkn < parsed[ln].length; tkn++) {
+				// Loop through each token on the line
+				if (parsed[ln][tkn].l == ld.cls_langindex) {
+					// Break if token is cls
 					foundcls = true;
 					break;
 				}
-				if (tkn === parsed[ln].length - 1) { // Check that last token of the selection is objectscript
+				if (tkn === parsed[ln].length - 1) {
+					// Check that last token of the selection is objectscript
 					if (parsed[ln][tkn].l == ld.cos_langindex) {
 						endiscos = true;
 					} else {
@@ -1502,11 +1712,14 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 
 				// Check if token is a brace
 				if (parsed[ln][tkn].s === ld.cos_brace_attrindex && parsed[ln][tkn].l === ld.cos_langindex) {
-					const bracetext = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][tkn].p),
-						Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c)
-					));
-					if (bracetext === "{") { // Count number of open and close brackets
+					const bracetext = doc.getText(
+						Range.create(
+							Position.create(ln, parsed[ln][tkn].p),
+							Position.create(ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
+						),
+					);
+					if (bracetext === "{") {
+						// Count number of open and close brackets
 						countopenbraces++;
 					} else {
 						if (countopenbraces === 0) {
@@ -1524,7 +1737,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 		if (foundcls) {
 			// Selection range contains UDL code, so return disabled CodeAction
 			result[0].disabled = {
-				reason: "Code block can't contain class definition code"
+				reason: "Code block can't contain class definition code",
 			};
 			result[1].disabled = result[0].disabled;
 			return result;
@@ -1532,7 +1745,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 		if (firstbraceisopen === false) {
 			// The first brace is a close brace "}", return disabled CodeAction
 			result[0].disabled = {
-				reason: "Must select full code block -- First brace not open"
+				reason: "Must select full code block -- First brace not open",
 			};
 			result[1].disabled = result[0].disabled;
 			return result;
@@ -1540,7 +1753,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 		if (!startiscos || !endiscos) {
 			// Selection range begins or ends with a non-COS token, so return disabled CodeAction
 			result[0].disabled = {
-				reason: "Must select full ObjectScript code block"
+				reason: "Must select full ObjectScript code block",
 			};
 			result[1].disabled = result[0].disabled;
 			return result;
@@ -1548,7 +1761,7 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 		if (countopenbraces !== 0) {
 			// The braces are not paired, return disabled CodeAction
 			result[0].disabled = {
-				reason: "Must select full code block -- Brace mismatch"
+				reason: "Must select full code block -- Brace mismatch",
 			};
 			result[1].disabled = result[0].disabled;
 			return result;
@@ -1559,17 +1772,25 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 			let newmethodtype: string = "";
 			let lnmethod: number = -1;
 			for (let ln = params.range.start.line - 1; ln >= 0; ln--) {
-				if (parsed[ln].length === 0) { // Empty line
+				if (parsed[ln].length === 0) {
+					// Empty line
 					continue;
 				}
 				if (parsed[ln][0].l === ld.cls_langindex && parsed[ln][0].s === ld.cls_keyword_attrindex) {
-					const keyword = doc.getText(Range.create(
-						Position.create(ln, parsed[ln][0].p),
-						Position.create(ln, parsed[ln][0].p + parsed[ln][0].c)
-					)).toLowerCase();
+					const keyword = doc
+						.getText(
+							Range.create(
+								Position.create(ln, parsed[ln][0].p),
+								Position.create(ln, parsed[ln][0].p + parsed[ln][0].c),
+							),
+						)
+						.toLowerCase();
 					if (
-						keyword === "classmethod" || keyword === "method" || keyword === "query" ||
-						keyword === "trigger" || keyword === "clientmethod"
+						keyword === "classmethod" ||
+						keyword === "method" ||
+						keyword === "query" ||
+						keyword === "trigger" ||
+						keyword === "clientmethod"
 					) {
 						if (keyword === "method") {
 							newmethodtype = "Method";
@@ -1584,14 +1805,22 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 			}
 			if (newmethodtype === "") {
 				result[1].disabled = {
-					reason: "Selection must be in a method definition"
+					reason: "Selection must be in a method definition",
 				};
 			} else {
-				result[1].command = Command.create("Extract Method", "intersystems.language-server.extractMethod", params.textDocument.uri, lnstart, lnend, lnmethod, newmethodtype);
+				result[1].command = Command.create(
+					"Extract Method",
+					"intersystems.language-server.extractMethod",
+					params.textDocument.uri,
+					lnstart,
+					lnend,
+					lnmethod,
+					newmethodtype,
+				);
 			}
 		} else {
 			result[1].disabled = {
-				reason: "Selection must be in an ObjectScript class"
+				reason: "Selection must be in an ObjectScript class",
 			};
 		}
 		result[0].data = [doc.uri, lnstart, lnend];
@@ -1603,34 +1832,44 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 				diagnostic.message === "Parameter value and type do not match"
 			) {
 				result.push({
-					title: 'Remove incorrect type',
+					title: "Remove incorrect type",
 					kind: CodeActionKind.QuickFix,
-					diagnostics: [diagnostic]
+					diagnostics: [diagnostic],
 				});
 				result[result.length - 1].data = [doc.uri, params.range];
 
 				const ln = params.range.start.line;
 				const range: Range = Range.create(
 					Position.create(ln, parsed[ln][3].p),
-					Position.create(ln, parsed[ln][3].p + parsed[ln][3].c)
+					Position.create(ln, parsed[ln][3].p + parsed[ln][3].c),
 				);
 				result.push({
-					title: 'Select correct type',
+					title: "Select correct type",
 					kind: CodeActionKind.QuickFix,
-					command: Command.create("Select Parameter Type", "intersystems.language-server.selectParameterType", params.textDocument.uri, range),
-					diagnostics: [diagnostic]
+					command: Command.create(
+						"Select Parameter Type",
+						"intersystems.language-server.selectParameterType",
+						params.textDocument.uri,
+						range,
+					),
+					diagnostics: [diagnostic],
 				});
-			} else if (diagnostic.message === "Class '" + diagnostic.message.split('\'')[1] + "' does not exist.") {
-				const classname = diagnostic.message.split('\'')[1];
+			} else if (diagnostic.message === "Class '" + diagnostic.message.split("'")[1] + "' does not exist.") {
+				const classname = diagnostic.message.split("'")[1];
 				result.push({
-					title: 'Select package to import',
+					title: "Select package to import",
 					kind: CodeActionKind.QuickFix,
-					command: Command.create("Select Import Package", "intersystems.language-server.selectImportPackage", params.textDocument.uri, classname),
-					diagnostics: [diagnostic]
+					command: Command.create(
+						"Select Import Package",
+						"intersystems.language-server.selectImportPackage",
+						params.textDocument.uri,
+						classname,
+					),
+					diagnostics: [diagnostic],
 				});
-				if (classname.includes('.')) {
+				if (classname.includes(".")) {
 					result[result.length - 1].disabled = {
-						reason: "The class name from the Diagnostic contains a dot"
+						reason: "The class name from the Diagnostic contains a dot",
 					};
 				}
 			} else if (diagnostic.message == "Function has been superseded" && typeof diagnostic.data == "string") {
@@ -1641,7 +1880,12 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 					let newText: string;
 					if (classMethod.startsWith("%SYSTEM.")) {
 						newText = "$";
-						newText += settings.formatting.system.case == "upper" ? "SYSTEM" : settings.formatting.system.case == "lower" ? "system" : "System";
+						newText +=
+							settings.formatting.system.case == "upper"
+								? "SYSTEM"
+								: settings.formatting.system.case == "lower"
+									? "system"
+									: "System";
 						newText += `${classMethod.slice(7, classMethod.indexOf("_"))}.${classMethod.slice(classMethod.indexOf("_") + 1)}(`;
 					} else {
 						newText = `##class(${classMethod.slice(0, classMethod.indexOf("_"))}).${classMethod.slice(classMethod.indexOf("_") + 1)}(`;
@@ -1654,38 +1898,47 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 						kind: CodeActionKind.QuickFix,
 						edit: {
 							changes: {
-								[params.textDocument.uri]: [{
-									range: diagnostic.range,
-									newText
-								}]
-							}
+								[params.textDocument.uri]: [
+									{
+										range: diagnostic.range,
+										newText,
+									},
+								],
+							},
 						},
 						isPreferred: true,
-						diagnostics: [diagnostic]
+						diagnostics: [diagnostic],
 					});
 				}
 			} else if (diagnostic.message == "ROUTINE header is required") {
-				const rtnType = doc.languageId == "objectscript-int" ? "Type=INT" : doc.languageId == "objectscript-macros" ? "Type=INC" : "";
-				const rtnName = doc.uri.slice(doc.uri.lastIndexOf("/") + 1).split(".").slice(0, -1).join(".");
+				const rtnType =
+					doc.languageId == "objectscript-int" ? "Type=INT" : doc.languageId == "objectscript-macros" ? "Type=INC" : "";
+				const rtnName = doc.uri
+					.slice(doc.uri.lastIndexOf("/") + 1)
+					.split(".")
+					.slice(0, -1)
+					.join(".");
 				const rtnGenerated = doc.languageId == "objectscript-int" && /\.G?\d$/.test(rtnName) ? ",Generated" : "";
 				result.push({
 					title: "Add header",
 					kind: CodeActionKind.QuickFix,
 					edit: {
 						changes: {
-							[params.textDocument.uri]: [{
-								range: diagnostic.range,
-								newText: `ROUTINE ${rtnName}${rtnType != "" ? ` [${rtnType}${rtnGenerated}]` : ""}\n`
-							}]
-						}
+							[params.textDocument.uri]: [
+								{
+									range: diagnostic.range,
+									newText: `ROUTINE ${rtnName}${rtnType != "" ? ` [${rtnType}${rtnGenerated}]` : ""}\n`,
+								},
+							],
+						},
 					},
 					command: {
 						command: "intersystems.language-server.setSelection",
 						arguments: [0, 8, 0, 8 + rtnName.length],
-						title: "Set selection"
+						title: "Set selection",
 					},
 					isPreferred: true,
-					diagnostics: [diagnostic]
+					diagnostics: [diagnostic],
 				});
 			}
 		}
@@ -1702,24 +1955,27 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
  * Handler function for the `codeAction/resolve` request.
  */
 export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeAction> {
-
 	// Compute the TextEdits
 	const edits: TextEdit[] = [];
 
-	if (codeAction.title === 'Wrap in Try/Catch') {
+	if (codeAction.title === "Wrap in Try/Catch") {
 		const data: [string, number, number] = <[string, number, number]>codeAction.data;
 		const doc = documents.get(data[0]);
-		if (doc === undefined) { return codeAction; }
+		if (doc === undefined) {
+			return codeAction;
+		}
 		const parsed = await getParsedDocument(data[0]);
-		if (parsed === undefined) { return codeAction; }
+		if (parsed === undefined) {
+			return codeAction;
+		}
 
-		const lnstart = data[1];	// First non-empty line of the selection
-		const lnend = data[2];		// Last non-empty line of the selection
+		const lnstart = data[1]; // First non-empty line of the selection
+		const lnend = data[2]; // Last non-empty line of the selection
 
 		// Adapt to VSCode Workspace settings (tabsize/insertspaces)
 		const vscodesettings = await connection.workspace.getConfiguration([
 			{ scopeUri: data[0], section: "editor.tabSize" },
-			{ scopeUri: data[0], section: "editor.insertSpaces" }
+			{ scopeUri: data[0], section: "editor.insertSpaces" },
 		]);
 		const tabSize = vscodesettings[0];
 		const insertSpaces = vscodesettings[1];
@@ -1741,7 +1997,9 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 		}
 
 		// Prepare Indentation
-		let whitespace = doc.getText(Range.create(Position.create(lnstart, 0), Position.create(lnstart, parsed[lnstart][0].p)));
+		let whitespace = doc.getText(
+			Range.create(Position.create(lnstart, 0), Position.create(lnstart, parsed[lnstart][0].p)),
+		);
 		let addtab: string = tab;
 		if (parsed[lnstart][0].l === ld.cos_langindex && parsed[lnstart][0].s === ld.cos_label_attrindex) {
 			// The first line is a label, record indent of the first non-label line
@@ -1762,11 +2020,13 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 			addtab += tab;
 		}
 
-		edits.push({ // Open try block
+		edits.push({
+			// Open try block
 			range: Range.create(lnstart, 0, lnstart, 0),
-			newText: whitespace + trycommandtext + " {\n"
+			newText: whitespace + trycommandtext + " {\n",
 		});
-		for (let ln = lnstart; ln <= lnend; ln++) { // Indent the selection block
+		for (let ln = lnstart; ln <= lnend; ln++) {
+			// Indent the selection block
 			if (parsed[ln].length === 0) {
 				continue;
 			}
@@ -1774,36 +2034,59 @@ export async function onCodeActionResolve(codeAction: CodeAction): Promise<CodeA
 				// This is not a line with a label
 				edits.push({
 					range: Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p),
-					newText: addtab
+					newText: addtab,
 				});
 			}
 		}
-		const insertposend = Position.create(lnend, parsed[lnend][parsed[lnend].length - 1].p + parsed[lnend][parsed[lnend].length - 1].c);
-		edits.push({ // Close Try block and add Catch block
+		const insertposend = Position.create(
+			lnend,
+			parsed[lnend][parsed[lnend].length - 1].p + parsed[lnend][parsed[lnend].length - 1].c,
+		);
+		edits.push({
+			// Close Try block and add Catch block
 			range: Range.create(insertposend, insertposend),
-			newText: "\n" + whitespace + "} " + catchcommandtext + " " + settings.refactor.exceptionVariable + " {\n" + whitespace + "" + tab + "\n" + whitespace + "} "
+			newText:
+				"\n" +
+				whitespace +
+				"} " +
+				catchcommandtext +
+				" " +
+				settings.refactor.exceptionVariable +
+				" {\n" +
+				whitespace +
+				"" +
+				tab +
+				"\n" +
+				whitespace +
+				"} ",
 		});
 		codeAction.edit = {
 			changes: {
-				[data[0]]: edits
-			}
+				[data[0]]: edits,
+			},
 		};
-	} else if (codeAction.title === 'Remove incorrect type') {
+	} else if (codeAction.title === "Remove incorrect type") {
 		const data: [string, Range] = <[string, Range]>codeAction.data;
 		const parsed = await getParsedDocument(data[0]);
-		if (parsed === undefined) { return codeAction; }
+		if (parsed === undefined) {
+			return codeAction;
+		}
 
-		const ln = data[1].start.line
-		const range = Range.create(Position.create(ln, parsed[ln][1].p + parsed[ln][1].c), Position.create(ln, parsed[ln][3].p + parsed[ln][3].c));
+		const ln = data[1].start.line;
+		const range = Range.create(
+			Position.create(ln, parsed[ln][1].p + parsed[ln][1].c),
+			Position.create(ln, parsed[ln][3].p + parsed[ln][3].c),
+		);
 
-		edits.push({ // Remove "As InvalidType"
+		edits.push({
+			// Remove "As InvalidType"
 			range: range,
-			newText: ""
+			newText: "",
 		});
 		codeAction.edit = {
 			changes: {
-				[data[0]]: edits
-			}
+				[data[0]]: edits,
+			},
 		};
 	}
 	return codeAction;

@@ -1,14 +1,29 @@
-import { TextDocumentPositionParams, Position, Range } from 'vscode-languageserver';
-import { getServerSpec, findFullRange, quoteUDLIdentifier, createDefinitionUri, determineVariableClass, getClassMemberContext, getParsedDocument, getTextForUri, currentClass, getMemberType } from '../utils/functions';
-import { ServerSpec } from '../utils/types';
-import { documents } from '../utils/variables';
-import * as ld from '../utils/languageDefinitions';
+import { TextDocumentPositionParams, Position, Range } from "vscode-languageserver";
+import {
+	getServerSpec,
+	findFullRange,
+	quoteUDLIdentifier,
+	createDefinitionUri,
+	determineVariableClass,
+	getClassMemberContext,
+	getParsedDocument,
+	getTextForUri,
+	currentClass,
+	getMemberType,
+} from "../utils/functions";
+import { ServerSpec } from "../utils/types";
+import { documents } from "../utils/variables";
+import * as ld from "../utils/languageDefinitions";
 
 export async function onTypeDefinition(params: TextDocumentPositionParams) {
 	const doc = documents.get(params.textDocument.uri);
-	if (doc === undefined) { return null; }
+	if (doc === undefined) {
+		return null;
+	}
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) { return null; }
+	if (parsed === undefined) {
+		return null;
+	}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 
 	if (parsed[params.position.line] === undefined) {
@@ -24,20 +39,22 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 			let targetcls: string;
 			let originrange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 			if (
-				parsed[params.position.line][i].l == ld.cos_langindex && (
-					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
+				parsed[params.position.line][i].l == ld.cos_langindex &&
+				(parsed[params.position.line][i].s == ld.cos_method_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
-					parsed[params.position.line][i].s == ld.cos_instvar_attrindex
-				)
+					parsed[params.position.line][i].s == ld.cos_instvar_attrindex)
 			) {
 				// This token is a method or property
 
 				// Get the full text of the member
 				originrange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
-				const member = quoteUDLIdentifier(doc.getText(originrange).slice(parsed[params.position.line][i].s == ld.cos_instvar_attrindex ? 2 : 0), 0);
+				const member = quoteUDLIdentifier(
+					doc.getText(originrange).slice(parsed[params.position.line][i].s == ld.cos_instvar_attrindex ? 2 : 0),
+					0,
+				);
 
-				let membercontext: { baseclass: string; context?: string; };
+				let membercontext: { baseclass: string; context?: string };
 				if (parsed[params.position.line][i].s != ld.cos_instvar_attrindex) {
 					// Find the dot token
 					let dottkn = 0;
@@ -53,7 +70,7 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 				} else {
 					membercontext = {
 						baseclass: currentClass(doc, parsed),
-						context: ""
+						context: "",
 					};
 				}
 				if (membercontext.baseclass === "") {
@@ -62,8 +79,7 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 				}
 
 				targetcls = await getMemberType(parsed, params.position.line, i, membercontext.baseclass, member, server);
-			}
-			else {
+			} else {
 				// This token is an ObjectScript variable
 				targetcls = await determineVariableClass(doc, parsed, params.position.line, i, server);
 			}
@@ -83,16 +99,21 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 								// This line is the class definition
 								const namestart = classText[j].indexOf(targetcls);
 								targetrange = Range.create(Position.create(j, 0), Position.create(j + 1, 0));
-								targetselrange = Range.create(Position.create(j, namestart), Position.create(j, namestart + targetcls.length));
+								targetselrange = Range.create(
+									Position.create(j, namestart),
+									Position.create(j, namestart + targetcls.length),
+								);
 								break;
 							}
 						}
-						return [{
-							targetUri: newuri,
-							targetRange: targetrange,
-							originSelectionRange: originrange,
-							targetSelectionRange: targetselrange
-						}];
+						return [
+							{
+								targetUri: newuri,
+								targetRange: targetrange,
+								originSelectionRange: originrange,
+								targetSelectionRange: targetselrange,
+							},
+						];
 					}
 				}
 			}

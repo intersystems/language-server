@@ -1,8 +1,8 @@
-import { compressedresult, compressedline } from '../utils/types'
-import { colorRoutineLine, isRoutineHeader, routineheadertype } from './routineheader/parseroutineheader';
-import { SemanticTokensLegend } from 'vscode-languageserver';
-import { GetLanguageAttributes, Tokenize } from '../../lib/isclexer.node';
-import { lexerLanguages } from '../utils/variables';
+import { compressedresult, compressedline } from "../utils/types";
+import { colorRoutineLine, isRoutineHeader, routineheadertype } from "./routineheader/parseroutineheader";
+import { SemanticTokensLegend } from "vscode-languageserver";
+import { GetLanguageAttributes, Tokenize } from "../../lib/isclexer.node";
+import { lexerLanguages } from "../utils/variables";
 
 // Set this to false if routines stop using the ROUTINE header line
 const acceptroutineheaderline = true;
@@ -22,17 +22,14 @@ export function parseDocument(languageId: string, fileExt: string, text: string)
 	let moniker = "COS";
 	let flags = STANDARDPARSEFLAGS;
 	if (languageId === "objectscript-class") {
-		moniker = "CLS"
-	}
-	else if (languageId === "objectscript-csp") {
+		moniker = "CLS";
+	} else if (languageId === "objectscript-csp") {
 		moniker = "HTML";
-	}
-	else if (languageId === "objectscript-int" || (languageId === "objectscript" && fileExt === "int")) {
+	} else if (languageId === "objectscript-int" || (languageId === "objectscript" && fileExt === "int")) {
 		moniker = "INT";
 	}
 
 	if (acceptroutineheaderline && (moniker === "COS" || moniker === "INT") && isRoutineHeader(text)) {
-
 		// extract the routine header line (without the line-ending)
 		const firstline = getFirstLine(text);
 
@@ -45,40 +42,36 @@ export function parseDocument(languageId: string, fileExt: string, text: string)
 		}
 
 		// effectively replace the routine line (before the line-ending) with spaces so that the offsets are still correct
-		const doctoparse = ' '.repeat(firstline.length) + text.slice(firstline.length);
+		const doctoparse = " ".repeat(firstline.length) + text.slice(firstline.length);
 
 		// parse the rest of the document using Studio libraries
-		const restcolors: compressedline[] = Tokenize(doctoparse,moniker,false,flags);
+		const restcolors: compressedline[] = Tokenize(doctoparse, moniker, false, flags);
 
 		// at this point the original restcolors[0] will be either an array with a single whitespace item or an empty array
 		// - either way, overwriting that array with the routine line coloring works
 		restcolors[0] = routinelinecoloring.compressedline;
 
-		return {compressedlinearray: restcolors, routineheaderinfo: routinelinecoloring.routineheaderinfo};
+		return { compressedlinearray: restcolors, routineheaderinfo: routinelinecoloring.routineheaderinfo };
+	} else {
+		flags += moniker === "HTML" ? IPARSE_ALL_CSPEXTENSIONS + IPARSE_HTML_CSPMODE : 0;
+		return { compressedlinearray: Tokenize(text, moniker, false, flags) };
 	}
-	else {
-		flags += (moniker === "HTML") ? (IPARSE_ALL_CSPEXTENSIONS + IPARSE_HTML_CSPMODE) : 0;
-		return {compressedlinearray: Tokenize(text,moniker,false,flags)};
-	}
-
 }
 
 function getFirstLine(documenttext: string): string {
-	
-	const poslf = documenttext.indexOf('\n');
+	const poslf = documenttext.indexOf("\n");
 	if (poslf === -1) {
 		return documenttext; // no linefeed => first line is the whole document
 	}
 
-	if (poslf > 0 && documenttext.charAt(poslf-1) === '\r') {
-		return documenttext.slice(0,poslf-1); // CRLF so return up to but not including the CR
-	}
-	else {
-		return documenttext.slice(0,poslf); // LF  so return up to but not including the LF
+	if (poslf > 0 && documenttext.charAt(poslf - 1) === "\r") {
+		return documenttext.slice(0, poslf - 1); // CRLF so return up to but not including the CR
+	} else {
+		return documenttext.slice(0, poslf); // LF  so return up to but not including the LF
 	}
 }
 
-const languageoffsets: {[index:number] : number} = {};
+const languageoffsets: { [index: number]: number } = {};
 
 export function getLegend(): SemanticTokensLegend {
 	const legend: string[] = [];
@@ -87,16 +80,16 @@ export function getLegend(): SemanticTokensLegend {
 		languageoffsets[lang.index] = legendoffset;
 		const attrs: string[] = GetLanguageAttributes(lang.moniker);
 		for (const attr of attrs) {
-			legend.push(`${lang.moniker}_${attr.replace(/[^a-z0-9+]+/gi,"")}`);
+			legend.push(`${lang.moniker}_${attr.replace(/[^a-z0-9+]+/gi, "")}`);
 		}
 		legendoffset += attrs.length;
 	}
 	return {
 		tokenTypes: legend,
-		tokenModifiers: []
+		tokenModifiers: [],
 	};
 }
 
 export function lookupattr(languageindex: number, attrindex: number): number {
-    return languageoffsets[languageindex] + attrindex;
+	return languageoffsets[languageindex] + attrindex;
 }

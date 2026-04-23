@@ -1,27 +1,27 @@
-import { workspace } from 'vscode';
+import { workspace } from "vscode";
 
-import axios, { AxiosResponse } from 'axios';
-import * as https from 'https';
+import axios, { AxiosResponse } from "axios";
+import * as https from "https";
 
-import { client, getCookies, updateCookies } from './extension';
+import { client, getCookies, updateCookies } from "./extension";
 
 export type ServerSpec = {
-	scheme: string,
-	host: string,
-	port: number,
-	pathPrefix: string,
-	apiVersion: number,
-	namespace: string,
-	username: string,
-	serverName: string,
-	password: string,
-	serverVersion: string,
-	active: boolean
+	scheme: string;
+	host: string;
+	port: number;
+	pathPrefix: string;
+	apiVersion: number;
+	namespace: string;
+	username: string;
+	serverName: string;
+	password: string;
+	serverVersion: string;
+	active: boolean;
 };
 
 /**
  * Send a REST request to an InterSystems server.
- * 
+ *
  * @param method The REST method.
  * @param api The version of the Atelier API required for this request.
  * @param path The path portion of the URL.
@@ -30,7 +30,15 @@ export type ServerSpec = {
  * @param checksum Optional checksum. Only passed for SASchema requests.
  * @param params Optional URL parameters. Only passed for GET /doc/ requests.
  */
-export async function makeRESTRequest(method: "GET" | "POST" | "HEAD", api: number, path: string, server: ServerSpec, data?: any, checksum?: string, params?: any): Promise<AxiosResponse<any> | undefined> {
+export async function makeRESTRequest(
+	method: "GET" | "POST" | "HEAD",
+	api: number,
+	path: string,
+	server: ServerSpec,
+	data?: any,
+	checksum?: string,
+	params?: any,
+): Promise<AxiosResponse<any> | undefined> {
 	if (server.host === "") {
 		// No server connection is configured
 		client.warn("Cannot make required REST request because no server connection is configured.");
@@ -44,19 +52,23 @@ export async function makeRESTRequest(method: "GET" | "POST" | "HEAD", api: numb
 		// The server doesn't support the Atelier API version required to make this request
 		client.warn(
 			"Cannot make required REST request to server " +
-			`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
-			`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`
+				`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
+				`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`,
 		);
 		return undefined;
 	}
 	if (server.username != undefined && server.username != "" && typeof server.password === "undefined") {
 		// A username without a password isn't allowed
-		client.warn("Cannot make required REST request because the configured server connection has a username but no password.");
+		client.warn(
+			"Cannot make required REST request because the configured server connection has a username but no password.",
+		);
 		return undefined;
 	}
 
 	// Build the URL
-	const url = encodeURI(`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/${api ? `v${server.apiVersion}/${server.namespace}${path}` : ""}`);
+	const url = encodeURI(
+		`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/${api ? `v${server.apiVersion}/${server.namespace}${path}` : ""}`,
+	);
 
 	// Create the HTTPS agent
 	const httpsAgent = new https.Agent({ rejectUnauthorized: workspace.getConfiguration("http").get("proxyStrictSSL") });
@@ -71,176 +83,153 @@ export async function makeRESTRequest(method: "GET" | "POST" | "HEAD", api: numb
 			// This is a SASchema request
 
 			// Make the initial request
-			respdata = await axios.request(
-				{
+			respdata = await axios.request({
+				method: "GET",
+				url: url,
+				headers: {
+					"if-none-match": checksum,
+					Cookie: cookies.join(" "),
+				},
+				withCredentials: true,
+				httpsAgent,
+				validateStatus: function (status) {
+					return status < 500;
+				},
+			});
+			cookies = updateCookies(respdata.headers["set-cookie"] || [], server);
+			if (respdata.status === 202) {
+				// The schema is being recalculated so we need to make another call to get it
+				respdata = await axios.request({
+					method: "GET",
+					url: url,
+					withCredentials: true,
+					httpsAgent,
+					headers: {
+						Cookie: cookies.join(" "),
+					},
+				});
+				updateCookies(respdata.headers["set-cookie"] || [], server);
+				return respdata;
+			} else if (respdata.status === 304) {
+				// The schema hasn't changed
+				return undefined;
+			} else if (respdata.status === 401) {
+				// Either we had no cookies or they expired, so resend the request with basic auth
+
+				respdata = await axios.request({
 					method: "GET",
 					url: url,
 					headers: {
 						"if-none-match": checksum,
-						"Cookie": cookies.join(" ")
+					},
+					auth: {
+						username: server.username,
+						password: server.password,
+					},
+					withCredentials: true,
+					httpsAgent,
+				});
+				cookies = updateCookies(respdata.headers["set-cookie"] || [], server);
+				if (respdata.status === 202) {
+					// The schema is being recalculated so we need to make another call to get it
+					respdata = await axios.request({
+						method: "GET",
+						url: url,
+						withCredentials: true,
+						httpsAgent,
+						headers: {
+							Cookie: cookies.join(" "),
+						},
+					});
+					updateCookies(respdata.headers["set-cookie"] || [], server);
+					return respdata;
+				} else if (respdata.status === 304) {
+					// The schema hasn't changed
+					return undefined;
+				} else {
+					// We got the schema
+					return respdata;
+				}
+			} else {
+				// We got the schema
+				return respdata;
+			}
+		} else {
+			// This is a different request
+			if (data !== undefined) {
+				respdata = await axios.request({
+					method: method,
+					url: url,
+					data: data,
+					headers: {
+						"Content-Type": "application/json",
+						Cookie: cookies.join(" "),
 					},
 					withCredentials: true,
 					httpsAgent,
 					validateStatus: function (status) {
 						return status < 500;
-					}
-				}
-			);
-			cookies = updateCookies(respdata.headers['set-cookie'] || [], server);
-			if (respdata.status === 202) {
-				// The schema is being recalculated so we need to make another call to get it
-				respdata = await axios.request(
-					{
-						method: "GET",
-						url: url,
-						withCredentials: true,
-						httpsAgent,
-						headers: {
-							"Cookie": cookies.join(" ")
-						}
 					},
-				);
-				updateCookies(respdata.headers['set-cookie'] || [], server);
-				return respdata;
-			}
-			else if (respdata.status === 304) {
-				// The schema hasn't changed
-				return undefined;
-			}
-			else if (respdata.status === 401) {
-				// Either we had no cookies or they expired, so resend the request with basic auth
+				});
+				if (respdata.status === 401) {
+					// Either we had no cookies or they expired, so resend the request with basic auth
 
-				respdata = await axios.request(
-					{
-						method: "GET",
-						url: url,
-						headers: {
-							"if-none-match": checksum
-						},
-						auth: {
-							username: server.username,
-							password: server.password
-						},
-						withCredentials: true,
-						httpsAgent
-					}
-				);
-				cookies = updateCookies(respdata.headers['set-cookie'] || [], server);
-				if (respdata.status === 202) {
-					// The schema is being recalculated so we need to make another call to get it
-					respdata = await axios.request(
-						{
-							method: "GET",
-							url: url,
-							withCredentials: true,
-							httpsAgent,
-							headers: {
-								"Cookie": cookies.join(" ")
-							}
-						}
-					);
-					updateCookies(respdata.headers['set-cookie'] || [], server);
-					return respdata;
-				}
-				else if (respdata.status === 304) {
-					// The schema hasn't changed
-					return undefined;
-				}
-				else {
-					// We got the schema
-					return respdata;
-				}
-			}
-			else {
-				// We got the schema
-				return respdata;
-			}
-		}
-		else {
-			// This is a different request
-			if (data !== undefined) {
-				respdata = await axios.request(
-					{
+					respdata = await axios.request({
 						method: method,
 						url: url,
 						data: data,
 						headers: {
-							'Content-Type': 'application/json',
-							"Cookie": cookies.join(" ")
+							"Content-Type": "application/json",
+						},
+						auth: {
+							username: server.username,
+							password: server.password,
 						},
 						withCredentials: true,
 						httpsAgent,
-						validateStatus: function (status) {
-							return status < 500;
-						}
-					}
-				);
-				if (respdata.status === 401) {
+					});
+				}
+				updateCookies(respdata.headers["set-cookie"] || [], server);
+			} else {
+				respdata = await axios.request({
+					method: method,
+					url: url,
+					withCredentials: true,
+					httpsAgent,
+					params: params,
+					headers: {
+						Cookie: cookies.join(" "),
+					},
+					validateStatus: function (status) {
+						return status < 500;
+					},
+				});
+				if (respdata.status === 401 && api) {
+					// api is only 0 when calling HEAD / to log out of the session
 					// Either we had no cookies or they expired, so resend the request with basic auth
 
-					respdata = await axios.request(
-						{
-							method: method,
-							url: url,
-							data: data,
-							headers: {
-								'Content-Type': 'application/json'
-							},
-							auth: {
-								username: server.username,
-								password: server.password
-							},
-							withCredentials: true,
-							httpsAgent
-						}
-					);
-				}
-				updateCookies(respdata.headers['set-cookie'] || [], server);
-			}
-			else {
-				respdata = await axios.request(
-					{
+					respdata = await axios.request({
 						method: method,
 						url: url,
+						auth: {
+							username: server.username,
+							password: server.password,
+						},
 						withCredentials: true,
 						httpsAgent,
 						params: params,
-						headers: {
-							"Cookie": cookies.join(" ")
-						},
-						validateStatus: function (status) {
-							return status < 500;
-						}
-					}
-				);
-				if (respdata.status === 401 && api) { // api is only 0 when calling HEAD / to log out of the session
-					// Either we had no cookies or they expired, so resend the request with basic auth
-
-					respdata = await axios.request(
-						{
-							method: method,
-							url: url,
-							auth: {
-								username: server.username,
-								password: server.password
-							},
-							withCredentials: true,
-							httpsAgent,
-							params: params
-						}
-					);
+					});
 				}
-				updateCookies(respdata.headers['set-cookie'] || [], server);
+				updateCookies(respdata.headers["set-cookie"] || [], server);
 			}
 			return respdata;
 		}
 	} catch (error) {
-		client.warn(`Error making REST request ${method} ${path}: ${typeof error == "string"
-			? error
-			: error instanceof Error
-				? error.toString()
-				: JSON.stringify(error)
-			}`);
+		client.warn(
+			`Error making REST request ${method} ${path}: ${
+				typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error)
+			}`,
+		);
 		return undefined;
 	}
-};
+}

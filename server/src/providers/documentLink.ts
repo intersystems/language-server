@@ -1,20 +1,29 @@
-import { DocumentLink, DocumentLinkParams, Range } from 'vscode-languageserver/node';
-import { documents } from '../utils/variables';
-import * as ld from '../utils/languageDefinitions';
-import { createDefinitionUri, getParsedDocument, getServerSpec, normalizeClassname } from '../utils/functions';
-import { ServerSpec } from '../utils/types';
+import { DocumentLink, DocumentLinkParams, Range } from "vscode-languageserver/node";
+import { documents } from "../utils/variables";
+import * as ld from "../utils/languageDefinitions";
+import { createDefinitionUri, getParsedDocument, getServerSpec, normalizeClassname } from "../utils/functions";
+import { ServerSpec } from "../utils/types";
 
 export async function onDocumentLinks(params: DocumentLinkParams): Promise<DocumentLink[] | null> {
 	const doc = documents.get(params.textDocument.uri);
-	if (doc === undefined) { return null; }
-	if (doc.languageId !== "objectscript-class") { return null; }
+	if (doc === undefined) {
+		return null;
+	}
+	if (doc.languageId !== "objectscript-class") {
+		return null;
+	}
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) { return null; }
+	if (parsed === undefined) {
+		return null;
+	}
 	const result: DocumentLink[] = [];
 
 	// Loop through the class and look for documentation comments
 	const classregex = /(?:<class>([^<>/#]+)<\/class>)|(?:##class\(([^<>()]+)\))/gi;
-	const memberregex = new RegExp("(?:<method>([^<>/]+)</method>)|(?:<property>([^<>/]+)</property>)|(?:<query>([^<>/]+)</query>)", "gi");
+	const memberregex = new RegExp(
+		"(?:<method>([^<>/]+)</method>)|(?:<property>([^<>/]+)</property>)|(?:<query>([^<>/]+)</query>)",
+		"gi",
+	);
 	for (let line = 0; line < parsed.length; line++) {
 		if (
 			parsed[line].length > 0 &&
@@ -33,8 +42,8 @@ export async function onDocumentLinks(params: DocumentLinkParams): Promise<Docum
 					tooltip: "Open this class in a new editor tab",
 					data: {
 						uri: params.textDocument.uri,
-						clsName
-					}
+						clsName,
+					},
 				});
 			}
 			while ((matcharr = memberregex.exec(linetext)) !== null) {
@@ -45,14 +54,12 @@ export async function onDocumentLinks(params: DocumentLinkParams): Promise<Docum
 					linkRange = Range.create(line, matcharr.index + 8, line, matcharr.index + 8 + matcharr[1].length);
 					commandArgs[1] = "method";
 					commandArgs[2] = matcharr[1];
-				}
-				else if (matcharr[2] !== undefined) {
+				} else if (matcharr[2] !== undefined) {
 					// This is a <PROPERTY> HTML tag
 					linkRange = Range.create(line, matcharr.index + 10, line, matcharr.index + 10 + matcharr[2].length);
 					commandArgs[1] = "property";
 					commandArgs[2] = matcharr[2];
-				}
-				else {
+				} else {
 					// This is a <QUERY> HTML tag
 					linkRange = Range.create(line, matcharr.index + 7, line, matcharr.index + 7 + matcharr[3].length);
 					commandArgs[1] = "query";
@@ -61,7 +68,7 @@ export async function onDocumentLinks(params: DocumentLinkParams): Promise<Docum
 				result.push({
 					range: linkRange,
 					tooltip: `Go to this ${commandArgs[1]} definition`,
-					target: `command:intersystems.language-server.showSymbolInClass?${encodeURIComponent(JSON.stringify(commandArgs))}`
+					target: `command:intersystems.language-server.showSymbolInClass?${encodeURIComponent(JSON.stringify(commandArgs))}`,
 				});
 			}
 		}
@@ -72,9 +79,13 @@ export async function onDocumentLinks(params: DocumentLinkParams): Promise<Docum
 
 export async function onDocumentLinkResolve(link: DocumentLink): Promise<DocumentLink> {
 	const doc = documents.get(link.data.uri);
-	if (doc === undefined) { return link; }
+	if (doc === undefined) {
+		return link;
+	}
 	const parsed = await getParsedDocument(link.data.uri);
-	if (parsed === undefined) { return link; }
+	if (parsed === undefined) {
+		return link;
+	}
 	const server: ServerSpec = await getServerSpec(link.data.uri);
 
 	// Normalize the class name if there are imports

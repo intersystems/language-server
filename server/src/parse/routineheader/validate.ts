@@ -1,10 +1,7 @@
-
 import { LineSource } from "./linesource";
 import { keywordstype } from "./routineheaderutils";
-import { routineheaderinfotype } from '../../utils/types';
-import { cos_label_attrindex, cos_name_attrindex, cos_number_attrindex } from '../../utils/languageDefinitions';
-
-
+import { routineheaderinfotype } from "../../utils/types";
+import { cos_label_attrindex, cos_name_attrindex, cos_number_attrindex } from "../../utils/languageDefinitions";
 
 /**
  * Validate the given keyword and color it as a keyword or as a syntax error, as appropriate.
@@ -14,155 +11,137 @@ import { cos_label_attrindex, cos_name_attrindex, cos_number_attrindex } from '.
  * @param seenkeywords array of keywords already seen (updated here)
  */
 export function validateKeyword(linesource: LineSource, keyword: string, seenkeywords: keywordstype) {
+	let syntaxerror;
+	try {
+		const uckeyword = keyword.toUpperCase();
+		if (uckeyword !== UCTYPE && uckeyword !== UCLANGUAGEMODE && uckeyword !== UCGENERATED) {
+			throw Error("Unknown keyword");
+		}
 
-    let syntaxerror;
-    try {
+		if (uckeyword in seenkeywords) {
+			throw Error(`${uckeyword[0] + uckeyword.slice(1).toLowerCase()} appears more than once`);
+		}
 
-        const uckeyword = keyword.toUpperCase();
-        if (uckeyword !== UCTYPE && uckeyword !== UCLANGUAGEMODE && uckeyword !== UCGENERATED) {
-            throw Error('Unknown keyword');
-        }
+		// note that we've seen this keyword
+		seenkeywords[uckeyword] = "";
+	} catch (error) {
+		syntaxerror = error;
+	}
 
-        if (uckeyword in seenkeywords) {
-            throw Error(`${uckeyword[0] + uckeyword.slice(1).toLowerCase()} appears more than once`);
-        }
-    
-        // note that we've seen this keyword
-        seenkeywords[uckeyword] = '';
-    }
-    catch (error) {
-        syntaxerror = error;
-    }
-
-    if (syntaxerror) {
-        linesource.commitError(syntaxerror);
-    }
-    else {
-        linesource.commitToken(cos_label_attrindex);
-    }
-}    
-
+	if (syntaxerror) {
+		linesource.commitError(syntaxerror);
+	} else {
+		linesource.commitToken(cos_label_attrindex);
+	}
+}
 
 /**
  * Validate the given value and color it as a value or as a syntax error, as appropriate.
- * 
+ *
  * @param linesource  with the routine line
  * @param keyword with the previously-validated keyword
  * @param value with either the parsed value or undefined if no value
  */
-export function validateKeywordValue(linesource: LineSource, keyword: string, value: string | undefined, routineheaderinfo: routineheaderinfotype) {
+export function validateKeywordValue(
+	linesource: LineSource,
+	keyword: string,
+	value: string | undefined,
+	routineheaderinfo: routineheaderinfotype,
+) {
+	const uckeyword = keyword.toUpperCase();
 
-    const uckeyword = keyword.toUpperCase();
+	let syntaxerror;
+	let attrindex = -1;
 
-    let syntaxerror;
-    let attrindex = -1;
+	try {
+		switch (uckeyword) {
+			// TYPE
+			case UCTYPE: {
+				if (typeof value === "undefined") {
+					throw Error("Missing value for Type");
+				}
 
-    try {
-    
-        switch (uckeyword) {
-    
-            // TYPE
-            case UCTYPE: {
-    
-                if (typeof value === 'undefined') {
-                    throw Error('Missing value for Type');
-                }
-        
-                if (!isValidTYPEValue(value)) {
-                    throw Error("Type must be one of MAC, INT, INC, BAS, MVB, or MVI");
-                }
+				if (!isValidTYPEValue(value)) {
+					throw Error("Type must be one of MAC, INT, INC, BAS, MVB, or MVI");
+				}
 
-                routineheaderinfo.routinetype = value.toUpperCase();
+				routineheaderinfo.routinetype = value.toUpperCase();
 
-                attrindex = cos_name_attrindex;
-                
-                break;
-            }
-    
-            // LANGUAGEMODE
-            case UCLANGUAGEMODE: {
-    
-                if (typeof value === 'undefined') {
-                    throw Error('Missing value for LanguageMode');
-                }
-        
-                const valuemode = Number(value);
-                if (isNaN(valuemode) || valuemode < 0) {
-                    throw Error('LanguageMode must be an integer')
-                }
+				attrindex = cos_name_attrindex;
 
-                routineheaderinfo.languagemode = valuemode;
+				break;
+			}
 
-                attrindex = cos_number_attrindex;
+			// LANGUAGEMODE
+			case UCLANGUAGEMODE: {
+				if (typeof value === "undefined") {
+					throw Error("Missing value for LanguageMode");
+				}
 
-                break;
-            }
-    
-            // GENERATED
-            case UCGENERATED: {
+				const valuemode = Number(value);
+				if (isNaN(valuemode) || valuemode < 0) {
+					throw Error("LanguageMode must be an integer");
+				}
 
-                if (typeof value !== 'undefined') {
-                    throw Error('Unexpected value for Generated');
-                }
+				routineheaderinfo.languagemode = valuemode;
 
-                routineheaderinfo.generated = '';
+				attrindex = cos_number_attrindex;
 
-                break;
-            }
-    
-            default: {
-                throw Error('Unknown keyword'); // this shouldn't happen because the keyword should have been validated by the caller
-            }
-        }
-    }
+				break;
+			}
 
-    catch (error) {
-        syntaxerror = error;
-    }
-    
-    if (typeof value !== 'undefined') {
+			// GENERATED
+			case UCGENERATED: {
+				if (typeof value !== "undefined") {
+					throw Error("Unexpected value for Generated");
+				}
 
-        if (syntaxerror) {
-            linesource.commitError(syntaxerror);
-        }
-        else {
-            linesource.commitToken(attrindex);
-        }
-    }
-    else {
+				routineheaderinfo.generated = "";
 
-        if (syntaxerror) {
-            throw syntaxerror;
-        }
-    }
+				break;
+			}
+
+			default: {
+				throw Error("Unknown keyword"); // this shouldn't happen because the keyword should have been validated by the caller
+			}
+		}
+	} catch (error) {
+		syntaxerror = error;
+	}
+
+	if (typeof value !== "undefined") {
+		if (syntaxerror) {
+			linesource.commitError(syntaxerror);
+		} else {
+			linesource.commitToken(attrindex);
+		}
+	} else {
+		if (syntaxerror) {
+			throw syntaxerror;
+		}
+	}
 }
-
 
 // --
 
-
 // the keywords
-const UCTYPE = 'TYPE';
-const UCLANGUAGEMODE = 'LANGUAGEMODE';
-const UCGENERATED = 'GENERATED';
-
+const UCTYPE = "TYPE";
+const UCLANGUAGEMODE = "LANGUAGEMODE";
+const UCGENERATED = "GENERATED";
 
 function isValidTYPEValue(value: string): boolean {
+	switch (value.toUpperCase()) {
+		case "BAS":
+		case "INC":
+		case "INT":
+		case "MAC":
+		case "MVB":
+		case "MVI": {
+			return true;
+		}
 
-    switch (value.toUpperCase()) {
-
-        case 'BAS':
-        case 'INC':
-        case 'INT':
-        case 'MAC':
-        case 'MVB':
-        case 'MVI': {
-            return true;
-        }
-
-        default: {
-            return false;
-        }
-    }
+		default: {
+			return false;
+		}
+	}
 }
-

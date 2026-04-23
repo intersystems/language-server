@@ -1,7 +1,7 @@
-import { DocumentUri, Position, Range, TextDocumentPositionParams } from 'vscode-languageserver/node';
-import { documents } from '../utils/variables';
-import * as ld from '../utils/languageDefinitions';
-import { getParsedDocument } from '../utils/functions';
+import { DocumentUri, Position, Range, TextDocumentPositionParams } from "vscode-languageserver/node";
+import { documents } from "../utils/variables";
+import * as ld from "../utils/languageDefinitions";
+import { getParsedDocument } from "../utils/functions";
 
 interface IsolateEmbeddedLanguageParams {
 	uri: DocumentUri;
@@ -23,7 +23,7 @@ export async function languageAtPosition(params: TextDocumentPositionParams): Pr
 	let thistoken: number = -1;
 	for (let i = 0; i < parsed[params.position.line].length; i++) {
 		const symbolstart: number = parsed[params.position.line][i].p;
-		const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
+		const symbolend: number = parsed[params.position.line][i].p + parsed[params.position.line][i].c;
 		thistoken = i;
 		if (params.position.character >= symbolstart && params.position.character <= symbolend) {
 			// We found the right symbol in the line
@@ -38,10 +38,14 @@ export async function languageAtPosition(params: TextDocumentPositionParams): Pr
  */
 export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguageParams): Promise<string | undefined> {
 	const doc = documents.get(params.uri);
-	if (doc === undefined) {return undefined;}
+	if (doc === undefined) {
+		return undefined;
+	}
 	const parsed = await getParsedDocument(params.uri);
-	if (parsed === undefined) {return undefined;}
-	
+	if (parsed === undefined) {
+		return undefined;
+	}
+
 	if (params.language == ld.py_langindex) {
 		// Embedded language is python
 
@@ -70,32 +74,33 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 				parsed[line][0].p == 0
 			) {
 				// Keep track of the member that we are in
-				lastMemberKeyword = doc.getText(Range.create(line,parsed[line][0].p,line,parsed[line][0].p+parsed[line][0].c));
-				lastMemberName = doc.getText(Range.create(line,parsed[line][1].p,line,parsed[line][1].p+parsed[line][1].c));
+				lastMemberKeyword = doc.getText(
+					Range.create(line, parsed[line][0].p, line, parsed[line][0].p + parsed[line][0].c),
+				);
+				lastMemberName = doc.getText(
+					Range.create(line, parsed[line][1].p, line, parsed[line][1].p + parsed[line][1].c),
+				);
 				lastMemberKeywordLine = line;
 			}
 			for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 				if (
 					// This token is not the python
-					parsed[line][tkn].l != params.language || (
-						// We are not in the containing member or the %import XData
-						lastMemberKeywordLine != positionMemberKeywordLine &&
-						!(lastMemberKeyword.toLowerCase() == "xdata" &&
-						lastMemberName.toLowerCase() == "%import")
-					)
+					parsed[line][tkn].l != params.language ||
+					// We are not in the containing member or the %import XData
+					(lastMemberKeywordLine != positionMemberKeywordLine &&
+						!(lastMemberKeyword.toLowerCase() == "xdata" && lastMemberName.toLowerCase() == "%import"))
 				) {
 					// Replace all text for this token with whitespace
-					newText[line] = 
-						newText[line].slice(0,parsed[line][tkn].p) +
+					newText[line] =
+						newText[line].slice(0, parsed[line][tkn].p) +
 						" ".repeat(parsed[line][tkn].c) +
-						newText[line].slice(parsed[line][tkn].p+parsed[line][tkn].c);
+						newText[line].slice(parsed[line][tkn].p + parsed[line][tkn].c);
 				}
 			}
 		}
 
 		return newText.join("\n");
-	}
-	else if (params.language == ld.html_langindex) {
+	} else if (params.language == ld.html_langindex) {
 		// Embedded language is HTML
 
 		// Find the offset of the token at params.position
@@ -103,7 +108,7 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 		let thistoken: number = 0;
 		for (let i = 0; i < parsed[params.position.line].length; i++) {
 			const symbolstart: number = parsed[params.position.line][i].p;
-			const symbolend: number =  parsed[params.position.line][i].p + parsed[params.position.line][i].c;
+			const symbolend: number = parsed[params.position.line][i].p + parsed[params.position.line][i].c;
 			thistoken = i;
 			if (params.position.character >= symbolstart && params.position.character <= symbolend) {
 				// We found the right symbol in the line
@@ -140,12 +145,12 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 						ignoreHTML = true;
 					}
 				}
-				if ((parsed[line][tkn].l != params.language) || ignoreHTML) {
+				if (parsed[line][tkn].l != params.language || ignoreHTML) {
 					// Replace all text for this token with whitespace
-					newText[line] = 
-						newText[line].slice(0,parsed[line][tkn].p) +
+					newText[line] =
+						newText[line].slice(0, parsed[line][tkn].p) +
 						" ".repeat(parsed[line][tkn].c) +
-						newText[line].slice(parsed[line][tkn].p+parsed[line][tkn].c);
+						newText[line].slice(parsed[line][tkn].p + parsed[line][tkn].c);
 				}
 			}
 		}
@@ -173,20 +178,19 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 						ignoreHTML = true;
 					}
 				}
-				if ((parsed[line][tkn].l != params.language) || ignoreHTML) {
+				if (parsed[line][tkn].l != params.language || ignoreHTML) {
 					// Replace all text for this token with whitespace
-					newText[line] = 
-						newText[line].slice(0,parsed[line][tkn].p) +
+					newText[line] =
+						newText[line].slice(0, parsed[line][tkn].p) +
 						" ".repeat(parsed[line][tkn].c) +
-						newText[line].slice(parsed[line][tkn].p+parsed[line][tkn].c);
+						newText[line].slice(parsed[line][tkn].p + parsed[line][tkn].c);
 				}
 			}
 		}
 
 		return newText.join("\n");
-	}
-	else if (params.language == ld.css_langindex) {
-        // Embedded language is CSS
+	} else if (params.language == ld.css_langindex) {
+		// Embedded language is CSS
 
 		// Only keep CSS in this code block (excluding embeddings)
 		const newText: string[] = doc.getText().split("\n");
@@ -228,24 +232,22 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 				if (
 					parsed[line][tkn].l != params.language ||
 					line < startLine ||
-					line > endLine || (
-						// Also replace CSP extension tokens
-						parsed[line][tkn].l == params.language && parsed[line][tkn].s == ld.css_cspext_attrindex
-					)
+					line > endLine ||
+					// Also replace CSP extension tokens
+					(parsed[line][tkn].l == params.language && parsed[line][tkn].s == ld.css_cspext_attrindex)
 				) {
 					// Replace all text for this token with whitespace
-					newText[line] = 
-						newText[line].slice(0,parsed[line][tkn].p) +
+					newText[line] =
+						newText[line].slice(0, parsed[line][tkn].p) +
 						" ".repeat(parsed[line][tkn].c) +
-						newText[line].slice(parsed[line][tkn].p+parsed[line][tkn].c);
+						newText[line].slice(parsed[line][tkn].p + parsed[line][tkn].c);
 				}
 			}
 		}
 
 		return newText.join("\n");
-	}
-	else if (params.language == ld.javascript_langindex) {
-        // Embedded language is JavaScript
+	} else if (params.language == ld.javascript_langindex) {
+		// Embedded language is JavaScript
 
 		// Only keep JavaScript in this code block (excluding embeddings)
 		const newText: string[] = doc.getText().split("\n");
@@ -257,10 +259,8 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 			for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 				if (
 					parsed[line][tkn].l == ld.html_langindex ||
-					parsed[line][tkn].l == ld.cls_langindex || (
-						parsed[line][tkn].l == ld.cos_langindex &&
-						parsed[line][tkn].s == ld.cos_js_attrindex
-					)
+					parsed[line][tkn].l == ld.cls_langindex ||
+					(parsed[line][tkn].l == ld.cos_langindex && parsed[line][tkn].s == ld.cos_js_attrindex)
 				) {
 					startLine = line;
 					found = true;
@@ -278,10 +278,8 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 			for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 				if (
 					parsed[line][tkn].l == ld.html_langindex ||
-					parsed[line][tkn].l == ld.cls_langindex || (
-						parsed[line][tkn].l == ld.cos_langindex &&
-						parsed[line][tkn].s == ld.cos_embc_attrindex
-					)
+					parsed[line][tkn].l == ld.cls_langindex ||
+					(parsed[line][tkn].l == ld.cos_langindex && parsed[line][tkn].s == ld.cos_embc_attrindex)
 				) {
 					endLine = line;
 					found = true;
@@ -299,16 +297,15 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 				if (
 					parsed[line][tkn].l != params.language ||
 					line < startLine ||
-					line > endLine || (
-						// Also replace CSP extension tokens
-						parsed[line][tkn].l == params.language && parsed[line][tkn].s == ld.javascript_cspext_attrindex
-					)
+					line > endLine ||
+					// Also replace CSP extension tokens
+					(parsed[line][tkn].l == params.language && parsed[line][tkn].s == ld.javascript_cspext_attrindex)
 				) {
 					// Replace all text for this token with whitespace
-					newText[line] = 
-						newText[line].slice(0,parsed[line][tkn].p) +
+					newText[line] =
+						newText[line].slice(0, parsed[line][tkn].p) +
 						" ".repeat(parsed[line][tkn].c) +
-						newText[line].slice(parsed[line][tkn].p+parsed[line][tkn].c);
+						newText[line].slice(parsed[line][tkn].p + parsed[line][tkn].c);
 				}
 			}
 		}

@@ -1,9 +1,9 @@
-import { Position, Range } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import { compressedline } from '../utils/types';
-import * as ld from '../utils/languageDefinitions';
-import { documents } from '../utils/variables';
-import { getParsedDocument } from '../utils/functions';
+import { Position, Range } from "vscode-languageserver/node";
+import { TextDocument } from "vscode-languageserver-textdocument";
+import { compressedline } from "../utils/types";
+import * as ld from "../utils/languageDefinitions";
+import { documents } from "../utils/variables";
+import { getParsedDocument } from "../utils/functions";
 
 /**
  * An EvaluatableExpression represents an expression in a document that can be evaluated by an active debugger or runtime.
@@ -13,38 +13,41 @@ import { getParsedDocument } from '../utils/functions';
  * In this case the range is still used to highlight the range in the document.
  */
 type EvaluatableExpression = {
-
 	/*
 	 * The range is used to extract the evaluatable expression from the underlying document and to highlight it.
 	 */
-	range: Range,
+	range: Range;
 
 	/*
 	 * If specified the expression overrides the extracted expression.
 	 */
-	expression?: string
-
-}
+	expression?: string;
+};
 
 /**
  * The parameter literal for the `intersystems/debugger/evaluatableExpression` request.
  */
 type EvaluatableExpressionParams = {
-	uri: string,
-	position: Position
+	uri: string;
+	position: Position;
 };
 
 /**
  * Return the [line,offset] of the closing parenthesis token for this argument or subscript list.
  * Arguments `line` and `tkn` should correspond to the token following the open parenthesis.
- * 
+ *
  * @param doc The TextDocument.
  * @param parsed The tokenized representation of `doc`.
  * @param line The line that the token is on.
  * @param tkn The offset within `line` that the token is located.
  * @returns The [line,offset] of the closing parenthesis token, or null if it wasn't found.
  */
-function findClosingParenToken(doc: TextDocument, parsed: compressedline[], line: number, tkn: number): [number, number] | null {
+function findClosingParenToken(
+	doc: TextDocument,
+	parsed: compressedline[],
+	line: number,
+	tkn: number,
+): [number, number] | null {
 	let openparen = 0;
 	let closingparen = 0;
 	let resultline = -1;
@@ -58,10 +61,9 @@ function findClosingParenToken(doc: TextDocument, parsed: compressedline[], line
 			}
 			if (parsed[i][j].l === ld.cos_langindex && parsed[i][j].s === ld.cos_delim_attrindex) {
 				// This is a COS delimiter
-				const tokentext = doc.getText(Range.create(
-					Position.create(i, parsed[i][j].p),
-					Position.create(i, parsed[i][j].p + parsed[i][j].c)
-				));
+				const tokentext = doc.getText(
+					Range.create(Position.create(i, parsed[i][j].p), Position.create(i, parsed[i][j].p + parsed[i][j].c)),
+				);
 				if (tokentext === "(") {
 					openparen++;
 				}
@@ -84,8 +86,7 @@ function findClosingParenToken(doc: TextDocument, parsed: compressedline[], line
 
 	if (resultline !== -1) {
 		return [resultline, resulttkn];
-	}
-	else {
+	} else {
 		return null;
 	}
 }
@@ -93,7 +94,7 @@ function findClosingParenToken(doc: TextDocument, parsed: compressedline[], line
 /**
  * Check if the token trailing `parsed[line,tkn]` is an open parenthesis and if so,
  * determine the line and offet of the first token following that open parenthesis.
- * 
+ *
  * @param doc The TextDocument.
  * @param parsed The tokenized representation of `doc`.
  * @param line The line that the token is on.
@@ -102,26 +103,31 @@ function findClosingParenToken(doc: TextDocument, parsed: compressedline[], line
  * following the open parenthesis, or [`false`,-1,-1] if the trailing token is
  * not an open parenthesis.
  */
-function isTrailingTokenOpenParen(doc: TextDocument, parsed: compressedline[], line: number, tkn: number): [boolean, number, number] {
-
+function isTrailingTokenOpenParen(
+	doc: TextDocument,
+	parsed: compressedline[],
+	line: number,
+	tkn: number,
+): [boolean, number, number] {
 	let result: [boolean, number, number] = [false, -1, -1];
 
 	if (
 		tkn !== parsed[line].length - 1 &&
 		parsed[line][tkn + 1].l === ld.cos_langindex &&
 		parsed[line][tkn + 1].s === ld.cos_delim_attrindex &&
-		doc.getText(Range.create(
-			Position.create(line, parsed[line][tkn + 1].p),
-			Position.create(line, parsed[line][tkn + 1].p + parsed[line][tkn + 1].c)
-		)) === "("
+		doc.getText(
+			Range.create(
+				Position.create(line, parsed[line][tkn + 1].p),
+				Position.create(line, parsed[line][tkn + 1].p + parsed[line][tkn + 1].c),
+			),
+		) === "("
 	) {
 		// The trailing token is an open parenthesis, so capture the subscript list
 
 		if (tkn + 1 === parsed[line].length - 1) {
 			result = [true, line + 1, 0];
-		}
-		else {
-			result = [true, line, tkn + 2]
+		} else {
+			result = [true, line, tkn + 2];
 		}
 	}
 
@@ -130,7 +136,7 @@ function isTrailingTokenOpenParen(doc: TextDocument, parsed: compressedline[], l
 
 /**
  * Check if the token trailing `parsed[line,tkn]` is an object dot operator.
- * 
+ *
  * @param parsed The tokenized representation of the TextDocument.
  * @param line The line that the token is on.
  * @param tkn The offset within `line` that the token is located.
@@ -151,7 +157,7 @@ function isTrailingTokenDot(parsed: compressedline[], line: number, tkn: number)
 /**
  * Return the position of the ##class.
  * Arguments `line` and `tkn` should correspond to the token preceding the closing parenthesis.
- * 
+ *
  * @param parsed The tokenized representation of the TextDocument.
  * @param line The line that the token is on.
  * @param tkn The offset within `line` that the token is located.
@@ -182,8 +188,7 @@ function findClassSyntax(parsed: compressedline[], line: number, tkn: number): P
 
 	if (resultline !== -1) {
 		return Position.create(resultline, resultchar);
-	}
-	else {
+	} else {
 		return null;
 	}
 }
@@ -191,7 +196,7 @@ function findClassSyntax(parsed: compressedline[], line: number, tkn: number): P
 /**
  * Return the position of the caret for a global.
  * Arguments `line` and `tkn` should correspond to the token preceding the extended reference closing delimiter.
- * 
+ *
  * @param doc The TextDocument.
  * @param parsed The tokenized representation of `doc`.
  * @param line The line that the token is on.
@@ -210,10 +215,11 @@ function findCaret(doc: TextDocument, parsed: compressedline[], line: number, tk
 			}
 			if (parsed[i][j].l === ld.cos_langindex && parsed[i][j].s === ld.cos_delim_attrindex) {
 				// This is a COS delimiter
-				const tokenfirstchar = doc.getText(Range.create(
-					Position.create(i, parsed[i][j].p),
-					Position.create(i, parsed[i][j].p + parsed[i][j].c)
-				)).charAt(0);
+				const tokenfirstchar = doc
+					.getText(
+						Range.create(Position.create(i, parsed[i][j].p), Position.create(i, parsed[i][j].p + parsed[i][j].c)),
+					)
+					.charAt(0);
 
 				if (tokenfirstchar === "^") {
 					// We found the caret for the global
@@ -231,22 +237,26 @@ function findCaret(doc: TextDocument, parsed: compressedline[], line: number, tk
 
 	if (resultline !== -1) {
 		return Position.create(resultline, resultchar);
-	}
-	else {
+	} else {
 		return null;
 	}
 }
 
 /**
  * Return the start position of the expression that class parameter token `parsed[line,tkn]` is a part of.
- * 
+ *
  * @param doc The TextDocument.
  * @param parsed The tokenized representation of `doc`.
  * @param line The line that the token is on.
  * @param tkn The offset within `line` that the token is located.
  * @returns The start position of the expression, or null if it can't be determined.
  */
-function findClassParameterStart(doc: TextDocument, parsed: compressedline[], line: number, tkn: number): Position | null {
+function findClassParameterStart(
+	doc: TextDocument,
+	parsed: compressedline[],
+	line: number,
+	tkn: number,
+): Position | null {
 	let result: Position | null;
 
 	// Check that the preceding token is a dot
@@ -254,40 +264,42 @@ function findClassParameterStart(doc: TextDocument, parsed: compressedline[], li
 		if (parsed[line][tkn - 1].c === 2) {
 			// This is a double dot, which means we've reached the beginning of the expression
 			result = Position.create(line, parsed[line][tkn - 1].p);
-		}
-		else {
+		} else {
 			// This is a single dot, so check the token preceding it
 			if (
 				parsed[line][tkn - 2].l === ld.cos_langindex &&
 				parsed[line][tkn - 2].s === ld.cos_delim_attrindex &&
-				doc.getText(Range.create(
-					Position.create(line, parsed[line][tkn - 2].p),
-					Position.create(line, parsed[line][tkn - 2].p + parsed[line][tkn - 2].c)
-				)) === ")"
+				doc.getText(
+					Range.create(
+						Position.create(line, parsed[line][tkn - 2].p),
+						Position.create(line, parsed[line][tkn - 2].p + parsed[line][tkn - 2].c),
+					),
+				) === ")"
 			) {
 				// The preceding token is a closing parenthesis
 
 				// This is ##class() syntax, so find the start of it
 				result = findClassSyntax(parsed, line, tkn - 3);
-			}
-			else if (
+			} else if (
 				parsed[line][tkn - 2].l === ld.cos_langindex &&
 				parsed[line][tkn - 2].s === ld.cos_sysv_attrindex &&
-				doc.getText(Range.create(
-					Position.create(line, parsed[line][tkn - 2].p),
-					Position.create(line, parsed[line][tkn - 2].p + parsed[line][tkn - 2].c)
-				)).toLowerCase() === "$this"
+				doc
+					.getText(
+						Range.create(
+							Position.create(line, parsed[line][tkn - 2].p),
+							Position.create(line, parsed[line][tkn - 2].p + parsed[line][tkn - 2].c),
+						),
+					)
+					.toLowerCase() === "$this"
 			) {
 				// The preceding token is $THIS
 				result = Position.create(line, parsed[line][tkn - 2].p);
-			}
-			else {
+			} else {
 				// The preceding token is something else
 				result = null;
 			}
 		}
-	}
-	else {
+	} else {
 		// A dot must precede a class parameter
 		result = null;
 	}
@@ -295,8 +307,12 @@ function findClassParameterStart(doc: TextDocument, parsed: compressedline[], li
 	return result;
 }
 
-function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], line: number, tkn: number): EvaluatableExpression | null {
-
+function findEvaluatableExpression(
+	doc: TextDocument,
+	parsed: compressedline[],
+	line: number,
+	tkn: number,
+): EvaluatableExpression | null {
 	let result: EvaluatableExpression | null = null;
 	try {
 		if (parsed[line][tkn].l !== ld.cos_langindex) {
@@ -319,13 +335,15 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 				tkn > 0 &&
 				parsed[line][tkn - 1].l === ld.cos_langindex &&
 				parsed[line][tkn - 1].s === ld.cos_delim_attrindex &&
-				doc.getText(Range.create(
-					Position.create(line, parsed[line][tkn - 1].p),
-					Position.create(line, parsed[line][tkn - 1].p + parsed[line][tkn - 1].c)
-				)) === ")"
+				doc.getText(
+					Range.create(
+						Position.create(line, parsed[line][tkn - 1].p),
+						Position.create(line, parsed[line][tkn - 1].p + parsed[line][tkn - 1].c),
+					),
+				) === ")"
 			) {
 				// A variable has ##class() casting syntax in front of it, so it's part of a method casting expression
-				// Return null because we don't support evaluating methods 
+				// Return null because we don't support evaluating methods
 				resultstart = null;
 			}
 
@@ -339,9 +357,11 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 					if (closingparen === null) {
 						// Couldn't find the closing parenthesis
 						resultend = null;
-					}
-					else {
-						resultend = Position.create(closingparen[0], parsed[closingparen[0]][closingparen[1]].p + parsed[closingparen[0]][closingparen[1]].c);
+					} else {
+						resultend = Position.create(
+							closingparen[0],
+							parsed[closingparen[0]][closingparen[1]].p + parsed[closingparen[0]][closingparen[1]].c,
+						);
 					}
 				}
 				// Check if the trailing token is a dot
@@ -351,8 +371,7 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 					resultend = null;
 				}
 			}
-		}
-		else if (parsed[line][tkn].s === ld.cos_global_attrindex) {
+		} else if (parsed[line][tkn].s === ld.cos_global_attrindex) {
 			// This is a global
 
 			// Check if the preceding token is a ] or |
@@ -363,17 +382,18 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 				parsed[line][tkn - 1].s === ld.cos_delim_attrindex
 			) {
 				// The preceding token is a COS delimiter
-				const prectokentext = doc.getText(Range.create(
-					Position.create(line, parsed[line][tkn - 1].p),
-					Position.create(line, parsed[line][tkn - 1].p + parsed[line][tkn - 1].c)
-				));
+				const prectokentext = doc.getText(
+					Range.create(
+						Position.create(line, parsed[line][tkn - 1].p),
+						Position.create(line, parsed[line][tkn - 1].p + parsed[line][tkn - 1].c),
+					),
+				);
 				if (prectokentext === "]" || prectokentext === "|") {
 					// The preceding token is an extended reference closing delimiter
 
 					if (tkn - 1 === 0) {
 						resultstart = findCaret(doc, parsed, line - 1, parsed[line - 1].length - 1);
-					}
-					else {
+					} else {
 						resultstart = findCaret(doc, parsed, line, tkn - 2);
 					}
 				}
@@ -389,14 +409,15 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 					if (closingparen === null) {
 						// Couldn't find the closing parenthesis
 						resultend = null;
-					}
-					else {
-						resultend = Position.create(closingparen[0], parsed[closingparen[0]][closingparen[1]].p + parsed[closingparen[0]][closingparen[1]].c);
+					} else {
+						resultend = Position.create(
+							closingparen[0],
+							parsed[closingparen[0]][closingparen[1]].p + parsed[closingparen[0]][closingparen[1]].c,
+						);
 					}
 				}
 			}
-		}
-		else if (parsed[line][tkn].s === ld.cos_sysv_attrindex || parsed[line][tkn].s === ld.cos_uknzvar_attrindex) {
+		} else if (parsed[line][tkn].s === ld.cos_sysv_attrindex || parsed[line][tkn].s === ld.cos_uknzvar_attrindex) {
 			// This is a system variable
 
 			resultstart = Position.create(line, parsed[line][tkn].p);
@@ -419,8 +440,7 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 				// Return null because we don't support evaluating methods or properties
 				resultend = null;
 			}
-		}
-		else if (parsed[line][tkn].s == ld.cos_prop_attrindex) {
+		} else if (parsed[line][tkn].s == ld.cos_prop_attrindex) {
 			// This is a class parameter
 
 			// Class parameters are parsed as two tokens (#, then the name) so check which one this is
@@ -428,8 +448,7 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 				// This is the second token
 				resultstart = findClassParameterStart(doc, parsed, line, tkn - 1);
 				resultend = Position.create(line, parsed[line][tkn].p + parsed[line][tkn].c);
-			}
-			else {
+			} else {
 				// This is the first token
 				resultstart = findClassParameterStart(doc, parsed, line, tkn);
 				resultend = Position.create(line, parsed[line][tkn + 1].p + parsed[line][tkn + 1].c);
@@ -443,13 +462,12 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 				// The expression is on multiple lines, so strip out the newline characters
 				result = {
 					range: exprrange,
-					expression: doc.getText(exprrange).replace(/\r?\n|\r/g, "")
+					expression: doc.getText(exprrange).replace(/\r?\n|\r/g, ""),
 				};
-			}
-			else {
+			} else {
 				// The expression is on one line
 				result = {
-					range: exprrange
+					range: exprrange,
 				};
 			}
 		}
@@ -463,11 +481,17 @@ function findEvaluatableExpression(doc: TextDocument, parsed: compressedline[], 
 	return result;
 }
 
-export async function evaluatableExpression(params: EvaluatableExpressionParams): Promise<EvaluatableExpression | null> {
+export async function evaluatableExpression(
+	params: EvaluatableExpressionParams,
+): Promise<EvaluatableExpression | null> {
 	const doc = documents.get(params.uri);
-	if (doc === undefined) { return null; }
+	if (doc === undefined) {
+		return null;
+	}
 	const parsed = await getParsedDocument(params.uri);
-	if (parsed === undefined) { return null; }
+	if (parsed === undefined) {
+		return null;
+	}
 
 	let tkn: number = -1;
 	for (let i = 0; i < parsed[params.position.line].length; i++) {
@@ -482,8 +506,7 @@ export async function evaluatableExpression(params: EvaluatableExpressionParams)
 
 	if (tkn !== -1) {
 		return findEvaluatableExpression(doc, parsed, params.position.line, tkn);
-	}
-	else {
+	} else {
 		return null;
 	}
 }

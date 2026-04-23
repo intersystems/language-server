@@ -1,9 +1,26 @@
-import { Position, TextDocumentPositionParams, Range, LocationLink } from 'vscode-languageserver/node';
-import { TextDocument } from 'vscode-languageserver-textdocument';
-import { getServerSpec, findFullRange, normalizeClassname, makeRESTRequest, createDefinitionUri, getMacroContext, isMacroDefinedAbove, quoteUDLIdentifier, getClassMemberContext, determineClassNameParameterClass, getParsedDocument, currentClass, getTextForUri, isClassMember, memberRegex, urlMapAttribute } from '../utils/functions';
-import { ServerSpec, QueryData, compressedline } from '../utils/types';
-import { documents, corePropertyParams, classMemberTypes, mppContinue } from '../utils/variables';
-import * as ld from '../utils/languageDefinitions';
+import { Position, TextDocumentPositionParams, Range, LocationLink } from "vscode-languageserver/node";
+import { TextDocument } from "vscode-languageserver-textdocument";
+import {
+	getServerSpec,
+	findFullRange,
+	normalizeClassname,
+	makeRESTRequest,
+	createDefinitionUri,
+	getMacroContext,
+	isMacroDefinedAbove,
+	quoteUDLIdentifier,
+	getClassMemberContext,
+	determineClassNameParameterClass,
+	getParsedDocument,
+	currentClass,
+	getTextForUri,
+	isClassMember,
+	memberRegex,
+	urlMapAttribute,
+} from "../utils/functions";
+import { ServerSpec, QueryData, compressedline } from "../utils/types";
+import { documents, corePropertyParams, classMemberTypes, mppContinue } from "../utils/variables";
+import * as ld from "../utils/languageDefinitions";
 
 /**
  * The maximum number of lines to include in the `targetRange` property
@@ -13,7 +30,12 @@ const definitionTargetRangeMaxLines: number = 10;
 
 /** Return a `LocationLink` for class member `memberName` in class `cls` */
 async function classMemberLocationLink(
-	uri: string, cls: string, memberName: string, memberKeywords: string, memberRange: Range, server: ServerSpec
+	uri: string,
+	cls: string,
+	memberName: string,
+	memberKeywords: string,
+	memberRange: Range,
+	server: ServerSpec,
 ): Promise<LocationLink[] | undefined> {
 	const targetrange = Range.create(0, 0, 0, 0);
 	let targetselrange = Range.create(0, 0, 0, 0);
@@ -38,8 +60,7 @@ async function classMemberLocationLink(
 						targetrange.end = Position.create(j, 0);
 						break;
 					}
-				}
-				else if (regex.test(classText[j])) {
+				} else if (regex.test(classText[j])) {
 					// This is the right class member
 					const memberlineidx = classText[j].indexOf(memberName);
 					if (memberlineidx !== -1) {
@@ -55,30 +76,38 @@ async function classMemberLocationLink(
 					const trimmed = classText[pvrln].trim();
 					if (trimmed === "") {
 						targetrange.end.line = pvrln;
-					}
-					else if (
-						trimmed.slice(0, 3) === "##;" || trimmed.slice(0, 2) === "//" || trimmed.slice(0, 1) === ";" ||
-						trimmed.slice(0, 2) === "#;" || trimmed.slice(0, 2) === "/*"
+					} else if (
+						trimmed.slice(0, 3) === "##;" ||
+						trimmed.slice(0, 2) === "//" ||
+						trimmed.slice(0, 1) === ";" ||
+						trimmed.slice(0, 2) === "#;" ||
+						trimmed.slice(0, 2) === "/*"
 					) {
 						targetrange.end.line = pvrln;
-					}
-					else {
+					} else {
 						break;
 					}
 				}
-				return [{
-					targetUri: newuri,
-					targetRange: targetrange,
-					originSelectionRange: memberRange,
-					targetSelectionRange: targetselrange
-				}];
+				return [
+					{
+						targetUri: newuri,
+						targetRange: targetrange,
+						originSelectionRange: memberRange,
+						targetSelectionRange: targetselrange,
+					},
+				];
 			}
 		}
 	}
 }
 
 /** Return a `LocationLink` for class `cls` */
-async function classLocationLink(uri: string, cls: string, range: Range, server: ServerSpec): Promise<LocationLink[] | undefined> {
+async function classLocationLink(
+	uri: string,
+	cls: string,
+	range: Range,
+	server: ServerSpec,
+): Promise<LocationLink[] | undefined> {
 	// Get the uri of the target class
 	const newuri = await createDefinitionUri(uri, cls, ".cls");
 	if (newuri != "") {
@@ -97,19 +126,26 @@ async function classLocationLink(uri: string, cls: string, range: Range, server:
 					break;
 				}
 			}
-			return [{
-				targetUri: newuri,
-				targetRange: targetrange,
-				originSelectionRange: range,
-				targetSelectionRange: targetselrange
-			}];
+			return [
+				{
+					targetUri: newuri,
+					targetRange: targetrange,
+					originSelectionRange: range,
+					targetSelectionRange: targetselrange,
+				},
+			];
 		}
 	}
 }
 
 /** Return a `LocationLink` if `member` is found in the current class */
 function findMemberInCurrentClass(
-	doc: TextDocument, parsed: compressedline[], uri: string, member: string, memberKeywords: string, range: Range
+	doc: TextDocument,
+	parsed: compressedline[],
+	uri: string,
+	member: string,
+	memberKeywords: string,
+	range: Range,
 ): LocationLink[] | undefined {
 	// Loop through the file contents to find this member
 	const targetrange = Range.create(0, 0, 0, 0);
@@ -125,15 +161,19 @@ function findMemberInCurrentClass(
 				break;
 			}
 			if (
-				parsed[dln].length > 0 && parsed[dln][0].l === ld.cls_langindex &&
+				parsed[dln].length > 0 &&
+				parsed[dln][0].l === ld.cls_langindex &&
 				(parsed[dln][0].s === ld.cls_keyword_attrindex || parsed[dln][0].s === ld.cls_desc_attrindex)
 			) {
 				// This is the first class member following the one we needed the definition for, so cut off the preview range here
 				targetrange.end = Position.create(dln, 0);
 				break;
 			}
-		}
-		else if (parsed[dln].length > 0 && parsed[dln][0].l == ld.cls_langindex && parsed[dln][0].s == ld.cls_keyword_attrindex) {
+		} else if (
+			parsed[dln].length > 0 &&
+			parsed[dln][0].l == ld.cls_langindex &&
+			parsed[dln][0].s == ld.cls_keyword_attrindex
+		) {
 			// This line starts with a UDL keyword
 
 			if (regex.test(doc.getText(Range.create(dln, 0, dln + 1, 0)))) {
@@ -150,28 +190,35 @@ function findMemberInCurrentClass(
 		for (let pvrln = targetrange.end.line - 1; pvrln > targetrange.start.line; pvrln--) {
 			if (parsed[pvrln].length === 0) {
 				targetrange.end.line = pvrln;
-			}
-			else if (parsed[pvrln][0].l === ld.cos_langindex && (parsed[pvrln][0].s === ld.cos_comment_attrindex || parsed[pvrln][0].s === ld.cos_dcom_attrindex)) {
+			} else if (
+				parsed[pvrln][0].l === ld.cos_langindex &&
+				(parsed[pvrln][0].s === ld.cos_comment_attrindex || parsed[pvrln][0].s === ld.cos_dcom_attrindex)
+			) {
 				targetrange.end.line = pvrln;
-			}
-			else {
+			} else {
 				break;
 			}
 		}
-		return [{
-			targetUri: uri,
-			originSelectionRange: range,
-			targetSelectionRange: targetselrange,
-			targetRange: targetrange
-		}];
+		return [
+			{
+				targetUri: uri,
+				originSelectionRange: range,
+				targetSelectionRange: targetselrange,
+				targetRange: targetrange,
+			},
+		];
 	}
 }
 
 export async function onDefinition(params: TextDocumentPositionParams) {
 	const doc = documents.get(params.textDocument.uri);
-	if (doc === undefined) { return null; }
+	if (doc === undefined) {
+		return null;
+	}
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) { return null; }
+	if (parsed === undefined) {
+		return null;
+	}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 
 	if (parsed[params.position.line] === undefined) {
@@ -184,9 +231,13 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 		if (params.position.character >= symbolstart && params.position.character <= symbolend) {
 			// We found the right symbol in the line
 
-			if (((parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_clsname_attrindex) ||
-				(parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_clsname_attrindex))
-				&& doc.getText(Range.create(params.position.line, 0, params.position.line, 6)).toLowerCase() !== "import") {
+			if (
+				((parsed[params.position.line][i].l == ld.cls_langindex &&
+					parsed[params.position.line][i].s == ld.cls_clsname_attrindex) ||
+					(parsed[params.position.line][i].l == ld.cos_langindex &&
+						parsed[params.position.line][i].s == ld.cos_clsname_attrindex)) &&
+				doc.getText(Range.create(params.position.line, 0, params.position.line, 6)).toLowerCase() !== "import"
+			) {
 				// This is a class name
 
 				// Get the full text of the selection
@@ -194,15 +245,18 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				let word = doc.getText(wordrange);
 				if (word.charAt(0) === ".") {
 					// This might be $SYSTEM.ClassName
-					const prevseven = doc.getText(Range.create(
-						params.position.line, wordrange.start.character - 7,
-						params.position.line, wordrange.start.character
-					));
+					const prevseven = doc.getText(
+						Range.create(
+							params.position.line,
+							wordrange.start.character - 7,
+							params.position.line,
+							wordrange.start.character,
+						),
+					);
 					if (prevseven.toUpperCase() === "$SYSTEM") {
 						// This is $SYSTEM.ClassName
 						word = "%SYSTEM" + word;
-					}
-					else {
+					} else {
 						// This classname is invalid
 						return null;
 					}
@@ -217,13 +271,12 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				if (normalizedname != "") {
 					return classLocationLink(params.textDocument.uri, normalizedname, wordrange, server);
 				}
-			}
-			else if (
-				parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_macro_attrindex || (
-					parsed[params.position.line][i].l == ld.sql_langindex &&
+			} else if (
+				(parsed[params.position.line][i].l == ld.cos_langindex &&
+					parsed[params.position.line][i].s == ld.cos_macro_attrindex) ||
+				(parsed[params.position.line][i].l == ld.sql_langindex &&
 					parsed[params.position.line][i].s == ld.sql_iden_attrindex &&
-					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$$"
-				)
+					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$$")
 			) {
 				// This is a macro
 
@@ -251,21 +304,38 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 					const targetrange = Range.create(macrodefline, 0, macrodefline + 1, 0);
 					if (
-						parsed[macrodefline][parsed[macrodefline].length - 1].l == ld.cos_langindex && parsed[macrodefline][parsed[macrodefline].length - 1].s == ld.cos_ppf_attrindex &&
-						mppContinue.test(doc.getText(Range.create(
-							macrodefline, parsed[macrodefline][parsed[macrodefline].length - 1].p,
-							macrodefline, parsed[macrodefline][parsed[macrodefline].length - 1].p + parsed[macrodefline][parsed[macrodefline].length - 1].c
-						)))
+						parsed[macrodefline][parsed[macrodefline].length - 1].l == ld.cos_langindex &&
+						parsed[macrodefline][parsed[macrodefline].length - 1].s == ld.cos_ppf_attrindex &&
+						mppContinue.test(
+							doc.getText(
+								Range.create(
+									macrodefline,
+									parsed[macrodefline][parsed[macrodefline].length - 1].p,
+									macrodefline,
+									parsed[macrodefline][parsed[macrodefline].length - 1].p +
+										parsed[macrodefline][parsed[macrodefline].length - 1].c,
+								),
+							),
+						)
 					) {
 						// This is a multi-line macro definition so scan down the file to capture the full range of the definition
 						for (let mln = macrodefline + 1; mln < parsed.length; mln++) {
-							if (!(
-								parsed[mln][parsed[mln].length - 1].l == ld.cos_langindex && parsed[mln][parsed[mln].length - 1].s == ld.cos_ppf_attrindex &&
-								mppContinue.test(doc.getText(Range.create(
-									mln, parsed[mln][parsed[mln].length - 1].p,
-									mln, parsed[mln][parsed[mln].length - 1].p + parsed[mln][parsed[mln].length - 1].c
-								)))
-							)) {
+							if (
+								!(
+									parsed[mln][parsed[mln].length - 1].l == ld.cos_langindex &&
+									parsed[mln][parsed[mln].length - 1].s == ld.cos_ppf_attrindex &&
+									mppContinue.test(
+										doc.getText(
+											Range.create(
+												mln,
+												parsed[mln][parsed[mln].length - 1].p,
+												mln,
+												parsed[mln][parsed[mln].length - 1].p + parsed[mln][parsed[mln].length - 1].c,
+											),
+										),
+									)
+								)
+							) {
 								// This is the last line of the macro definition so update the target range
 								targetrange.end = Position.create(mln + 1, 0);
 								break;
@@ -273,14 +343,20 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						}
 					}
 
-					return [{
-						targetUri: params.textDocument.uri,
-						targetRange: targetrange,
-						originSelectionRange: macrorange,
-						targetSelectionRange: Range.create(macrodefline, parsed[macrodefline][2].p, macrodefline, parsed[macrodefline][2].p + parsed[macrodefline][2].c)
-					}];
-				}
-				else {
+					return [
+						{
+							targetUri: params.textDocument.uri,
+							targetRange: targetrange,
+							originSelectionRange: macrorange,
+							targetSelectionRange: Range.create(
+								macrodefline,
+								parsed[macrodefline][2].p,
+								macrodefline,
+								parsed[macrodefline][2].p + parsed[macrodefline][2].c,
+							),
+						},
+					];
+				} else {
 					// The macro is defined in another file
 
 					// Get the macro location from the server
@@ -291,7 +367,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						includes: maccon.includes,
 						includegenerators: maccon.includegenerators,
 						imports: maccon.imports,
-						mode: maccon.mode
+						mode: maccon.mode,
 					};
 					const respdata = await makeRESTRequest("POST", 2, "/action/getmacrolocation", server, inputdata);
 					if (respdata !== undefined && respdata.data.result.content.document !== "") {
@@ -301,19 +377,30 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						const ext = respdata.data.result.content.document.substring(lastdot);
 						const newuri = await createDefinitionUri(params.textDocument.uri, filename, ext);
 						if (newuri !== "") {
-							return [{
-								targetUri: newuri,
-								targetRange: Range.create(respdata.data.result.content.line, 0, respdata.data.result.content.line + 1, 0),
-								originSelectionRange: macrorange,
-								targetSelectionRange: Range.create(respdata.data.result.content.line, 0, respdata.data.result.content.line + 1, 0)
-							}];
+							return [
+								{
+									targetUri: newuri,
+									targetRange: Range.create(
+										respdata.data.result.content.line,
+										0,
+										respdata.data.result.content.line + 1,
+										0,
+									),
+									originSelectionRange: macrorange,
+									targetSelectionRange: Range.create(
+										respdata.data.result.content.line,
+										0,
+										respdata.data.result.content.line + 1,
+										0,
+									),
+								},
+							];
 						}
 					}
 				}
-			}
-			else if (
-				parsed[params.position.line][i].l == ld.cos_langindex && (
-					parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
+			} else if (
+				parsed[params.position.line][i].l == ld.cos_langindex &&
+				(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
@@ -332,8 +419,8 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				let unquotedname = quoteUDLIdentifier(member, 0);
 				if (unquotedname == "%New") {
 					unquotedname = "%OnNew";
-					member = "%OnNew"
-				};
+					member = "%OnNew";
+				}
 
 				// If this is a class file, determine what class we're in
 				let thisclass = "";
@@ -341,7 +428,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					thisclass = currentClass(doc, parsed);
 				}
 
-				let membercontext: { baseclass: string; context?: string; };
+				let membercontext: { baseclass: string; context?: string };
 				if (parsed[params.position.line][i].s != ld.cos_instvar_attrindex) {
 					// Find the dot token
 					let dottkn = 0;
@@ -357,7 +444,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				} else {
 					membercontext = {
 						baseclass: thisclass,
-						context: ""
+						context: "",
 					};
 				}
 				if (membercontext.baseclass === "") {
@@ -366,14 +453,25 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				}
 
 				let memberKeywords =
-					parsed[params.position.line][i].s == ld.cos_prop_attrindex ? "Parameter" :
-						parsed[params.position.line][i].s == ld.cos_method_attrindex || unquotedname == "%OnNew" ? "Method|ClassMethod|ClientMethod" :
-							[ld.cos_attr_attrindex, ld.cos_instvar_attrindex].includes(parsed[params.position.line][i].s) ? "Property|Relationship" :
-								membercontext.baseclass.startsWith("%SYSTEM.") ? "Method|ClassMethod|ClientMethod" :
-									"Method|ClassMethod|ClientMethod|Property|Relationship";
+					parsed[params.position.line][i].s == ld.cos_prop_attrindex
+						? "Parameter"
+						: parsed[params.position.line][i].s == ld.cos_method_attrindex || unquotedname == "%OnNew"
+							? "Method|ClassMethod|ClientMethod"
+							: [ld.cos_attr_attrindex, ld.cos_instvar_attrindex].includes(parsed[params.position.line][i].s)
+								? "Property|Relationship"
+								: membercontext.baseclass.startsWith("%SYSTEM.")
+									? "Method|ClassMethod|ClientMethod"
+									: "Method|ClassMethod|ClientMethod|Property|Relationship";
 				if (thisclass == membercontext.baseclass) {
 					// The member may be defined in this class
-					const currentClassLinks = findMemberInCurrentClass(doc, parsed, params.textDocument.uri, member, memberKeywords, memberrange);
+					const currentClassLinks = findMemberInCurrentClass(
+						doc,
+						parsed,
+						params.textDocument.uri,
+						member,
+						memberKeywords,
+						memberrange,
+					);
 					if (currentClassLinks) return currentClassLinks;
 				}
 				// The member is defined in another class
@@ -381,29 +479,33 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				// Query the server to get the origin class of this member using its base class, text and token type
 				const data: QueryData = {
 					query: "",
-					parameters: []
+					parameters: [],
 				};
 				if (memberKeywords == "Parameter") {
 					// This is a parameter
 					data.query = "SELECT Origin, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE Parent = ? AND name = ?";
 					data.parameters = [membercontext.baseclass, unquotedname];
-				}
-				else if (memberKeywords == "Method|ClassMethod|ClientMethod") {
+				} else if (memberKeywords == "Method|ClassMethod|ClientMethod") {
 					// This is a method
 					data.query = "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
 					data.parameters = [membercontext.baseclass, unquotedname];
-				}
-				else if (memberKeywords == "Property|Relationship") {
+				} else if (memberKeywords == "Property|Relationship") {
 					// This is a property
-					data.query = "SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+					data.query =
+						"SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
 					data.parameters = [membercontext.baseclass, unquotedname, unquotedname.replace(/\s+/g, "")];
-				}
-				else {
+				} else {
 					// This can be a method or property
 					data.query =
 						"SELECT Name, Origin, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL " +
 						"SELECT Name, Origin, NULL AS Stub FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
-					data.parameters = [membercontext.baseclass, unquotedname, membercontext.baseclass, unquotedname, unquotedname.replace(/\s+/g, "")];
+					data.parameters = [
+						membercontext.baseclass,
+						unquotedname,
+						membercontext.baseclass,
+						unquotedname,
+						unquotedname.replace(/\s+/g, ""),
+					];
 				}
 				let originclass = "";
 				let membernameinfile = member;
@@ -440,7 +542,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							if (stubQuery) {
 								const stubrespdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 									query: stubQuery,
-									parameters: [stubMember, membercontext.baseclass]
+									parameters: [stubMember, membercontext.baseclass],
 								});
 								if (Array.isArray(stubrespdata?.data?.result?.content) && stubrespdata.data.result.content.length > 0) {
 									// We got data back
@@ -456,11 +558,21 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					membernameinfile = "%New";
 				}
 				if (originclass !== "") {
-					return classMemberLocationLink(params.textDocument.uri, originclass, membernameinfile, memberKeywords, memberrange, server);
+					return classMemberLocationLink(
+						params.textDocument.uri,
+						originclass,
+						membernameinfile,
+						memberKeywords,
+						memberrange,
+						server,
+					);
 				}
-			}
-			else if ((parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_rtnname_attrindex) ||
-				(parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_rtnname_attrindex)) {
+			} else if (
+				(parsed[params.position.line][i].l == ld.cls_langindex &&
+					parsed[params.position.line][i].s == ld.cls_rtnname_attrindex) ||
+				(parsed[params.position.line][i].l == ld.cos_langindex &&
+					parsed[params.position.line][i].s == ld.cos_rtnname_attrindex)
+			) {
 				// This is a routine name
 
 				// Get the full text of the selection
@@ -469,76 +581,102 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 				// Determine if this is an include file
 				let isinc = false;
-				if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_rtnname_attrindex) {
+				if (
+					parsed[params.position.line][i].l == ld.cls_langindex &&
+					parsed[params.position.line][i].s == ld.cls_rtnname_attrindex
+				) {
 					isinc = true;
-				}
-				else {
+				} else {
 					if (
 						parsed[params.position.line][i - 1].l == ld.cos_langindex &&
 						parsed[params.position.line][i - 1].s == ld.cos_ppc_attrindex &&
-						doc.getText(
-							Range.create(
-								Position.create(params.position.line, parsed[params.position.line][i - 1].p),
-								Position.create(params.position.line, parsed[params.position.line][i - 1].p + parsed[params.position.line][i - 1].c)
+						doc
+							.getText(
+								Range.create(
+									Position.create(params.position.line, parsed[params.position.line][i - 1].p),
+									Position.create(
+										params.position.line,
+										parsed[params.position.line][i - 1].p + parsed[params.position.line][i - 1].c,
+									),
+								),
 							)
-						).toLowerCase() === "include"
+							.toLowerCase() === "include"
 					) {
-						isinc = true
+						isinc = true;
 					}
 				}
 				if (isinc) {
 					const newuri = await createDefinitionUri(params.textDocument.uri, word, ".inc");
 					if (newuri !== "") {
-						return [{
-							targetUri: newuri,
-							targetRange: Range.create(Position.create(0, 0), Position.create(1, 0)),
-							originSelectionRange: wordrange,
-							targetSelectionRange: Range.create(Position.create(0, 8), Position.create(1, 0))
-						}];
+						return [
+							{
+								targetUri: newuri,
+								targetRange: Range.create(Position.create(0, 0), Position.create(1, 0)),
+								originSelectionRange: wordrange,
+								targetSelectionRange: Range.create(Position.create(0, 8), Position.create(1, 0)),
+							},
+						];
 					}
-				}
-				else {
+				} else {
 					// Check if this routine is a MAC or INT
 					const respdata = await makeRESTRequest("POST", 1, "/action/index", server, [word + ".int"]);
-					if (respdata !== undefined && respdata.data.result.content.length > 0 && respdata.data.result.content[0].status === "") {
-						if (respdata.data.result.content[0].others.length > 0 && respdata.data.result.content[0].others[0].slice(-3) === "mac") {
+					if (
+						respdata !== undefined &&
+						respdata.data.result.content.length > 0 &&
+						respdata.data.result.content[0].status === ""
+					) {
+						if (
+							respdata.data.result.content[0].others.length > 0 &&
+							respdata.data.result.content[0].others[0].slice(-3) === "mac"
+						) {
 							// This is a MAC routine
 							const newuri = await createDefinitionUri(params.textDocument.uri, word, ".mac");
 							if (newuri !== "") {
-								return [{
-									targetUri: newuri,
-									targetRange: Range.create(Position.create(0, 0), Position.create(1, 0)),
-									originSelectionRange: wordrange,
-									targetSelectionRange: Range.create(Position.create(0, 8), Position.create(1, 0))
-								}];
+								return [
+									{
+										targetUri: newuri,
+										targetRange: Range.create(Position.create(0, 0), Position.create(1, 0)),
+										originSelectionRange: wordrange,
+										targetSelectionRange: Range.create(Position.create(0, 8), Position.create(1, 0)),
+									},
+								];
 							}
-						}
-						else {
+						} else {
 							// This is an INT routine
 							const newuri = await createDefinitionUri(params.textDocument.uri, word, ".int");
 							if (newuri !== "") {
-								return [{
-									targetUri: newuri,
-									targetRange: Range.create(Position.create(0, 0), Position.create(1, 0)),
-									originSelectionRange: wordrange,
-									targetSelectionRange: Range.create(Position.create(0, 8), Position.create(1, 0))
-								}];
+								return [
+									{
+										targetUri: newuri,
+										targetRange: Range.create(Position.create(0, 0), Position.create(1, 0)),
+										originSelectionRange: wordrange,
+										targetSelectionRange: Range.create(Position.create(0, 8), Position.create(1, 0)),
+									},
+								];
 							}
 						}
 					}
 				}
-			}
-			else if ((parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_label_attrindex) ||
-				(parsed[params.position.line][i].l == ld.cos_langindex && parsed[params.position.line][i].s == ld.cos_extrfn_attrindex)) {
+			} else if (
+				(parsed[params.position.line][i].l == ld.cos_langindex &&
+					parsed[params.position.line][i].s == ld.cos_label_attrindex) ||
+				(parsed[params.position.line][i].l == ld.cos_langindex &&
+					parsed[params.position.line][i].s == ld.cos_extrfn_attrindex)
+			) {
 				// This is a routine label
 
 				// Get the range and text of the label
 				let labelrange: Range;
 				if (parsed[params.position.line][i].s == ld.cos_extrfn_attrindex) {
 					// This is the $$ before the label
-					labelrange = findFullRange(params.position.line, parsed, i + 1, parsed[params.position.line][i + 1].p, parsed[params.position.line][i + 1].p + parsed[params.position.line][i + 1].c);
-				}
-				else {
+					labelrange = findFullRange(
+						params.position.line,
+						parsed,
+						i + 1,
+						parsed[params.position.line][i + 1].p,
+						parsed[params.position.line][i + 1].p + parsed[params.position.line][i + 1].c,
+					);
+				} else {
 					// This is the label
 					labelrange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				}
@@ -547,8 +685,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				// Now that we got the label text, add the $$ to the front of the range
 				if (parsed[params.position.line][i].s == ld.cos_extrfn_attrindex) {
 					labelrange.start.character = labelrange.start.character - 2;
-				}
-				else if (i !== 0 && parsed[params.position.line][i - 1].s == ld.cos_extrfn_attrindex) {
+				} else if (i !== 0 && parsed[params.position.line][i - 1].s == ld.cos_extrfn_attrindex) {
 					labelrange.start.character = labelrange.start.character - 2;
 				}
 
@@ -561,21 +698,32 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				if (
 					labelidx + 2 < parsed[params.position.line].length &&
 					parsed[params.position.line][labelidx + 1].s == ld.cos_delim_attrindex &&
-					doc.getText(Range.create(
-						Position.create(params.position.line, parsed[params.position.line][labelidx + 1].p),
-						Position.create(params.position.line, parsed[params.position.line][labelidx + 1].p + parsed[params.position.line][labelidx + 1].c)
-					)) === "^"
+					doc.getText(
+						Range.create(
+							Position.create(params.position.line, parsed[params.position.line][labelidx + 1].p),
+							Position.create(
+								params.position.line,
+								parsed[params.position.line][labelidx + 1].p + parsed[params.position.line][labelidx + 1].c,
+							),
+						),
+					) === "^"
 				) {
 					// The token following the label is a caret, so this label has a routine name
 
 					for (let j = labelidx + 2; j < parsed[params.position.line].length; j++) {
-						if (parsed[params.position.line][j].l == ld.cos_langindex && parsed[params.position.line][j].s == ld.cos_rtnname_attrindex) {
+						if (
+							parsed[params.position.line][j].l == ld.cos_langindex &&
+							parsed[params.position.line][j].s == ld.cos_rtnname_attrindex
+						) {
 							// This is the routine name
 							routine = doc.getText(
 								Range.create(
 									Position.create(params.position.line, parsed[params.position.line][j].p),
-									Position.create(params.position.line, parsed[params.position.line][j].p + parsed[params.position.line][j].c)
-								)
+									Position.create(
+										params.position.line,
+										parsed[params.position.line][j].p + parsed[params.position.line][j].c,
+									),
+								),
 							);
 							break;
 						}
@@ -585,7 +733,9 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				// If the current file is a routine, get its name
 				let currentroutine = "";
 				if (doc.languageId === "objectscript" || doc.languageId === "objectscript-int") {
-					currentroutine = doc.getText(Range.create(Position.create(0, parsed[0][1].p), Position.create(0, parsed[0][1].p + parsed[0][1].c)));
+					currentroutine = doc.getText(
+						Range.create(Position.create(0, parsed[0][1].p), Position.create(0, parsed[0][1].p + parsed[0][1].c)),
+					);
 				}
 
 				if (routine !== "" && routine !== currentroutine) {
@@ -593,9 +743,16 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 					// Check if this routine is a MAC or INT
 					const indexrespdata = await makeRESTRequest("POST", 1, "/action/index", server, [routine + ".int"]);
-					if (indexrespdata !== undefined && indexrespdata.data.result.content.length > 0 && indexrespdata.data.result.content[0].status === "") {
+					if (
+						indexrespdata !== undefined &&
+						indexrespdata.data.result.content.length > 0 &&
+						indexrespdata.data.result.content[0].status === ""
+					) {
 						let ext = ".int";
-						if (indexrespdata.data.result.content[0].others.length > 0 && indexrespdata.data.result.content[0].others[0].slice(-3) === "mac") {
+						if (
+							indexrespdata.data.result.content[0].others.length > 0 &&
+							indexrespdata.data.result.content[0].others[0].slice(-3) === "mac"
+						) {
 							// This is a MAC routine
 							ext = ".mac";
 						}
@@ -620,25 +777,24 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 										}
 										const firstcharcode = rtnText[k].charCodeAt(0);
 										if (
-											(firstcharcode > 47 && firstcharcode < 58) || (firstcharcode > 64 && firstcharcode < 91) ||
-											(firstcharcode > 96 && firstcharcode < 123) || (firstcharcode === 37)
+											(firstcharcode > 47 && firstcharcode < 58) ||
+											(firstcharcode > 64 && firstcharcode < 91) ||
+											(firstcharcode > 96 && firstcharcode < 123) ||
+											firstcharcode === 37
 										) {
 											// This is the first label following the one we needed the definition for, so cut off the preview range here
 											targetrange.end = Position.create(k, 0);
 											break;
 										}
-									}
-									else if (
+									} else if (
 										rtnText[k].startsWith(label) &&
-										(
-											rtnText[k].trimEnd().length == label.length || // The label is the whole line
+										(rtnText[k].trimEnd().length == label.length || // The label is the whole line
 											/ |\t|\(/.test(rtnText[k].charAt(label.length)) || // The label is followed by space, tab or (
 											// The label is followed by a comment
 											rtnText[k].slice(label.length).startsWith(";") ||
 											rtnText[k].slice(label.length).startsWith("##;") ||
 											rtnText[k].slice(label.length).startsWith("//") ||
-											rtnText[k].slice(label.length).startsWith("/*")
-										)
+											rtnText[k].slice(label.length).startsWith("/*"))
 									) {
 										// This is the label definition
 										targetselrange = Range.create(k, 0, k, label.length);
@@ -651,28 +807,30 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 									const trimmed = rtnText[pvrln].trim();
 									if (trimmed === "") {
 										targetrange.end.line = pvrln;
-									}
-									else if (
-										trimmed.slice(0, 3) === "##;" || trimmed.slice(0, 2) === "//" || trimmed.slice(0, 1) === ";" ||
-										trimmed.slice(0, 2) === "#;" || trimmed.slice(0, 2) === "/*"
+									} else if (
+										trimmed.slice(0, 3) === "##;" ||
+										trimmed.slice(0, 2) === "//" ||
+										trimmed.slice(0, 1) === ";" ||
+										trimmed.slice(0, 2) === "#;" ||
+										trimmed.slice(0, 2) === "/*"
 									) {
 										targetrange.end.line = pvrln;
-									}
-									else {
+									} else {
 										break;
 									}
 								}
-								return [{
-									targetUri: newuri,
-									targetRange: targetrange,
-									originSelectionRange: labelrange,
-									targetSelectionRange: targetselrange
-								}];
+								return [
+									{
+										targetUri: newuri,
+										targetRange: targetrange,
+										originSelectionRange: labelrange,
+										targetSelectionRange: targetselrange,
+									},
+								];
 							}
 						}
 					}
-				}
-				else {
+				} else {
 					// This label is in the current routine
 
 					let targetselrange = Range.create(Position.create(0, 0), Position.create(0, 0));
@@ -688,17 +846,24 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							break;
 						}
 						if (
-							parsed[line].length > 0 && parsed[line][0].l == ld.cos_langindex &&
-							parsed[line][0].s == ld.cos_label_attrindex && parsed[line][0].p == 0
+							parsed[line].length > 0 &&
+							parsed[line][0].l == ld.cos_langindex &&
+							parsed[line][0].s == ld.cos_label_attrindex &&
+							parsed[line][0].p == 0
 						) {
 							// This is a label
 							if (linect > 0) {
 								// This is the first label following the one we needed the definition for, so cut off the preview range here
 								targetrange.end = Position.create(line, 0);
 								break;
-							}
-							else {
-								const firstwordrange = findFullRange(line, parsed, 0, parsed[line][0].p, parsed[line][0].p + parsed[line][0].c);
+							} else {
+								const firstwordrange = findFullRange(
+									line,
+									parsed,
+									0,
+									parsed[line][0].p,
+									parsed[line][0].p + parsed[line][0].c,
+								);
 								const firstwordtext = doc.getText(firstwordrange);
 								if (firstwordtext == label) {
 									// This is the correct label
@@ -713,23 +878,28 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					for (let pvrln = targetrange.end.line - 1; pvrln > targetrange.start.line; pvrln--) {
 						if (parsed[pvrln].length === 0) {
 							targetrange.end.line = pvrln;
-						}
-						else if (parsed[pvrln][0].l === ld.cos_langindex && (parsed[pvrln][0].s === ld.cos_comment_attrindex || parsed[pvrln][0].s === ld.cos_dcom_attrindex)) {
+						} else if (
+							parsed[pvrln][0].l === ld.cos_langindex &&
+							(parsed[pvrln][0].s === ld.cos_comment_attrindex || parsed[pvrln][0].s === ld.cos_dcom_attrindex)
+						) {
 							targetrange.end.line = pvrln;
-						}
-						else {
+						} else {
 							break;
 						}
 					}
-					return [{
-						targetUri: params.textDocument.uri,
-						targetRange: targetrange,
-						originSelectionRange: labelrange,
-						targetSelectionRange: targetselrange
-					}];
+					return [
+						{
+							targetUri: params.textDocument.uri,
+							targetRange: targetrange,
+							originSelectionRange: labelrange,
+							targetSelectionRange: targetselrange,
+						},
+					];
 				}
-			}
-			else if (parsed[params.position.line][i].l == ld.sql_langindex && parsed[params.position.line][i].s == ld.sql_iden_attrindex) {
+			} else if (
+				parsed[params.position.line][i].l == ld.sql_langindex &&
+				parsed[params.position.line][i].s == ld.sql_iden_attrindex
+			) {
 				// This is a SQL identifier
 
 				// Get the full text of the selection
@@ -740,20 +910,21 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				let keytext: string = "";
 				for (let ln = params.position.line; ln >= 0; ln--) {
 					if (!parsed[ln]?.length) continue;
-					for (let tk = (parsed[ln].length - 1); tk >= 0; tk--) {
+					for (let tk = parsed[ln].length - 1; tk >= 0; tk--) {
 						if (ln === params.position.line && parsed[ln][tk].p >= idenrange.start.character) {
 							// Start looking when we pass the full range of the selected identifier
 							continue;
 						}
 						if (
 							parsed[ln][tk].l == ld.sql_langindex &&
-							(parsed[ln][tk].s == ld.sql_skey_attrindex || parsed[ln][tk].s == ld.sql_qkey_attrindex || parsed[ln][tk].s == ld.sql_ekey_attrindex)
+							(parsed[ln][tk].s == ld.sql_skey_attrindex ||
+								parsed[ln][tk].s == ld.sql_qkey_attrindex ||
+								parsed[ln][tk].s == ld.sql_ekey_attrindex)
 						) {
 							// This is a keyword
-							const tmpkeytext = doc.getText(Range.create(
-								ln, parsed[ln][tk].p,
-								ln, parsed[ln][tk].p + parsed[ln][tk].c
-							)).toLowerCase();
+							const tmpkeytext = doc
+								.getText(Range.create(ln, parsed[ln][tk].p, ln, parsed[ln][tk].p + parsed[ln][tk].c))
+								.toLowerCase();
 							if (tmpkeytext !== "as") {
 								// Found the correct keyword
 								keytext = tmpkeytext;
@@ -768,9 +939,13 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				}
 
 				if (
-					(keytext === "join" || keytext === "from" || keytext === "into" ||
-						keytext === "lock" || keytext === "unlock" || keytext === "table" ||
-						keytext === "update")
+					keytext === "join" ||
+					keytext === "from" ||
+					keytext === "into" ||
+					keytext === "lock" ||
+					keytext === "unlock" ||
+					keytext === "table" ||
+					keytext === "update"
 				) {
 					// This identifier is a table name
 
@@ -787,36 +962,49 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							// Query the server to get the origin class of this property
 							const data: QueryData = {
 								query: "SELECT Origin FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
-								parameters: [normalizedname, propname]
+								parameters: [normalizedname, propname],
 							};
 							const queryrespdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 							if (queryrespdata !== undefined) {
-								if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
+								if (
+									Array.isArray(queryrespdata?.data?.result?.content) &&
+									queryrespdata.data.result.content.length > 0
+								) {
 									// We got data back
 
 									// Get the uri of the origin class
 									const originclass = queryrespdata.data.result.content[0].Origin;
-									return classMemberLocationLink(params.textDocument.uri, originclass, propname, "Property|Relationship", idenrange, server);
-								}
-								else {
+									return classMemberLocationLink(
+										params.textDocument.uri,
+										originclass,
+										propname,
+										"Property|Relationship",
+										idenrange,
+										server,
+									);
+								} else {
 									// Query completed successfully but we got back no data.
 									// This likely means that the base class hasn't been compiled yet or the member had the wrong token type.
 									return null;
 								}
 							}
 						}
-					}
-					else {
+					} else {
 						// This table is a class
 
 						// Normalize the class name if there are imports
-						const normalizedname = await normalizeClassname(doc, parsed, iden.replace(/_/g, "."), server, params.position.line);
+						const normalizedname = await normalizeClassname(
+							doc,
+							parsed,
+							iden.replace(/_/g, "."),
+							server,
+							params.position.line,
+						);
 						if (normalizedname != "") {
 							return classLocationLink(params.textDocument.uri, normalizedname, idenrange, server);
 						}
 					}
-				}
-				else if (keytext === "call" && iden.indexOf("_") !== -1) {
+				} else if (keytext === "call" && iden.indexOf("_") !== -1) {
 					// This identifier is a Query or ClassMethod being invoked as a SqlProc
 
 					const clsname = iden.slice(0, iden.lastIndexOf("_")).replace(/_/g, ".");
@@ -830,7 +1018,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						querystr = querystr.concat("SELECT Origin FROM %Dictionary.CompiledQuery WHERE Parent = ? AND name = ?");
 						const data: QueryData = {
 							query: querystr,
-							parameters: [normalizedname, procname, normalizedname, procname]
+							parameters: [normalizedname, procname, normalizedname, procname],
 						};
 						const queryrespdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 						if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
@@ -838,50 +1026,73 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 							// Get the uri of the origin class
 							const originclass = queryrespdata.data.result.content[0].Origin;
-							return classMemberLocationLink(params.textDocument.uri, originclass, procname, "ClassMethod|Query", idenrange, server);
+							return classMemberLocationLink(
+								params.textDocument.uri,
+								originclass,
+								procname,
+								"ClassMethod|Query",
+								idenrange,
+								server,
+							);
 						}
 					}
-				}
-				else {
+				} else {
 					// This identifier is a property
-					if ((iden.split(".").length - 1) > 0) {
+					if (iden.split(".").length - 1 > 0) {
 						// We won't resolve properties that don't contain the table name
 						const tblname = iden.slice(0, iden.lastIndexOf("."));
 						const propname = iden.slice(iden.lastIndexOf(".") + 1);
 
 						if (tblname.lastIndexOf("_") > tblname.lastIndexOf(".")) {
 							// This table is projected from a multi-dimensional property, so we can't provide any info
-						}
-						else {
+						} else {
 							// Normalize the class name if there are imports
-							const normalizedname = await normalizeClassname(doc, parsed, tblname.replace(/_/g, "."), server, params.position.line);
+							const normalizedname = await normalizeClassname(
+								doc,
+								parsed,
+								tblname.replace(/_/g, "."),
+								server,
+								params.position.line,
+							);
 							if (normalizedname !== "") {
 								// Query the server to get the origin class of this property
 								const data: QueryData = {
 									query: "SELECT Origin FROM %Dictionary.CompiledProperty WHERE Parent = ? AND name = ?",
-									parameters: [normalizedname, propname]
+									parameters: [normalizedname, propname],
 								};
 								const queryrespdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
-								if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
+								if (
+									Array.isArray(queryrespdata?.data?.result?.content) &&
+									queryrespdata.data.result.content.length > 0
+								) {
 									// We got data back
 
 									// Get the uri of the origin class
 									const originclass = queryrespdata.data.result.content[0].Origin;
-									return classMemberLocationLink(params.textDocument.uri, originclass, propname, "Property|Relationship", idenrange, server);
+									return classMemberLocationLink(
+										params.textDocument.uri,
+										originclass,
+										propname,
+										"Property|Relationship",
+										idenrange,
+										server,
+									);
 								}
 							}
 						}
 					}
 				}
-			}
-			else if (parsed[params.position.line][i].l == ld.cls_langindex && parsed[params.position.line][i].s == ld.cls_cparam_attrindex) {
+			} else if (
+				parsed[params.position.line][i].l == ld.cls_langindex &&
+				parsed[params.position.line][i].s == ld.cls_cparam_attrindex
+			) {
 				// This is a class name parameter
 
 				// Get the full text of the selection
 				const paramrange = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
 				const param = doc.getText(paramrange);
 
-				if (corePropertyParams.some(e => e.name == param)) {
+				if (corePropertyParams.some((e) => e.name == param)) {
 					// This is a core Property data type parameter, so don't return anything
 					return null;
 				}
@@ -898,26 +1109,40 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 				if (thisclass == normalizedcls) {
 					// The parameter may be defined in this class
-					const currentClassLinks = findMemberInCurrentClass(doc, parsed, params.textDocument.uri, param, "Parameter", paramrange);
+					const currentClassLinks = findMemberInCurrentClass(
+						doc,
+						parsed,
+						params.textDocument.uri,
+						param,
+						"Parameter",
+						paramrange,
+					);
 					if (currentClassLinks) return currentClassLinks;
 				}
 
 				// The parameter is defined in another class
 				const queryrespdata = await makeRESTRequest("POST", 1, "/action/query", server, {
-					query: "SELECT Origin FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
+					query:
+						"SELECT Origin FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
 						"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
-					parameters: [param, normalizedcls, thisclass]
+					parameters: [param, normalizedcls, thisclass],
 				});
 				if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
 					// We got data back
 
 					const originclass = queryrespdata.data.result.content[0].Origin;
 					if (originclass !== "") {
-						return classMemberLocationLink(params.textDocument.uri, originclass, param, "Parameter", paramrange, server);
+						return classMemberLocationLink(
+							params.textDocument.uri,
+							originclass,
+							param,
+							"Parameter",
+							paramrange,
+							server,
+						);
 					}
 				}
-			}
-			else if (
+			} else if (
 				parsed[params.position.line][i].l == ld.cos_langindex &&
 				parsed[params.position.line][i].s == ld.cos_super_attrindex &&
 				doc.languageId == "objectscript-class"
@@ -948,21 +1173,23 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						if (
 							parsed[ln][0].l == ld.cls_langindex &&
 							parsed[ln][0].s == ld.cls_keyword_attrindex &&
-							doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c)).toLowerCase() == "class"
+							doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c)).toLowerCase() ==
+								"class"
 						) {
 							// This is the class definition line
-							let seenExtends = false, seenInheritance = false;
+							let seenExtends = false,
+								seenInheritance = false;
 							for (let j = 1; j < parsed[ln].length; j++) {
-								if (
-									seenExtends &&
-									parsed[ln][j].l == ld.cls_langindex &&
-									parsed[ln][j].s == ld.cls_clsname_attrindex
-								) {
+								if (seenExtends && parsed[ln][j].l == ld.cls_langindex && parsed[ln][j].s == ld.cls_clsname_attrindex) {
 									// This is a piece of a subclass
 									if (!superclasses.length) superclasses.push("");
-									superclasses[superclasses.length - 1] += doc.getText(Range.create(ln, parsed[ln][j].p, ln, parsed[ln][j].p + parsed[ln][j].c));
+									superclasses[superclasses.length - 1] += doc.getText(
+										Range.create(ln, parsed[ln][j].p, ln, parsed[ln][j].p + parsed[ln][j].c),
+									);
 								} else if (parsed[ln][j].l == ld.cls_langindex && parsed[ln][j].s == ld.cls_keyword_attrindex) {
-									const clsKeyword = doc.getText(Range.create(ln, parsed[ln][j].p, ln, parsed[ln][j].p + parsed[ln][j].c)).toLowerCase();
+									const clsKeyword = doc
+										.getText(Range.create(ln, parsed[ln][j].p, ln, parsed[ln][j].p + parsed[ln][j].c))
+										.toLowerCase();
 									if (clsKeyword == "extends") {
 										seenExtends = true;
 									} else if (clsKeyword == "inheritance") {
@@ -984,7 +1211,10 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 									parsed[ln][j].l == ld.cls_langindex &&
 									parsed[ln][j].s == ld.cls_str_attrindex
 								) {
-									rightInheritance = doc.getText(Range.create(ln, parsed[ln][j].p, ln, parsed[ln][j].p + parsed[ln][j].c)).toLowerCase() == "right";
+									rightInheritance =
+										doc
+											.getText(Range.create(ln, parsed[ln][j].p, ln, parsed[ln][j].p + parsed[ln][j].c))
+											.toLowerCase() == "right";
 									break;
 								}
 							}
@@ -997,21 +1227,30 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				if (superclasses.length && thisMethod) {
 					// Get the list of allsuperclasses that have this method
 					const queryrespdata = await makeRESTRequest("POST", 1, "/action/query", server, {
-						query: "SELECT Origin, Parent AS Super FROM %Dictionary.CompiledMethod WHERE Name = ? AND Parent %INLIST $LISTFROMSTRING(?)",
-						parameters: [quoteUDLIdentifier(thisMethod, 0), superclasses.join(",")]
+						query:
+							"SELECT Origin, Parent AS Super FROM %Dictionary.CompiledMethod WHERE Name = ? AND Parent %INLIST $LISTFROMSTRING(?)",
+						parameters: [quoteUDLIdentifier(thisMethod, 0), superclasses.join(",")],
 					});
 					if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length) {
 						// Determine which class ##super is in
 						if (rightInheritance) superclasses.reverse();
-						originclass = queryrespdata.data.result.content.sort((a, b) => superclasses.indexOf(a.Super) - superclasses.indexOf(b.Super))[0].Origin;
+						originclass = queryrespdata.data.result.content.sort(
+							(a, b) => superclasses.indexOf(a.Super) - superclasses.indexOf(b.Super),
+						)[0].Origin;
 					}
 					if (originclass) {
 						const superRange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
-						return classMemberLocationLink(params.textDocument.uri, originclass, thisMethod, "Method|ClassMethod", superRange, server);
+						return classMemberLocationLink(
+							params.textDocument.uri,
+							originclass,
+							thisMethod,
+							"Method|ClassMethod",
+							superRange,
+							server,
+						);
 					}
 				}
-			}
-			else if (
+			} else if (
 				parsed[params.position.line][i].l == ld.xml_langindex &&
 				parsed[params.position.line][i].s == ld.xml_str_attrindex &&
 				doc.languageId == "objectscript-class"
@@ -1037,7 +1276,14 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					if (cls == "") cls = thisClass;
 					if (cls == thisClass) {
 						// The method may be defined in this class
-						const currentClassLinks = findMemberInCurrentClass(doc, parsed, params.textDocument.uri, method, "ClassMethod", strRange);
+						const currentClassLinks = findMemberInCurrentClass(
+							doc,
+							parsed,
+							params.textDocument.uri,
+							method,
+							"ClassMethod",
+							strRange,
+						);
 						if (currentClassLinks) return currentClassLinks;
 					}
 					// The method is defined in another class
@@ -1045,14 +1291,21 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 						// Use the same query as above even though we don't
 						// need Stub so we don't create another cached query
 						query: "SELECT Origin, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?",
-						parameters: [cls, method]
+						parameters: [cls, method],
 					});
 					if (Array.isArray(queryrespdata?.data?.result?.content) && queryrespdata.data.result.content.length > 0) {
 						// We got data back
 
 						const originclass = queryrespdata.data.result.content[0].Origin;
 						if (originclass !== "") {
-							return classMemberLocationLink(params.textDocument.uri, originclass, method, "ClassMethod", strRange, server);
+							return classMemberLocationLink(
+								params.textDocument.uri,
+								originclass,
+								method,
+								"ClassMethod",
+								strRange,
+								server,
+							);
 						}
 					}
 				}

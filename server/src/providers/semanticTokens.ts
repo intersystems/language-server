@@ -1,12 +1,12 @@
-import { SemanticTokensBuilder, SemanticTokensDeltaParams, SemanticTokensParams } from 'vscode-languageserver/node';
-import { lookupattr } from '../parse/parse';
-import { getParsedDocument } from '../utils/functions';
-import { compressedline } from '../utils/types';
-import { tokenBuilders } from '../utils/variables';
+import { SemanticTokensBuilder, SemanticTokensDeltaParams, SemanticTokensParams } from "vscode-languageserver/node";
+import { lookupattr } from "../parse/parse";
+import { getParsedDocument } from "../utils/functions";
+import { compressedline } from "../utils/types";
+import { tokenBuilders } from "../utils/variables";
 
 /**
  * Get the semantic tokens builder for this document, or create one if it doesn't exist.
- * 
+ *
  * @param document The TextDocument
  */
 function getTokenBuilder(document: string): SemanticTokensBuilder {
@@ -24,28 +24,32 @@ function insertTokensIntoBuilder(tokens: compressedline[], builder: SemanticToke
 		const line = tokens[lineno];
 		for (let itemno = 0; itemno < line.length; itemno++) {
 			const item = line[itemno];
-			builder.push(lineno, item.p, item.c, lookupattr(item.l,item.s), 0);
+			builder.push(lineno, item.p, item.c, lookupattr(item.l, item.s), 0);
 		}
 	}
 }
 
 export async function onSemanticTokens(params: SemanticTokensParams) {
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) {return { data: [] };}
-	
+	if (parsed === undefined) {
+		return { data: [] };
+	}
+
 	// Get the token builder for this document
 	const builder = getTokenBuilder(params.textDocument.uri);
 
 	// Push the tokens into the builder
 	insertTokensIntoBuilder(parsed, builder);
-	
+
 	return builder.build();
 }
 
 export async function onSemanticTokensDelta(params: SemanticTokensDeltaParams) {
 	const parsed = await getParsedDocument(params.textDocument.uri);
-	if (parsed === undefined) {return { edits: [] };}
-	
+	if (parsed === undefined) {
+		return { edits: [] };
+	}
+
 	// Get the token builder for this document
 	const builder = getTokenBuilder(params.textDocument.uri);
 
@@ -54,6 +58,6 @@ export async function onSemanticTokensDelta(params: SemanticTokensDeltaParams) {
 
 	// Push the tokens into the builder
 	insertTokensIntoBuilder(parsed, builder);
-	
+
 	return builder.buildEdits();
 }

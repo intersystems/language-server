@@ -10,18 +10,17 @@ import {
 	TextEditorRevealType,
 	Selection,
 	TextEditor,
-	TextEditorEdit
-} from 'vscode';
+	TextEditorEdit,
+} from "vscode";
 
-import { WorkspaceEdit, TextEdit } from 'vscode-languageclient/node';
+import { WorkspaceEdit, TextEdit } from "vscode-languageclient/node";
 
-import { client } from './extension';
+import { client } from "./extension";
 
 /**
  * Callback function for the `intersystems.language-server.overrideClassMembers` command.
  */
 export async function overrideClassMembers() {
-
 	// Get the open document and check that it's an ObjectScript class
 	const openDoc = window.activeTextEditor.document;
 	if (openDoc.languageId != "objectscript-class") {
@@ -58,7 +57,7 @@ export async function overrideClassMembers() {
 	if (cursorvalid) {
 		docposvalid = await client.sendRequest("intersystems/refactor/validateOverrideCursor", {
 			uri: openDoc.uri.toString(),
-			line: selection.active.line
+			line: selection.active.line,
 		});
 	}
 	if (!cursorvalid || !docposvalid) {
@@ -68,9 +67,12 @@ export async function overrideClassMembers() {
 	}
 
 	// Ask the user to select the type of member that they want to override
-	const selectedType = await window.showQuickPick(["Method", "Parameter", "Projection", "Property", "Query", "Trigger", "XData"], {
-		title: "Pick the type of class member to override"
-	});
+	const selectedType = await window.showQuickPick(
+		["Method", "Parameter", "Projection", "Property", "Query", "Trigger", "XData"],
+		{
+			title: "Pick the type of class member to override",
+		},
+	);
 	if (!selectedType) {
 		// No member type was selected, so exit
 		return;
@@ -79,18 +81,16 @@ export async function overrideClassMembers() {
 	let plural = selectedType + "s";
 	if (selectedType == "Query") {
 		plural = "Queries";
-	}
-	else if (selectedType == "XData") {
+	} else if (selectedType == "XData") {
 		plural = "XData blocks";
-	}
-	else if (selectedType == "Property") {
+	} else if (selectedType == "Property") {
 		plural = "Properties";
 	}
 
 	// Ask the server for all overridable members of the selected type
 	const overridableMembers: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listOverridableMembers", {
 		uri: openDoc.uri.toString(),
-		memberType: selectedType
+		memberType: selectedType,
 	});
 	if (!overridableMembers?.length) {
 		// There are no members of this type to override, so tell the user and exit
@@ -103,7 +103,7 @@ export async function overrideClassMembers() {
 		title: `Pick the ${plural} to override`,
 		matchOnDescription: true,
 		matchOnDetail: true,
-		canPickMany: true
+		canPickMany: true,
 	});
 	if (!selectedMembers?.length) {
 		// No members were selected, so exit
@@ -115,7 +115,7 @@ export async function overrideClassMembers() {
 		uri: openDoc.uri.toString(),
 		members: selectedMembers,
 		cursor: selection.active,
-		memberType: selectedType
+		memberType: selectedType,
 	});
 
 	// Apply the workspace edit
@@ -133,7 +133,7 @@ export async function selectParameterType(uri: string, parameterRange: Range) {
 	const selectedParameter = await window.showQuickPick(allparametertypes, {
 		title: "Pick the Parameter type",
 		matchOnDescription: true,
-		canPickMany: false
+		canPickMany: false,
 	});
 	if (!selectedParameter) {
 		// No parameter was selected
@@ -143,12 +143,12 @@ export async function selectParameterType(uri: string, parameterRange: Range) {
 	// Compute the workspace edit
 	const change: TextEdit = {
 		range: parameterRange,
-		newText: selectedParameter.label
+		newText: selectedParameter.label,
 	};
 	const edit: WorkspaceEdit = {
 		changes: {
-			[uri]: [change]
-		}
+			[uri]: [change],
+		},
 	};
 
 	// Apply the workspace edit
@@ -162,7 +162,7 @@ export async function selectImportPackage(uri: string, classname: string) {
 	// Ask for all import packages
 	const allimportpackages: QuickPickItem[] = await client.sendRequest("intersystems/refactor/listImportPackages", {
 		uri: uri,
-		classmame: classname
+		classmame: classname,
 	});
 
 	let selectedPackage: QuickPickItem;
@@ -177,7 +177,7 @@ export async function selectImportPackage(uri: string, classname: string) {
 		// Ask the user to select an import package
 		selectedPackage = await window.showQuickPick(allimportpackages, {
 			title: "Pick the package to import",
-			canPickMany: false
+			canPickMany: false,
 		});
 		if (!selectedPackage) {
 			// No package was selected
@@ -198,7 +198,13 @@ export async function selectImportPackage(uri: string, classname: string) {
 /**
  * Callback function for the `intersystems.language-server.extractMethod` command.
  */
-export async function extractMethod(uri: string, lnstart: number, lnend: number, lnmethod: number, newmethodtype: string) {
+export async function extractMethod(
+	uri: string,
+	lnstart: number,
+	lnend: number,
+	lnmethod: number,
+	newmethodtype: string,
+) {
 	// Get the list of class member names
 	const symbols = await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
 	const clsmembers: string[] = [];
@@ -216,7 +222,6 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 			let testname: string = newmethodname;
 			if (
 				(newmethodname.charAt(0) !== '"' || newmethodname.charAt(newmethodname.length) !== '"') &&
-				// eslint-disable-next-line no-control-regex
 				newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g) === null
 			) {
 				// Input contains forbidden characters so double exisiting " and add leading and trailing "
@@ -228,15 +233,15 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 			if (clsmembers.includes(testname)) {
 				return "Name already in use";
 			}
-		}
+		},
 	});
 
 	if (!newmethodname) {
 		// No name
 		return;
 	}
-	// Format name 
-	// eslint-disable-next-line no-control-regex
+	// Format name
+
 	if (newmethodname.match(/(^([A-Za-z]|%)$)|(^([A-Za-z]|%)([A-Za-z]|\d|[^\x00-\x7F])+$)/g) === null) {
 		// Add quotes if the name does not start with a letter or %, then followed by letter/number/ascii>128
 		newmethodname = '"' + newmethodname.replace('"', '""') + '"';
@@ -249,7 +254,7 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 		lnstart: lnstart,
 		lnend: lnend,
 		lnmethod: lnmethod,
-		newmethodtype: newmethodtype
+		newmethodtype: newmethodtype,
 	});
 
 	// Apply the workspace edit
@@ -272,21 +277,23 @@ export async function extractMethod(uri: string, lnstart: number, lnend: number,
 		const linesize = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length - 1].newText.length;
 		const range2: Range = new Range(
 			new Position(anchor2.line + methodsize + 1, anchor2.character),
-			new Position(anchor2.line + methodsize + 1, anchor2.character + linesize + 1)
+			new Position(anchor2.line + methodsize + 1, anchor2.character + linesize + 1),
 		);
 
 		// Scroll to the extracted method
 		activeEditor.revealRange(range);
 
 		// Highlight extracted method and method call
-		const color: string = "#ffff0020";	// Transparent yellow 
+		const color: string = "#ffff0020"; // Transparent yellow
 		const timeout: number = 2000; // Highlight disapears after 2 seconds
 		const decoration = window.createTextEditorDecorationType({
-			backgroundColor: color
+			backgroundColor: color,
 		});
 		activeEditor.setDecorations(decoration, [range, range2]);
-		await new Promise(r => setTimeout(r, timeout));
-		setTimeout(function () { decoration.dispose(); }, 0);
+		await new Promise((r) => setTimeout(r, timeout));
+		setTimeout(function () {
+			decoration.dispose();
+		}, 0);
 	}
 }
 
@@ -304,7 +311,7 @@ export async function showSymbolInClass(uri: string, memberType: string, memberN
 		return;
 	}
 	const symbol = symbols[0].children.find(
-		(symbol) => symbol.detail.toLowerCase().includes(memberType.toLowerCase()) && symbol.name === memberName
+		(symbol) => symbol.detail.toLowerCase().includes(memberType.toLowerCase()) && symbol.name === memberName,
 	);
 	if (symbol !== undefined) {
 		// Show the symbol in the editor
@@ -320,7 +327,14 @@ export async function showSymbolInClass(uri: string, memberType: string, memberN
 /**
  * Callback function for the `intersystems.language-server.setSelection` command.
  */
-export function setSelection(editor: TextEditor, _edit: TextEditorEdit, startLine: number, startCharacter: number, endLine: number, endCharacter: number) {
+export function setSelection(
+	editor: TextEditor,
+	_edit: TextEditorEdit,
+	startLine: number,
+	startCharacter: number,
+	endLine: number,
+	endCharacter: number,
+) {
 	const range = new Range(startLine, startCharacter, endLine, endCharacter);
 	editor.selection = new Selection(range.start, range.end);
 	editor.revealRange(range, TextEditorRevealType.InCenter);
