@@ -1816,6 +1816,7 @@
     "intersystems-community.vscode-objectscript"
   ],
   "prettier": {
-    "useTabs": true
+    "useTabs": true,
+    "printWidth": 120
   }
 }
