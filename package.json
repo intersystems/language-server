@@ -1800,7 +1800,6 @@
     "@types/turndown": "^5.0.6",
     "@vscode/vsce": "^3.7.1",
     "eslint": "^10.2.1",
-    "globals": "^17.5.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
     "ovsx": "^0.10.11",
