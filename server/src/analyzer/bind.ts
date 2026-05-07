@@ -7,8 +7,8 @@ import type { u8, i32, ptr, result } from "@vscode/wasm-component-model";
 
 export namespace analyzer {
 	export type SrcLoc = {
-		ln: u8;
-		cn: u8;
+		line: u8;
+		character: u8;
 	};
 	export type Range = {
 		lft: SrcLoc;
@@ -28,6 +28,7 @@ export namespace analyzer {
 	export type MethodInfo = {
 		args: Arg[];
 		out?: string | undefined;
+		body: Range;
 	};
 	export type ParameterInfo = {
 		t?: string | undefined;
@@ -324,6 +325,11 @@ export namespace analyzer {
 			}
 		}
 	}
+	export type Completion = {
+		classname?: u8 | undefined;
+		variable?: u8 | undefined;
+		statement?: u8 | undefined;
+	};
 	export type Imports = {};
 	export namespace Imports {
 		export type Promisified = $wcm.$imports.Promisify<Imports>;
@@ -340,6 +346,14 @@ export namespace analyzer {
 		 * @throws AnalysisErr.Error_
 		 */
 		analyzeRtn: (path: string, src: string) => RoutineInfo;
+		/**
+		 * @throws AnalysisErr.Error_
+		 */
+		completeClass: (path: string, prefix: string) => Completion;
+		/**
+		 * @throws AnalysisErr.Error_
+		 */
+		completeMethod: (path: string, prefix: string) => Completion;
 	};
 	export namespace Exports {
 		export type Promisified = $wcm.$exports.Promisify<Exports>;
@@ -351,8 +365,8 @@ export namespace analyzer {
 
 export namespace analyzer.$ {
 	export const SrcLoc = new $wcm.RecordType<SrcLoc>([
-		["ln", $wcm.u8],
-		["cn", $wcm.u8],
+		["line", $wcm.u8],
+		["character", $wcm.u8],
 	]);
 	export const Range = new $wcm.RecordType<Range>([
 		["lft", SrcLoc],
@@ -372,6 +386,7 @@ export namespace analyzer.$ {
 	export const MethodInfo = new $wcm.RecordType<MethodInfo>([
 		["args", new $wcm.ListType<analyzer.Arg>(Arg)],
 		["out", new $wcm.OptionType<string>($wcm.wstring)],
+		["body", Range],
 	]);
 	export const ParameterInfo = new $wcm.RecordType<ParameterInfo>([
 		["t", new $wcm.OptionType<string>($wcm.wstring)],
@@ -434,6 +449,11 @@ export namespace analyzer.$ {
 		[["P", ParseErr]],
 		analyzer.AnalysisErr._ctor,
 	);
+	export const Completion = new $wcm.RecordType<Completion>([
+		["classname", new $wcm.OptionType<u8>($wcm.u8)],
+		["variable", new $wcm.OptionType<u8>($wcm.u8)],
+		["statement", new $wcm.OptionType<u8>($wcm.u8)],
+	]);
 	export namespace exports {
 		export const analyzeCls = new $wcm.FunctionType<analyzer.Exports["analyzeCls"]>(
 			"analyze-cls",
@@ -459,6 +479,30 @@ export namespace analyzer.$ {
 				analyzer.AnalysisErr.Error_,
 			),
 		);
+		export const completeClass = new $wcm.FunctionType<analyzer.Exports["completeClass"]>(
+			"complete-class",
+			[
+				["path", $wcm.wstring],
+				["prefix", $wcm.wstring],
+			],
+			new $wcm.ResultType<analyzer.Completion, analyzer.AnalysisErr>(
+				Completion,
+				AnalysisErr,
+				analyzer.AnalysisErr.Error_,
+			),
+		);
+		export const completeMethod = new $wcm.FunctionType<analyzer.Exports["completeMethod"]>(
+			"complete-method",
+			[
+				["path", $wcm.wstring],
+				["prefix", $wcm.wstring],
+			],
+			new $wcm.ResultType<analyzer.Completion, analyzer.AnalysisErr>(
+				Completion,
+				AnalysisErr,
+				analyzer.AnalysisErr.Error_,
+			),
+		);
 	}
 }
 export namespace analyzer._ {
@@ -468,6 +512,8 @@ export namespace analyzer._ {
 		export const functions: Map<string, $wcm.FunctionType> = new Map([
 			["analyzeCls", $.exports.analyzeCls],
 			["analyzeRtn", $.exports.analyzeRtn],
+			["completeClass", $.exports.completeClass],
+			["completeMethod", $.exports.completeMethod],
 		]);
 		export function bind(exports: Exports, context: $wcm.WasmContext): analyzer.Exports {
 			return $wcm.$exports.bind<analyzer.Exports>(_, exports, context);
@@ -487,6 +533,20 @@ export namespace analyzer._ {
 			src_ptr: i32,
 			src_len: i32,
 			result: ptr<result<RoutineInfo, AnalysisErr>>,
+		) => void;
+		"complete-class": (
+			path_ptr: i32,
+			path_len: i32,
+			prefix_ptr: i32,
+			prefix_len: i32,
+			result: ptr<result<Completion, AnalysisErr>>,
+		) => void;
+		"complete-method": (
+			path_ptr: i32,
+			path_len: i32,
+			prefix_ptr: i32,
+			prefix_len: i32,
+			result: ptr<result<Completion, AnalysisErr>>,
 		) => void;
 	};
 	export function bind(

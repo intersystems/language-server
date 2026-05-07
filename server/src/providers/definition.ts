@@ -42,16 +42,16 @@ function lookupClassMember(clsName: string, memName: string, originSelectionRang
 	}
 	const [targetUri, _clsInfo, memInfo] = uri_cls_mem;
 	const targetRange = Range.create(
-		Number(memInfo.before.ln) - 1,
-		Number(memInfo.before.cn) - 1,
-		Number(memInfo.after.ln) - 1,
-		Number(memInfo.after.cn) - 1,
+		Number(memInfo.before.line),
+		Number(memInfo.before.character),
+		Number(memInfo.after.line),
+		Number(memInfo.after.character),
 	); // the member definition
 	const targetSelectionRange = Range.create(
-		Number(memInfo.name.before.ln) - 1,
-		Number(memInfo.name.before.cn) - 1,
-		Number(memInfo.name.after.ln) - 1,
-		Number(memInfo.name.after.cn) - 1,
+		Number(memInfo.name.before.line),
+		Number(memInfo.name.before.character),
+		Number(memInfo.name.after.line),
+		Number(memInfo.name.after.character),
 	); // the member name
 	return [
 		{
@@ -153,10 +153,10 @@ async function classLocationLink(
 		const [targetUri, clsInfo] = uri_cls;
 		const targetRange = Range.create(0, 0, uinteger.MAX_VALUE, uinteger.MAX_VALUE); // the whole file
 		const targetSelectionRange = Range.create(
-			Number(clsInfo.name.before.ln) - 1,
-			Number(clsInfo.name.before.cn) - 1,
-			Number(clsInfo.name.after.ln) - 1,
-			Number(clsInfo.name.after.cn) - 1,
+			Number(clsInfo.name.before.line),
+			Number(clsInfo.name.before.character),
+			Number(clsInfo.name.after.line),
+			Number(clsInfo.name.after.character),
 		); // the class name
 		return [
 			{

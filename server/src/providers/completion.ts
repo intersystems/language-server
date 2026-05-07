@@ -27,6 +27,7 @@ import {
 	normalizeClassname,
 	macroDefToDoc,
 	showInternalForServer,
+	getAnalyzedDocument,
 } from "../utils/functions";
 import {
 	ServerSpec,
@@ -64,6 +65,7 @@ import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { localInfoPrefix } from "./hover";
+import { completeClass, completeMethod } from "../analyzer";
 
 /**
  * ServerSpec's mapped to the XML assist schema cache for that server.
@@ -571,15 +573,13 @@ class SchemaCache {
  * @param server The server that doc is associated with.
  * @param line The line of doc that we're in.
  */
-async function completionFullClassName(
+async function* completionFullClassName(
 	doc: TextDocument,
 	parsed: compressedline[],
 	server: ServerSpec,
 	line: number,
 	settings: LanguageServerConfiguration,
-): Promise<CompletionItem[]> {
-	const result: CompletionItem[] = [];
-
+): AsyncGenerator<CompletionItem> {
 	// Add locally available classes
 	const added = new Set<string>();
 	for (const [uri, cls] of getAnalyzedClasses()) {
@@ -596,27 +596,28 @@ async function completionFullClassName(
 		};
 		item.insertText = item.label;
 		item.label = localInfoPrefix + item.label;
-		result.push(item);
+		yield item;
 	}
 
 	// Get the list of imports for resolution
 	const imports = await getImports(doc, parsed, line, server);
 	// Get all classes
 	const querydata = {
-		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
-			}`,
+		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
+			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+		}`,
 		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0],
 	};
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (const clsobj of respdata.data.result.content) {
 			const compItem: CompletionItem = makeClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated);
-			if (added.has(clsobj.Name)) continue
-			result.push(compItem);
+			if (added.has(clsobj.Name)) continue;
+			yield compItem;
 		}
 	}
 
-	return result;
+	return;
 }
 
 function makeClassCompletionItem(imports: string[], name: string, uri: TextDocument["uri"], deprecated: boolean) {
@@ -665,8 +666,9 @@ async function completionPackage(server: ServerSpec, settings: LanguageServerCon
 
 	// Get all the packages
 	const querydata = {
-		query: `SELECT DISTINCT $PIECE(dcd.Name,'.',1,$LENGTH(dcd.Name,'.')-1) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
-			}`,
+		query: `SELECT DISTINCT $PIECE(dcd.Name,'.',1,$LENGTH(dcd.Name,'.')-1) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
+			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+		}`,
 		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0],
 	};
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
@@ -782,13 +784,13 @@ async function globalsOrRoutines(
 		server,
 		isRoutine
 			? {
-				query: `SELECT DISTINCT $PIECE(Name,'.',1,$LENGTH(Name,'.')-1) AS Name FROM %Library.RoutineMgr_StudioOpenDialog(?,1,1,1,1,1,0,'NOT (Name %PATTERN ''.E1"."0.1"G"1N1".obj"'' AND $LENGTH(Name,''.'') > 3)')`,
-				parameters: [`${prefix.length ? `${prefix.slice(0, -1)}/` : ""}*.mac,*.int,*.obj`],
-			}
+					query: `SELECT DISTINCT $PIECE(Name,'.',1,$LENGTH(Name,'.')-1) AS Name FROM %Library.RoutineMgr_StudioOpenDialog(?,1,1,1,1,1,0,'NOT (Name %PATTERN ''.E1"."0.1"G"1N1".obj"'' AND $LENGTH(Name,''.'') > 3)')`,
+					parameters: [`${prefix.length ? `${prefix.slice(0, -1)}/` : ""}*.mac,*.int,*.obj`],
+				}
 			: {
-				query: "SELECT Name FROM %SYS.GlobalQuery_NameSpaceList(,?,?,,,1,0)",
-				parameters: [`${prefix}*`, (await showInternalForServer(server)) ? 1 : 0],
-			},
+					query: "SELECT Name FROM %SYS.GlobalQuery_NameSpaceList(,?,?,,,1,0)",
+					parameters: [`${prefix}*`, (await showInternalForServer(server)) ? 1 : 0],
+				},
 	);
 	if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 		return respdata.data.result.content.map((item: { Name: string }) => {
@@ -819,6 +821,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const prevline = doc.getText(Range.create(Position.create(params.position.line, 0), params.position));
 	const prevlineLower = prevline.toLowerCase();
+
 	const classregex =
 		/^class[ ]+%?[\p{L}\d]+(\.{1}[\p{L}\d]+)* +extends[ ]+(\(([%]?[\p{L}\d]+(\.{1}[\p{L}\d]+)*,[ ]*)*)?$/iu;
 	let firsttwotokens = "";
@@ -872,6 +875,53 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 	const asRegex = /\s+as\s+$/;
 	const parenAndCommaRegex = /[,(]\s*$/;
+
+	// Provide autocompletion if we can infer from parse result
+	const analysis = await getAnalyzedDocument(params.textDocument.uri);
+	if (analysis !== undefined && !("error" in analysis)) {
+		const completeClassResult = await completeClass(
+			"",
+			doc.getText(Range.create(Position.create(0, 0), params.position)),
+		);
+		let completeMethodResult = undefined;
+		for (const member of analysis.members) {
+			if (member.kind.isClassMethod() || member.kind.isClientMethod() || member.kind.isMethod()) {
+				const method = member.kind.value;
+				if (isPositionBefore(method.body.lft, params.position) && isPositionBefore(params.position, method.body.rht)) {
+					const methodBody = doc.getText(Range.create(method.body.lft, params.position));
+					completeMethodResult = await completeMethod("", methodBody);
+				}
+			}
+		}
+		// result.push({
+		// 	label: JSON.stringify({ completeClassResult, completeMethodResult })
+		// })
+		const classnameOffset = completeClassResult?.classname ?? completeMethodResult?.classname;
+		if (classnameOffset !== undefined) {
+			if (classnameOffset === 0) {
+				for await (const item of completionFullClassName(doc, parsed, server, params.position.line, settings)) {
+					result.push(item);
+				}
+			} else {
+				const filter = doc.getText(
+					Range.create(doc.positionAt(doc.offsetAt(params.position) - classnameOffset), params.position),
+				);
+				for await (const item of completionPartialClassName(filter, settings, server, doc)) {
+					result.push(item);
+				}
+			}
+		}
+		const statementOffset = completeClassResult?.statement ?? completeMethodResult?.statement;
+		if (statementOffset !== undefined && statementOffset <= 3) {
+			const filter = doc.getText(
+				Range.create(doc.positionAt(doc.offsetAt(params.position) - statementOffset), params.position),
+			);
+			for await (const item of completeStatment(filter)) {
+				result.push(item);
+			}
+		}
+		return result;
+	}
 
 	if (prevline.endsWith("$$$") && [ld.cos_langindex, ld.sql_langindex].includes(triggerlang)) {
 		// This is a macro
@@ -1146,8 +1196,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Get all appropriate subclasses of %Query
 		const querydata = {
-			query: `SELECT dcd.Name, Deprecated FROM %Dictionary.ClassDefinition_SubclassOf(?) AS sco, %Dictionary.ClassDefinition AS dcd WHERE sco.Name = dcd.Name AND sco.Name NOT %INLIST $LISTFROMSTRING(?)${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
-				}`,
+			query: `SELECT dcd.Name, Deprecated FROM %Dictionary.ClassDefinition_SubclassOf(?) AS sco, %Dictionary.ClassDefinition AS dcd WHERE sco.Name = dcd.Name AND sco.Name NOT %INLIST $LISTFROMSTRING(?)${
+				!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+			}`,
 			parameters: ["%Library.Query", "%Library.ExtentSQLQuery,%Library.RowSQLQuery"],
 		};
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
@@ -1202,8 +1253,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		classregex.test(prevline)
 	) {
 		// This is a full class name
-
-		result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
+		for await (const item of completionFullClassName(doc, parsed, server, params.position.line, settings)) {
+			result.push(item);
+		}
 	} else if (
 		(prevline.endsWith(".") &&
 			prevline.slice(-2, -1) !== "," &&
@@ -1271,56 +1323,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		const globalOrRoutineMatch = prevline.match(/\^(%?[\d\p{L}.]+)$/u);
 		if (prevtokentype === "class" || prevtokentype === "system") {
 			// This is a partial class name
-
-			let filter: string;
-			if (prevtokentype === "system") {
-				filter = "%SYSTEM.";
-			} else {
-				if (prevtokentext.slice(-1) !== ".") {
-					filter = prevtokentext + ".";
-				} else {
-					filter = prevtokentext;
-				}
-			}
-
-			// Add locally available classes
-			const added = new Set<string>();
-			for (const [uri, cls] of getAnalyzedClasses()) {
-				if (!cls.name.text.startsWith(filter)) {
-					continue;
-				}
-				added.add(cls.name.text);
-				result.push({
-					label: cls.name.text.slice(filter.length),
-					kind: CompletionItemKind.Class,
-					data: ["class", cls.name.text.slice(filter.length), uri],
-					tags: cls.deprecated ? [CompletionItemTag.Deprecated] : undefined,
-					documentation: {
-						kind: MarkupKind.Markdown,
-						value: documaticHtmlToMarkdown(cls.doc),
-					},
-				});
-			}
-
-			// Get all classes that match the filter
-			const querydata = {
-				query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
-					}`,
-				parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0, `Name %STARTSWITH '${filter}'`],
-			};
-			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
-			if (respdata !== undefined && respdata.data.result.content.length > 0) {
-				// We got data back
-
-				for (const clsobj of respdata.data.result.content) {
-					if (added.has(clsobj.Name)) continue
-					result.push({
-						label: clsobj.Name.slice(filter.length),
-						kind: CompletionItemKind.Class,
-						data: ["class", clsobj.Name, doc.uri],
-						tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
-					});
-				}
+			const filter = prevtokentype === "system" ? "%SYSTEM." : prevtokentext;
+			for await (const item of completionPartialClassName(filter, settings, server, doc)) {
+				result.push(item);
 			}
 		} else if (globalOrRoutineMatch && triggerlang == ld.cos_langindex) {
 			// This might be a routine or global
@@ -1371,10 +1376,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 				// Query the server to get the names and descriptions of all parameters
 				const data: QueryData = {
-					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${membercontext.context == "instance"
-						? " AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')"
-						: ""
-						}${internalStr}${deprecatedStr}`,
+					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${
+						membercontext.context == "instance"
+							? " AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')"
+							: ""
+					}${internalStr}${deprecatedStr}`,
 					parameters: [membercontext.baseclass],
 				};
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
@@ -1722,10 +1728,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Query the server to get the names and descriptions of all class-specific parameters
 		const data: QueryData = {
-			query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${isProperty
-				? " OR Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)"
-				: ""
-				}${!(await showInternalForServer(server)) ? " AND Internal = 0" : ""}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
+			query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${
+				isProperty
+					? " OR Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)"
+					: ""
+			}${!(await showInternalForServer(server)) ? " AND Internal = 0" : ""}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
 			parameters: isProperty ? [normalizedcls, currentClass(doc, parsed)] : [normalizedcls],
 		};
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
@@ -1999,7 +2006,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					}
 				} else if (thiskeydoc.constraint === "KW_SYSENUM_CLASS_LIST") {
 					// List of classes
-					result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
+					for await (const item of completionFullClassName(doc, parsed, server, params.position.line, settings)) {
+						result.push(item);
+					}
 				} else if (thiskeydoc.constraint === "KW_SYSENUM_PACKAGE_LIST") {
 					// List of packages
 					result = await completionPackage(server, settings);
@@ -2040,8 +2049,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 					}
 					const querydata = {
-						query: `SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ?${!(await showInternalForServer(server)) ? " AND Internal = 0" : ""
-							}`,
+						query: `SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ?${
+							!(await showInternalForServer(server)) ? " AND Internal = 0" : ""
+						}`,
 						parameters: [thisclass],
 					};
 					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
@@ -2484,8 +2494,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Query the server to get the names and descriptions of all non-calculated properties
 		const data: QueryData = {
-			query: `SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Calculated = 0${!showInternal ? " AND Internal = 0" : ""
-				}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
+			query: `SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Calculated = 0${
+				!showInternal ? " AND Internal = 0" : ""
+			}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
 			parameters: [thisclass],
 		};
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
@@ -2526,6 +2537,51 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	return result;
 }
 
+async function* completionPartialClassName(
+	filter: string,
+	settings: LanguageServerConfiguration,
+	server: ServerSpec,
+	doc: TextDocument,
+): AsyncGenerator<CompletionItem> {
+	filter += filter.endsWith(".") ? "" : ".";
+	const added = new Set<string>();
+	for (const [_uri, cls] of getAnalyzedClasses()) {
+		if (!cls.name.text.startsWith(filter)) {
+			continue;
+		}
+		added.add(cls.name.text);
+		yield {
+			label: cls.name.text.slice(filter.length),
+			kind: CompletionItemKind.Class,
+			data: ["class", cls.name.text.slice(filter.length), doc.uri],
+			tags: cls.deprecated ? [CompletionItemTag.Deprecated] : undefined,
+			documentation: {
+				kind: MarkupKind.Markdown,
+				value: documaticHtmlToMarkdown(cls.doc),
+			},
+		};
+	}
+
+	// Get all classes that match the filter
+	const querydata = {
+		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""}`,
+		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0, `Name %STARTSWITH '${filter}'`],
+	};
+	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
+	if (respdata !== undefined && respdata.data.result.content.length > 0) {
+		// We got data back
+		for (const clsobj of respdata.data.result.content) {
+			if (added.has(clsobj.Name)) continue;
+			yield {
+				label: clsobj.Name.slice(filter.length),
+				kind: CompletionItemKind.Class,
+				data: ["class", clsobj.Name, doc.uri],
+				tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
+			};
+		}
+	}
+}
+
 export async function onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
 	if (item.documentation) return item;
 	if (Array.isArray(item.data) && item.data[0] === "class") {
@@ -2562,4 +2618,38 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 		}
 	}
 	return item;
+}
+
+function isPositionBefore(from: Position, to: Position) {
+	return from.line < to.line || (from.line == to.line && from.character <= to.character);
+}
+
+import commands from "../documentation/commands.json";
+
+function* completeStatment(prefix: string): Generator<CompletionItem> {
+	for (const command of commands) {
+		if (matchCommand(prefix, command)) {
+			yield {
+				label: command.label,
+				kind: CompletionItemKind.Snippet,
+				insertText: command.insertText,
+				documentation: command.documentation.join("\n"),
+			};
+		}
+	}
+}
+
+function matchCommand(prefix: string, command: (typeof commands)[number]): boolean {
+	if (command.insertText?.toLowerCase().startsWith(prefix.toLowerCase())) {
+		return true;
+	}
+	for (const alias of command.alias) {
+		if (alias.toLowerCase().startsWith(prefix.toLowerCase())) {
+			return true;
+		}
+	}
+	if (command.label.toLowerCase().startsWith(prefix.toLowerCase())) {
+		return true;
+	}
+	return false;
 }

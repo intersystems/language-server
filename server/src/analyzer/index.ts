@@ -1,4 +1,4 @@
-import { Memory, WasmContext } from "@vscode/wasm-component-model";
+import { Memory, u8, WasmContext } from "@vscode/wasm-component-model";
 import * as fs from "fs";
 import * as path from "path";
 import { analyzer } from "./bind";
@@ -40,10 +40,10 @@ export async function analyzeCls(path: string, src: string): Promise<AnalyzeResu
 	} catch (rawError) {
 		const error = rawError["cause"]["_value"] as analyzer.ParseErr;
 		const range = Range.create(
-			error.range.lft.ln - 1,
-			error.range.lft.cn - 1,
-			error.range.rht.ln - 1,
-			error.range.rht.cn - 1,
+			error.range.lft.line,
+			error.range.lft.character,
+			error.range.rht.line,
+			error.range.rht.character,
 		);
 		const message = error.message;
 		return {
@@ -56,5 +56,43 @@ export async function analyzeCls(path: string, src: string): Promise<AnalyzeResu
 				},
 			],
 		};
+	}
+}
+
+export async function completeMethod(
+	path: string,
+	src: string,
+): Promise<
+	| {
+			classname?: u8 | undefined;
+			variable?: u8 | undefined;
+			statement?: u8 | undefined;
+	  }
+	| undefined
+> {
+	try {
+		return (await wasm).completeMethod(path, src);
+	} catch (rawError) {
+		console.log(rawError);
+		return undefined;
+	}
+}
+
+export async function completeClass(
+	path: string,
+	src: string,
+): Promise<
+	| {
+			classname?: u8 | undefined;
+			variable?: u8 | undefined;
+			statement?: u8 | undefined;
+	  }
+	| undefined
+> {
+	try {
+		return (await wasm).completeClass(path, src);
+	} catch (rawError) {
+		console.log(rawError);
+		return undefined;
 	}
 }
