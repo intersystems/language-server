@@ -62,14 +62,7 @@ export async function analyzeCls(path: string, src: string): Promise<AnalyzeResu
 export async function completeMethod(
 	path: string,
 	src: string,
-): Promise<
-	| {
-			classname?: u8 | undefined;
-			variable?: u8 | undefined;
-			statement?: u8 | undefined;
-	  }
-	| undefined
-> {
+) {
 	try {
 		return (await wasm).completeMethod(path, src);
 	} catch (rawError) {
@@ -81,14 +74,7 @@ export async function completeMethod(
 export async function completeClass(
 	path: string,
 	src: string,
-): Promise<
-	| {
-			classname?: u8 | undefined;
-			variable?: u8 | undefined;
-			statement?: u8 | undefined;
-	  }
-	| undefined
-> {
+) {
 	try {
 		return (await wasm).completeClass(path, src);
 	} catch (rawError) {

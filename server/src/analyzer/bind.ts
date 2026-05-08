@@ -3,12 +3,12 @@
  *  Licensed under the MIT License. See License.txt in the project root for license information.
  *--------------------------------------------------------------------------------------------*/
 import * as $wcm from "@vscode/wasm-component-model";
-import type { u8, i32, ptr, result } from "@vscode/wasm-component-model";
+import type { u32, u8, i32, ptr, result } from "@vscode/wasm-component-model";
 
 export namespace analyzer {
 	export type SrcLoc = {
-		line: u8;
-		character: u8;
+		line: u32;
+		character: u32;
 	};
 	export type Range = {
 		lft: SrcLoc;
@@ -328,7 +328,7 @@ export namespace analyzer {
 	export type Completion = {
 		classname?: u8 | undefined;
 		variable?: u8 | undefined;
-		statement?: u8 | undefined;
+		command?: u8 | undefined;
 	};
 	export type Imports = {};
 	export namespace Imports {
@@ -365,8 +365,8 @@ export namespace analyzer {
 
 export namespace analyzer.$ {
 	export const SrcLoc = new $wcm.RecordType<SrcLoc>([
-		["line", $wcm.u8],
-		["character", $wcm.u8],
+		["line", $wcm.u32],
+		["character", $wcm.u32],
 	]);
 	export const Range = new $wcm.RecordType<Range>([
 		["lft", SrcLoc],
@@ -452,7 +452,7 @@ export namespace analyzer.$ {
 	export const Completion = new $wcm.RecordType<Completion>([
 		["classname", new $wcm.OptionType<u8>($wcm.u8)],
 		["variable", new $wcm.OptionType<u8>($wcm.u8)],
-		["statement", new $wcm.OptionType<u8>($wcm.u8)],
+		["command", new $wcm.OptionType<u8>($wcm.u8)],
 	]);
 	export namespace exports {
 		export const analyzeCls = new $wcm.FunctionType<analyzer.Exports["analyzeCls"]>(
