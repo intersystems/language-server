@@ -33,20 +33,30 @@ export const onWorkspaceSymbol = async (params: WorkspaceSymbolParams): Promise<
 
 export function memberKindToSymbolKind(kind: MemberInfo["kind"]["tag"]): SymbolKind | null {
 	switch (kind) {
-		case "parameter": {
-			return SymbolKind.TypeParameter;
-		}
-		case "property":
-		case "relationship": {
-			return SymbolKind.Property;
-		}
 		case "method":
 		case "classMethod":
-		case "clientMethod": {
+		case "clientMethod":
 			return SymbolKind.Method;
-		}
-		default: {
-			return null;
-		}
+		case "query":
+			return SymbolKind.Function;
+		case "trigger":
+			return SymbolKind.Event;
+		case "parameter":
+			return SymbolKind.Constant;
+		case "index":
+			return SymbolKind.Array;
+		case "foreignKey":
+			return SymbolKind.Key;
+		case "xData":
+			return SymbolKind.Struct;
+		case "storage":
+			return SymbolKind.Object;
+		case "projection":
+			return SymbolKind.Interface;
+		case "property":
+		case "relationship":
+			return SymbolKind.Property;
+		default:
+			throw new Error(`Unexpected keyword: ${kind}`);
 	}
 }

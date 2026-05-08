@@ -1,4 +1,4 @@
-import { Diagnostic, MarkupContent, MarkupKind, Position, Range } from "vscode-languageserver";
+import { Diagnostic, MarkupContent, MarkupKind, Position, Range, uinteger } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { parse } from "node-html-parser";
@@ -3525,3 +3525,5 @@ export async function showInternalForServer(server: ServerSpec): Promise<boolean
 	showInternalCache.set(key, result);
 	return result;
 }
+
+export const fullRange = Range.create(0, 0, uinteger.MAX_VALUE, uinteger.MAX_VALUE);

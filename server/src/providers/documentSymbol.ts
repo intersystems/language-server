@@ -7,10 +7,20 @@ import {
 	SymbolTag,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { findFullRange, getParsedDocument, isClassMember, labelIsProcedureBlock, prevToken } from "../utils/functions";
+import {
+	findFullRange,
+	fullRange,
+	getAnalyzedDocument,
+	getParsedDocument,
+	isClassMember,
+	labelIsProcedureBlock,
+	prevToken,
+} from "../utils/functions";
 import { documents, mppContinue } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 import { compressedline } from "../utils/types";
+import { memberKindToSymbolKind } from "./workspaceSymbol";
+import { localInfoPrefix } from "./hover";
 
 /** Loop through the class from this line until the next class member or the end of the class */
 function processMember(
@@ -64,7 +74,7 @@ function processMember(
 	return { deprecated, lastNonEmpty };
 }
 
-export async function onDocumentSymbol(params: DocumentSymbolParams) {
+export async function onDocumentSymbol(params: DocumentSymbolParams): Promise<DocumentSymbol[]> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -76,6 +86,27 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 	const result: DocumentSymbol[] = [];
 
 	if (doc.languageId === "objectscript-class") {
+		// Try returning w/ analyzedClass
+		{
+			const cls = await getAnalyzedDocument(params.textDocument.uri);
+			if (cls !== undefined && !("error" in cls)) {
+				return [{
+					name: cls.name.text,
+					kind: SymbolKind.Class,
+					range: fullRange,
+					selectionRange: Range.create(cls.name.before, cls.name.after),
+					tags: cls.deprecated ? [SymbolTag.Deprecated] : [],
+					children: cls.members.map((mem) => ({
+						name: mem.name.text,
+						kind: memberKindToSymbolKind(mem.kind.tag),
+						range: Range.create(mem.before, mem.after),
+						selectionRange: Range.create(mem.name.before, mem.name.after),
+						tags: cls.deprecated || mem.deprecated ? [SymbolTag.Deprecated] : [],
+					})),
+				}];
+			}
+		}
+
 		// Loop through the file and look for the class definition and class members
 
 		const cls: DocumentSymbol = {
@@ -117,7 +148,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 						0,
 						lastnonempty,
 						parsed[lastnonempty][parsed[lastnonempty].length - 1].p +
-							parsed[lastnonempty][parsed[lastnonempty].length - 1].c,
+						parsed[lastnonempty][parsed[lastnonempty].length - 1].c,
 					);
 
 					// Determine if this class is Deprecated
@@ -181,7 +212,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 							0,
 							lastNonEmpty,
 							parsed[lastNonEmpty][parsed[lastNonEmpty].length - 1].p +
-								parsed[lastNonEmpty][parsed[lastNonEmpty].length - 1].c,
+							parsed[lastNonEmpty][parsed[lastNonEmpty].length - 1].c,
 						),
 						selectionRange: Range.create(line, parsed[line][1].p, line, parsed[line][1].p + parsed[line][1].c),
 						tags: deprecated ? [SymbolTag.Deprecated] : undefined,
@@ -416,7 +447,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 					parsed[line][tkn + 1].l == ld.html_langindex &&
 					parsed[line][tkn + 1].s == ld.html_tag_attrindex &&
 					doc.getText(Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c)) ===
-						"<" &&
+					"<" &&
 					doc
 						.getText(
 							Range.create(line, parsed[line][tkn + 1].p, line, parsed[line][tkn + 1].p + parsed[line][tkn + 1].c),

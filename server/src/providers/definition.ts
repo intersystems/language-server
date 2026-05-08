@@ -17,6 +17,7 @@ import {
 	isClassMember,
 	memberRegex,
 	urlMapAttribute,
+	fullRange,
 } from "../utils/functions";
 import { ServerSpec, QueryData, compressedline } from "../utils/types";
 import {
@@ -151,7 +152,7 @@ async function classLocationLink(
 	const uri_cls = getAnalyzedClass(cls);
 	if (uri_cls) {
 		const [targetUri, clsInfo] = uri_cls;
-		const targetRange = Range.create(0, 0, uinteger.MAX_VALUE, uinteger.MAX_VALUE); // the whole file
+		const targetRange = fullRange;
 		const targetSelectionRange = Range.create(
 			Number(clsInfo.name.before.line),
 			Number(clsInfo.name.before.character),
