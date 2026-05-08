@@ -1,4 +1,4 @@
-import { Memory, u8, WasmContext } from "@vscode/wasm-component-model";
+import { Memory, WasmContext } from "@vscode/wasm-component-model";
 import * as fs from "fs";
 import * as path from "path";
 import { analyzer } from "./bind";
@@ -59,10 +59,7 @@ export async function analyzeCls(path: string, src: string): Promise<AnalyzeResu
 	}
 }
 
-export async function completeMethod(
-	path: string,
-	src: string,
-) {
+export async function completeMethod(path: string, src: string) {
 	try {
 		return (await wasm).completeMethod(path, src);
 	} catch (rawError) {
@@ -71,10 +68,7 @@ export async function completeMethod(
 	}
 }
 
-export async function completeClass(
-	path: string,
-	src: string,
-) {
+export async function completeClass(path: string, src: string) {
 	try {
 		return (await wasm).completeClass(path, src);
 	} catch (rawError) {

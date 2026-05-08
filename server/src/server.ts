@@ -32,7 +32,7 @@ import { onSignatureHelp } from "./providers/signatureHelp";
 import { onDocumentFormatting, onDocumentRangeFormatting } from "./providers/formatting";
 import { onDiagnostics, onWorkspaceDiagnostics } from "./providers/diagnostic";
 import { onSemanticTokens, onSemanticTokensDelta } from "./providers/semanticTokens";
-
+import { onWorkspaceSymbol } from "./providers/workspaceSymbol";
 import { LanguageServerConfiguration, ServerSpec } from "./utils/types";
 import {
 	analyzedDocuments,
@@ -71,6 +71,7 @@ connection.onInitialize((params) => {
 				},
 			},
 			documentSymbolProvider: true,
+			workspaceSymbolProvider: true,
 			foldingRangeProvider: true,
 			renameProvider: {
 				prepareProvider: true,
@@ -197,6 +198,8 @@ connection.onNotification("intersystems/server/connectionChange", () => {
 
 connection.onDocumentSymbol(onDocumentSymbol);
 
+connection.onWorkspaceSymbol(onWorkspaceSymbol);
+
 connection.onFoldingRanges(onFoldingRanges);
 
 connection.onPrepareRename(onPrepareRename);
@@ -251,13 +254,10 @@ connection.listen();
 
 import * as fs from "fs";
 import * as path from "path";
-
 async function analyzeWorkspaceFolders(folders: WorkspaceFolder[]) {
 	for (const folder of folders) {
 		const folderURI = URI.parse(folder.uri);
-		if (folderURI.scheme !== "file") {
-			continue;
-		}
+		if (folderURI.scheme !== "file") continue;
 		for (const file of fs.readdirSync(folderURI.fsPath, { recursive: true, withFileTypes: true })) {
 			if (!(file.isFile() && file.name.endsWith(".cls"))) {
 				continue;
