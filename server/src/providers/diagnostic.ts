@@ -28,6 +28,7 @@ import { ServerSpec, StudioOpenDialogFile, QueryData } from "../utils/types";
 import * as ld from "../utils/languageDefinitions";
 import parameterTypes from "../documentation/parameterTypes.json";
 import sqlReservedWords from "../documentation/sqlReservedWords.json";
+import * as analyzer from "../analyzer";
 
 /**
  * Helper method  that appends `range` to value of `key` in `map`
@@ -71,6 +72,9 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 	if ("error" in analyzed) {
 		diagnostics.push(...analyzed.error);
+	}
+	for (const error of await analyzer.check(doc.uri, doc.getText())) {
+		diagnostics.push(error)
 	}
 
 	/** Check if syntax errors should be reported for `language`. */
@@ -174,7 +178,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							parsed[i][j].l == ld.cls_langindex &&
 							parsed[i][j].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() ==
-								"extends"
+							"extends"
 						) {
 							// The 'Extends' keyword is present
 							hassupers = true;
@@ -392,7 +396,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					parsed[i][j - 1].l == ld.cls_langindex &&
 					parsed[i][j - 1].s == ld.cls_keyword_attrindex &&
 					doc.getText(Range.create(i, parsed[i][j - 1].p, i, parsed[i][j - 1].p + parsed[i][j - 1].c)).toLowerCase() ===
-						"class"
+					"class"
 				) {
 					// This is the class name in the class definition line
 
@@ -431,7 +435,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								parsed[i][k].l == ld.cls_langindex &&
 								parsed[i][k].s == ld.cls_keyword_attrindex &&
 								doc.getText(Range.create(i, parsed[i][k].p, i, parsed[i][k].p + parsed[i][k].c)).toLowerCase() ==
-									"sqltablename"
+								"sqltablename"
 							) {
 								hasSqlTableName = true;
 							}
@@ -462,7 +466,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					parsed[i][j].l == ld.cls_langindex &&
 					parsed[i][j].s == ld.cls_keyword_attrindex &&
 					doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() ===
-						"parameter" &&
+					"parameter" &&
 					settings.diagnostics.parameters
 				) {
 					// This line is a UDL Parameter definition
@@ -824,8 +828,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							// Add this class to the map
 							addRangeToMapVal(
 								otherNsDocs,
-								`${currentNs}:::${
-									!word.includes(".") && word.startsWith("%") ? `%Library.${word.slice(1)}` : word
+								`${currentNs}:::${!word.includes(".") && word.startsWith("%") ? `%Library.${word.slice(1)}` : word
 								}.cls`,
 								wordrange,
 							);
@@ -1233,7 +1236,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								parsed[ln][k].l == ld.cls_langindex &&
 								parsed[ln][k].s == ld.cls_keyword_attrindex &&
 								doc.getText(Range.create(ln, parsed[ln][k].p, ln, parsed[ln][k].p + parsed[ln][k].c)).toLowerCase() ==
-									"sqlfieldname"
+								"sqlfieldname"
 							) {
 								hasSqlFieldName = true;
 							} else if (
