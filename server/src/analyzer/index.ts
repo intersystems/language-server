@@ -1,77 +1,131 @@
-import { Memory, WasmContext } from "@vscode/wasm-component-model";
 import * as fs from "fs";
 import * as path from "path";
-import { analyzer } from "./bind";
-import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
+import { analyzer, AnalyzerInterface } from "./bind";
+import { Diagnostic, WorkspaceFolder } from "vscode-languageserver";
+import { connection } from '../utils/variables';
+import { URI } from 'vscode-uri';
 
 const filename = path.resolve(__dirname, "../lib/analyzer.wasm");
 
 async function loadAnalyzer() {
-	const bits = fs.readFileSync(filename);
-	const module = await WebAssembly.compile(bits);
+	try {
+		const bits = fs.readFileSync(filename);
+		const module = await WebAssembly.compile(bits);
 
-	// The context for the WASM module
-	const wasmContext: WasmContext.Default = new WasmContext.Default();
+		const service: analyzer.Imports = {};
+		const exports = await analyzer._.bind(service, module);
 
-	// Instantiate the module
-	const instance = await WebAssembly.instantiate(module, {});
-	// Bind the WASM memory to the context
-	wasmContext.initialize(new Memory.Default(instance.exports));
-
-	// Bind the TypeScript Api
-	return analyzer._.exports.bind(instance.exports as analyzer._.Exports, wasmContext);
+		return exports;
+	} catch (rawError) {
+		console.log(rawError);
+		throw rawError;
+	}
 }
 
-export type Arg = analyzer.Arg;
-export type MethodInfo = analyzer.MethodInfo;
-export type ParameterInfo = analyzer.ParameterInfo;
-export type MemberKind = analyzer.MemberKind;
-export type MemberInfo = analyzer.MemberInfo;
-export type ClassInfo = analyzer.ClassInfo;
-export type AnalysisErr = analyzer.AnalysisErr;
+export type Arg = AnalyzerInterface.Arg;
+export type MethodInfo = AnalyzerInterface.MethodInfo;
+export type ParameterInfo = AnalyzerInterface.ParameterInfo;
+export type MemberKind = AnalyzerInterface.MemberKind;
+export type MemberInfo = AnalyzerInterface.MemberInfo;
+export type ClassInfo = AnalyzerInterface.ClassInfo;
+export type AnalysisErr = AnalyzerInterface.AnalysisErr;
 
 const wasm = loadAnalyzer();
 
 export type AnalyzeResult = ClassInfo | { error: Diagnostic[] };
 
-export async function analyzeCls(path: string, src: string): Promise<AnalyzeResult> {
+const analyzedFolders = new Map<string, AnalyzerInterface.Workspace>();
+
+async function currentFolder(filePath: string): Promise<WorkspaceFolder | undefined> {
 	try {
-		return (await wasm).analyzeCls(path, src);
-	} catch (rawError) {
-		const error = rawError["cause"]["_value"] as analyzer.ParseErr;
-		return {
-			error: [
-				{
-					...error,
-					severity: DiagnosticSeverity.Information,
-					source: "InterSystems Language Server",
-				},
-			],
-		};
+		const folders = await connection.workspace.getWorkspaceFolders();
+		console.log("getWorkspaceFolders returned:", JSON.stringify(folders));
+		console.log("Looking for folder containing:", filePath);
+		const found = folders?.find((folder) => {
+			const folderPath = URI.parse(folder.uri).fsPath;
+			const rel = path.relative(folderPath, filePath);
+			console.log(`  Checking folder ${folderPath}, rel=${rel}`);
+			return !rel.startsWith("..") && !path.isAbsolute(rel);
+		});
+		console.log("Found folder:", JSON.stringify(found));
+		return found;
+	} catch (e) {
+		console.log("getWorkspaceFolders error:", e);
+		return undefined;
 	}
 }
 
-export async function completeMethod(path: string, src: string) {
+async function currentWorkspace(folder: WorkspaceFolder): Promise<AnalyzerInterface.Workspace.Interface> {
+	let analyzedFolder = analyzedFolders.get(folder.uri);
+	if (!analyzedFolder) {
+		analyzedFolder = new (await wasm).analyzerInterface.Workspace();
+		analyzedFolders.set(folder.uri, analyzedFolder);
+	}
+	return analyzedFolder
+}
+
+export async function analyzeCls(filePath: string, src: string, folder?: WorkspaceFolder): Promise<AnalyzeResult> {
+	console.log("Working on file", filePath);
 	try {
-		return (await wasm).completeMethod(path, src);
+		folder = folder ?? await currentFolder(filePath);
+		const workspace = folder && await currentWorkspace(folder);
+		if (!workspace) {
+			return {
+				error: [{
+					message: "No workspace found",
+					range: {
+						start: { line: 0, character: 0 },
+						end: { line: 0, character: 0 }
+					},
+				}],
+			};
+		}
+		return workspace.insertCls(filePath, src);
+	} catch (rawError) {
+		console.log(rawError);
+		return { error: [] }
+		// const error = rawError["cause"]["_value"] as AnalyzerInterface.ParseErr;
+		// return {
+		// 	error: [
+		// 		{
+		// 			...error,
+		// 			severity: DiagnosticSeverity.Information,
+		// 			source: "InterSystems Language Server",
+		// 		},
+		// 	],
+		// };
+	}
+}
+
+export async function completeMethod(src: string) {
+	try {
+		return (await wasm).analyzerInterface.completeMethod(src);
 	} catch (rawError) {
 		console.log(rawError);
 		return undefined;
 	}
 }
 
-export async function completeClass(path: string, src: string) {
+export async function completeClass(src: string) {
 	try {
-		return (await wasm).completeClass(path, src);
+		return (await wasm).analyzerInterface.completeClass(src);
 	} catch (rawError) {
 		console.log(rawError);
 		return undefined;
 	}
 }
 
-export async function check(path: string, src: string): Promise<Diagnostic[]> {
+export async function check(fileURI: URI): Promise<Diagnostic[]> {
+	console.log("Checking?")
 	try {
-		return (await wasm).check(path, src);
+		console.log("Checking?")
+		const folder = await currentFolder(fileURI.fsPath);
+		console.log("Checking?")
+		const workspace = folder && await currentWorkspace(folder);
+		if (!workspace) {
+			return [];
+		}
+		return workspace.check(fileURI.fsPath);
 	} catch (rawError) {
 		console.log(rawError);
 		return [];

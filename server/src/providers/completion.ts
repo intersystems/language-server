@@ -878,7 +878,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	const analysis = await getAnalyzedDocument(params.textDocument.uri);
 	if (analysis !== undefined && !("error" in analysis)) {
 		const completeClassResult = await completeClass(
-			"",
 			doc.getText(Range.create(Position.create(0, 0), params.position)),
 		);
 		let completeMethodResult = undefined;
@@ -887,7 +886,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				const method = member.kind.value;
 				if (isPositionBefore(method.body.start, params.position) && isPositionBefore(params.position, method.body.end)) {
 					const methodBody = doc.getText(Range.create(method.body.start, params.position));
-					completeMethodResult = await completeMethod("", methodBody);
+					completeMethodResult = await completeMethod(methodBody);
 				}
 			}
 		}
