@@ -889,6 +889,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				if (isPositionBefore(method.body.start, params.position) && isPositionBefore(params.position, method.body.end)) {
 					const methodBody = doc.getText(Range.create(method.body.start, params.position));
 					completeMethodResult = await completeMethod(methodBody);
+					break
 				}
 			}
 		}

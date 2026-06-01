@@ -94,7 +94,6 @@ export async function filePathToAnalyzerWorkspace(filePath: string): Promise<Ana
 		const folder = folders?.find((folder) => {
 			const folderPath = URI.parse(folder.uri).fsPath;
 			const rel = path.relative(folderPath, filePath);
-			console.log(`  Checking folder ${folderPath}, rel=${rel}`);
 			return !rel.startsWith("..") && !path.isAbsolute(rel);
 		});
 		const workspace = folder && await folderURIToAnalyzerWorkspace(folder.uri);
@@ -125,7 +124,8 @@ export async function getAnalyzedClass(context: URI, name: string): Promise<[str
 
 export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, ClassInfo]> {
 	const workspace = await filePathToAnalyzerWorkspace(context.path);
-	for (const x of workspace.queryCls("")) {
+	const classes = workspace.queryCls("");
+	for (const x of classes) {
 		yield x;
 	}
 }
