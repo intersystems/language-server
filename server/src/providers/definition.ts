@@ -399,12 +399,27 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					}
 				}
 			} else if (
-				parsed[params.position.line][i].l == ld.cos_langindex &&
-				(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
-					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
-					parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
-					parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
-					parsed[params.position.line][i].s == ld.cos_instvar_attrindex)
+				(parsed[params.position.line][i].l == ld.cos_langindex &&
+					(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
+						parsed[params.position.line][i].s == ld.cos_method_attrindex ||
+						parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
+						parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
+						parsed[params.position.line][i].s == ld.cos_instvar_attrindex)) ||
+				// Check that we are looking at a class member definition
+				(parsed[params.position.line][i].l == ld.cls_langindex &&
+					i == 1 &&
+					isClassMember(
+						doc
+							.getText(
+								Range.create(
+									params.position.line,
+									parsed[params.position.line][0].p,
+									params.position.line,
+									parsed[params.position.line][0].p + parsed[params.position.line][0].c,
+								),
+							)
+							.toLowerCase(),
+					))
 			) {
 				// This is a class member (property/parameter/method)
 
@@ -429,7 +444,15 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				}
 
 				let membercontext: { baseclass: string; context?: string };
-				if (parsed[params.position.line][i].s != ld.cos_instvar_attrindex) {
+				if (
+					parsed[params.position.line][i].s == ld.cos_instvar_attrindex ||
+					parsed[params.position.line][i].l == ld.cls_langindex
+				) {
+					membercontext = {
+						baseclass: thisclass,
+						context: "",
+					};
+				} else {
 					// Find the dot token
 					let dottkn = 0;
 					for (let tkn = 0; tkn < parsed[params.position.line].length; tkn++) {
@@ -441,11 +464,6 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 					// Get the base class that this member is in
 					membercontext = await getClassMemberContext(doc, parsed, dottkn, params.position.line, server);
-				} else {
-					membercontext = {
-						baseclass: thisclass,
-						context: "",
-					};
 				}
 				if (membercontext.baseclass === "") {
 					// If we couldn't determine the class, don't return anything
