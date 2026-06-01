@@ -1,7 +1,7 @@
 import { createConnection, Diagnostic, SemanticTokensBuilder, TextDocuments } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { compressedline, LanguageServerConfiguration, ServerSpec } from "./types";
-import { ClassInfo, MemberInfo } from "../analyzer";
+import { ClassInfo } from "../analyzer";
 
 /**
  * TextDocument URI's mapped to the tokenized representation of the document.
@@ -12,51 +12,6 @@ export const parsedDocuments: Map<string, compressedline[] | undefined> = new Ma
  * TextDocument URI's mapped to the analyzed representation of the document.
  */
 export const analyzedDocuments: Map<string, ClassInfo | { error: Diagnostic[] }> = new Map();
-
-export function getAnalyzedClass(name: string): [string, ClassInfo] | null {
-	for (const [uri, cls] of getAnalyzedClasses()) {
-		if (cls.name.text === name) {
-			return [uri, cls];
-		}
-	}
-	return null;
-}
-
-export function* getAnalyzedClasses(): Generator<[string, ClassInfo]> {
-	for (const [uri, info] of analyzedDocuments) {
-		if (!("error" in info)) {
-			yield [uri, info];
-		}
-	}
-}
-
-export function getAnalyzedClassMember(clsName: string, memName: string): [string, ClassInfo, MemberInfo] | null {
-	for (const [uri, cls, mem] of getAnalyzedClassMembers(clsName)) {
-		if (mem.name.text === memName) {
-			return [uri, cls, mem];
-		}
-	}
-	return null;
-}
-
-export function* getAnalyzedClassMembers(
-	clsName: string,
-	includeExtends: boolean = true,
-): Generator<[string, ClassInfo, MemberInfo]> {
-	const uri_cls = getAnalyzedClass(clsName);
-	if (!uri_cls) {
-		return;
-	}
-	const [uri, cls] = uri_cls;
-	for (const mem of cls.members) {
-		yield [uri, cls, mem];
-	}
-	if (includeExtends) {
-		for (const sup of cls.extends) {
-			yield* getAnalyzedClassMembers(sup);
-		}
-	}
-}
 
 /**
  * Node IPC connection between the server and client.

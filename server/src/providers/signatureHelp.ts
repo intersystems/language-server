@@ -23,9 +23,11 @@ import {
 	determineActiveParam,
 } from "../utils/functions";
 import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
-import { documents, getAnalyzedClassMember } from "../utils/variables";
+import { documents } from "../utils/variables";
+import { getAnalyzedClassMember } from '../analyzer';
 import * as ld from "../utils/languageDefinitions";
 import { prettifyArg } from "./hover";
+import { URI } from 'vscode-uri';
 
 /**
  * Cache of the macro context info required to do a macro expansion when the selected parameter changes.
@@ -199,7 +201,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 		triggerlang != ld.cos_langindex ||
 		// Don't compute signature help inside of a string literal
 		(doc.getText(Range.create(Position.create(params.position.line, 0), params.position)).split('"').length - 1) % 2 ==
-			1
+		1
 	) {
 		if (params.context.activeSignatureHelp) {
 			params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
@@ -365,7 +367,8 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			// Get the method signature
 
 			// Get the method signature locally
-			const methodSignatureHelp = getMethodSignatureHelpLocally(
+			const methodSignatureHelp = await getMethodSignatureHelpLocally(
+				URI.parse(params.textDocument.uri),
 				membercontext.baseclass,
 				member,
 				settings.signaturehelp.documentation,
@@ -380,16 +383,16 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			const querydata =
 				member == "%New"
 					? {
-							// Get the information for both %New and %OnNew
-							query:
-								"SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-							parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
-						}
+						// Get the information for both %New and %OnNew
+						query:
+							"SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
+						parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
+					}
 					: {
-							query:
-								"SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-							parameters: [membercontext.baseclass, unquotedname],
-						};
+						query:
+							"SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
+						parameters: [membercontext.baseclass, unquotedname],
+					};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
@@ -627,7 +630,8 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				// Get the method signature
 
 				// Get the method signature locally
-				const methodSignatureHelp = getMethodSignatureHelpLocally(
+				const methodSignatureHelp = await getMethodSignatureHelpLocally(
+					URI.parse(params.textDocument.uri),
 					membercontext.baseclass,
 					member,
 					settings.signaturehelp.documentation,
@@ -646,16 +650,16 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				const querydata =
 					member == "%New"
 						? {
-								// Get the information for both %New and %OnNew
-								query:
-									"SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-								parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
-							}
+							// Get the information for both %New and %OnNew
+							query:
+								"SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
+							parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
+						}
 						: {
-								query:
-									"SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-								parameters: [membercontext.baseclass, unquotedname],
-							};
+							query:
+								"SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
+							parameters: [membercontext.baseclass, unquotedname],
+						};
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 					// We got data back
@@ -771,13 +775,12 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	return null;
 }
 
-function getMethodSignatureHelpLocally(clsName: string, memName: string, showingDoc: boolean): SignatureHelp | null {
-	const uri_cls_mem =
-		getAnalyzedClassMember(clsName, memName) ?? (memName != "%New" ? null : getAnalyzedClassMember(clsName, "%OnNew"));
-	if (!uri_cls_mem) {
+async function getMethodSignatureHelpLocally(context: URI, clsName: string, memName: string, showingDoc: boolean): Promise<SignatureHelp | null> {
+	const uri_mem = (await getAnalyzedClassMember(context, clsName, memName)) ?? (memName != "%New" ? null : await getAnalyzedClassMember(context, clsName, "%OnNew"));
+	if (!uri_mem) {
 		return null;
 	}
-	const [_uri, _cls, mem] = uri_cls_mem;
+	const [_uri, mem] = uri_mem;
 	if (mem.kind.tag === "method" || mem.kind.tag === "classMethod" || mem.kind.tag === "clientMethod") {
 		const method = mem.kind.value;
 		const out = ["%Open", "%OpenId"].includes(memName) ? clsName : method.out;

@@ -41,9 +41,11 @@ import {
 	documents,
 	corePropertyParams,
 	mppContinue,
-	getAnalyzedClassMembers,
-	getAnalyzedClasses,
 } from "../utils/variables";
+import {
+	getAnalyzedClassMembers,
+	getAnalyzedClasses
+} from '../analyzer';
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -582,7 +584,7 @@ async function* completionFullClassName(
 ): AsyncGenerator<CompletionItem> {
 	// Add locally available classes
 	const added = new Set<string>();
-	for (const [uri, cls] of getAnalyzedClasses()) {
+	for await (const [uri, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
 		added.add(cls.name.text);
 		const item = makeClassCompletionItem(
 			[] /* I tried getImports() but it gives false imports */,
@@ -1351,7 +1353,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 				// Add locally source information
 				const added = new Set<string>();
-				for (const [_uri, _cls, mem] of getAnalyzedClassMembers(membercontext.baseclass)) {
+				for await (const [_uri, mem] of getAnalyzedClassMembers(URI.parse(params.textDocument.uri), membercontext.baseclass)) {
 					if (mem.kind.tag === "parameter") {
 						const name = quoteUDLIdentifier(mem.name.text, 1);
 						added.add(name);
@@ -1419,7 +1421,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 
 				const added = new Set<string>();
-				for (const [_uri, _cls, mem] of getAnalyzedClassMembers(membercontext.baseclass)) {
+				for await (const [_uri, mem] of getAnalyzedClassMembers(URI.parse(params.textDocument.uri), membercontext.baseclass)) {
 					const name = quoteUDLIdentifier(mem.name.text, 1);
 					added.add(name);
 					const item: CompletionItem = {
@@ -2537,7 +2539,7 @@ async function* completionPartialClassName(
 ): AsyncGenerator<CompletionItem> {
 	filter += filter.endsWith(".") ? "" : ".";
 	const added = new Set<string>();
-	for (const [_uri, cls] of getAnalyzedClasses()) {
+	for await (const [_uri, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
 		if (!cls.name.text.startsWith(filter)) {
 			continue;
 		}
@@ -2617,6 +2619,7 @@ function isPositionBefore(from: Position, to: Position) {
 }
 
 import commands from "../documentation/commands.json";
+import { URI } from 'vscode-uri';
 
 function* completeCommand(prefix: string): Generator<CompletionItem> {
 	for (const command of commands) {

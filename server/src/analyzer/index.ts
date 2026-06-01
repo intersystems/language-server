@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { analyzer, AnalyzerInterface } from "./bind";
-import { Diagnostic, WorkspaceFolder } from "vscode-languageserver";
+import { Diagnostic } from "vscode-languageserver";
 import { connection } from '../utils/variables';
 import { URI } from 'vscode-uri';
 
@@ -36,39 +36,9 @@ export type AnalyzeResult = ClassInfo | { error: Diagnostic[] };
 
 const analyzedFolders = new Map<string, AnalyzerInterface.Workspace>();
 
-async function currentFolder(filePath: string): Promise<WorkspaceFolder | undefined> {
+export async function analyzeCls(filePath: string, src: string, folderURI?: string): Promise<AnalyzeResult> {
 	try {
-		const folders = await connection.workspace.getWorkspaceFolders();
-		console.log("getWorkspaceFolders returned:", JSON.stringify(folders));
-		console.log("Looking for folder containing:", filePath);
-		const found = folders?.find((folder) => {
-			const folderPath = URI.parse(folder.uri).fsPath;
-			const rel = path.relative(folderPath, filePath);
-			console.log(`  Checking folder ${folderPath}, rel=${rel}`);
-			return !rel.startsWith("..") && !path.isAbsolute(rel);
-		});
-		console.log("Found folder:", JSON.stringify(found));
-		return found;
-	} catch (e) {
-		console.log("getWorkspaceFolders error:", e);
-		return undefined;
-	}
-}
-
-async function currentWorkspace(folder: WorkspaceFolder): Promise<AnalyzerInterface.Workspace.Interface> {
-	let analyzedFolder = analyzedFolders.get(folder.uri);
-	if (!analyzedFolder) {
-		analyzedFolder = new (await wasm).analyzerInterface.Workspace();
-		analyzedFolders.set(folder.uri, analyzedFolder);
-	}
-	return analyzedFolder
-}
-
-export async function analyzeCls(filePath: string, src: string, folder?: WorkspaceFolder): Promise<AnalyzeResult> {
-	console.log("Working on file", filePath);
-	try {
-		folder = folder ?? await currentFolder(filePath);
-		const workspace = folder && await currentWorkspace(folder);
+		const workspace = typeof folderURI === "string" ? await folderURIToAnalyzerWorkspace(folderURI) : await filePathToAnalyzerWorkspace(filePath);
 		if (!workspace) {
 			return {
 				error: [{
@@ -84,16 +54,6 @@ export async function analyzeCls(filePath: string, src: string, folder?: Workspa
 	} catch (rawError) {
 		console.log(rawError);
 		return { error: [] }
-		// const error = rawError["cause"]["_value"] as AnalyzerInterface.ParseErr;
-		// return {
-		// 	error: [
-		// 		{
-		// 			...error,
-		// 			severity: DiagnosticSeverity.Information,
-		// 			source: "InterSystems Language Server",
-		// 		},
-		// 	],
-		// };
 	}
 }
 
@@ -115,19 +75,90 @@ export async function completeClass(src: string) {
 	}
 }
 
-export async function check(fileURI: URI): Promise<Diagnostic[]> {
-	console.log("Checking?")
+export async function check(fileFsPath: string): Promise<Diagnostic[]> {
 	try {
-		console.log("Checking?")
-		const folder = await currentFolder(fileURI.fsPath);
-		console.log("Checking?")
-		const workspace = folder && await currentWorkspace(folder);
+		const workspace = await filePathToAnalyzerWorkspace(fileFsPath);
 		if (!workspace) {
 			return [];
 		}
-		return workspace.check(fileURI.fsPath);
+		return workspace.check(fileFsPath);
 	} catch (rawError) {
 		console.log(rawError);
 		return [];
 	}
 }
+
+export async function filePathToAnalyzerWorkspace(filePath: string): Promise<AnalyzerInterface.Workspace.Interface> {
+	try {
+		const folders = await connection.workspace.getWorkspaceFolders();
+		const folder = folders?.find((folder) => {
+			const folderPath = URI.parse(folder.uri).fsPath;
+			const rel = path.relative(folderPath, filePath);
+			console.log(`  Checking folder ${folderPath}, rel=${rel}`);
+			return !rel.startsWith("..") && !path.isAbsolute(rel);
+		});
+		const workspace = folder && await folderURIToAnalyzerWorkspace(folder.uri);
+		return workspace;
+	} catch (e) {
+		console.log("getWorkspaceFolders error:", e);
+		return undefined;
+	}
+}
+
+async function folderURIToAnalyzerWorkspace(folderURI: string): Promise<AnalyzerInterface.Workspace.Interface> {
+	let analyzedFolder = analyzedFolders.get(folderURI);
+	if (!analyzedFolder) {
+		analyzedFolder = new (await wasm).analyzerInterface.Workspace();
+		analyzedFolders.set(folderURI, analyzedFolder);
+	}
+	return analyzedFolder
+}
+
+export async function getAnalyzedClass(context: URI, name: string): Promise<[string, ClassInfo] | null> {
+	for await (const [uri, cls] of getAnalyzedClasses(context)) {
+		if (cls.name.text === name) {
+			return [uri, cls];
+		}
+	}
+	return null;
+}
+
+export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, ClassInfo]> {
+	const workspace = await filePathToAnalyzerWorkspace(context.path);
+	for (const x of workspace.queryCls("")) {
+		yield x;
+	}
+}
+
+export async function getAnalyzedClassMember(
+	context: URI,
+	clsName: string,
+	memName: string
+): Promise<[string, MemberInfo] | null> {
+	for await (const [uri, mem] of getAnalyzedClassMembers(context, clsName, memName)) {
+		if (mem.name.text === memName) {
+			return [uri, mem];
+		}
+	}
+	return null;
+}
+
+export async function* getAnalyzedClassMembers(
+	context: URI,
+	clsName: string,
+	memQuery: string = "",
+	includeExtends: boolean = true
+): AsyncGenerator<[string, MemberInfo]> {
+	const workspace = await filePathToAnalyzerWorkspace(context.fsPath);
+	for (const x of workspace.queryMem(clsName, memQuery)) {
+		yield x;
+	}
+	if (includeExtends) {
+		const [_uri, cls] = await getAnalyzedClass(context, clsName);
+		for (const sup of cls.extends) {
+			yield* getAnalyzedClassMembers(context, sup, memQuery);
+		}
+	}
+}
+
+

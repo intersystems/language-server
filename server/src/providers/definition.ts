@@ -1,4 +1,4 @@
-import { Position, TextDocumentPositionParams, Range, LocationLink, uinteger } from "vscode-languageserver/node";
+import { Position, TextDocumentPositionParams, Range, LocationLink } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import {
 	getServerSpec,
@@ -25,10 +25,13 @@ import {
 	corePropertyParams,
 	classMemberTypes,
 	mppContinue,
-	getAnalyzedClass,
-	getAnalyzedClassMember,
 } from "../utils/variables";
+import {
+	getAnalyzedClass,
+	getAnalyzedClassMember
+} from '../analyzer';
 import * as ld from "../utils/languageDefinitions";
+import { URI } from 'vscode-uri';
 
 /**
  * The maximum number of lines to include in the `targetRange` property
@@ -36,12 +39,12 @@ import * as ld from "../utils/languageDefinitions";
  */
 const definitionTargetRangeMaxLines: number = 10;
 
-function lookupClassMember(clsName: string, memName: string, originSelectionRange: Range): LocationLink[] | null {
-	const uri_cls_mem = getAnalyzedClassMember(clsName, memName);
-	if (!uri_cls_mem) {
+async function lookupClassMember(context: URI, clsName: string, memName: string, originSelectionRange: Range): Promise<LocationLink[] | null> {
+	const uri_mem = await getAnalyzedClassMember(context, clsName, memName);
+	if (!uri_mem) {
 		return null;
 	}
-	const [targetUri, _clsInfo, memInfo] = uri_cls_mem;
+	const [targetUri, memInfo] = uri_mem;
 	const targetRange = Range.create(
 		Number(memInfo.before.line),
 		Number(memInfo.before.character),
@@ -73,7 +76,7 @@ async function classMemberLocationLink(
 	memberRange: Range,
 	server: ServerSpec,
 ): Promise<LocationLink[] | undefined> {
-	const localResult = lookupClassMember(cls, memberName, memberRange);
+	const localResult = lookupClassMember(URI.parse(uri), cls, memberName, memberRange);
 	if (localResult) {
 		return localResult;
 	}
@@ -149,7 +152,7 @@ async function classLocationLink(
 	range: Range,
 	server: ServerSpec,
 ): Promise<LocationLink[] | undefined> {
-	const uri_cls = getAnalyzedClass(cls);
+	const uri_cls = await getAnalyzedClass(URI.parse(uri), cls);
 	if (uri_cls) {
 		const [targetUri, clsInfo] = uri_cls;
 		const targetRange = fullRange;
@@ -373,7 +376,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 									parsed[macrodefline][parsed[macrodefline].length - 1].p,
 									macrodefline,
 									parsed[macrodefline][parsed[macrodefline].length - 1].p +
-										parsed[macrodefline][parsed[macrodefline].length - 1].c,
+									parsed[macrodefline][parsed[macrodefline].length - 1].c,
 								),
 							),
 						)
@@ -512,7 +515,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					return null;
 				}
 
-				const localResult = lookupClassMember(membercontext.baseclass, unquotedname, memberrange);
+				const localResult = lookupClassMember(URI.parse(params.textDocument.uri), membercontext.baseclass, unquotedname, memberrange);
 				if (localResult) {
 					return localResult;
 				}
@@ -1239,7 +1242,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 							parsed[ln][0].l == ld.cls_langindex &&
 							parsed[ln][0].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c)).toLowerCase() ==
-								"class"
+							"class"
 						) {
 							// This is the class definition line
 							let seenExtends = false,

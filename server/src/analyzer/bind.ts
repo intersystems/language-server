@@ -341,6 +341,16 @@ export namespace AnalyzerInterface {
 			remove(uri: string): void;
 
 			check(uri: string): Diagnostic[];
+
+			/**
+			 * returns uri and class-info
+			 */
+			queryCls(query: string): [string, ClassInfo][];
+
+			/**
+			 * returns uri and member-info
+			 */
+			queryMem(cls: string, query: string): [string, MemberInfo][];
 		}
 		export type Statics = {
 			$new?(): Interface;
@@ -481,6 +491,13 @@ export namespace AnalyzerInterface.$ {
 	Workspace.addMethod('check', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['check']>('[method]workspace.check', [
 		['uri', $wcm.wstring],
 	], new $wcm.ListType<AnalyzerInterface.Diagnostic>(Diagnostic)));
+	Workspace.addMethod('queryCls', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['queryCls']>('[method]workspace.query-cls', [
+		['query', $wcm.wstring],
+	], new $wcm.ListType<[string, AnalyzerInterface.ClassInfo]>(new $wcm.TupleType<[string, AnalyzerInterface.ClassInfo]>([$wcm.wstring, ClassInfo]))));
+	Workspace.addMethod('queryMem', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['queryMem']>('[method]workspace.query-mem', [
+		['cls', $wcm.wstring],
+		['query', $wcm.wstring],
+	], new $wcm.ListType<[string, AnalyzerInterface.MemberInfo]>(new $wcm.TupleType<[string, AnalyzerInterface.MemberInfo]>([$wcm.wstring, MemberInfo]))));
 	export const completeClass = new $wcm.FunctionType<AnalyzerInterface.completeClass>('complete-class', [
 		['prefix', $wcm.wstring],
 	], new $wcm.ResultType<AnalyzerInterface.Completion, AnalyzerInterface.AnalysisErr>(Completion, AnalysisErr, AnalyzerInterface.AnalysisErr.Error_));
@@ -498,6 +515,8 @@ export namespace AnalyzerInterface._ {
 			'[method]workspace.insert-rtn': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<RoutineInfo, AnalysisErr>>) => void;
 			'[method]workspace.remove': (self: i32, uri_ptr: i32, uri_len: i32) => void;
 			'[method]workspace.check': (self: i32, uri_ptr: i32, uri_len: i32, result: ptr<Diagnostic[]>) => void;
+			'[method]workspace.query-cls': (self: i32, query_ptr: i32, query_len: i32, result: ptr<[string, ClassInfo][]>) => void;
+			'[method]workspace.query-mem': (self: i32, cls_ptr: i32, cls_len: i32, query_ptr: i32, query_len: i32, result: ptr<[string, MemberInfo][]>) => void;
 		};
 		export namespace imports {
 			export type WasmInterface = Workspace.WasmInterface & { '[resource-drop]workspace': (self: i32) => void };
@@ -558,6 +577,7 @@ export namespace analyzer._ {
 	type Completion = AnalyzerInterface.Completion;
 	type AnalysisErr = AnalyzerInterface.AnalysisErr;
 	type ClassInfo = AnalyzerInterface.ClassInfo;
+	type MemberInfo = AnalyzerInterface.MemberInfo;
 	type RoutineInfo = AnalyzerInterface.RoutineInfo;
 	type Diagnostic = AnalyzerInterface.Diagnostic;
 	export const id = 'iris:objectscript-analyzer/analyzer' as const;
@@ -589,6 +609,8 @@ export namespace analyzer._ {
 		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.insert-rtn': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<RoutineInfo, AnalysisErr>>) => void;
 		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.remove': (self: i32, uri_ptr: i32, uri_len: i32) => void;
 		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.check': (self: i32, uri_ptr: i32, uri_len: i32, result: ptr<Diagnostic[]>) => void;
+		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.query-cls': (self: i32, query_ptr: i32, query_len: i32, result: ptr<[string, ClassInfo][]>) => void;
+		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.query-mem': (self: i32, cls_ptr: i32, cls_len: i32, query_ptr: i32, query_len: i32, result: ptr<[string, MemberInfo][]>) => void;
 	};
 	export function bind(service: analyzer.Imports, code: $wcm.Code, context?: $wcm.ComponentModelContext): Promise<analyzer.Exports>;
 	export function bind(service: analyzer.Imports.Promisified, code: $wcm.Code, port: $wcm.RAL.ConnectionPort, context?: $wcm.ComponentModelContext): Promise<analyzer.Exports.Promisified>;

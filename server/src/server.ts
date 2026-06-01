@@ -266,7 +266,7 @@ async function analyzeWorkspaceFolders(folders: WorkspaceFolder[]) {
 			const fileURI = URI.file(filePath).toString();
 			const fileString = fs.readFileSync(filePath, "utf-8");
 			analyzedDocuments.set(fileURI, undefined);
-			analyzedDocuments.set(fileURI, await analyzeCls(filePath, fileString, folder));
+			analyzedDocuments.set(fileURI, await analyzeCls(filePath, fileString, folder.uri));
 		}
 	}
 }

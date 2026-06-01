@@ -74,7 +74,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	if ("error" in analyzed) {
 		diagnostics.push(...analyzed.error);
 	}
-	for (const error of await analyzer.check(URI.parse(doc.uri))) {
+	for (const error of await analyzer.check(URI.parse(doc.uri).fsPath)) {
 		diagnostics.push(error)
 	}
 

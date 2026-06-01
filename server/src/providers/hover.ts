@@ -25,9 +25,11 @@ import {
 	documents,
 	corePropertyParams,
 	mppContinue,
-	getAnalyzedClass,
-	getAnalyzedClassMember,
 } from "../utils/variables";
+import {
+	getAnalyzedClass,
+	getAnalyzedClassMember
+} from '../analyzer';
 import * as ld from "../utils/languageDefinitions";
 
 import commands from "../documentation/commands.json";
@@ -50,6 +52,7 @@ import storageKeywords from "../documentation/keywords/Storage.json";
 import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
 import { Arg, MemberInfo } from "../analyzer";
+import { URI } from 'vscode-uri';
 
 function documaticLink(server: ServerSpec, cls: string): string {
 	return `[${cls}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?LIBRARY=${encodeURIComponent(
@@ -123,7 +126,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				const normalizedname = await normalizeClassname(doc, parsed, word, server, params.position.line);
 
 				// Try getting the description for this class from local files
-				const uri_info = getAnalyzedClass(normalizedname);
+				const uri_info = await getAnalyzedClass(URI.parse(params.textDocument.uri), normalizedname);
 				if (uri_info) {
 					const [uri, info] = uri_info;
 					// The class was found
@@ -193,7 +196,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							macrorange.end.character,
 							params.position.line,
 							parsed[params.position.line][parsed[params.position.line].length - 1].p +
-								parsed[params.position.line][parsed[params.position.line].length - 1].c,
+							parsed[params.position.line][parsed[params.position.line].length - 1].c,
 						),
 					);
 
@@ -494,15 +497,14 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							value: ["$ZUTIL", "$ZU"].includes(sysftext)
 								? markupValue(`[Online documentation](${sysfdoc.link})`)
 								: markupValue(
-										sysfdoc.documentation.join(""),
-										sysfdoc.link
-											? `[Online documentation](${
-													sysfdoc.link[0] == "h"
-														? sysfdoc.link
-														: `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
-												})`
-											: "",
-									),
+									sysfdoc.documentation.join(""),
+									sysfdoc.link
+										? `[Online documentation](${sysfdoc.link[0] == "h"
+											? sysfdoc.link
+											: `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
+										})`
+										: "",
+								),
 						},
 						range: sysfrange,
 					};
@@ -682,14 +684,14 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					return null;
 				}
 
-				const memberInfo = getAnalyzedClassMember(membercontext.baseclass, unquotedname);
+				const memberInfo = await getAnalyzedClassMember(URI.parse(params.textDocument.uri), membercontext.baseclass, unquotedname);
 				if (memberInfo) {
 					return {
 						contents: {
 							kind: MarkupKind.Markdown,
 							value: markupValue(
-								hoverHeadefFromMemberInfo(membercontext.baseclass, memberInfo[2]),
-								hoverBodyFromMemberInfo(memberInfo[2]),
+								hoverHeadefFromMemberInfo(membercontext.baseclass, memberInfo[1]),
+								hoverBodyFromMemberInfo(memberInfo[1]),
 							),
 						},
 						range: memberrange,
@@ -1282,9 +1284,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
-							const header = `(**${normalizedcls}**) <u>**${param}**</u>${
-								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
-							}`;
+							const header = `(**${normalizedcls}**) <u>**${param}**</u>${respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
+								}`;
 							return {
 								contents: {
 									kind: MarkupKind.Markdown,
