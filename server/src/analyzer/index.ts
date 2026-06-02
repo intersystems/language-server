@@ -38,7 +38,7 @@ const analyzedFolders = new Map<string, AnalyzerInterface.Workspace>();
 
 export async function analyzeCls(filePath: string, src: string, folderURI?: string): Promise<AnalyzeResult> {
 	try {
-		const workspace = typeof folderURI === "string" ? await folderURIToAnalyzerWorkspace(folderURI) : await filePathToAnalyzerWorkspace(filePath);
+		const workspace = typeof folderURI === "string" ? await rootURIToAnalyzerWorkspace(folderURI) : await filePathToAnalyzerWorkspace(filePath);
 		if (!workspace) {
 			return {
 				error: [{
@@ -89,22 +89,19 @@ export async function check(fileFsPath: string): Promise<Diagnostic[]> {
 }
 
 export async function filePathToAnalyzerWorkspace(filePath: string): Promise<AnalyzerInterface.Workspace.Interface> {
-	try {
-		const folders = await connection.workspace.getWorkspaceFolders();
-		const folder = folders?.find((folder) => {
-			const folderPath = URI.parse(folder.uri).fsPath;
-			const rel = path.relative(folderPath, filePath);
-			return !rel.startsWith("..") && !path.isAbsolute(rel);
-		});
-		const workspace = folder && await folderURIToAnalyzerWorkspace(folder.uri);
-		return workspace;
-	} catch (e) {
-		console.log("getWorkspaceFolders error:", e);
-		return undefined;
-	}
+	const folders = await connection.workspace.getWorkspaceFolders();
+	const folder = folders?.find((folder) => {
+		const folderPath = URI.parse(folder.uri).fsPath;
+		const rel = path.relative(folderPath, filePath);
+		return !rel.startsWith("..") && !path.isAbsolute(rel);
+	});
+	return (
+		(folder && rootURIToAnalyzerWorkspace(folder.uri)) ||
+		rootURIToAnalyzerWorkspace(filePath)
+	);
 }
 
-async function folderURIToAnalyzerWorkspace(folderURI: string): Promise<AnalyzerInterface.Workspace.Interface> {
+async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<AnalyzerInterface.Workspace.Interface> {
 	let analyzedFolder = analyzedFolders.get(folderURI);
 	if (!analyzedFolder) {
 		analyzedFolder = new (await wasm).analyzerInterface.Workspace();
