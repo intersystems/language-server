@@ -210,7 +210,7 @@ function findMemberInCurrentClass(
 	}
 }
 
-export async function onDefinition(params: TextDocumentPositionParams) {
+export async function onDefinition(params: TextDocumentPositionParams): Promise<LocationLink[]> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -399,27 +399,37 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					}
 				}
 			} else if (
-				(parsed[params.position.line][i].l == ld.cos_langindex &&
-					(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
-						parsed[params.position.line][i].s == ld.cos_method_attrindex ||
-						parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
-						parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
-						parsed[params.position.line][i].s == ld.cos_instvar_attrindex)) ||
-				// Check that we are looking at a class member definition
-				(parsed[params.position.line][i].l == ld.cls_langindex &&
-					i == 1 &&
-					isClassMember(
-						doc
-							.getText(
-								Range.create(
-									params.position.line,
-									parsed[params.position.line][0].p,
-									params.position.line,
-									parsed[params.position.line][0].p + parsed[params.position.line][0].c,
-								),
-							)
-							.toLowerCase(),
-					))
+				parsed[params.position.line][i].l == ld.cls_langindex &&
+				i == 1 &&
+				isClassMember(
+					doc
+						.getText(
+							Range.create(
+								params.position.line,
+								parsed[params.position.line][0].p,
+								params.position.line,
+								parsed[params.position.line][0].p + parsed[params.position.line][0].c,
+							),
+						)
+						.toLowerCase(),
+				)
+			) {
+				// This is a class member definition
+				const range = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
+				return [
+					{
+						targetUri: params.textDocument.uri,
+						targetRange: range,
+						targetSelectionRange: range,
+					},
+				];
+			} else if (
+				parsed[params.position.line][i].l == ld.cos_langindex &&
+				(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_mem_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_instvar_attrindex)
 			) {
 				// This is a class member (property/parameter/method)
 
@@ -444,10 +454,7 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				}
 
 				let membercontext: { baseclass: string; context?: string };
-				if (
-					parsed[params.position.line][i].s == ld.cos_instvar_attrindex ||
-					parsed[params.position.line][i].l == ld.cls_langindex
-				) {
+				if (parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
 					membercontext = {
 						baseclass: thisclass,
 						context: "",
