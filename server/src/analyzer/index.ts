@@ -153,9 +153,12 @@ export async function* getAnalyzedClassMembers(
 		yield x;
 	}
 	if (includeExtends) {
-		const [_uri, cls] = await getAnalyzedClass(context, clsName);
-		for (const sup of cls.extends) {
-			yield* getAnalyzedClassMembers(context, sup, memQuery);
+		const result = await getAnalyzedClass(context, clsName);
+		if (result) {
+			const cls = result[1];
+			for (const sup of cls.extends) {
+				yield* getAnalyzedClassMembers(context, sup, memQuery);
+			}
 		}
 	}
 }
