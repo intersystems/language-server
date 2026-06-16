@@ -22,13 +22,15 @@ async function loadAnalyzer() {
 	}
 }
 
-export type Arg = AnalyzerInterface.Arg;
 export type MethodInfo = AnalyzerInterface.MethodInfo;
 export type ParameterInfo = AnalyzerInterface.ParameterInfo;
 export type MemberKind = AnalyzerInterface.MemberKind;
 export type MemberInfo = AnalyzerInterface.MemberInfo;
 export type ClassInfo = AnalyzerInterface.ClassInfo;
 export type AnalysisErr = AnalyzerInterface.AnalysisErr;
+export type NormalArg = AnalyzerInterface.NormalArg;
+export type ArgMode = AnalyzerInterface.ArgMode;
+export const ArgMode = AnalyzerInterface.ArgMode;
 
 const wasm = loadAnalyzer();
 
@@ -112,7 +114,7 @@ async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<AnalyzerIn
 
 export async function getAnalyzedClass(context: URI, name: string): Promise<[string, ClassInfo] | null> {
 	for await (const [uri, cls] of getAnalyzedClasses(context)) {
-		if (cls.name.text === name) {
+		if (cls.name.content === name) {
 			return [uri, cls];
 		}
 	}
@@ -133,7 +135,7 @@ export async function getAnalyzedClassMember(
 	memName: string
 ): Promise<[string, MemberInfo] | null> {
 	for await (const [uri, mem] of getAnalyzedClassMembers(context, clsName, memName)) {
-		if (mem.name.text === memName) {
+		if (mem.name.content === memName) {
 			return [uri, mem];
 		}
 	}

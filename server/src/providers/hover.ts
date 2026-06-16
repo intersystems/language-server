@@ -51,7 +51,7 @@ import queryKeywords from "../documentation/keywords/Query.json";
 import storageKeywords from "../documentation/keywords/Storage.json";
 import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
-import { Arg, MemberInfo } from "../analyzer";
+import { MemberInfo, NormalArg, ArgMode } from "../analyzer";
 import { URI } from 'vscode-uri';
 
 function documaticLink(server: ServerSpec, cls: string): string {
@@ -1440,14 +1440,14 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	}
 }
 function hoverHeadefFromMemberInfo(baseclass: string, memberInfo: MemberInfo): string {
-	let content = localInfoPrefix + `(**${baseclass}**) <u>**${memberInfo.name.text}**</u>`;
+	let content = localInfoPrefix + `(**${baseclass}**) <u>**${memberInfo.name.content}**</u>`;
 	const { kind } = memberInfo;
 	if (kind.tag === "classMethod" || kind.tag === "clientMethod" || kind.tag === "method") {
-		const { args, out } = kind.value;
-		const argList = args.map(prettifyArg).join(", ");
+		const { normal, variadic, t } = kind.value;
+		const argList = normal.map(prettifyNormalArg).concat(variadic ? [] : []).join(", ");
 		content += `(${argList})`;
-		if (out) {
-			content += ` As ${out}`;
+		if (t) {
+			content += ` As ${t}`;
 		}
 	} else if (kind.tag === "property" || kind.tag === "relationship") {
 		if (kind.value) {
@@ -1471,15 +1471,12 @@ function hoverBodyFromMemberInfo(memberInfo: MemberInfo): string {
 	return documaticHtmlToMarkdown(content);
 }
 
-export const prettifyArg = (arg: Arg): string => {
+export const prettifyNormalArg = (arg: NormalArg): string => {
 	let string = "";
-	if (arg.byRef) {
+	if (arg.mode != ArgMode.default) {
 		string += "&";
 	}
-	string += arg.name.text;
-	if (arg.variadic) {
-		string += "...";
-	}
+	string += arg.name;
 	if (arg.t) {
 		string += ` As ${arg.t}`;
 	}

@@ -585,10 +585,10 @@ async function* completionFullClassName(
 	// Add locally available classes
 	const added = new Set<string>();
 	for await (const [uri, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
-		added.add(cls.name.text);
+		added.add(cls.name.content);
 		const item = makeClassCompletionItem(
 			[] /* I tried getImports() but it gives false imports */,
-			cls.name.text,
+			cls.name.content,
 			uri,
 			cls.deprecated,
 		);
@@ -1356,7 +1356,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				const added = new Set<string>();
 				for await (const [_uri, mem] of getAnalyzedClassMembers(URI.parse(params.textDocument.uri), membercontext.baseclass)) {
 					if (mem.kind.tag === "parameter") {
-						const name = quoteUDLIdentifier(mem.name.text, 1);
+						const name = quoteUDLIdentifier(mem.name.content, 1);
 						added.add(name);
 						result.push({
 							label: "#" + name,
@@ -1423,7 +1423,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 				const added = new Set<string>();
 				for await (const [_uri, mem] of getAnalyzedClassMembers(URI.parse(params.textDocument.uri), membercontext.baseclass)) {
-					const name = quoteUDLIdentifier(mem.name.text, 1);
+					const name = quoteUDLIdentifier(mem.name.content, 1);
 					added.add(name);
 					const item: CompletionItem = {
 						label: name,
@@ -1438,7 +1438,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					};
 					if (mem.kind.tag === "classMethod" || mem.kind.tag === "method" || mem.kind.tag === "clientMethod") {
 						item.kind = CompletionItemKind.Method;
-						if (mem.kind.value.args.length == 0) {
+						if (mem.kind.value.normal.length == 0 && !mem.kind.value.variadic) {
 							item.insertText += "()";
 						} else {
 							item.textEdit = TextEdit.insert(params.position, name.replace(/\$/g, "//$") + "($0)");
@@ -2541,14 +2541,14 @@ async function* completionPartialClassName(
 	filter += filter.endsWith(".") ? "" : ".";
 	const added = new Set<string>();
 	for await (const [_uri, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
-		if (!cls.name.text.startsWith(filter)) {
+		if (!cls.name.content.startsWith(filter)) {
 			continue;
 		}
-		added.add(cls.name.text);
+		added.add(cls.name.content);
 		yield {
-			label: cls.name.text.slice(filter.length),
+			label: cls.name.content.slice(filter.length),
 			kind: CompletionItemKind.Class,
-			data: ["class", cls.name.text.slice(filter.length), doc.uri],
+			data: ["class", cls.name.content.slice(filter.length), doc.uri],
 			tags: cls.deprecated ? [CompletionItemTag.Deprecated] : undefined,
 			documentation: {
 				kind: MarkupKind.Markdown,

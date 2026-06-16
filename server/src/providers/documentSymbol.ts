@@ -91,13 +91,13 @@ export async function onDocumentSymbol(params: DocumentSymbolParams): Promise<Do
 			const cls = await getAnalyzedDocument(params.textDocument.uri);
 			if (cls !== undefined && !("error" in cls)) {
 				return [{
-					name: cls.name.text,
+					name: cls.name.content,
 					kind: SymbolKind.Class,
 					range: fullRange,
 					selectionRange: Range.create(cls.name.before, cls.name.after),
 					tags: cls.deprecated ? [SymbolTag.Deprecated] : [],
 					children: cls.members.map((mem) => ({
-						name: mem.name.text,
+						name: mem.name.content,
 						kind: memberKindToSymbolKind(mem.kind.tag),
 						range: Range.create(mem.before, mem.after),
 						selectionRange: Range.create(mem.name.before, mem.name.after),

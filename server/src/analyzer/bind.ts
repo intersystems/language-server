@@ -28,20 +28,32 @@ export namespace AnalyzerInterface {
 
 	export type NameInfo = {
 		before: Position;
-		text: string;
+		content: string;
 		after: Position;
 	};
 
-	export type Arg = {
-		byRef: boolean;
-		variadic: boolean;
-		name: NameInfo;
+	export enum ArgMode {
+		default = 'default',
+		output = 'output',
+		byRef = 'byRef'
+	}
+
+	export type NormalArg = {
+		mode: ArgMode;
+		name: string;
+		t?: string | undefined;
+		optional: boolean;
+	};
+
+	export type VariadicArg = {
+		name: string;
 		t?: string | undefined;
 	};
 
 	export type MethodInfo = {
-		args: Arg[];
-		out?: string | undefined;
+		normal: NormalArg[];
+		variadic?: VariadicArg | undefined;
+		t?: string | undefined;
 		body: Range;
 	};
 
@@ -415,18 +427,24 @@ export namespace AnalyzerInterface.$ {
 	]);
 	export const NameInfo = new $wcm.RecordType<AnalyzerInterface.NameInfo>([
 		['before', Position],
-		['text', $wcm.wstring],
+		['content', $wcm.wstring],
 		['after', Position],
 	]);
-	export const Arg = new $wcm.RecordType<AnalyzerInterface.Arg>([
-		['byRef', $wcm.bool],
-		['variadic', $wcm.bool],
-		['name', NameInfo],
+	export const ArgMode = new $wcm.EnumType<AnalyzerInterface.ArgMode>(['default', 'output', 'byRef']);
+	export const NormalArg = new $wcm.RecordType<AnalyzerInterface.NormalArg>([
+		['mode', ArgMode],
+		['name', $wcm.wstring],
+		['t', new $wcm.OptionType<string>($wcm.wstring)],
+		['optional', $wcm.bool],
+	]);
+	export const VariadicArg = new $wcm.RecordType<AnalyzerInterface.VariadicArg>([
+		['name', $wcm.wstring],
 		['t', new $wcm.OptionType<string>($wcm.wstring)],
 	]);
 	export const MethodInfo = new $wcm.RecordType<AnalyzerInterface.MethodInfo>([
-		['args', new $wcm.ListType<AnalyzerInterface.Arg>(Arg)],
-		['out', new $wcm.OptionType<string>($wcm.wstring)],
+		['normal', new $wcm.ListType<AnalyzerInterface.NormalArg>(NormalArg)],
+		['variadic', new $wcm.OptionType<AnalyzerInterface.VariadicArg>(VariadicArg)],
+		['t', new $wcm.OptionType<string>($wcm.wstring)],
 		['body', Range],
 	]);
 	export const ParameterInfo = new $wcm.RecordType<AnalyzerInterface.ParameterInfo>([
@@ -531,7 +549,9 @@ export namespace AnalyzerInterface._ {
 		['Location', $.Location],
 		['DiagnosticRelatedInformation', $.DiagnosticRelatedInformation],
 		['NameInfo', $.NameInfo],
-		['Arg', $.Arg],
+		['ArgMode', $.ArgMode],
+		['NormalArg', $.NormalArg],
+		['VariadicArg', $.VariadicArg],
 		['MethodInfo', $.MethodInfo],
 		['ParameterInfo', $.ParameterInfo],
 		['MemberKind', $.MemberKind],

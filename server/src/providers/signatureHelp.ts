@@ -26,7 +26,7 @@ import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from "..
 import { documents } from "../utils/variables";
 import { getAnalyzedClassMember } from '../analyzer';
 import * as ld from "../utils/languageDefinitions";
-import { prettifyArg } from "./hover";
+import { prettifyNormalArg } from "./hover";
 import { URI } from 'vscode-uri';
 
 /**
@@ -783,12 +783,12 @@ async function getMethodSignatureHelpLocally(context: URI, clsName: string, memN
 	const [_uri, mem] = uri_mem;
 	if (mem.kind.tag === "method" || mem.kind.tag === "classMethod" || mem.kind.tag === "clientMethod") {
 		const method = mem.kind.value;
-		const out = ["%Open", "%OpenId"].includes(memName) ? clsName : method.out;
+		const out = ["%Open", "%OpenId"].includes(memName) ? clsName : method.t;
 		const sig: SignatureInformation = {
-			label: "(" + method.args.map(prettifyArg).join(", ") + ")" + (out ? " As " + out : ""),
-			parameters: method.args.map(
+			label: "(" + method.normal.map(prettifyNormalArg).join(", ") + ")" + (out ? " As " + out : ""),
+			parameters: method.normal.map(
 				(arg): ParameterInformation => ({
-					label: arg.name.text,
+					label: arg.name,
 				}),
 			),
 		};
