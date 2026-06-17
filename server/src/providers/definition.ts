@@ -28,7 +28,11 @@ import * as ld from "../utils/languageDefinitions";
  */
 const definitionTargetRangeMaxLines: number = 10;
 
-/** Return a `LocationLink` for class member `memberName` in class `cls` */
+/** Return a `LocationLink` for class member `memberName` in class `cls`
+ * 
+ * This function queries `server` to find the source code of `cls` and locates
+ * the definition of `memberName` within the source code.
+ */
 async function classMemberLocationLink(
 	uri: string,
 	cls: string,
@@ -313,7 +317,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 									parsed[macrodefline][parsed[macrodefline].length - 1].p,
 									macrodefline,
 									parsed[macrodefline][parsed[macrodefline].length - 1].p +
-										parsed[macrodefline][parsed[macrodefline].length - 1].c,
+									parsed[macrodefline][parsed[macrodefline].length - 1].c,
 								),
 							),
 						)
@@ -416,13 +420,14 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 			) {
 				// This is a class member definition
 				const range = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
-				return [
-					{
-						targetUri: params.textDocument.uri,
-						targetRange: range,
-						targetSelectionRange: range,
-					},
-				];
+				return findMemberInCurrentClass(
+					doc,
+					parsed,
+					params.textDocument.uri,
+					doc.getText(range),
+					"Method|ClassMethod|ClientMethod|Property|Relationship",
+					range,
+				);
 			} else if (
 				parsed[params.position.line][i].l == ld.cos_langindex &&
 				(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
@@ -1199,7 +1204,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 							parsed[ln][0].l == ld.cls_langindex &&
 							parsed[ln][0].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c)).toLowerCase() ==
-								"class"
+							"class"
 						) {
 							// This is the class definition line
 							let seenExtends = false,
