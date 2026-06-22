@@ -425,7 +425,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 					parsed,
 					params.textDocument.uri,
 					doc.getText(range),
-					"Method|ClassMethod|ClientMethod|Property|Relationship",
+					"Method|ClassMethod|ClientMethod|Property|Relationship|Parameter|Projection|Query|Storage|Trigger|XData|ForeignKey|Index",
 					range,
 				);
 			} else if (
