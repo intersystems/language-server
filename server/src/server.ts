@@ -33,6 +33,7 @@ import { onDocumentFormatting, onDocumentRangeFormatting } from "./providers/for
 import { onDiagnostics, onWorkspaceDiagnostics } from "./providers/diagnostic";
 import { onSemanticTokens, onSemanticTokensDelta } from "./providers/semanticTokens";
 import { onWorkspaceSymbol } from "./providers/workspaceSymbol";
+import { onInlayHint } from "./providers/inlayHint";
 import { LanguageServerConfiguration, ServerSpec } from "./utils/types";
 import {
 	analyzedDocuments,
@@ -90,6 +91,7 @@ connection.onInitialize((params) => {
 				interFileDependencies: false,
 				workspaceDiagnostics: true,
 			},
+			inlayHintProvider: true,
 		},
 	};
 });
@@ -247,6 +249,8 @@ connection.onRequest("intersystems/embedded/isolateEmbeddedLanguage", isolateEmb
 connection.languages.diagnostics.on(onDiagnostics);
 
 connection.languages.diagnostics.onWorkspace(onWorkspaceDiagnostics);
+
+connection.languages.inlayHint.on(onInlayHint);
 
 documents.listen(connection);
 

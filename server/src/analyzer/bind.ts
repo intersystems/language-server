@@ -338,6 +338,13 @@ export namespace AnalyzerInterface {
 		relatedInformation: DiagnosticRelatedInformation[];
 	};
 
+	export type InlayHint = {
+		position: Position;
+		label: string;
+		paddingLeft: boolean;
+		paddingRight: boolean;
+	};
+
 	export namespace Workspace {
 		export interface Interface extends $wcm.Resource {
 			/**
@@ -353,6 +360,8 @@ export namespace AnalyzerInterface {
 			remove(uri: string): void;
 
 			check(uri: string): Diagnostic[];
+
+			inlayHint(uri: string, range: Range): InlayHint[];
 
 			/**
 			 * returns uri and class-info
@@ -491,6 +500,12 @@ export namespace AnalyzerInterface.$ {
 		['range', Range],
 		['relatedInformation', new $wcm.ListType<AnalyzerInterface.DiagnosticRelatedInformation>(DiagnosticRelatedInformation)],
 	]);
+	export const InlayHint = new $wcm.RecordType<AnalyzerInterface.InlayHint>([
+		['position', Position],
+		['label', $wcm.wstring],
+		['paddingLeft', $wcm.bool],
+		['paddingRight', $wcm.bool],
+	]);
 	export const Workspace = new $wcm.ResourceType<AnalyzerInterface.Workspace>('workspace', 'iris:objectscript-analyzer/analyzer-interface/workspace');
 	export const Workspace_Handle = new $wcm.ResourceHandleType('workspace');
 	Workspace.addDestructor('$drop', new $wcm.DestructorType('[resource-drop]workspace', [['inst', Workspace]]));
@@ -509,6 +524,10 @@ export namespace AnalyzerInterface.$ {
 	Workspace.addMethod('check', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['check']>('[method]workspace.check', [
 		['uri', $wcm.wstring],
 	], new $wcm.ListType<AnalyzerInterface.Diagnostic>(Diagnostic)));
+	Workspace.addMethod('inlayHint', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['inlayHint']>('[method]workspace.inlay-hint', [
+		['uri', $wcm.wstring],
+		['range', Range],
+	], new $wcm.ListType<AnalyzerInterface.InlayHint>(InlayHint)));
 	Workspace.addMethod('queryCls', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['queryCls']>('[method]workspace.query-cls', [
 		['query', $wcm.wstring],
 	], new $wcm.ListType<[string, AnalyzerInterface.ClassInfo]>(new $wcm.TupleType<[string, AnalyzerInterface.ClassInfo]>([$wcm.wstring, ClassInfo]))));
@@ -533,6 +552,7 @@ export namespace AnalyzerInterface._ {
 			'[method]workspace.insert-rtn': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<RoutineInfo, AnalysisErr>>) => void;
 			'[method]workspace.remove': (self: i32, uri_ptr: i32, uri_len: i32) => void;
 			'[method]workspace.check': (self: i32, uri_ptr: i32, uri_len: i32, result: ptr<Diagnostic[]>) => void;
+			'[method]workspace.inlay-hint': (self: i32, uri_ptr: i32, uri_len: i32, range_start_line: i32, range_start_character: i32, range_end_line: i32, range_end_character: i32, result: ptr<InlayHint[]>) => void;
 			'[method]workspace.query-cls': (self: i32, query_ptr: i32, query_len: i32, result: ptr<[string, ClassInfo][]>) => void;
 			'[method]workspace.query-mem': (self: i32, cls_ptr: i32, cls_len: i32, query_ptr: i32, query_len: i32, result: ptr<[string, MemberInfo][]>) => void;
 		};
@@ -564,6 +584,7 @@ export namespace AnalyzerInterface._ {
 		['AnalysisErr', $.AnalysisErr],
 		['Completion', $.Completion],
 		['Diagnostic', $.Diagnostic],
+		['InlayHint', $.InlayHint],
 		['Workspace', $.Workspace]
 	]);
 	export const functions: Map<string, $wcm.FunctionType> = new Map([
@@ -600,6 +621,7 @@ export namespace analyzer._ {
 	type MemberInfo = AnalyzerInterface.MemberInfo;
 	type RoutineInfo = AnalyzerInterface.RoutineInfo;
 	type Diagnostic = AnalyzerInterface.Diagnostic;
+	type InlayHint = AnalyzerInterface.InlayHint;
 	export const id = 'iris:objectscript-analyzer/analyzer' as const;
 	export const witName = 'analyzer' as const;
 	export namespace imports {
@@ -629,6 +651,7 @@ export namespace analyzer._ {
 		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.insert-rtn': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<RoutineInfo, AnalysisErr>>) => void;
 		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.remove': (self: i32, uri_ptr: i32, uri_len: i32) => void;
 		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.check': (self: i32, uri_ptr: i32, uri_len: i32, result: ptr<Diagnostic[]>) => void;
+		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.inlay-hint': (self: i32, uri_ptr: i32, uri_len: i32, range_start_line: i32, range_start_character: i32, range_end_line: i32, range_end_character: i32, result: ptr<InlayHint[]>) => void;
 		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.query-cls': (self: i32, query_ptr: i32, query_len: i32, result: ptr<[string, ClassInfo][]>) => void;
 		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.query-mem': (self: i32, cls_ptr: i32, cls_len: i32, query_ptr: i32, query_len: i32, result: ptr<[string, MemberInfo][]>) => void;
 	};

@@ -90,6 +90,19 @@ export async function check(fileFsPath: string): Promise<Diagnostic[]> {
 	}
 }
 
+export async function inlayHint(fileFsPath: string, range: AnalyzerInterface.Range): Promise<AnalyzerInterface.InlayHint[]> {
+	try {
+		const workspace = await filePathToAnalyzerWorkspace(fileFsPath);
+		if (!workspace) {
+			return [];
+		}
+		return workspace.inlayHint(fileFsPath, range);
+	} catch (rawError) {
+		console.log(rawError);
+		return [];
+	}
+}
+
 export async function filePathToAnalyzerWorkspace(filePath: string): Promise<AnalyzerInterface.Workspace.Interface> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((folder) => {
