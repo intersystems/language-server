@@ -332,10 +332,18 @@ export namespace AnalyzerInterface {
 		command?: u8 | undefined;
 	};
 
+	export enum DiagnosticSeverity {
+		error = 'error',
+		warning = 'warning',
+		information = 'information',
+		hint = 'hint'
+	}
+
 	export type Diagnostic = {
 		message: string;
 		range: Range;
 		relatedInformation: DiagnosticRelatedInformation[];
+		severity: DiagnosticSeverity;
 	};
 
 	export type InlayHint = {
@@ -495,10 +503,12 @@ export namespace AnalyzerInterface.$ {
 		['variable', new $wcm.OptionType<u8>($wcm.u8)],
 		['command', new $wcm.OptionType<u8>($wcm.u8)],
 	]);
+	export const DiagnosticSeverity = new $wcm.EnumType<AnalyzerInterface.DiagnosticSeverity>(['error', 'warning', 'information', 'hint']);
 	export const Diagnostic = new $wcm.RecordType<AnalyzerInterface.Diagnostic>([
 		['message', $wcm.wstring],
 		['range', Range],
 		['relatedInformation', new $wcm.ListType<AnalyzerInterface.DiagnosticRelatedInformation>(DiagnosticRelatedInformation)],
+		['severity', DiagnosticSeverity],
 	]);
 	export const InlayHint = new $wcm.RecordType<AnalyzerInterface.InlayHint>([
 		['position', Position],
@@ -583,6 +593,7 @@ export namespace AnalyzerInterface._ {
 		['ParseErr', $.ParseErr],
 		['AnalysisErr', $.AnalysisErr],
 		['Completion', $.Completion],
+		['DiagnosticSeverity', $.DiagnosticSeverity],
 		['Diagnostic', $.Diagnostic],
 		['InlayHint', $.InlayHint],
 		['Workspace', $.Workspace]

@@ -1,7 +1,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import { analyzer, AnalyzerInterface } from "./bind";
-import { Diagnostic } from "vscode-languageserver";
+import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 import { connection } from '../utils/variables';
 import { URI } from 'vscode-uri';
 
@@ -38,6 +38,30 @@ export type AnalyzeResult = ClassInfo | { error: Diagnostic[] };
 
 const analyzedFolders = new Map<string, AnalyzerInterface.Workspace>();
 
+function convertDiagnosticSeverity(severity: AnalyzerInterface.DiagnosticSeverity): DiagnosticSeverity {
+	switch (severity) {
+		case AnalyzerInterface.DiagnosticSeverity.error:
+			return DiagnosticSeverity.Error;
+		case AnalyzerInterface.DiagnosticSeverity.warning:
+			return DiagnosticSeverity.Warning;
+		case AnalyzerInterface.DiagnosticSeverity.information:
+			return DiagnosticSeverity.Information;
+		case AnalyzerInterface.DiagnosticSeverity.hint:
+			return DiagnosticSeverity.Hint;
+		default:
+			return DiagnosticSeverity.Error;
+	}
+}
+
+function convertDiagnostic(d: AnalyzerInterface.Diagnostic): Diagnostic {
+	return {
+		message: d.message,
+		range: d.range,
+		severity: convertDiagnosticSeverity(d.severity),
+		source: "InterSystems Language Server - ObjectScript Analyzer",
+	};
+}
+
 export async function analyzeCls(filePath: string, src: string, folderURI?: string): Promise<AnalyzeResult> {
 	try {
 		const workspace = typeof folderURI === "string" ? await rootURIToAnalyzerWorkspace(folderURI) : await filePathToAnalyzerWorkspace(filePath);
@@ -49,6 +73,8 @@ export async function analyzeCls(filePath: string, src: string, folderURI?: stri
 						start: { line: 0, character: 0 },
 						end: { line: 0, character: 0 }
 					},
+					severity: DiagnosticSeverity.Error,
+					source: "InterSystems Language Server - ObjectScript Analyzer",
 				}],
 			};
 		}
@@ -83,7 +109,7 @@ export async function check(fileFsPath: string): Promise<Diagnostic[]> {
 		if (!workspace) {
 			return [];
 		}
-		return workspace.check(fileFsPath);
+		return workspace.check(fileFsPath).map(convertDiagnostic);
 	} catch (rawError) {
 		console.log(rawError);
 		return [];
