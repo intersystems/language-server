@@ -31,10 +31,21 @@ import {
 	selectParameterType,
 	setSelection,
 } from "./commands";
-import { makeRESTRequest, ServerSpec } from "./makeRESTRequest";
+import { makeRESTRequest } from "./makeRESTRequest";
 import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from "./requestForwarding";
+import type { ServerSpec, ProtocolMethods } from "../../common/out/types";
+import type { Disposable } from "vscode-languageclient";
 
-export let client: LanguageClient;
+type TypedLanguageClient = {
+	onRequest<K extends keyof ProtocolMethods>(
+		method: K,
+		handler: (
+			params: Parameters<ProtocolMethods[K]>[0]
+		) => ReturnType<ProtocolMethods[K]>
+	): Disposable;
+} & Omit<LanguageClient, 'onRequest'>;
+
+export let client: TypedLanguageClient;
 
 /**
  * Cache for cookies from REST requests to InterSystems servers.
@@ -42,7 +53,7 @@ export let client: LanguageClient;
 const cookiesCache: Map<string, string[]> = new Map();
 
 export function updateCookies(newCookies: string[], server: ServerSpec): string[] {
-	const key = `${server.auth.username}@${server.host}:${server.port}${server.pathPrefix}`;
+	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
 	const cookies = cookiesCache.get(key) ?? [];
 	newCookies.forEach((cookie) => {
 		const [cookieName] = cookie.split("=");
@@ -58,7 +69,7 @@ export function updateCookies(newCookies: string[], server: ServerSpec): string[
 }
 
 export function getCookies(server: ServerSpec): string[] {
-	return cookiesCache.get(`${server.auth.username}@${server.host}:${server.port}${server.pathPrefix}`) ?? [];
+	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`) ?? [];
 }
 
 let objectScriptApi: serverManager.VSCodeObjectScriptAPI;
@@ -66,16 +77,6 @@ let serverManagerApi: serverManager.ServerManagerAPI;
 
 /** Resolved connection information for each workspace folder */
 const wsFolderServerSpecs: Map<string, ServerSpec> = new Map();
-
-type MakeRESTRequestParams = {
-	method: "GET" | "POST";
-	api: number;
-	path: string;
-	server: ServerSpec;
-	data?: any;
-	checksum?: string;
-	params?: any;
-};
 
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
@@ -145,12 +146,12 @@ export async function activate(context: ExtensionContext) {
 		"InterSystems Language Server",
 		serverOptions,
 		clientOptions,
-	);
+	) as TypedLanguageClient;
 
 	// Send custom notifications when the connection or password changes
 	objectScriptApi.onDidChangeConnection()(() => {
 		wsFolderServerSpecs.clear();
-		client.sendNotification("intersystems/server/connectionChange");
+		client.sendNotification('intersystems/server/connectionChange');
 	});
 	const serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
 	if (serverManagerExt !== undefined) {
@@ -160,36 +161,37 @@ export async function activate(context: ExtensionContext) {
 			for (const [k, v] of wsFolderServerSpecs.entries()) {
 				if (v.serverName == serverName) wsFolderServerSpecs.delete(k);
 			}
-			client.sendNotification("intersystems/server/passwordChange", serverName);
+			client.sendNotification('intersystems/server/passwordChange', serverName);
 		});
 	}
 
 	const textDecoder = new TextDecoder();
+
 	context.subscriptions.push(
 		// Register custom request handlers
-		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
+		client.onRequest('intersystems/server/resolveFromUri', async (uri) => {
 			const uriObj = Uri.parse(uri);
 			const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
-			const serverSpec: serverManager.ServerForUri = objectScriptApi.serverForUri(uriObj);
+			const { auth, ...serverForURI }: serverManager.ServerForUri = objectScriptApi.serverForUri(uriObj);
 			if (
 				// Server was resolved
-				serverSpec.host !== "" &&
+				serverForURI.host !== "" &&
 				// Connection isn't unauthenticated
-				serverSpec.auth.username != undefined &&
-				serverSpec.auth.username != "" &&
-				serverSpec.auth.username.toLowerCase() != "unknownuser" &&
+				auth.username != undefined &&
+				auth.username != "" &&
+				auth.username.toLowerCase() != "unknownuser" &&
 				// A password is missing
-				typeof serverSpec.auth.password === "undefined" &&
+				typeof auth.password === "undefined" &&
 				// A supported version of the Server Manager is installed
 				serverManagerExt != undefined &&
 				gt(serverManagerExt.packageJSON.version, "3.0.0")
 			) {
 				// The main extension didn't provide a password, so we must
 				// get it from the server manager's authentication provider.
-				const scopes = [serverSpec.serverName, serverSpec.auth.username];
+				const scopes = [serverForURI.serverName, auth.username];
 				try {
 					const account = serverManagerApi?.getAccount
-						? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec })
+						? serverManagerApi.getAccount({ name: serverForURI.serverName, ...serverForURI })
 						: undefined;
 					let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
 						silent: true,
@@ -202,7 +204,7 @@ export async function activate(context: ExtensionContext) {
 						});
 					}
 					if (session) {
-						serverSpec.auth.resolve({
+						auth.resolve({
 							username: session.scopes[1],
 							accessToken: session.accessToken,
 						});
@@ -215,23 +217,28 @@ export async function activate(context: ExtensionContext) {
 				}
 			}
 			if (
-				typeof serverSpec.auth.username == "string" &&
-				serverSpec.auth.username.toLowerCase() == "unknownuser" &&
-				typeof serverSpec.auth.password == "undefined"
+				typeof auth.username == "string" &&
+				auth.username.toLowerCase() == "unknownuser" &&
+				typeof auth.password == "undefined"
 			) {
 				// UnknownUser without a password means "unauthenticated"
-				serverSpec.auth.clear();
+				auth.clear() as void;
 			}
+			const serverSpec: ServerSpec = {
+				...serverForURI,
+				username: auth.username,
+				credentials: auth.credentials,
+			};
 			if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
 				wsFolderServerSpecs.set(wsFolderUriString, serverSpec);
 			}
 			return serverSpec;
 		}),
-		client.onRequest("intersystems/uri/localToVirtual", (uri: string): string => {
+		client.onRequest('intersystems/uri/localToVirtual', (uri) => {
 			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
 			return newuri.toString();
 		}),
-		client.onRequest("intersystems/uri/forDocument", (document: string): string | null => {
+		client.onRequest('intersystems/uri/forDocument', (document) => {
 			if (lte(objectScriptExt.packageJSON.version, "1.0.10")) {
 				// If the active version of vscode-objectscript doesn't expose
 				// DocumentContentProvider.getUri(), just return the empty string.
@@ -240,7 +247,7 @@ export async function activate(context: ExtensionContext) {
 			const uri: Uri | null = objectScriptApi.getUriForDocument(document);
 			return uri == null ? null : uri.toString();
 		}),
-		client.onRequest("intersystems/uri/forTypeHierarchyClasses", (classes: string[]): string[] => {
+		client.onRequest('intersystems/uri/forTypeHierarchyClasses', (classes) => {
 			// vscode-objectscript version 1.0.11+ has been available for long enough that
 			// it's safe to assume that users have upgraded to at least 1.0.11
 			return classes.map((cls: string) => {
@@ -248,70 +255,64 @@ export async function activate(context: ExtensionContext) {
 				return uri.toString();
 			});
 		}),
-		client.onRequest(
-			"intersystems/server/makeRESTRequest",
-			async (args: MakeRESTRequestParams): Promise<any | undefined> => {
-				// As of version 2.0.0, REST requests are made on the client side
-				return makeRESTRequest(
-					args.method,
-					args.api,
-					args.path,
-					args.server,
-					args.data,
-					args.checksum,
-					args.params,
-				).then((respdata) => {
-					if (respdata) {
-						// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
-						return { data: respdata.data };
-					} else {
-						return undefined;
-					}
-				});
-			},
-		),
-		client.onRequest(
-			"intersystems/uri/getText",
-			async (params: { uri: string; server: ServerSpec }): Promise<string[]> => {
-				try {
-					const uri = Uri.parse(params.uri);
-					if (uri.scheme == "objectscript") {
-						// Can't use the FileSystem with a DocumentContentProvider, so fetch the text directly from the server
-						const uriParams = new URLSearchParams(uri.query);
-						const fileName =
-							uriParams.has("csp") && ["", "1"].includes(uriParams.get("csp") ?? "")
-								? uri.path.slice(1)
-								: uri.path.split("/").slice(1).join(".");
-						const docParams =
-							params.server.apiVersion >= 4 &&
-								workspace
-									.getConfiguration(
-										"objectscript",
-										workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
-									)
-									.get<boolean>("multilineMethodArgs")
-								? { format: "udl-multiline" }
-								: undefined;
-						const resp = await makeRESTRequest(
-							"GET",
-							1,
-							`/doc/${fileName}`,
-							params.server,
-							undefined,
-							undefined,
-							docParams,
-						);
-						return resp?.data?.result?.content || [];
-					} else {
-						// Read the contents of the file at uri
-						return textDecoder.decode(await workspace.fs.readFile(uri)).split(/\r?\n/);
-					}
-				} catch {
-					// The file wasn't found or wasn't valid utf-8
-					return [];
+		client.onRequest('intersystems/server/makeRESTRequest', async (args) => {
+			// As of version 2.0.0, REST requests are made on the client side
+			return makeRESTRequest(
+				args.method,
+				args.api,
+				args.path,
+				args.server,
+				args.data,
+				args.checksum,
+				args.params,
+			).then((respdata) => {
+				if (respdata) {
+					// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
+					return { data: respdata.data };
+				} else {
+					return undefined;
 				}
-			},
-		),
+			});
+		}),
+		client.onRequest('intersystems/uri/getText', async (params) => {
+			try {
+				const uri = Uri.parse(params.uri);
+				if (uri.scheme == "objectscript") {
+					// Can't use the FileSystem with a DocumentContentProvider, so fetch the text directly from the server
+					const uriParams = new URLSearchParams(uri.query);
+					const fileName =
+						uriParams.has("csp") && ["", "1"].includes(uriParams.get("csp") ?? "")
+							? uri.path.slice(1)
+							: uri.path.split("/").slice(1).join(".");
+					const docParams =
+						params.server.apiVersion >= 4 &&
+							workspace
+								.getConfiguration(
+									"objectscript",
+									workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
+								)
+								.get<boolean>("multilineMethodArgs")
+							? { format: "udl-multiline" }
+							: undefined;
+					const resp = await makeRESTRequest(
+						"GET",
+						1,
+						`/doc/${fileName}`,
+						params.server,
+						undefined,
+						undefined,
+						docParams,
+					);
+					return resp?.data?.result?.content || [];
+				} else {
+					// Read the contents of the file at uri
+					return textDecoder.decode(await workspace.fs.readFile(uri)).split(/\r?\n/);
+				}
+			} catch {
+				// The file wasn't found or wasn't valid utf-8
+				return [];
+			}
+		}),
 
 		// Register commands
 		commands.registerCommand("intersystems.language-server.overrideClassMembers", overrideClassMembers),

@@ -109,22 +109,7 @@ export type KeywordDoc = {
 	constraint?: string | string[];
 };
 
-/**
- * IRIS server information received from an 'intersystems/server/resolveFromUri' request.
- */
-export type ServerSpec = {
-	scheme: string;
-	host: string;
-	port: number;
-	pathPrefix: string;
-	apiVersion: number;
-	namespace: string;
-	username: string;
-	serverName: string;
-	serverVersion: string;
-	password: string;
-	active: boolean;
-};
+export type { ServerSpec } from '../../../common/out/types';
 
 /**
  * Context of the method/routine that a macro is in, including extra information needed for macro expansion.
