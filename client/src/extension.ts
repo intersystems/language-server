@@ -42,7 +42,7 @@ export let client: LanguageClient;
 const cookiesCache: Map<string, string[]> = new Map();
 
 export function updateCookies(newCookies: string[], server: ServerSpec): string[] {
-	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
+	const key = `${server.auth.username}@${server.host}:${server.port}${server.pathPrefix}`;
 	const cookies = cookiesCache.get(key) ?? [];
 	newCookies.forEach((cookie) => {
 		const [cookieName] = cookie.split("=");
@@ -58,10 +58,10 @@ export function updateCookies(newCookies: string[], server: ServerSpec): string[
 }
 
 export function getCookies(server: ServerSpec): string[] {
-	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`) ?? [];
+	return cookiesCache.get(`${server.auth.username}@${server.host}:${server.port}${server.pathPrefix}`) ?? [];
 }
 
-let objectScriptApi: any;
+let objectScriptApi: serverManager.VSCodeObjectScriptAPI;
 let serverManagerApi: serverManager.ServerManagerAPI;
 
 /** Resolved connection information for each workspace folder */
@@ -170,23 +170,23 @@ export async function activate(context: ExtensionContext) {
 		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
 			const uriObj = Uri.parse(uri);
 			const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
-			const serverSpec = objectScriptApi.serverForUri(uriObj);
+			const serverSpec: serverManager.ServerForUri = objectScriptApi.serverForUri(uriObj);
 			if (
 				// Server was resolved
 				serverSpec.host !== "" &&
 				// Connection isn't unauthenticated
-				serverSpec.username != undefined &&
-				serverSpec.username != "" &&
-				serverSpec.username.toLowerCase() != "unknownuser" &&
+				serverSpec.auth.username != undefined &&
+				serverSpec.auth.username != "" &&
+				serverSpec.auth.username.toLowerCase() != "unknownuser" &&
 				// A password is missing
-				typeof serverSpec.password === "undefined" &&
+				typeof serverSpec.auth.password === "undefined" &&
 				// A supported version of the Server Manager is installed
 				serverManagerExt != undefined &&
 				gt(serverManagerExt.packageJSON.version, "3.0.0")
 			) {
 				// The main extension didn't provide a password, so we must
 				// get it from the server manager's authentication provider.
-				const scopes = [serverSpec.serverName, serverSpec.username];
+				const scopes = [serverSpec.serverName, serverSpec.auth.username];
 				try {
 					const account = serverManagerApi?.getAccount
 						? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec })
@@ -202,8 +202,10 @@ export async function activate(context: ExtensionContext) {
 						});
 					}
 					if (session) {
-						serverSpec.username = session.scopes[1];
-						serverSpec.password = session.accessToken;
+						serverSpec.auth.resolve({
+							username: session.scopes[1],
+							accessToken: session.accessToken,
+						});
 					}
 				} catch (error) {
 					// The user did not consent to sharing authentication information
@@ -213,12 +215,12 @@ export async function activate(context: ExtensionContext) {
 				}
 			}
 			if (
-				typeof serverSpec.username == "string" &&
-				serverSpec.username.toLowerCase() == "unknownuser" &&
-				typeof serverSpec.password == "undefined"
+				typeof serverSpec.auth.username == "string" &&
+				serverSpec.auth.username.toLowerCase() == "unknownuser" &&
+				typeof serverSpec.auth.password == "undefined"
 			) {
 				// UnknownUser without a password means "unauthenticated"
-				serverSpec.username = undefined;
+				serverSpec.auth.clear();
 			}
 			if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
 				wsFolderServerSpecs.set(wsFolderUriString, serverSpec);
@@ -282,12 +284,12 @@ export async function activate(context: ExtensionContext) {
 								: uri.path.split("/").slice(1).join(".");
 						const docParams =
 							params.server.apiVersion >= 4 &&
-							workspace
-								.getConfiguration(
-									"objectscript",
-									workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
-								)
-								.get<boolean>("multilineMethodArgs")
+								workspace
+									.getConfiguration(
+										"objectscript",
+										workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
+									)
+									.get<boolean>("multilineMethodArgs")
 								? { format: "udl-multiline" }
 								: undefined;
 						const resp = await makeRESTRequest(

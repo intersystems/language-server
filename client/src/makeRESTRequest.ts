@@ -4,20 +4,9 @@ import axios, { AxiosResponse } from "axios";
 import * as https from "https";
 
 import { client, getCookies, updateCookies } from "./extension";
+import { ServerForUri } from '@intersystems-community/intersystems-servermanager';
 
-export type ServerSpec = {
-	scheme: string;
-	host: string;
-	port: number;
-	pathPrefix: string;
-	apiVersion: number;
-	namespace: string;
-	username: string;
-	serverName: string;
-	password: string;
-	serverVersion: string;
-	active: boolean;
-};
+export type ServerSpec = ServerForUri;
 
 /**
  * Send a REST request to an InterSystems server.
@@ -52,15 +41,15 @@ export async function makeRESTRequest(
 		// The server doesn't support the Atelier API version required to make this request
 		client.warn(
 			"Cannot make required REST request to server " +
-				`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
-				`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`,
+			`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
+			`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`,
 		);
 		return undefined;
 	}
-	if (server.username != undefined && server.username != "" && typeof server.password === "undefined") {
+	if (!server.auth.resolved()) {
 		// A username without a password isn't allowed
 		client.warn(
-			"Cannot make required REST request because the configured server connection has a username but no password.",
+			"Cannot make required REST request because the configured server connection is not authorized",
 		);
 		return undefined;
 	}
@@ -115,20 +104,15 @@ export async function makeRESTRequest(
 				return undefined;
 			} else if (respdata.status === 401) {
 				// Either we had no cookies or they expired, so resend the request with basic auth
-
-				respdata = await axios.request({
+				const request = {
 					method: "GET",
 					url: url,
-					headers: {
-						"if-none-match": checksum,
-					},
-					auth: {
-						username: server.username,
-						password: server.password,
-					},
+					...server.auth.credentials,
 					withCredentials: true,
 					httpsAgent,
-				});
+				};
+				request.headers = { ...request.headers, "if-none-match": checksum };
+				respdata = await axios.request(request);
 				cookies = updateCookies(respdata.headers["set-cookie"] || [], server);
 				if (respdata.status === 202) {
 					// The schema is being recalculated so we need to make another call to get it
@@ -173,21 +157,16 @@ export async function makeRESTRequest(
 				});
 				if (respdata.status === 401) {
 					// Either we had no cookies or they expired, so resend the request with basic auth
-
-					respdata = await axios.request({
+					const request = {
 						method: method,
 						url: url,
 						data: data,
-						headers: {
-							"Content-Type": "application/json",
-						},
-						auth: {
-							username: server.username,
-							password: server.password,
-						},
+						...server.auth.credentials,
 						withCredentials: true,
 						httpsAgent,
-					});
+					};
+					request.headers = { ...request.headers, "Content-Type": "application/json" };
+					respdata = await axios.request(request);
 				}
 				updateCookies(respdata.headers["set-cookie"] || [], server);
 			} else {
@@ -211,10 +190,7 @@ export async function makeRESTRequest(
 					respdata = await axios.request({
 						method: method,
 						url: url,
-						auth: {
-							username: server.username,
-							password: server.password,
-						},
+						...server.auth.credentials,
 						withCredentials: true,
 						httpsAgent,
 						params: params,
@@ -226,8 +202,7 @@ export async function makeRESTRequest(
 		}
 	} catch (error) {
 		client.warn(
-			`Error making REST request ${method} ${path}: ${
-				typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error)
+			`Error making REST request ${method} ${path}: ${typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error)
 			}`,
 		);
 		return undefined;
