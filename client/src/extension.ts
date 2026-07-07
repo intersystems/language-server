@@ -39,11 +39,14 @@ export let client: LanguageClient;
 /**
  * Cache for cookies from REST requests to InterSystems servers.
  */
-const cookiesCache: Map<string, string[]> = new Map();
+const cookiesCache: Map<string, {
+	promise: Promise<string[]>,
+	resolve?: (value: string[]) => void,
+}> = new Map();
 
-export function updateCookies(newCookies: string[], server: ServerSpec): string[] {
+export async function updateCookies(newCookies: string[], server: ServerSpec): Promise<string[]> {
 	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
-	const cookies = cookiesCache.get(key) ?? [];
+	const cookies = await (cookiesCache.get(key)?.promise ?? emptyCookies());
 	newCookies.forEach((cookie) => {
 		const [cookieName] = cookie.split("=");
 		const index = cookies.findIndex((el) => el.startsWith(cookieName));
@@ -53,12 +56,33 @@ export function updateCookies(newCookies: string[], server: ServerSpec): string[
 			cookies.push(cookie);
 		}
 	});
-	cookiesCache.set(key, cookies);
+	const cache = cookiesCache.get(key);
+	if (cache && cache.resolve) {
+		cache.resolve(cookies)
+		delete cache.resolve
+	} else {
+		cookiesCache.set(key, { promise: new Promise((resolve) => resolve(cookies)) });
+	}
 	return cookies;
 }
 
-export function getCookies(server: ServerSpec): string[] {
-	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`) ?? [];
+function emptyCookies(): Promise<string[]> {
+	return new Promise((resolve) => resolve([]))
+}
+
+// Each getCookies call MUST be accompanied by some calls to updateCookies
+export async function getCookies(server: ServerSpec): Promise<string[]> {
+	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
+	if (cookiesCache.has(key)) {
+		// A typical caller waits for the cookie promise to resolve.
+		return cookiesCache.get(key).promise
+	} else {
+		// The first caller for this key gets the empty cookies immediately.
+		let resolve: (value: string[]) => void;
+		const promise: Promise<string[]> = new Promise((r) => resolve = r);
+		cookiesCache.set(key, { promise, resolve })
+		return emptyCookies();
+	}
 }
 
 let objectScriptApi: any;
@@ -282,12 +306,12 @@ export async function activate(context: ExtensionContext) {
 								: uri.path.split("/").slice(1).join(".");
 						const docParams =
 							params.server.apiVersion >= 4 &&
-							workspace
-								.getConfiguration(
-									"objectscript",
-									workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
-								)
-								.get<boolean>("multilineMethodArgs")
+								workspace
+									.getConfiguration(
+										"objectscript",
+										workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
+									)
+									.get<boolean>("multilineMethodArgs")
 								? { format: "udl-multiline" }
 								: undefined;
 						const resp = await makeRESTRequest(
@@ -419,7 +443,7 @@ export async function deactivate(): Promise<void> {
 	for (const f of workspace.workspaceFolders ?? []) {
 		const serverSpec = wsFolderServerSpecs.get(f.uri.toString());
 		if (!serverSpec?.active) continue;
-		const sessionCookie = getCookies(serverSpec).find((c) => c.startsWith("CSPSESSIONID-"));
+		const sessionCookie = (await getCookies(serverSpec)).find((c) => c.startsWith("CSPSESSIONID-"));
 		if (!sessionCookie || loggedOut.has(sessionCookie)) continue;
 		loggedOut.add(sessionCookie);
 		promises.push(
