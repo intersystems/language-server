@@ -67,7 +67,11 @@ async function lookupClassMember(context: URI, clsName: string, memName: string,
 	];
 }
 
-/** Return a `LocationLink` for class member `memberName` in class `cls` */
+/** Return a `LocationLink` for class member `memberName` in class `cls`
+ * 
+ * This function queries `server` to find the source code of `cls` and locates
+ * the definition of `memberName` within the source code.
+ */
 async function classMemberLocationLink(
 	uri: string,
 	cls: string,
@@ -273,7 +277,7 @@ function findMemberInCurrentClass(
 	}
 }
 
-export async function onDefinition(params: TextDocumentPositionParams) {
+export async function onDefinition(params: TextDocumentPositionParams): Promise<LocationLink[]> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -462,6 +466,32 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 					}
 				}
 			} else if (
+				parsed[params.position.line][i].l == ld.cls_langindex &&
+				i == 1 &&
+				isClassMember(
+					doc
+						.getText(
+							Range.create(
+								params.position.line,
+								parsed[params.position.line][0].p,
+								params.position.line,
+								parsed[params.position.line][0].p + parsed[params.position.line][0].c,
+							),
+						)
+						.toLowerCase(),
+				)
+			) {
+				// This is a class member definition
+				const range = findFullRange(params.position.line, parsed, i, symbolstart, symbolend);
+				return findMemberInCurrentClass(
+					doc,
+					parsed,
+					params.textDocument.uri,
+					doc.getText(range),
+					"Method|ClassMethod|ClientMethod|Property|Relationship|Parameter|Projection|Query|Storage|Trigger|XData|ForeignKey|Index",
+					range,
+				);
+			} else if (
 				parsed[params.position.line][i].l == ld.cos_langindex &&
 				(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
@@ -492,7 +522,12 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 				}
 
 				let membercontext: { baseclass: string; context?: string };
-				if (parsed[params.position.line][i].s != ld.cos_instvar_attrindex) {
+				if (parsed[params.position.line][i].s == ld.cos_instvar_attrindex) {
+					membercontext = {
+						baseclass: thisclass,
+						context: "",
+					};
+				} else {
 					// Find the dot token
 					let dottkn = 0;
 					for (let tkn = 0; tkn < parsed[params.position.line].length; tkn++) {
@@ -504,11 +539,6 @@ export async function onDefinition(params: TextDocumentPositionParams) {
 
 					// Get the base class that this member is in
 					membercontext = await getClassMemberContext(doc, parsed, dottkn, params.position.line, server);
-				} else {
-					membercontext = {
-						baseclass: thisclass,
-						context: "",
-					};
 				}
 				if (membercontext.baseclass === "") {
 					// If we couldn't determine the class, don't return anything
