@@ -15,7 +15,7 @@ class IrisConnection extends $wcm.Resource.Default implements Imported.IrisConne
 		super(IrisConnection.$resources);
 	}
 
-	public getMem(cls: string, mem: string): [string, MemberInfo] | undefined {
+	public getMem(cls: string, mem: string): MemberInfo | undefined {
 		console.log("getMem", cls, mem)
 		return;
 	}
