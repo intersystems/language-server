@@ -1,18 +1,36 @@
 import * as fs from "fs";
 import * as path from "path";
-import { analyzer, AnalyzerInterface } from "./bind";
+import * as $wcm from "@vscode/wasm-component-model";
+import { analyzer, Common, Exported, Imported } from "./bind";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 import { connection } from '../utils/variables';
 import { URI } from 'vscode-uri';
 
 const filename = path.resolve(__dirname, "../lib/analyzer.wasm");
 
+class IrisConnection extends $wcm.Resource.Default implements Imported.IrisConnection.Interface {
+	static $resources = new $wcm.ResourceManager.Default<IrisConnection>();
+
+	constructor() {
+		super(IrisConnection.$resources);
+	}
+
+	public getMem(cls: string, mem: string): [string, MemberInfo] | undefined {
+		console.log("getMem", cls, mem)
+		return;
+	}
+}
+
 async function loadAnalyzer() {
 	try {
 		const bits = fs.readFileSync(filename);
 		const module = await WebAssembly.compile(bits);
 
-		const service: analyzer.Imports = {};
+		const service: analyzer.Imports = {
+			imported: {
+				IrisConnection
+			}
+		};
 		const exports = await analyzer._.bind(service, module);
 
 		return exports;
@@ -22,38 +40,38 @@ async function loadAnalyzer() {
 	}
 }
 
-export type MethodInfo = AnalyzerInterface.MethodInfo;
-export type ParameterInfo = AnalyzerInterface.ParameterInfo;
-export type MemberKind = AnalyzerInterface.MemberKind;
-export type MemberInfo = AnalyzerInterface.MemberInfo;
-export type ClassInfo = AnalyzerInterface.ClassInfo;
-export type AnalysisErr = AnalyzerInterface.AnalysisErr;
-export type NormalArg = AnalyzerInterface.NormalArg;
-export type ArgMode = AnalyzerInterface.ArgMode;
-export const ArgMode = AnalyzerInterface.ArgMode;
+export type MethodInfo = Common.MethodInfo;
+export type ParameterInfo = Common.ParameterInfo;
+export type MemberKind = Common.MemberKind;
+export type MemberInfo = Common.MemberInfo;
+export type ClassInfo = Common.ClassInfo;
+export type AnalysisErr = Common.AnalysisErr;
+export type NormalArg = Common.NormalArg;
+export type ArgMode = Common.ArgMode;
+export const ArgMode = Common.ArgMode;
 
 const wasm = loadAnalyzer();
 
 export type AnalyzeResult = ClassInfo | { error: Diagnostic[] };
 
-const analyzedFolders = new Map<string, AnalyzerInterface.Workspace>();
+const analyzedFolders = new Map<string, Exported.Workspace>();
 
-function convertDiagnosticSeverity(severity: AnalyzerInterface.DiagnosticSeverity): DiagnosticSeverity {
+function convertDiagnosticSeverity(severity: Common.DiagnosticSeverity): DiagnosticSeverity {
 	switch (severity) {
-		case AnalyzerInterface.DiagnosticSeverity.error:
+		case Common.DiagnosticSeverity.error:
 			return DiagnosticSeverity.Error;
-		case AnalyzerInterface.DiagnosticSeverity.warning:
+		case Common.DiagnosticSeverity.warning:
 			return DiagnosticSeverity.Warning;
-		case AnalyzerInterface.DiagnosticSeverity.information:
+		case Common.DiagnosticSeverity.information:
 			return DiagnosticSeverity.Information;
-		case AnalyzerInterface.DiagnosticSeverity.hint:
+		case Common.DiagnosticSeverity.hint:
 			return DiagnosticSeverity.Hint;
 		default:
 			return DiagnosticSeverity.Error;
 	}
 }
 
-function convertDiagnostic(d: AnalyzerInterface.Diagnostic): Diagnostic {
+function convertDiagnostic(d: Exported.Diagnostic): Diagnostic {
 	return {
 		message: d.message,
 		range: d.range,
@@ -87,7 +105,7 @@ export async function analyzeCls(filePath: string, src: string, folderURI?: stri
 
 export async function completeMethod(src: string) {
 	try {
-		return (await wasm).analyzerInterface.completeMethod(src);
+		return (await wasm).exported.completeMethod(src);
 	} catch (rawError) {
 		console.log(rawError);
 		return undefined;
@@ -96,7 +114,7 @@ export async function completeMethod(src: string) {
 
 export async function completeClass(src: string) {
 	try {
-		return (await wasm).analyzerInterface.completeClass(src);
+		return (await wasm).exported.completeClass(src);
 	} catch (rawError) {
 		console.log(rawError);
 		return undefined;
@@ -116,7 +134,7 @@ export async function check(fileFsPath: string): Promise<Diagnostic[]> {
 	}
 }
 
-export async function inlayHint(fileFsPath: string, range: AnalyzerInterface.Range): Promise<AnalyzerInterface.InlayHint[]> {
+export async function inlayHint(fileFsPath: string, range: Exported.Range): Promise<Exported.InlayHint[]> {
 	try {
 		const workspace = await filePathToAnalyzerWorkspace(fileFsPath);
 		if (!workspace) {
@@ -129,7 +147,7 @@ export async function inlayHint(fileFsPath: string, range: AnalyzerInterface.Ran
 	}
 }
 
-export async function filePathToAnalyzerWorkspace(filePath: string): Promise<AnalyzerInterface.Workspace.Interface> {
+export async function filePathToAnalyzerWorkspace(filePath: string): Promise<Exported.Workspace.Interface> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((folder) => {
 		const folderPath = URI.parse(folder.uri).fsPath;
@@ -142,10 +160,10 @@ export async function filePathToAnalyzerWorkspace(filePath: string): Promise<Ana
 	);
 }
 
-async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<AnalyzerInterface.Workspace.Interface> {
+async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<Exported.Workspace.Interface> {
 	let analyzedFolder = analyzedFolders.get(folderURI);
 	if (!analyzedFolder) {
-		analyzedFolder = new (await wasm).analyzerInterface.Workspace();
+		analyzedFolder = new (await wasm).exported.Workspace(new IrisConnection());
 		analyzedFolders.set(folderURI, analyzedFolder);
 	}
 	return analyzedFolder

@@ -5,7 +5,7 @@
 import * as $wcm from '@vscode/wasm-component-model';
 import type { u32, u8, i32, ptr, result } from '@vscode/wasm-component-model';
 
-export namespace AnalyzerInterface {
+export namespace Common {
 	export type Position = {
 		line: u32;
 		character: u32;
@@ -42,7 +42,7 @@ export namespace AnalyzerInterface {
 		mode: ArgMode;
 		name: string;
 		t?: string | undefined;
-		optional: boolean;
+		default?: string | undefined;
 	};
 
 	export type VariadicArg = {
@@ -352,6 +352,48 @@ export namespace AnalyzerInterface {
 		paddingLeft: boolean;
 		paddingRight: boolean;
 	};
+}
+export type Common = {
+};
+
+export namespace Imported {
+	export type MemberInfo = Common.MemberInfo;
+
+	export namespace IrisConnection {
+		export interface Interface extends $wcm.Resource {
+			getMem(cls: string, mem: string): [string, MemberInfo] | undefined;
+		}
+		export type Statics = {
+		};
+		export type Class = Statics & {
+		};
+	}
+	export type IrisConnection = IrisConnection.Interface;
+}
+export type Imported = {
+	IrisConnection: Imported.IrisConnection.Class;
+};
+
+export namespace Exported {
+	export type ClassInfo = Common.ClassInfo;
+
+	export type MemberInfo = Common.MemberInfo;
+
+	export type RoutineInfo = Common.RoutineInfo;
+	export const RoutineInfo = Common.RoutineInfo;
+
+	export type Completion = Common.Completion;
+
+	export type AnalysisErr = Common.AnalysisErr;
+	export const AnalysisErr = Common.AnalysisErr;
+
+	export type Diagnostic = Common.Diagnostic;
+
+	export type InlayHint = Common.InlayHint;
+
+	export type Range = Common.Range;
+
+	export type IrisConnection = Imported.IrisConnection;
 
 	export namespace Workspace {
 		export interface Interface extends $wcm.Resource {
@@ -382,10 +424,10 @@ export namespace AnalyzerInterface {
 			queryMem(cls: string, query: string): [string, MemberInfo][];
 		}
 		export type Statics = {
-			$new?(): Interface;
+			$new?(env: IrisConnection | undefined): Interface;
 		};
 		export type Class = Statics & {
-			new(): Interface;
+			new(env: IrisConnection | undefined): Interface;
 		};
 	}
 	export type Workspace = Workspace.Interface;
@@ -400,13 +442,14 @@ export namespace AnalyzerInterface {
 	 */
 	export type completeMethod = (prefix: string) => Completion;
 }
-export type AnalyzerInterface = {
-	Workspace: AnalyzerInterface.Workspace.Class;
-	completeClass: AnalyzerInterface.completeClass;
-	completeMethod: AnalyzerInterface.completeMethod;
+export type Exported = {
+	Workspace: Exported.Workspace.Class;
+	completeClass: Exported.completeClass;
+	completeMethod: Exported.completeMethod;
 };
 export namespace analyzer {
 	export type Imports = {
+		imported: Imported;
 	};
 	export namespace Imports {
 		export type Promisified = $wcm.$imports.Promisify<Imports>;
@@ -415,7 +458,7 @@ export namespace analyzer {
 		export type Promisify<T> = $wcm.$imports.Promisify<T>;
 	}
 	export type Exports = {
-		analyzerInterface: AnalyzerInterface;
+		exported: Exported;
 	};
 	export namespace Exports {
 		export type Promisified = $wcm.$exports.Promisify<Exports>;
@@ -425,51 +468,51 @@ export namespace analyzer {
 	}
 }
 
-export namespace AnalyzerInterface.$ {
-	export const Position = new $wcm.RecordType<AnalyzerInterface.Position>([
+export namespace Common.$ {
+	export const Position = new $wcm.RecordType<Common.Position>([
 		['line', $wcm.u32],
 		['character', $wcm.u32],
 	]);
-	export const Range = new $wcm.RecordType<AnalyzerInterface.Range>([
+	export const Range = new $wcm.RecordType<Common.Range>([
 		['start', Position],
 		['end', Position],
 	]);
-	export const Location = new $wcm.RecordType<AnalyzerInterface.Location>([
+	export const Location = new $wcm.RecordType<Common.Location>([
 		['uri', $wcm.wstring],
 		['range', Range],
 	]);
-	export const DiagnosticRelatedInformation = new $wcm.RecordType<AnalyzerInterface.DiagnosticRelatedInformation>([
+	export const DiagnosticRelatedInformation = new $wcm.RecordType<Common.DiagnosticRelatedInformation>([
 		['location', Location],
 		['message', $wcm.wstring],
 	]);
-	export const NameInfo = new $wcm.RecordType<AnalyzerInterface.NameInfo>([
+	export const NameInfo = new $wcm.RecordType<Common.NameInfo>([
 		['before', Position],
 		['content', $wcm.wstring],
 		['after', Position],
 	]);
-	export const ArgMode = new $wcm.EnumType<AnalyzerInterface.ArgMode>(['default', 'output', 'byRef']);
-	export const NormalArg = new $wcm.RecordType<AnalyzerInterface.NormalArg>([
+	export const ArgMode = new $wcm.EnumType<Common.ArgMode>(['default', 'output', 'byRef']);
+	export const NormalArg = new $wcm.RecordType<Common.NormalArg>([
 		['mode', ArgMode],
 		['name', $wcm.wstring],
 		['t', new $wcm.OptionType<string>($wcm.wstring)],
-		['optional', $wcm.bool],
+		['default', new $wcm.OptionType<string>($wcm.wstring)],
 	]);
-	export const VariadicArg = new $wcm.RecordType<AnalyzerInterface.VariadicArg>([
+	export const VariadicArg = new $wcm.RecordType<Common.VariadicArg>([
 		['name', $wcm.wstring],
 		['t', new $wcm.OptionType<string>($wcm.wstring)],
 	]);
-	export const MethodInfo = new $wcm.RecordType<AnalyzerInterface.MethodInfo>([
-		['normal', new $wcm.ListType<AnalyzerInterface.NormalArg>(NormalArg)],
-		['variadic', new $wcm.OptionType<AnalyzerInterface.VariadicArg>(VariadicArg)],
+	export const MethodInfo = new $wcm.RecordType<Common.MethodInfo>([
+		['normal', new $wcm.ListType<Common.NormalArg>(NormalArg)],
+		['variadic', new $wcm.OptionType<Common.VariadicArg>(VariadicArg)],
 		['t', new $wcm.OptionType<string>($wcm.wstring)],
 		['body', Range],
 	]);
-	export const ParameterInfo = new $wcm.RecordType<AnalyzerInterface.ParameterInfo>([
+	export const ParameterInfo = new $wcm.RecordType<Common.ParameterInfo>([
 		['t', new $wcm.OptionType<string>($wcm.wstring)],
 		['v', new $wcm.OptionType<string>($wcm.wstring)],
 	]);
-	export const MemberKind = new $wcm.VariantType<AnalyzerInterface.MemberKind, AnalyzerInterface.MemberKind._tt, AnalyzerInterface.MemberKind._vt>([['parameter', ParameterInfo], ['property', new $wcm.OptionType<string>($wcm.wstring)], ['relationship', new $wcm.OptionType<string>($wcm.wstring)], ['foreignKey', undefined], ['index', undefined], ['projection', undefined], ['trigger', undefined], ['xData', undefined], ['storage', undefined], ['query', undefined], ['method', MethodInfo], ['classMethod', MethodInfo], ['clientMethod', MethodInfo]], AnalyzerInterface.MemberKind._ctor);
-	export const MemberInfo = new $wcm.RecordType<AnalyzerInterface.MemberInfo>([
+	export const MemberKind = new $wcm.VariantType<Common.MemberKind, Common.MemberKind._tt, Common.MemberKind._vt>([['parameter', ParameterInfo], ['property', new $wcm.OptionType<string>($wcm.wstring)], ['relationship', new $wcm.OptionType<string>($wcm.wstring)], ['foreignKey', undefined], ['index', undefined], ['projection', undefined], ['trigger', undefined], ['xData', undefined], ['storage', undefined], ['query', undefined], ['method', MethodInfo], ['classMethod', MethodInfo], ['clientMethod', MethodInfo]], Common.MemberKind._ctor);
+	export const MemberInfo = new $wcm.RecordType<Common.MemberInfo>([
 		['doc', $wcm.wstring],
 		['before', Position],
 		['name', NameInfo],
@@ -477,102 +520,49 @@ export namespace AnalyzerInterface.$ {
 		['kind', MemberKind],
 		['after', Position],
 	]);
-	export const ClassInfo = new $wcm.RecordType<AnalyzerInterface.ClassInfo>([
+	export const ClassInfo = new $wcm.RecordType<Common.ClassInfo>([
 		['doc', $wcm.wstring],
 		['name', NameInfo],
 		['extends', new $wcm.ListType<string>($wcm.wstring)],
 		['deprecated', $wcm.bool],
-		['members', new $wcm.ListType<AnalyzerInterface.MemberInfo>(MemberInfo)],
+		['members', new $wcm.ListType<Common.MemberInfo>(MemberInfo)],
 	]);
-	export const MacroInfo = new $wcm.RecordType<AnalyzerInterface.MacroInfo>([
+	export const MacroInfo = new $wcm.RecordType<Common.MacroInfo>([
 		['name', NameInfo],
 		['args', new $wcm.ListType<string>($wcm.wstring)],
 	]);
-	export const SubroutineInfo = new $wcm.RecordType<AnalyzerInterface.SubroutineInfo>([
+	export const SubroutineInfo = new $wcm.RecordType<Common.SubroutineInfo>([
 		['name', NameInfo],
 		['args', new $wcm.ListType<string>($wcm.wstring)],
 	]);
-	export const RoutineInfo = new $wcm.VariantType<AnalyzerInterface.RoutineInfo, AnalyzerInterface.RoutineInfo._tt, AnalyzerInterface.RoutineInfo._vt>([['INC', new $wcm.ListType<AnalyzerInterface.MacroInfo>(MacroInfo)], ['INT', new $wcm.ListType<AnalyzerInterface.SubroutineInfo>(SubroutineInfo)], ['MAC', new $wcm.ListType<AnalyzerInterface.SubroutineInfo>(SubroutineInfo)]], AnalyzerInterface.RoutineInfo._ctor);
-	export const ParseErr = new $wcm.RecordType<AnalyzerInterface.ParseErr>([
+	export const RoutineInfo = new $wcm.VariantType<Common.RoutineInfo, Common.RoutineInfo._tt, Common.RoutineInfo._vt>([['INC', new $wcm.ListType<Common.MacroInfo>(MacroInfo)], ['INT', new $wcm.ListType<Common.SubroutineInfo>(SubroutineInfo)], ['MAC', new $wcm.ListType<Common.SubroutineInfo>(SubroutineInfo)]], Common.RoutineInfo._ctor);
+	export const ParseErr = new $wcm.RecordType<Common.ParseErr>([
 		['range', Range],
 		['message', $wcm.wstring],
 	]);
-	export const AnalysisErr = new $wcm.VariantType<AnalyzerInterface.AnalysisErr, AnalyzerInterface.AnalysisErr._tt, AnalyzerInterface.AnalysisErr._vt>([['P', ParseErr]], AnalyzerInterface.AnalysisErr._ctor);
-	export const Completion = new $wcm.RecordType<AnalyzerInterface.Completion>([
+	export const AnalysisErr = new $wcm.VariantType<Common.AnalysisErr, Common.AnalysisErr._tt, Common.AnalysisErr._vt>([['P', ParseErr]], Common.AnalysisErr._ctor);
+	export const Completion = new $wcm.RecordType<Common.Completion>([
 		['classname', new $wcm.OptionType<u8>($wcm.u8)],
 		['variable', new $wcm.OptionType<u8>($wcm.u8)],
 		['command', new $wcm.OptionType<u8>($wcm.u8)],
 	]);
-	export const DiagnosticSeverity = new $wcm.EnumType<AnalyzerInterface.DiagnosticSeverity>(['error', 'warning', 'information', 'hint']);
-	export const Diagnostic = new $wcm.RecordType<AnalyzerInterface.Diagnostic>([
+	export const DiagnosticSeverity = new $wcm.EnumType<Common.DiagnosticSeverity>(['error', 'warning', 'information', 'hint']);
+	export const Diagnostic = new $wcm.RecordType<Common.Diagnostic>([
 		['message', $wcm.wstring],
 		['range', Range],
-		['relatedInformation', new $wcm.ListType<AnalyzerInterface.DiagnosticRelatedInformation>(DiagnosticRelatedInformation)],
+		['relatedInformation', new $wcm.ListType<Common.DiagnosticRelatedInformation>(DiagnosticRelatedInformation)],
 		['severity', DiagnosticSeverity],
 	]);
-	export const InlayHint = new $wcm.RecordType<AnalyzerInterface.InlayHint>([
+	export const InlayHint = new $wcm.RecordType<Common.InlayHint>([
 		['position', Position],
 		['label', $wcm.wstring],
 		['paddingLeft', $wcm.bool],
 		['paddingRight', $wcm.bool],
 	]);
-	export const Workspace = new $wcm.ResourceType<AnalyzerInterface.Workspace>('workspace', 'iris:objectscript-analyzer/analyzer-interface/workspace');
-	export const Workspace_Handle = new $wcm.ResourceHandleType('workspace');
-	Workspace.addDestructor('$drop', new $wcm.DestructorType('[resource-drop]workspace', [['inst', Workspace]]));
-	Workspace.addConstructor('constructor', new $wcm.ConstructorType<AnalyzerInterface.Workspace.Class['constructor']>('[constructor]workspace', [], new $wcm.OwnType(Workspace_Handle)));
-	Workspace.addMethod('insertCls', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['insertCls']>('[method]workspace.insert-cls', [
-		['uri', $wcm.wstring],
-		['src', $wcm.wstring],
-	], new $wcm.ResultType<AnalyzerInterface.ClassInfo, AnalyzerInterface.AnalysisErr>(ClassInfo, AnalysisErr, AnalyzerInterface.AnalysisErr.Error_)));
-	Workspace.addMethod('insertRtn', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['insertRtn']>('[method]workspace.insert-rtn', [
-		['uri', $wcm.wstring],
-		['src', $wcm.wstring],
-	], new $wcm.ResultType<AnalyzerInterface.RoutineInfo, AnalyzerInterface.AnalysisErr>(RoutineInfo, AnalysisErr, AnalyzerInterface.AnalysisErr.Error_)));
-	Workspace.addMethod('remove', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['remove']>('[method]workspace.remove', [
-		['uri', $wcm.wstring],
-	], undefined));
-	Workspace.addMethod('check', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['check']>('[method]workspace.check', [
-		['uri', $wcm.wstring],
-	], new $wcm.ListType<AnalyzerInterface.Diagnostic>(Diagnostic)));
-	Workspace.addMethod('inlayHint', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['inlayHint']>('[method]workspace.inlay-hint', [
-		['uri', $wcm.wstring],
-		['range', Range],
-	], new $wcm.ListType<AnalyzerInterface.InlayHint>(InlayHint)));
-	Workspace.addMethod('queryCls', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['queryCls']>('[method]workspace.query-cls', [
-		['query', $wcm.wstring],
-	], new $wcm.ListType<[string, AnalyzerInterface.ClassInfo]>(new $wcm.TupleType<[string, AnalyzerInterface.ClassInfo]>([$wcm.wstring, ClassInfo]))));
-	Workspace.addMethod('queryMem', new $wcm.MethodType<AnalyzerInterface.Workspace.Interface['queryMem']>('[method]workspace.query-mem', [
-		['cls', $wcm.wstring],
-		['query', $wcm.wstring],
-	], new $wcm.ListType<[string, AnalyzerInterface.MemberInfo]>(new $wcm.TupleType<[string, AnalyzerInterface.MemberInfo]>([$wcm.wstring, MemberInfo]))));
-	export const completeClass = new $wcm.FunctionType<AnalyzerInterface.completeClass>('complete-class', [
-		['prefix', $wcm.wstring],
-	], new $wcm.ResultType<AnalyzerInterface.Completion, AnalyzerInterface.AnalysisErr>(Completion, AnalysisErr, AnalyzerInterface.AnalysisErr.Error_));
-	export const completeMethod = new $wcm.FunctionType<AnalyzerInterface.completeMethod>('complete-method', [
-		['prefix', $wcm.wstring],
-	], new $wcm.ResultType<AnalyzerInterface.Completion, AnalyzerInterface.AnalysisErr>(Completion, AnalysisErr, AnalyzerInterface.AnalysisErr.Error_));
 }
-export namespace AnalyzerInterface._ {
-	export const id = 'iris:objectscript-analyzer/analyzer-interface' as const;
-	export const witName = 'analyzer-interface' as const;
-	export namespace Workspace {
-		export type WasmInterface = {
-			'[constructor]workspace': () => i32;
-			'[method]workspace.insert-cls': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<ClassInfo, AnalysisErr>>) => void;
-			'[method]workspace.insert-rtn': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<RoutineInfo, AnalysisErr>>) => void;
-			'[method]workspace.remove': (self: i32, uri_ptr: i32, uri_len: i32) => void;
-			'[method]workspace.check': (self: i32, uri_ptr: i32, uri_len: i32, result: ptr<Diagnostic[]>) => void;
-			'[method]workspace.inlay-hint': (self: i32, uri_ptr: i32, uri_len: i32, range_start_line: i32, range_start_character: i32, range_end_line: i32, range_end_character: i32, result: ptr<InlayHint[]>) => void;
-			'[method]workspace.query-cls': (self: i32, query_ptr: i32, query_len: i32, result: ptr<[string, ClassInfo][]>) => void;
-			'[method]workspace.query-mem': (self: i32, cls_ptr: i32, cls_len: i32, query_ptr: i32, query_len: i32, result: ptr<[string, MemberInfo][]>) => void;
-		};
-		export namespace imports {
-			export type WasmInterface = Workspace.WasmInterface & { '[resource-drop]workspace': (self: i32) => void };
-		}
-		export namespace exports {
-			export type WasmInterface = Workspace.WasmInterface & { '[dtor]workspace': (self: i32) => void };
-		}
-	}
+export namespace Common._ {
+	export const id = 'iris:objectscript-analyzer/common' as const;
+	export const witName = 'common' as const;
 	export const types: Map<string, $wcm.AnyComponentModelType> = new Map<string, $wcm.AnyComponentModelType>([
 		['Position', $.Position],
 		['Range', $.Range],
@@ -595,7 +585,139 @@ export namespace AnalyzerInterface._ {
 		['Completion', $.Completion],
 		['DiagnosticSeverity', $.DiagnosticSeverity],
 		['Diagnostic', $.Diagnostic],
+		['InlayHint', $.InlayHint]
+	]);
+	export type WasmInterface = {
+	};
+}
+
+export namespace Imported.$ {
+	export const MemberInfo = Common.$.MemberInfo;
+	export const IrisConnection = new $wcm.ResourceType<Imported.IrisConnection>('iris-connection', 'iris:objectscript-analyzer/imported/iris-connection');
+	export const IrisConnection_Handle = new $wcm.ResourceHandleType('iris-connection');
+	IrisConnection.addDestructor('$drop', new $wcm.DestructorType('[resource-drop]iris-connection', [['inst', IrisConnection]]));
+	IrisConnection.addMethod('getMem', new $wcm.MethodType<Imported.IrisConnection.Interface['getMem']>('[method]iris-connection.get-mem', [
+		['cls', $wcm.wstring],
+		['mem', $wcm.wstring],
+	], new $wcm.OptionType<[string, Imported.MemberInfo]>(new $wcm.TupleType<[string, Imported.MemberInfo]>([$wcm.wstring, MemberInfo]))));
+}
+export namespace Imported._ {
+	export const id = 'iris:objectscript-analyzer/imported' as const;
+	export const witName = 'imported' as const;
+	export namespace IrisConnection {
+		export type WasmInterface = {
+			'[method]iris-connection.get-mem': (self: i32, cls_ptr: i32, cls_len: i32, mem_ptr: i32, mem_len: i32, result: ptr<[string, MemberInfo] | undefined>) => void;
+		};
+		export namespace imports {
+			export type WasmInterface = IrisConnection.WasmInterface & { '[resource-drop]iris-connection': (self: i32) => void };
+		}
+		export namespace exports {
+			export type WasmInterface = IrisConnection.WasmInterface & { '[dtor]iris-connection': (self: i32) => void };
+		}
+	}
+	export const types: Map<string, $wcm.AnyComponentModelType> = new Map<string, $wcm.AnyComponentModelType>([
+		['MemberInfo', $.MemberInfo],
+		['IrisConnection', $.IrisConnection]
+	]);
+	export const resources: Map<string, $wcm.ResourceType> = new Map<string, $wcm.ResourceType>([
+		['IrisConnection', $.IrisConnection]
+	]);
+	export type WasmInterface = {
+	};
+	export namespace imports {
+		export type WasmInterface = _.WasmInterface & IrisConnection.imports.WasmInterface;
+	}
+	export namespace exports {
+		export type WasmInterface = _.WasmInterface & IrisConnection.exports.WasmInterface;
+		export namespace imports {
+			export type WasmInterface = {
+				'[resource-new]iris-connection': (rep: i32) => i32;
+				'[resource-rep]iris-connection': (handle: i32) => i32;
+				'[resource-drop]iris-connection': (handle: i32) => void;
+			};
+		}
+	}
+}
+
+export namespace Exported.$ {
+	export const ClassInfo = Common.$.ClassInfo;
+	export const MemberInfo = Common.$.MemberInfo;
+	export const RoutineInfo = Common.$.RoutineInfo;
+	export const Completion = Common.$.Completion;
+	export const AnalysisErr = Common.$.AnalysisErr;
+	export const Diagnostic = Common.$.Diagnostic;
+	export const InlayHint = Common.$.InlayHint;
+	export const Range = Common.$.Range;
+	export const IrisConnection = Imported.$.IrisConnection;
+	export const Workspace = new $wcm.ResourceType<Exported.Workspace>('workspace', 'iris:objectscript-analyzer/exported/workspace');
+	export const Workspace_Handle = new $wcm.ResourceHandleType('workspace');
+	Workspace.addDestructor('$drop', new $wcm.DestructorType('[resource-drop]workspace', [['inst', Workspace]]));
+	Workspace.addConstructor('constructor', new $wcm.ConstructorType<Exported.Workspace.Class['constructor']>('[constructor]workspace', [
+		['env', new $wcm.OptionType<Exported.IrisConnection>(new $wcm.OwnType<Exported.IrisConnection>(IrisConnection))],
+	], new $wcm.OwnType(Workspace_Handle)));
+	Workspace.addMethod('insertCls', new $wcm.MethodType<Exported.Workspace.Interface['insertCls']>('[method]workspace.insert-cls', [
+		['uri', $wcm.wstring],
+		['src', $wcm.wstring],
+	], new $wcm.ResultType<Exported.ClassInfo, Exported.AnalysisErr>(ClassInfo, AnalysisErr, Common.AnalysisErr.Error_)));
+	Workspace.addMethod('insertRtn', new $wcm.MethodType<Exported.Workspace.Interface['insertRtn']>('[method]workspace.insert-rtn', [
+		['uri', $wcm.wstring],
+		['src', $wcm.wstring],
+	], new $wcm.ResultType<Exported.RoutineInfo, Exported.AnalysisErr>(RoutineInfo, AnalysisErr, Common.AnalysisErr.Error_)));
+	Workspace.addMethod('remove', new $wcm.MethodType<Exported.Workspace.Interface['remove']>('[method]workspace.remove', [
+		['uri', $wcm.wstring],
+	], undefined));
+	Workspace.addMethod('check', new $wcm.MethodType<Exported.Workspace.Interface['check']>('[method]workspace.check', [
+		['uri', $wcm.wstring],
+	], new $wcm.ListType<Exported.Diagnostic>(Diagnostic)));
+	Workspace.addMethod('inlayHint', new $wcm.MethodType<Exported.Workspace.Interface['inlayHint']>('[method]workspace.inlay-hint', [
+		['uri', $wcm.wstring],
+		['range', Range],
+	], new $wcm.ListType<Exported.InlayHint>(InlayHint)));
+	Workspace.addMethod('queryCls', new $wcm.MethodType<Exported.Workspace.Interface['queryCls']>('[method]workspace.query-cls', [
+		['query', $wcm.wstring],
+	], new $wcm.ListType<[string, Exported.ClassInfo]>(new $wcm.TupleType<[string, Exported.ClassInfo]>([$wcm.wstring, ClassInfo]))));
+	Workspace.addMethod('queryMem', new $wcm.MethodType<Exported.Workspace.Interface['queryMem']>('[method]workspace.query-mem', [
+		['cls', $wcm.wstring],
+		['query', $wcm.wstring],
+	], new $wcm.ListType<[string, Exported.MemberInfo]>(new $wcm.TupleType<[string, Exported.MemberInfo]>([$wcm.wstring, MemberInfo]))));
+	export const completeClass = new $wcm.FunctionType<Exported.completeClass>('complete-class', [
+		['prefix', $wcm.wstring],
+	], new $wcm.ResultType<Exported.Completion, Exported.AnalysisErr>(Completion, AnalysisErr, Common.AnalysisErr.Error_));
+	export const completeMethod = new $wcm.FunctionType<Exported.completeMethod>('complete-method', [
+		['prefix', $wcm.wstring],
+	], new $wcm.ResultType<Exported.Completion, Exported.AnalysisErr>(Completion, AnalysisErr, Common.AnalysisErr.Error_));
+}
+export namespace Exported._ {
+	export const id = 'iris:objectscript-analyzer/exported' as const;
+	export const witName = 'exported' as const;
+	export namespace Workspace {
+		export type WasmInterface = {
+			'[constructor]workspace': (env_case: i32, env_option: i32) => i32;
+			'[method]workspace.insert-cls': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<ClassInfo, AnalysisErr>>) => void;
+			'[method]workspace.insert-rtn': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<RoutineInfo, AnalysisErr>>) => void;
+			'[method]workspace.remove': (self: i32, uri_ptr: i32, uri_len: i32) => void;
+			'[method]workspace.check': (self: i32, uri_ptr: i32, uri_len: i32, result: ptr<Diagnostic[]>) => void;
+			'[method]workspace.inlay-hint': (self: i32, uri_ptr: i32, uri_len: i32, range_Range_start_line: i32, range_Range_start_character: i32, range_Range_end_line: i32, range_Range_end_character: i32, result: ptr<InlayHint[]>) => void;
+			'[method]workspace.query-cls': (self: i32, query_ptr: i32, query_len: i32, result: ptr<[string, ClassInfo][]>) => void;
+			'[method]workspace.query-mem': (self: i32, cls_ptr: i32, cls_len: i32, query_ptr: i32, query_len: i32, result: ptr<[string, MemberInfo][]>) => void;
+		};
+		export namespace imports {
+			export type WasmInterface = Workspace.WasmInterface & { '[resource-drop]workspace': (self: i32) => void };
+		}
+		export namespace exports {
+			export type WasmInterface = Workspace.WasmInterface & { '[dtor]workspace': (self: i32) => void };
+		}
+	}
+	export const types: Map<string, $wcm.AnyComponentModelType> = new Map<string, $wcm.AnyComponentModelType>([
+		['ClassInfo', $.ClassInfo],
+		['MemberInfo', $.MemberInfo],
+		['RoutineInfo', $.RoutineInfo],
+		['Completion', $.Completion],
+		['AnalysisErr', $.AnalysisErr],
+		['Diagnostic', $.Diagnostic],
 		['InlayHint', $.InlayHint],
+		['Range', $.Range],
+		['IrisConnection', $.IrisConnection],
 		['Workspace', $.Workspace]
 	]);
 	export const functions: Map<string, $wcm.FunctionType> = new Map([
@@ -626,16 +748,20 @@ export namespace AnalyzerInterface._ {
 export namespace analyzer.$ {
 }
 export namespace analyzer._ {
-	type Completion = AnalyzerInterface.Completion;
-	type AnalysisErr = AnalyzerInterface.AnalysisErr;
-	type ClassInfo = AnalyzerInterface.ClassInfo;
-	type MemberInfo = AnalyzerInterface.MemberInfo;
-	type RoutineInfo = AnalyzerInterface.RoutineInfo;
-	type Diagnostic = AnalyzerInterface.Diagnostic;
-	type InlayHint = AnalyzerInterface.InlayHint;
+	type Completion = Common.Completion;
+	type AnalysisErr = Common.AnalysisErr;
+	type ClassInfo = Common.ClassInfo;
+	type MemberInfo = Common.MemberInfo;
+	type RoutineInfo = Common.RoutineInfo;
+	type Diagnostic = Common.Diagnostic;
+	type InlayHint = Common.InlayHint;
 	export const id = 'iris:objectscript-analyzer/analyzer' as const;
 	export const witName = 'analyzer' as const;
 	export namespace imports {
+		export const interfaces: Map<string, $wcm.InterfaceType> = new Map<string, $wcm.InterfaceType>([
+			['Common', Common._],
+			['Imported', Imported._]
+		]);
 		export function create(service: analyzer.Imports, context: $wcm.WasmContext): Imports {
 			return $wcm.$imports.create<Imports>(_, service, context);
 		}
@@ -644,27 +770,28 @@ export namespace analyzer._ {
 		}
 	}
 	export type Imports = {
-		'[export]iris:objectscript-analyzer/analyzer-interface': AnalyzerInterface._.exports.imports.WasmInterface;
+		'iris:objectscript-analyzer/imported': Imported._.imports.WasmInterface;
+		'[export]iris:objectscript-analyzer/exported': Exported._.exports.imports.WasmInterface;
 	};
 	export namespace exports {
 		export const interfaces: Map<string, $wcm.InterfaceType> = new Map<string, $wcm.InterfaceType>([
-			['AnalyzerInterface', AnalyzerInterface._]
+			['Exported', Exported._]
 		]);
 		export function bind(exports: Exports, context: $wcm.WasmContext): analyzer.Exports {
 			return $wcm.$exports.bind<analyzer.Exports>(_, exports, context);
 		}
 	}
 	export type Exports = {
-		'iris:objectscript-analyzer/analyzer-interface#complete-class': (prefix_ptr: i32, prefix_len: i32, result: ptr<result<Completion, AnalysisErr>>) => void;
-		'iris:objectscript-analyzer/analyzer-interface#complete-method': (prefix_ptr: i32, prefix_len: i32, result: ptr<result<Completion, AnalysisErr>>) => void;
-		'iris:objectscript-analyzer/analyzer-interface#[constructor]workspace': () => i32;
-		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.insert-cls': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<ClassInfo, AnalysisErr>>) => void;
-		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.insert-rtn': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<RoutineInfo, AnalysisErr>>) => void;
-		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.remove': (self: i32, uri_ptr: i32, uri_len: i32) => void;
-		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.check': (self: i32, uri_ptr: i32, uri_len: i32, result: ptr<Diagnostic[]>) => void;
-		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.inlay-hint': (self: i32, uri_ptr: i32, uri_len: i32, range_start_line: i32, range_start_character: i32, range_end_line: i32, range_end_character: i32, result: ptr<InlayHint[]>) => void;
-		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.query-cls': (self: i32, query_ptr: i32, query_len: i32, result: ptr<[string, ClassInfo][]>) => void;
-		'iris:objectscript-analyzer/analyzer-interface#[method]workspace.query-mem': (self: i32, cls_ptr: i32, cls_len: i32, query_ptr: i32, query_len: i32, result: ptr<[string, MemberInfo][]>) => void;
+		'iris:objectscript-analyzer/exported#complete-class': (prefix_ptr: i32, prefix_len: i32, result: ptr<result<Completion, AnalysisErr>>) => void;
+		'iris:objectscript-analyzer/exported#complete-method': (prefix_ptr: i32, prefix_len: i32, result: ptr<result<Completion, AnalysisErr>>) => void;
+		'iris:objectscript-analyzer/exported#[constructor]workspace': (env_case: i32, env_option: i32) => i32;
+		'iris:objectscript-analyzer/exported#[method]workspace.insert-cls': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<ClassInfo, AnalysisErr>>) => void;
+		'iris:objectscript-analyzer/exported#[method]workspace.insert-rtn': (self: i32, uri_ptr: i32, uri_len: i32, src_ptr: i32, src_len: i32, result: ptr<result<RoutineInfo, AnalysisErr>>) => void;
+		'iris:objectscript-analyzer/exported#[method]workspace.remove': (self: i32, uri_ptr: i32, uri_len: i32) => void;
+		'iris:objectscript-analyzer/exported#[method]workspace.check': (self: i32, uri_ptr: i32, uri_len: i32, result: ptr<Diagnostic[]>) => void;
+		'iris:objectscript-analyzer/exported#[method]workspace.inlay-hint': (self: i32, uri_ptr: i32, uri_len: i32, range_Range_start_line: i32, range_Range_start_character: i32, range_Range_end_line: i32, range_Range_end_character: i32, result: ptr<InlayHint[]>) => void;
+		'iris:objectscript-analyzer/exported#[method]workspace.query-cls': (self: i32, query_ptr: i32, query_len: i32, result: ptr<[string, ClassInfo][]>) => void;
+		'iris:objectscript-analyzer/exported#[method]workspace.query-mem': (self: i32, cls_ptr: i32, cls_len: i32, query_ptr: i32, query_len: i32, result: ptr<[string, MemberInfo][]>) => void;
 	};
 	export function bind(service: analyzer.Imports, code: $wcm.Code, context?: $wcm.ComponentModelContext): Promise<analyzer.Exports>;
 	export function bind(service: analyzer.Imports.Promisified, code: $wcm.Code, port: $wcm.RAL.ConnectionPort, context?: $wcm.ComponentModelContext): Promise<analyzer.Exports.Promisified>;
