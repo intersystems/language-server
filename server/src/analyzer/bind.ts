@@ -361,7 +361,7 @@ export namespace Imported {
 
 	export namespace IrisConnection {
 		export interface Interface extends $wcm.Resource {
-			getMem(cls: string, mem: string): [string, MemberInfo] | undefined;
+			getMem(cls: string, mem: string): MemberInfo | undefined;
 		}
 		export type Statics = {
 		};
@@ -599,14 +599,14 @@ export namespace Imported.$ {
 	IrisConnection.addMethod('getMem', new $wcm.MethodType<Imported.IrisConnection.Interface['getMem']>('[method]iris-connection.get-mem', [
 		['cls', $wcm.wstring],
 		['mem', $wcm.wstring],
-	], new $wcm.OptionType<[string, Imported.MemberInfo]>(new $wcm.TupleType<[string, Imported.MemberInfo]>([$wcm.wstring, MemberInfo]))));
+	], new $wcm.OptionType<Imported.MemberInfo>(MemberInfo)));
 }
 export namespace Imported._ {
 	export const id = 'iris:objectscript-analyzer/imported' as const;
 	export const witName = 'imported' as const;
 	export namespace IrisConnection {
 		export type WasmInterface = {
-			'[method]iris-connection.get-mem': (self: i32, cls_ptr: i32, cls_len: i32, mem_ptr: i32, mem_len: i32, result: ptr<[string, MemberInfo] | undefined>) => void;
+			'[method]iris-connection.get-mem': (self: i32, cls_ptr: i32, cls_len: i32, mem_ptr: i32, mem_len: i32, result: ptr<MemberInfo | undefined>) => void;
 		};
 		export namespace imports {
 			export type WasmInterface = IrisConnection.WasmInterface & { '[resource-drop]iris-connection': (self: i32) => void };
