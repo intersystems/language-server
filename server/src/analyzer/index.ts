@@ -190,18 +190,44 @@ export type AnalyzeResult = ClassInfo | { error: Diagnostic[] };
 
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
-// Chain calls per workspace: a call can suspend mid-flight (getMem awaits REST)
-// while holding a RefCell borrow, so overlapping calls panic with "already borrowed".
+// A read (check/inlayHint/query) can suspend mid-flight while awaiting getMem's
+// REST call, holding a shared RefCell borrow; a write (insertCls/remove) taking
+// borrow_mut() meanwhile panics with "already borrowed". Guard with a reader/writer
+// gate: reads run concurrently (so their REST latency overlaps), a write waits for
+// in-flight reads to drain, and reads queued behind a write wait for it.
+const WRITES = new Set<PropertyKey>(["insertCls", "insertRtn", "remove"]);
+
 function serialize(instance: WorkspaceInstance): WorkspaceInstance {
-	let tail: Promise<unknown> = Promise.resolve();
+	let tail: Promise<void> = Promise.resolve();
+	let readers = 0;
+	let drained: Promise<void> = Promise.resolve();
+	let releaseDrained: () => void = () => { };
 	return new Proxy(instance, {
 		get(target, prop, receiver) {
 			const value = Reflect.get(target, prop, receiver);
 			if (typeof value !== "function") return value;
-			return (...args: unknown[]) => {
-				const result = tail.then(() => value.apply(target, args));
-				tail = result.catch(() => { });
-				return result;
+			if (WRITES.has(prop)) {
+				return async (...args: unknown[]) => {
+					const prev = tail;
+					let release!: () => void;
+					tail = new Promise<void>((r) => (release = r));
+					await prev;
+					await drained;
+					try {
+						return await value.apply(target, args);
+					} finally {
+						release();
+					}
+				};
+			}
+			return async (...args: unknown[]) => {
+				await tail;
+				if (readers++ === 0) drained = new Promise<void>((r) => (releaseDrained = r));
+				try {
+					return await value.apply(target, args);
+				} finally {
+					if (--readers === 0) releaseDrained();
+				}
 			};
 		},
 	});
