@@ -9,6 +9,7 @@ import {
 	makeRESTRequest,
 	buildMemberMetadataQuery,
 	buildSuperclassesQuery,
+	buildClassTypeQuery,
 	resolveStubbedMethod,
 	MemberMetadataRow,
 } from '../utils/functions';
@@ -29,6 +30,7 @@ class IrisConnection {
 		private readonly folderURI: string,
 		private readonly memCache = new Map<string, [number, MemberInfo]>(),
 		private readonly superCache = new Map<string, [number, string[]]>(),
+		private readonly datatypeCache = new Map<string, [number, boolean | undefined]>(),
 	) { }
 
 	// getMem is declared synchronous in the WIT, but jco's --async-mode jspi wraps
@@ -69,6 +71,24 @@ class IrisConnection {
 				: [];
 		this.superCache.set(cls, [Date.now(), supers]);
 		return supers;
+	}
+
+	// Whether a class outside the workspace is a datatype. IRIS's compiled
+	// ClassType already resolves both the [ ClassType = datatype ] keyword and
+	// inheritance from %Library.DataType. Returns undefined when unknown (no
+	// server, or the class isn't found).
+	public async isDatatype(cls: string): Promise<boolean | undefined> {
+		const cached = this.datatypeCache.get(cls);
+		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
+		const server = await getServerSpec(this.folderURI);
+		if (server === undefined) return undefined;
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, buildClassTypeQuery(cls));
+		const rows = respdata?.data?.result?.content;
+		const isDatatype = Array.isArray(rows) && rows.length > 0
+			? rows[0]?.ClassType === "datatype"
+			: undefined;
+		this.datatypeCache.set(cls, [Date.now(), isDatatype]);
+		return isDatatype;
 	}
 }
 
@@ -136,7 +156,7 @@ function parseFormalSpec(spec: string): { normal: wit.NormalArg[]; variadic?: wi
 
 		const t = type || undefined;
 		if (name.endsWith("...")) {
-			variadic = { name: name.slice(0, -3), t };
+			variadic = { mode, name: name.slice(0, -3), t };
 		} else {
 			normal.push({ mode, name, t, default: def || undefined });
 		}

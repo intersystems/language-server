@@ -32,6 +32,7 @@ npx jco transpile "$COMPONENT" \
 	--async-imports \
 		"iris:objectscript-analyzer/imported#[method]iris-connection.get-mem" \
 		"iris:objectscript-analyzer/imported#[method]iris-connection.get-supers" \
+		"iris:objectscript-analyzer/imported#[method]iris-connection.is-datatype" \
 	--async-exports \
 		"iris:objectscript-analyzer/exported#[method]workspace.insert-cls" \
 		"iris:objectscript-analyzer/exported#[method]workspace.insert-rtn" \
