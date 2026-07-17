@@ -29,7 +29,6 @@ import * as ld from "../utils/languageDefinitions";
 import parameterTypes from "../documentation/parameterTypes.json";
 import sqlReservedWords from "../documentation/sqlReservedWords.json";
 import * as analyzer from "../analyzer";
-import { URI } from 'vscode-uri';
 
 /**
  * Helper method  that appends `range` to value of `key` in `map`
@@ -74,7 +73,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	if ("error" in analyzed) {
 		diagnostics.push(...analyzed.error);
 	}
-	for (const error of await analyzer.check(URI.parse(doc.uri).fsPath)) {
+	for (const error of await analyzer.check(doc.uri)) {
 		diagnostics.push(error);
 	}
 

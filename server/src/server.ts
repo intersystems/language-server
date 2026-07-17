@@ -142,14 +142,13 @@ documents.onDidChangeContent(async (change) => {
 	parsedDocuments.set(change.document.uri, undefined);
 	analyzedDocuments.set(change.document.uri, undefined);
 	const path = URI.parse(change.document.uri).path;
-	const fsPath = URI.parse(change.document.uri).fsPath;
 	const fileText = change.document.getText();
 	parsedDocuments.set(
 		change.document.uri,
 		parseDocument(change.document.languageId, path.slice(path.lastIndexOf(".") + 1).toLowerCase(), fileText)
 			.compressedlinearray,
 	);
-	analyzedDocuments.set(change.document.uri, await analyzeCls(fsPath, fileText));
+	analyzedDocuments.set(change.document.uri, await analyzeCls(change.document.uri, fileText));
 });
 
 connection.onDocumentFormatting(onDocumentFormatting);
@@ -270,7 +269,7 @@ async function analyzeWorkspaceFolders(folders: WorkspaceFolder[]) {
 			const fileURI = URI.file(filePath).toString();
 			const fileString = fs.readFileSync(filePath, "utf-8");
 			analyzedDocuments.set(fileURI, undefined);
-			analyzedDocuments.set(fileURI, await analyzeCls(filePath, fileString, folder.uri));
+			analyzedDocuments.set(fileURI, await analyzeCls(fileURI, fileString, folder.uri));
 		}
 	}
 }

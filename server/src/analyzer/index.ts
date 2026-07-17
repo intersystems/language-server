@@ -189,9 +189,9 @@ function convertDiagnostic(d: wit.Diagnostic): Diagnostic {
 	};
 }
 
-export async function analyzeCls(filePath: string, src: string, folderURI?: string): Promise<AnalyzeResult> {
+export async function analyzeCls(docURI: string, src: string, folderURI?: string): Promise<AnalyzeResult> {
 	try {
-		const workspace = typeof folderURI === "string" ? await rootURIToAnalyzerWorkspace(folderURI) : await filePathToAnalyzerWorkspace(filePath);
+		const workspace = typeof folderURI === "string" ? await rootURIToAnalyzerWorkspace(folderURI) : await filePathToAnalyzerWorkspace(docURI);
 		if (!workspace) {
 			return {
 				error: [{
@@ -205,7 +205,7 @@ export async function analyzeCls(filePath: string, src: string, folderURI?: stri
 				}],
 			};
 		}
-		return await workspace.insertCls(filePath, src);
+		return await workspace.insertCls(docURI, src);
 	} catch (rawError) {
 		console.log(rawError);
 		return { error: [] }
@@ -230,42 +230,38 @@ export async function completeClass(src: string) {
 	}
 }
 
-export async function check(fileFsPath: string): Promise<Diagnostic[]> {
+export async function check(docURI: string): Promise<Diagnostic[]> {
 	try {
-		const workspace = await filePathToAnalyzerWorkspace(fileFsPath);
+		const workspace = await filePathToAnalyzerWorkspace(docURI);
 		if (!workspace) {
 			return [];
 		}
-		return (await workspace.check(fileFsPath)).map(convertDiagnostic);
+		return (await workspace.check(docURI)).map(convertDiagnostic);
 	} catch (rawError) {
 		console.log(rawError);
 		return [];
 	}
 }
 
-export async function inlayHint(fileFsPath: string, range: wit.Range): Promise<wit.InlayHint[]> {
+export async function inlayHint(docURI: string, range: wit.Range): Promise<wit.InlayHint[]> {
 	try {
-		const workspace = await filePathToAnalyzerWorkspace(fileFsPath);
+		const workspace = await filePathToAnalyzerWorkspace(docURI);
 		if (!workspace) {
 			return [];
 		}
-		return await workspace.inlayHint(fileFsPath, range);
+		return await workspace.inlayHint(docURI, range);
 	} catch (rawError) {
 		console.log(rawError);
 		return [];
 	}
 }
 
-export async function filePathToAnalyzerWorkspace(filePath: string): Promise<WorkspaceInstance> {
+export async function filePathToAnalyzerWorkspace(docURI: string): Promise<WorkspaceInstance> {
 	const folders = await connection.workspace.getWorkspaceFolders();
-	const folder = folders?.find((folder) => {
-		const folderPath = URI.parse(folder.uri).fsPath;
-		const rel = path.relative(folderPath, filePath);
-		return !rel.startsWith("..") && !path.isAbsolute(rel);
-	});
+	const folder = folders?.find((folder) => docURI.startsWith(folder.uri));
 	return (
 		(folder && rootURIToAnalyzerWorkspace(folder.uri)) ||
-		rootURIToAnalyzerWorkspace(filePath)
+		rootURIToAnalyzerWorkspace(docURI)
 	);
 }
 
@@ -288,7 +284,7 @@ export async function getAnalyzedClass(context: URI, name: string): Promise<[str
 }
 
 export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, ClassInfo]> {
-	const workspace = await filePathToAnalyzerWorkspace(context.path);
+	const workspace = await filePathToAnalyzerWorkspace(context.toString());
 	const classes = await workspace.queryCls("");
 	for (const x of classes) {
 		yield x;
@@ -314,7 +310,7 @@ export async function* getAnalyzedClassMembers(
 	memQuery: string = "",
 	includeExtends: boolean = true
 ): AsyncGenerator<[string, MemberInfo]> {
-	const workspace = await filePathToAnalyzerWorkspace(context.fsPath);
+	const workspace = await filePathToAnalyzerWorkspace(context.toString());
 	for (const x of await workspace.queryMem(clsName, memQuery)) {
 		yield x;
 	}
