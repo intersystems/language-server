@@ -1,77 +1,186 @@
 import * as fs from "fs";
 import * as path from "path";
-import * as $wcm from "@vscode/wasm-component-model";
-import { analyzer, Common, Exported, Imported } from "./bind";
+import { instantiate, Root } from "./generated/analyzer.js";
+import type * as wit from "./generated/interfaces/iris-objectscript-analyzer-common.js";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 import { connection } from '../utils/variables';
+import {
+	getServerSpec,
+	makeRESTRequest,
+	buildMemberMetadataQuery,
+	resolveStubbedMethod,
+	MemberMetadataRow,
+} from '../utils/functions';
 import { URI } from 'vscode-uri';
 
-const filename = path.resolve(__dirname, "../lib/analyzer.wasm");
+const libDir = path.resolve(__dirname, "../lib");
 
-class IrisConnection extends $wcm.Resource.Default implements Imported.IrisConnection.Interface {
-	static $resources = new $wcm.ResourceManager.Default<IrisConnection>();
+function getCoreModule(name: string): WebAssembly.Module {
+	return new WebAssembly.Module(fs.readFileSync(path.join(libDir, name)));
+}
 
-	constructor() {
-		super(IrisConnection.$resources);
-	}
+const ORIGIN: wit.Position = { line: 0, character: 0 };
+const ZERO_RANGE: wit.Range = { start: ORIGIN, end: ORIGIN };
 
-	public getMem(cls: string, mem: string): MemberInfo | undefined {
-		console.log("getMem", cls, mem)
-		return;
+class IrisConnection {
+	constructor(private readonly folderURI: string) { }
+
+	// getMem is declared synchronous in the WIT, but jco's --async-mode jspi wraps
+	// it in WebAssembly.Suspending so this async body can await a REST request and
+	// the analyzer still sees a plain synchronous return. It resolves members of
+	// classes outside the workspace (library/system); workspace classes are served
+	// from the analyzer's own memory and never reach here.
+	public async getMem(cls: string, mem: string): Promise<MemberInfo | undefined> {
+		const server = await getServerSpec(this.folderURI);
+		if (server === undefined) return undefined;
+		const data = buildMemberMetadataQuery(cls, mem, "any");
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
+		const rows: MemberMetadataRow[] | undefined = respdata?.data?.result?.content;
+		if (!Array.isArray(rows) || rows.length === 0) return undefined;
+		let row = rows[0];
+		if (row.MemberType === "method" && row.Stub) {
+			row = (await resolveStubbedMethod(server, cls, row.Stub)) ?? row;
+		}
+		return rowToMemberInfo(mem, row);
 	}
 }
 
-async function loadAnalyzer() {
-	try {
-		const bits = fs.readFileSync(filename);
-		const module = await WebAssembly.compile(bits);
+function rowToMemberInfo(mem: string, row: MemberMetadataRow): MemberInfo {
+	return {
+		doc: row.Description ?? "",
+		before: ORIGIN,
+		name: { before: ORIGIN, content: mem, after: ORIGIN },
+		deprecated: row.Deprecated === 1,
+		kind: rowToMemberKind(row),
+		after: ORIGIN,
+	};
+}
 
-		const service: analyzer.Imports = {
-			imported: {
-				IrisConnection
+function rowToMemberKind(row: MemberMetadataRow): MemberKind {
+	const type = row.ReturnType || undefined;
+	switch (row.MemberType) {
+		case "property":
+			return { tag: "property", val: type };
+		case "parameter":
+			return { tag: "parameter", val: { t: type } };
+		default: {
+			const { normal, variadic } = parseFormalSpec(row.FormalSpec ?? "");
+			const val: wit.MethodInfo = { normal, variadic, t: type, body: ZERO_RANGE };
+			return { tag: row.ClassMethod === 1 ? "class-method" : "method", val };
+		}
+	}
+}
+
+// Parse IRIS's minified FormalSpec (e.g. `*out:%String,&ref:%Integer,x...`) into the
+// structured args the WIT expects. Prefixes: `*` output, `&` by-ref; `:` starts the
+// type, `=` the default; a trailing `...` marks the variadic arg. Types and defaults
+// may contain commas/parens/quotes, so split respecting quote and paren nesting.
+function parseFormalSpec(spec: string): { normal: wit.NormalArg[]; variadic?: wit.VariadicArg } {
+	const normal: wit.NormalArg[] = [];
+	let variadic: wit.VariadicArg | undefined;
+	for (const raw of splitTopLevel(spec)) {
+		let s = raw.trim();
+		if (s === "") continue;
+		let mode: wit.ArgMode = "default";
+		if (s.startsWith("*")) { mode = "output"; s = s.slice(1); }
+		else if (s.startsWith("&")) { mode = "by-ref"; s = s.slice(1); }
+
+		let name = "", type = "", def = "";
+		let stage: "name" | "type" | "default" = "name";
+		let depth = 0, inQuote = false;
+		for (const c of s) {
+			if (inQuote) {
+				if (c === '"') inQuote = false;
+			} else if (c === '"') {
+				inQuote = true;
+			} else if (c === "(") {
+				depth++;
+			} else if (c === ")") {
+				depth--;
+			} else if (depth === 0 && stage === "name" && c === ":") {
+				stage = "type"; continue;
+			} else if (depth === 0 && stage !== "default" && c === "=") {
+				stage = "default"; continue;
 			}
-		};
-		const exports = await analyzer._.bind(service, module);
+			if (stage === "name") name += c;
+			else if (stage === "type") type += c;
+			else def += c;
+		}
 
-		return exports;
-	} catch (rawError) {
-		console.log(rawError);
-		throw rawError;
+		const t = type || undefined;
+		if (name.endsWith("...")) {
+			variadic = { name: name.slice(0, -3), t };
+		} else {
+			normal.push({ mode, name, t, default: def || undefined });
+		}
 	}
+	return { normal, variadic };
 }
 
-export type MethodInfo = Common.MethodInfo;
-export type ParameterInfo = Common.ParameterInfo;
-export type MemberKind = Common.MemberKind;
-export type MemberInfo = Common.MemberInfo;
-export type ClassInfo = Common.ClassInfo;
-export type AnalysisErr = Common.AnalysisErr;
-export type NormalArg = Common.NormalArg;
-export type ArgMode = Common.ArgMode;
-export const ArgMode = Common.ArgMode;
+function splitTopLevel(spec: string): string[] {
+	const out: string[] = [];
+	let cur = "", depth = 0, inQuote = false;
+	for (const c of spec) {
+		if (inQuote) {
+			cur += c;
+			if (c === '"') inQuote = false;
+		} else if (c === '"') {
+			inQuote = true; cur += c;
+		} else if (c === "(") {
+			depth++; cur += c;
+		} else if (c === ")") {
+			depth--; cur += c;
+		} else if (c === "," && depth === 0) {
+			out.push(cur); cur = "";
+		} else {
+			cur += c;
+		}
+	}
+	if (cur.trim() !== "") out.push(cur);
+	return out;
+}
+
+async function loadAnalyzer(): Promise<Root> {
+	const imports = {
+		"iris:objectscript-analyzer/common": {},
+		"iris:objectscript-analyzer/imported": { IrisConnection },
+	};
+	return instantiate(getCoreModule, imports as never);
+}
+
+export type MethodInfo = wit.MethodInfo;
+export type ParameterInfo = wit.ParameterInfo;
+export type MemberKind = wit.MemberKind;
+export type MemberInfo = wit.MemberInfo;
+export type ClassInfo = wit.ClassInfo;
+export type AnalysisErr = wit.AnalysisErr;
+export type NormalArg = wit.NormalArg;
+export type ArgMode = wit.ArgMode;
 
 const wasm = loadAnalyzer();
 
 export type AnalyzeResult = ClassInfo | { error: Diagnostic[] };
 
-const analyzedFolders = new Map<string, Exported.Workspace>();
+type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
-function convertDiagnosticSeverity(severity: Common.DiagnosticSeverity): DiagnosticSeverity {
+const analyzedFolders = new Map<string, WorkspaceInstance>();
+
+function convertDiagnosticSeverity(severity: wit.DiagnosticSeverity): DiagnosticSeverity {
 	switch (severity) {
-		case Common.DiagnosticSeverity.error:
+		case "error":
 			return DiagnosticSeverity.Error;
-		case Common.DiagnosticSeverity.warning:
+		case "warning":
 			return DiagnosticSeverity.Warning;
-		case Common.DiagnosticSeverity.information:
+		case "information":
 			return DiagnosticSeverity.Information;
-		case Common.DiagnosticSeverity.hint:
+		case "hint":
 			return DiagnosticSeverity.Hint;
 		default:
 			return DiagnosticSeverity.Error;
 	}
 }
 
-function convertDiagnostic(d: Exported.Diagnostic): Diagnostic {
+function convertDiagnostic(d: wit.Diagnostic): Diagnostic {
 	return {
 		message: d.message,
 		range: d.range,
@@ -96,7 +205,7 @@ export async function analyzeCls(filePath: string, src: string, folderURI?: stri
 				}],
 			};
 		}
-		return workspace.insertCls(filePath, src);
+		return await workspace.insertCls(filePath, src);
 	} catch (rawError) {
 		console.log(rawError);
 		return { error: [] }
@@ -105,7 +214,7 @@ export async function analyzeCls(filePath: string, src: string, folderURI?: stri
 
 export async function completeMethod(src: string) {
 	try {
-		return (await wasm).exported.completeMethod(src);
+		return await (await wasm).exported.completeMethod(src);
 	} catch (rawError) {
 		console.log(rawError);
 		return undefined;
@@ -114,7 +223,7 @@ export async function completeMethod(src: string) {
 
 export async function completeClass(src: string) {
 	try {
-		return (await wasm).exported.completeClass(src);
+		return await (await wasm).exported.completeClass(src);
 	} catch (rawError) {
 		console.log(rawError);
 		return undefined;
@@ -127,27 +236,27 @@ export async function check(fileFsPath: string): Promise<Diagnostic[]> {
 		if (!workspace) {
 			return [];
 		}
-		return workspace.check(fileFsPath).map(convertDiagnostic);
+		return (await workspace.check(fileFsPath)).map(convertDiagnostic);
 	} catch (rawError) {
 		console.log(rawError);
 		return [];
 	}
 }
 
-export async function inlayHint(fileFsPath: string, range: Exported.Range): Promise<Exported.InlayHint[]> {
+export async function inlayHint(fileFsPath: string, range: wit.Range): Promise<wit.InlayHint[]> {
 	try {
 		const workspace = await filePathToAnalyzerWorkspace(fileFsPath);
 		if (!workspace) {
 			return [];
 		}
-		return workspace.inlayHint(fileFsPath, range);
+		return await workspace.inlayHint(fileFsPath, range);
 	} catch (rawError) {
 		console.log(rawError);
 		return [];
 	}
 }
 
-export async function filePathToAnalyzerWorkspace(filePath: string): Promise<Exported.Workspace.Interface> {
+export async function filePathToAnalyzerWorkspace(filePath: string): Promise<WorkspaceInstance> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((folder) => {
 		const folderPath = URI.parse(folder.uri).fsPath;
@@ -160,10 +269,10 @@ export async function filePathToAnalyzerWorkspace(filePath: string): Promise<Exp
 	);
 }
 
-async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<Exported.Workspace.Interface> {
+async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<WorkspaceInstance> {
 	let analyzedFolder = analyzedFolders.get(folderURI);
 	if (!analyzedFolder) {
-		analyzedFolder = new (await wasm).exported.Workspace(new IrisConnection());
+		analyzedFolder = new (await wasm).exported.Workspace(new IrisConnection(folderURI));
 		analyzedFolders.set(folderURI, analyzedFolder);
 	}
 	return analyzedFolder
@@ -180,7 +289,7 @@ export async function getAnalyzedClass(context: URI, name: string): Promise<[str
 
 export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, ClassInfo]> {
 	const workspace = await filePathToAnalyzerWorkspace(context.path);
-	const classes = workspace.queryCls("");
+	const classes = await workspace.queryCls("");
 	for (const x of classes) {
 		yield x;
 	}
@@ -206,7 +315,7 @@ export async function* getAnalyzedClassMembers(
 	includeExtends: boolean = true
 ): AsyncGenerator<[string, MemberInfo]> {
 	const workspace = await filePathToAnalyzerWorkspace(context.fsPath);
-	for (const x of workspace.queryMem(clsName, memQuery)) {
+	for (const x of await workspace.queryMem(clsName, memQuery)) {
 		yield x;
 	}
 	if (includeExtends) {
@@ -219,5 +328,3 @@ export async function* getAnalyzedClassMembers(
 		}
 	}
 }
-
-

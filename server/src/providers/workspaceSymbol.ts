@@ -38,8 +38,8 @@ export const onWorkspaceSymbol = async (params: WorkspaceSymbolParams): Promise<
 export function memberKindToSymbolKind(kind: MemberInfo["kind"]["tag"]): SymbolKind | null {
 	switch (kind) {
 		case "method":
-		case "classMethod":
-		case "clientMethod":
+		case "class-method":
+		case "client-method":
 			return SymbolKind.Method;
 		case "query":
 			return SymbolKind.Function;
@@ -49,9 +49,9 @@ export function memberKindToSymbolKind(kind: MemberInfo["kind"]["tag"]): SymbolK
 			return SymbolKind.Constant;
 		case "index":
 			return SymbolKind.Array;
-		case "foreignKey":
+		case "foreign-key":
 			return SymbolKind.Key;
-		case "xData":
+		case "x-data":
 			return SymbolKind.Struct;
 		case "storage":
 			return SymbolKind.Object;

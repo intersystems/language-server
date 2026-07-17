@@ -781,8 +781,8 @@ async function getMethodSignatureHelpLocally(context: URI, clsName: string, memN
 		return null;
 	}
 	const [_uri, mem] = uri_mem;
-	if (mem.kind.tag === "method" || mem.kind.tag === "classMethod" || mem.kind.tag === "clientMethod") {
-		const method = mem.kind.value;
+	if (mem.kind.tag === "method" || mem.kind.tag === "class-method" || mem.kind.tag === "client-method") {
+		const method = mem.kind.val;
 		const out = ["%Open", "%OpenId"].includes(memName) ? clsName : method.t;
 		const sig: SignatureInformation = {
 			label: "(" + method.normal.map(prettifyNormalArg).join(", ") + ")" + (out ? " As " + out : ""),

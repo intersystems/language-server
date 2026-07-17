@@ -19,6 +19,8 @@ import {
 	determineVariableClass,
 	macroDefToDoc,
 	urlMapAttribute,
+	buildMemberMetadataQuery,
+	MemberMetadataKind,
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
 import {
@@ -51,7 +53,7 @@ import queryKeywords from "../documentation/keywords/Query.json";
 import storageKeywords from "../documentation/keywords/Storage.json";
 import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
-import { MemberInfo, NormalArg, ArgMode } from "../analyzer";
+import { MemberInfo, NormalArg } from "../analyzer";
 import { URI } from 'vscode-uri';
 
 function documaticLink(server: ServerSpec, cls: string): string {
@@ -699,55 +701,22 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				}
 
 				// Query the server to get the description of this member using its base class, text and token type
-				const data: QueryData = {
-					query: "",
-					parameters: [],
-				};
+				let data: QueryData;
 				if (unquotedname == "%New") {
 					// Get the information for both %New and %OnNew
-					data.query =
-						"SELECT Description, FormalSpec, ReturnType, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (name = ? OR name = ?)";
-					data.parameters = [membercontext.baseclass, unquotedname, "%OnNew"];
-				} else if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
-					// This is a parameter
-					data.query =
-						"SELECT Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE Parent = ? AND name = ?";
-					data.parameters = [membercontext.baseclass, unquotedname];
-				} else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
-					// This is a method
-					data.query =
-						"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
-					data.parameters = [membercontext.baseclass, unquotedname];
-				} else if (
-					parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
-					parsed[params.position.line][i].s == ld.cos_instvar_attrindex
-				) {
-					// This is a property
-					data.query =
-						"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
-						"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
-					data.parameters = [membercontext.baseclass, unquotedname, unquotedname.replace(/\s+/g, "")];
+					data = {
+						query:
+							"SELECT Description, FormalSpec, ReturnType, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (name = ? OR name = ?)",
+						parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
+					};
 				} else {
-					// This is a generic member
-					if (membercontext.baseclass.startsWith("%SYSTEM")) {
-						// This is always a method
-						data.query =
-							"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
-						data.parameters = [membercontext.baseclass, unquotedname];
-					} else {
-						// This can be a method or property
-						data.query =
-							"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL " +
-							"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
-							"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
-						data.parameters = [
-							membercontext.baseclass,
-							unquotedname,
-							membercontext.baseclass,
-							unquotedname,
-							unquotedname.replace(/\s+/g, ""),
-						];
-					}
+					const s = parsed[params.position.line][i].s;
+					const kind: MemberMetadataKind =
+						s == ld.cos_prop_attrindex ? "parameter"
+						: s == ld.cos_method_attrindex ? "method"
+						: s == ld.cos_attr_attrindex || s == ld.cos_instvar_attrindex ? "property"
+						: "auto";
+					data = buildMemberMetadataQuery(membercontext.baseclass, unquotedname, kind);
 				}
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
@@ -1442,19 +1411,19 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 function hoverHeadefFromMemberInfo(baseclass: string, memberInfo: MemberInfo): string {
 	let content = localInfoPrefix + `(**${baseclass}**) <u>**${memberInfo.name.content}**</u>`;
 	const { kind } = memberInfo;
-	if (kind.tag === "classMethod" || kind.tag === "clientMethod" || kind.tag === "method") {
-		const { normal, variadic, t } = kind.value;
+	if (kind.tag === "class-method" || kind.tag === "client-method" || kind.tag === "method") {
+		const { normal, variadic, t } = kind.val;
 		const argList = normal.map(prettifyNormalArg).concat(variadic ? [] : []).join(", ");
 		content += `(${argList})`;
 		if (t) {
 			content += ` As ${t}`;
 		}
 	} else if (kind.tag === "property" || kind.tag === "relationship") {
-		if (kind.value) {
-			content += ` As ${kind.value}`;
+		if (kind.val) {
+			content += ` As ${kind.val}`;
 		}
 	} else if (kind.tag === "parameter") {
-		const value = kind.value;
+		const value = kind.val;
 		if (value.t) {
 			content += ` As ${value.t}`;
 		}
@@ -1473,7 +1442,7 @@ function hoverBodyFromMemberInfo(memberInfo: MemberInfo): string {
 
 export const prettifyNormalArg = (arg: NormalArg): string => {
 	let string = "";
-	if (arg.mode != ArgMode.default) {
+	if (arg.mode != "default") {
 		string += "&";
 	}
 	string += arg.name;

@@ -884,8 +884,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		);
 		let completeMethodResult = undefined;
 		for (const member of analysis.members) {
-			if (member.kind.isClassMethod() || member.kind.isClientMethod() || member.kind.isMethod()) {
-				const method = member.kind.value;
+			if (member.kind.tag === "class-method" || member.kind.tag === "client-method" || member.kind.tag === "method") {
+				const method = member.kind.val;
 				if (isPositionBefore(method.body.start, params.position) && isPositionBefore(params.position, method.body.end)) {
 					const methodBody = doc.getText(Range.create(method.body.start, params.position));
 					completeMethodResult = await completeMethod(methodBody);
@@ -1368,7 +1368,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							},
 							sortText: name,
 							insertText: name,
-							detail: mem.kind.value.t,
+							detail: mem.kind.val.t,
 							tags: mem.deprecated ? [CompletionItemTag.Deprecated] : [],
 						});
 					}
@@ -1436,9 +1436,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						sortText: name,
 						insertText: name,
 					};
-					if (mem.kind.tag === "classMethod" || mem.kind.tag === "method" || mem.kind.tag === "clientMethod") {
+					if (mem.kind.tag === "class-method" || mem.kind.tag === "method" || mem.kind.tag === "client-method") {
 						item.kind = CompletionItemKind.Method;
-						if (mem.kind.value.normal.length == 0 && !mem.kind.value.variadic) {
+						if (mem.kind.val.normal.length == 0 && !mem.kind.val.variadic) {
 							item.insertText += "()";
 						} else {
 							item.textEdit = TextEdit.insert(params.position, name.replace(/\$/g, "//$") + "($0)");
