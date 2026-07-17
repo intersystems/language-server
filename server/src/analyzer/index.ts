@@ -21,7 +21,7 @@ function getCoreModule(name: string): WebAssembly.Module {
 
 const ORIGIN: wit.Position = { line: 0, character: 0 };
 const ZERO_RANGE: wit.Range = { start: ORIGIN, end: ORIGIN };
-const CACHE_TTL_MS = 5 * 60 * 1000;
+const CACHE_TTL_MS = 60 * 60 * 1000;
 
 class IrisConnection {
 	constructor(private readonly folderURI: string, private readonly cache = new Map<string, [number, MemberInfo]>()) { }
