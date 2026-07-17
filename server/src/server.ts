@@ -46,7 +46,7 @@ import {
 } from "./utils/variables";
 import { parseDocument, getLegend } from "./parse/parse";
 import { isolateEmbeddedLanguage, languageAtPosition } from "./providers/requestForwarding";
-import { analyzeCls } from "./analyzer";
+import { analyzeCls, removeCls } from "./analyzer";
 
 connection.onInitialize((params) => {
 	analyzeWorkspaceFolders(params.workspaceFolders ?? []);
@@ -127,12 +127,16 @@ connection.onDidChangeConfiguration(async () => {
 	connection.languages.diagnostics.refresh();
 });
 
-documents.onDidClose((e) => {
+documents.onDidClose(async (e) => {
 	parsedDocuments.delete(e.document.uri);
 	tokenBuilders.delete(e.document.uri);
 	serverSpecs.delete(e.document.uri);
 	languageServerSettings.delete(e.document.uri);
-	connection.sendDiagnostics({ uri: e.document.uri, diagnostics: [] });
+	analyzedDocuments.delete(e.document.uri);
+	await removeCls(e.document.uri);
+	// Pull-model diagnostics: ask the client to re-pull so the closed
+	// document's diagnostics are recomputed (and dropped from the workspace report).
+	connection.languages.diagnostics.refresh();
 });
 
 // The content of a text document has changed. This event is emitted

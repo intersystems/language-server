@@ -218,6 +218,15 @@ export async function analyzeCls(docURI: string, src: string, folderURI?: string
 	}
 }
 
+export async function removeCls(docURI: string): Promise<void> {
+	try {
+		const workspace = await filePathToAnalyzerWorkspace(docURI);
+		workspace?.remove(docURI);
+	} catch (rawError) {
+		console.log(rawError);
+	}
+}
+
 export async function completeMethod(src: string) {
 	try {
 		return await (await wasm).exported.completeMethod(src);
