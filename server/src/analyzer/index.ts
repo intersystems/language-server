@@ -277,9 +277,26 @@ export async function analyzeCls(docURI: string, src: string, folderURI?: string
 		}
 		return await workspace.insertCls(docURI, src);
 	} catch (rawError) {
+		const diagnostic = analysisErrToDiagnostic(rawError);
+		if (diagnostic) {
+			return { error: [diagnostic] };
+		}
 		console.log(rawError);
 		return { error: [] }
 	}
+}
+
+function analysisErrToDiagnostic(rawError: unknown): Diagnostic | undefined {
+	const payload = (rawError as { payload?: AnalysisErr })?.payload;
+	if (payload?.tag === "P") {
+		return {
+			message: payload.val.message,
+			range: payload.val.range,
+			severity: DiagnosticSeverity.Error,
+			source: "InterSystems Language Server - ObjectScript Analyzer",
+		};
+	}
+	return undefined;
 }
 
 export async function removeCls(docURI: string): Promise<void> {
