@@ -21,9 +21,10 @@ function getCoreModule(name: string): WebAssembly.Module {
 
 const ORIGIN: wit.Position = { line: 0, character: 0 };
 const ZERO_RANGE: wit.Range = { start: ORIGIN, end: ORIGIN };
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
 class IrisConnection {
-	constructor(private readonly folderURI: string) { }
+	constructor(private readonly folderURI: string, private readonly cache = new Map<string, [number, MemberInfo]>()) { }
 
 	// getMem is declared synchronous in the WIT, but jco's --async-mode jspi wraps
 	// it in WebAssembly.Suspending so this async body can await a REST request and
@@ -31,6 +32,9 @@ class IrisConnection {
 	// classes outside the workspace (library/system); workspace classes are served
 	// from the analyzer's own memory and never reach here.
 	public async getMem(cls: string, mem: string): Promise<MemberInfo | undefined> {
+		const key = `${cls}||${mem}`;
+		const cached = this.cache.get(key);
+		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
 		const server = await getServerSpec(this.folderURI);
 		if (server === undefined) return undefined;
 		const data = buildMemberMetadataQuery(cls, mem, "any");
@@ -41,7 +45,9 @@ class IrisConnection {
 		if (row.MemberType === "method" && row.Stub) {
 			row = (await resolveStubbedMethod(server, cls, row.Stub)) ?? row;
 		}
-		return rowToMemberInfo(mem, row);
+		const info = rowToMemberInfo(mem, row);
+		this.cache.set(key, [Date.now(), info]);
+		return info;
 	}
 }
 
