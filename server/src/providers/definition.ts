@@ -80,7 +80,7 @@ async function classMemberLocationLink(
 	memberRange: Range,
 	server: ServerSpec,
 ): Promise<LocationLink[] | undefined> {
-	const localResult = lookupClassMember(URI.parse(uri), cls, memberName, memberRange);
+	const localResult = await lookupClassMember(URI.parse(uri), cls, memberName, memberRange);
 	if (localResult) {
 		return localResult;
 	}
@@ -545,7 +545,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 					return null;
 				}
 
-				const localResult = lookupClassMember(URI.parse(params.textDocument.uri), membercontext.baseclass, unquotedname, memberrange);
+				const localResult = await lookupClassMember(URI.parse(params.textDocument.uri), membercontext.baseclass, unquotedname, memberrange);
 				if (localResult) {
 					return localResult;
 				}
