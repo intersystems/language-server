@@ -190,6 +190,23 @@ export type AnalyzeResult = ClassInfo | { error: Diagnostic[] };
 
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
+// Chain calls per workspace: a call can suspend mid-flight (getMem awaits REST)
+// while holding a RefCell borrow, so overlapping calls panic with "already borrowed".
+function serialize(instance: WorkspaceInstance): WorkspaceInstance {
+	let tail: Promise<unknown> = Promise.resolve();
+	return new Proxy(instance, {
+		get(target, prop, receiver) {
+			const value = Reflect.get(target, prop, receiver);
+			if (typeof value !== "function") return value;
+			return (...args: unknown[]) => {
+				const result = tail.then(() => value.apply(target, args));
+				tail = result.catch(() => { });
+				return result;
+			};
+		},
+	});
+}
+
 const analyzedFolders = new Map<string, WorkspaceInstance>();
 
 function convertDiagnosticSeverity(severity: wit.DiagnosticSeverity): DiagnosticSeverity {
@@ -304,7 +321,7 @@ export async function filePathToAnalyzerWorkspace(docURI: string): Promise<Works
 async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<WorkspaceInstance> {
 	let analyzedFolder = analyzedFolders.get(folderURI);
 	if (!analyzedFolder) {
-		analyzedFolder = new (await wasm).exported.Workspace(new IrisConnection(folderURI));
+		analyzedFolder = serialize(new (await wasm).exported.Workspace(new IrisConnection(folderURI)));
 		analyzedFolders.set(folderURI, analyzedFolder);
 	}
 	return analyzedFolder
