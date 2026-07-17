@@ -290,7 +290,7 @@ function analysisErrToDiagnostic(rawError: unknown): Diagnostic | undefined {
 	const payload = (rawError as { payload?: AnalysisErr })?.payload;
 	if (payload?.tag === "P") {
 		return {
-			message: payload.val.message,
+			message: "Analysis Error: " + payload.val.message,
 			range: payload.val.range,
 			severity: DiagnosticSeverity.Error,
 			source: "InterSystems Language Server - ObjectScript Analyzer",
