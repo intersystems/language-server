@@ -77,7 +77,7 @@ function rowToMemberInfo(mem: string, row: MemberMetadataRow): MemberInfo {
 		doc: row.Description ?? "",
 		before: ORIGIN,
 		name: { before: ORIGIN, content: mem, after: ORIGIN },
-		deprecated: row.Deprecated === "1",
+		deprecated: row.Deprecated == "1",
 		kind: rowToMemberKind(row),
 		after: ORIGIN,
 	};
@@ -93,7 +93,7 @@ function rowToMemberKind(row: MemberMetadataRow): MemberKind {
 		default: {
 			const { normal, variadic } = parseFormalSpec(row.FormalSpec ?? "");
 			const val: wit.MethodInfo = { normal, variadic, t: type, body: ZERO_RANGE };
-			return { tag: row.ClassMethod === "1" ? "class-method" : "method", val };
+			return { tag: row.ClassMethod == "1" ? "class-method" : "method", val };
 		}
 	}
 }

@@ -2727,8 +2727,10 @@ export interface MemberMetadataRow {
 	FormalSpec: string;
 	ReturnType: string;
 	Stub: string;
-	ClassMethod: "0" | "1";
-	Deprecated: "0" | "1";
+	// Bit columns come back as "0"/"1" strings from a plain query, but a UNION ALL
+	// with a numeric literal column coerces them to 0/1 numbers. Accept either.
+	ClassMethod: "0" | "1" | 0 | 1;
+	Deprecated: "0" | "1" | 0 | 1;
 }
 
 /** Which %Dictionary.Compiled* table(s) to search for a member. "auto" mirrors the
