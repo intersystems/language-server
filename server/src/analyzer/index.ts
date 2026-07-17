@@ -8,6 +8,7 @@ import {
 	getServerSpec,
 	makeRESTRequest,
 	buildMemberMetadataQuery,
+	buildSuperclassesQuery,
 	resolveStubbedMethod,
 	MemberMetadataRow,
 } from '../utils/functions';
@@ -24,7 +25,11 @@ const ZERO_RANGE: wit.Range = { start: ORIGIN, end: ORIGIN };
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
 class IrisConnection {
-	constructor(private readonly folderURI: string, private readonly cache = new Map<string, [number, MemberInfo]>()) { }
+	constructor(
+		private readonly folderURI: string,
+		private readonly memCache = new Map<string, [number, MemberInfo]>(),
+		private readonly superCache = new Map<string, [number, string[]]>(),
+	) { }
 
 	// getMem is declared synchronous in the WIT, but jco's --async-mode jspi wraps
 	// it in WebAssembly.Suspending so this async body can await a REST request and
@@ -33,7 +38,7 @@ class IrisConnection {
 	// from the analyzer's own memory and never reach here.
 	public async getMem(cls: string, mem: string): Promise<MemberInfo | undefined> {
 		const key = `${cls}||${mem}`;
-		const cached = this.cache.get(key);
+		const cached = this.memCache.get(key);
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
 		const server = await getServerSpec(this.folderURI);
 		if (server === undefined) return undefined;
@@ -46,8 +51,24 @@ class IrisConnection {
 			row = (await resolveStubbedMethod(server, cls, row.Stub)) ?? row;
 		}
 		const info = rowToMemberInfo(mem, row);
-		this.cache.set(key, [Date.now(), info]);
+		this.memCache.set(key, [Date.now(), info]);
 		return info;
+	}
+
+	// Direct superclasses of a class outside the workspace, nearest first.
+	public async getSupers(cls: string): Promise<string[]> {
+		const cached = this.superCache.get(cls);
+		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
+		const server = await getServerSpec(this.folderURI);
+		if (server === undefined) return [];
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, buildSuperclassesQuery(cls));
+		const rows = respdata?.data?.result?.content;
+		const supers: string[] =
+			Array.isArray(rows) && typeof rows[0]?.Super === "string" && rows[0].Super.length
+				? rows[0].Super.split(",").map((s: string) => s.trim()).filter(Boolean)
+				: [];
+		this.superCache.set(cls, [Date.now(), supers]);
+		return supers;
 	}
 }
 
@@ -56,7 +77,7 @@ function rowToMemberInfo(mem: string, row: MemberMetadataRow): MemberInfo {
 		doc: row.Description ?? "",
 		before: ORIGIN,
 		name: { before: ORIGIN, content: mem, after: ORIGIN },
-		deprecated: row.Deprecated === 1,
+		deprecated: row.Deprecated === "1",
 		kind: rowToMemberKind(row),
 		after: ORIGIN,
 	};
@@ -72,7 +93,7 @@ function rowToMemberKind(row: MemberMetadataRow): MemberKind {
 		default: {
 			const { normal, variadic } = parseFormalSpec(row.FormalSpec ?? "");
 			const val: wit.MethodInfo = { normal, variadic, t: type, body: ZERO_RANGE };
-			return { tag: row.ClassMethod === 1 ? "class-method" : "method", val };
+			return { tag: row.ClassMethod === "1" ? "class-method" : "method", val };
 		}
 	}
 }

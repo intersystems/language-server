@@ -1469,7 +1469,7 @@ export async function onWorkspaceDiagnostics(): Promise<WorkspaceDiagnosticRepor
 	const uris = [...analyzedDocuments.keys()];
 	for (const uri of uris) {
 		const res = await getAnalyzedDocument(uri);
-		if ("error" in res) {
+		if (res !== undefined && "error" in res) {
 			items.push({
 				kind: "full",
 				uri,

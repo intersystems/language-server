@@ -29,7 +29,9 @@ npx jco transpile "$COMPONENT" \
 	--name analyzer \
 	--instantiation async \
 	--async-mode jspi \
-	--async-imports "iris:objectscript-analyzer/imported#[method]iris-connection.get-mem" \
+	--async-imports \
+		"iris:objectscript-analyzer/imported#[method]iris-connection.get-mem" \
+		"iris:objectscript-analyzer/imported#[method]iris-connection.get-supers" \
 	--async-exports \
 		"iris:objectscript-analyzer/exported#[method]workspace.insert-cls" \
 		"iris:objectscript-analyzer/exported#[method]workspace.insert-rtn" \
