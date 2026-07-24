@@ -330,17 +330,12 @@ export async function activate(context: ExtensionContext) {
 	);
 
 	// Start the client. This will also launch the server
-	client.start();
+	await client.start();
 
-	// Establish one session with each server used by the workspace before
-	// activation completes. Since IntelliSense requests aren't sent until after
-	// activation finishes, they will all reuse these sessions rather than each
-	// creating a new one when many editor tabs are open at startup (#406).
 	for (const f of workspace.workspaceFolders ?? []) {
 		try {
 			const serverSpec = await resolveServerSpec(f.uri);
 			if (!serverSpec.active || !serverSpec.apiVersion) continue;
-			// A GET request authenticates and caches the session cookie
 			await makeRESTRequest("GET", 1, "", serverSpec);
 		} catch {
 			// Ignore any failure; the session will be created on demand instead
