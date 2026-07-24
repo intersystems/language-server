@@ -52,8 +52,8 @@ export async function makeRESTRequest(
 		// The server doesn't support the Atelier API version required to make this request
 		client.warn(
 			"Cannot make required REST request to server " +
-			`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
-			`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`,
+				`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
+				`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`,
 		);
 		return undefined;
 	}
@@ -74,7 +74,7 @@ export async function makeRESTRequest(
 	const httpsAgent = new https.Agent({ rejectUnauthorized: workspace.getConfiguration("http").get("proxyStrictSSL") });
 
 	// Get the cookies
-	let cookies: string[] = await getCookies(server);
+	let cookies: string[] = getCookies(server);
 
 	// Make the request
 	try {
@@ -96,7 +96,7 @@ export async function makeRESTRequest(
 					return status < 500;
 				},
 			});
-			cookies = await updateCookies(respdata.headers["set-cookie"] || [], server);
+			cookies = updateCookies(respdata.headers["set-cookie"] || [], server);
 			if (respdata.status === 202) {
 				// The schema is being recalculated so we need to make another call to get it
 				respdata = await axios.request({
@@ -108,7 +108,7 @@ export async function makeRESTRequest(
 						Cookie: cookies.join(" "),
 					},
 				});
-				await updateCookies(respdata.headers["set-cookie"] || [], server);
+				updateCookies(respdata.headers["set-cookie"] || [], server);
 				return respdata;
 			} else if (respdata.status === 304) {
 				// The schema hasn't changed
@@ -129,7 +129,7 @@ export async function makeRESTRequest(
 					withCredentials: true,
 					httpsAgent,
 				});
-				cookies = await updateCookies(respdata.headers["set-cookie"] || [], server);
+				cookies = updateCookies(respdata.headers["set-cookie"] || [], server);
 				if (respdata.status === 202) {
 					// The schema is being recalculated so we need to make another call to get it
 					respdata = await axios.request({
@@ -141,7 +141,7 @@ export async function makeRESTRequest(
 							Cookie: cookies.join(" "),
 						},
 					});
-					await updateCookies(respdata.headers["set-cookie"] || [], server);
+					updateCookies(respdata.headers["set-cookie"] || [], server);
 					return respdata;
 				} else if (respdata.status === 304) {
 					// The schema hasn't changed
@@ -189,7 +189,7 @@ export async function makeRESTRequest(
 						httpsAgent,
 					});
 				}
-				await updateCookies(respdata.headers["set-cookie"] || [], server);
+				updateCookies(respdata.headers["set-cookie"] || [], server);
 			} else {
 				respdata = await axios.request({
 					method: method,
@@ -220,14 +220,14 @@ export async function makeRESTRequest(
 						params: params,
 					});
 				}
-				await updateCookies(respdata.headers["set-cookie"] || [], server);
+				updateCookies(respdata.headers["set-cookie"] || [], server);
 			}
 			return respdata;
 		}
 	} catch (error) {
-		await updateCookies(cookies, server)
 		client.warn(
-			`Error making REST request ${method} ${path}: ${typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error)
+			`Error making REST request ${method} ${path}: ${
+				typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error)
 			}`,
 		);
 		return undefined;
