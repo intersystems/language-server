@@ -164,13 +164,8 @@ export async function activate(context: ExtensionContext) {
 		});
 	}
 
-<<<<<<< HEAD
 	// Resolve the ServerSpec for a document or workspace folder URI, prompting
 	// for a missing password via the Server Manager's authentication provider.
-=======
-	// Resolve the ServerSpec for a document or workspace folder URI, prompting for
-	// a missing password via the Server Manager's authentication provider.
->>>>>>> 9f61b15 (Create server sessions at activation instead of queueing requests)
 	const resolveServerSpec = async (uriObj: Uri): Promise<ServerSpec> => {
 		const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
 		const serverSpec = objectScriptApi.serverForUri(uriObj);
