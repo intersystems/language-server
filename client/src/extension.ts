@@ -285,12 +285,12 @@ export async function activate(context: ExtensionContext) {
 								: uri.path.split("/").slice(1).join(".");
 						const docParams =
 							params.server.apiVersion >= 4 &&
-								workspace
-									.getConfiguration(
-										"objectscript",
-										workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
-									)
-									.get<boolean>("multilineMethodArgs")
+							workspace
+								.getConfiguration(
+									"objectscript",
+									workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
+								)
+								.get<boolean>("multilineMethodArgs")
 								? { format: "udl-multiline" }
 								: undefined;
 						const resp = await makeRESTRequest(
@@ -332,6 +332,7 @@ export async function activate(context: ExtensionContext) {
 	// Start the client. This will also launch the server
 	await client.start();
 
+	// Ensure that every server has at most one session.
 	for (const f of workspace.workspaceFolders ?? []) {
 		try {
 			const serverSpec = await resolveServerSpec(f.uri);
