@@ -164,8 +164,13 @@ export async function activate(context: ExtensionContext) {
 		});
 	}
 
+<<<<<<< HEAD
 	// Resolve the ServerSpec for a document or workspace folder URI, prompting
 	// for a missing password via the Server Manager's authentication provider.
+=======
+	// Resolve the ServerSpec for a document or workspace folder URI, prompting for
+	// a missing password via the Server Manager's authentication provider.
+>>>>>>> 9f61b15 (Create server sessions at activation instead of queueing requests)
 	const resolveServerSpec = async (uriObj: Uri): Promise<ServerSpec> => {
 		const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
 		const serverSpec = objectScriptApi.serverForUri(uriObj);
@@ -285,12 +290,12 @@ export async function activate(context: ExtensionContext) {
 								: uri.path.split("/").slice(1).join(".");
 						const docParams =
 							params.server.apiVersion >= 4 &&
-							workspace
-								.getConfiguration(
-									"objectscript",
-									workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
-								)
-								.get<boolean>("multilineMethodArgs")
+								workspace
+									.getConfiguration(
+										"objectscript",
+										workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
+									)
+									.get<boolean>("multilineMethodArgs")
 								? { format: "udl-multiline" }
 								: undefined;
 						const resp = await makeRESTRequest(
