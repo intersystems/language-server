@@ -166,7 +166,7 @@ export async function activate(context: ExtensionContext) {
 
 	// Resolve the ServerSpec for a document or workspace folder URI, prompting
 	// for a missing password via the Server Manager's authentication provider.
-	const resolveServerSpec = async (uriObj: Uri): Promise<ServerSpec> => {
+	async function resolveServerSpec(uriObj: Uri): Promise<ServerSpec> {
 		const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
 		const serverSpec = objectScriptApi.serverForUri(uriObj);
 		if (
@@ -223,6 +223,18 @@ export async function activate(context: ExtensionContext) {
 		}
 		return serverSpec;
 	};
+
+	// Ensure that every server has at most one session.
+	for (const f of workspace.workspaceFolders ?? []) {
+		try {
+			const serverSpec = await resolveServerSpec(f.uri);
+			if (serverSpec.active) {
+				await makeRESTRequest("HEAD", 1, "", serverSpec);
+			}
+		} catch {
+			// Ignore any failure; the session will be created on demand instead
+		}
+	}
 
 	const textDecoder = new TextDecoder();
 	context.subscriptions.push(
@@ -285,12 +297,12 @@ export async function activate(context: ExtensionContext) {
 								: uri.path.split("/").slice(1).join(".");
 						const docParams =
 							params.server.apiVersion >= 4 &&
-							workspace
-								.getConfiguration(
-									"objectscript",
-									workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
-								)
-								.get<boolean>("multilineMethodArgs")
+								workspace
+									.getConfiguration(
+										"objectscript",
+										workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
+									)
+									.get<boolean>("multilineMethodArgs")
 								? { format: "udl-multiline" }
 								: undefined;
 						const resp = await makeRESTRequest(
@@ -331,17 +343,6 @@ export async function activate(context: ExtensionContext) {
 
 	// Start the client. This will also launch the server
 	await client.start();
-
-	// Ensure that every server has at most one session.
-	for (const f of workspace.workspaceFolders ?? []) {
-		try {
-			const serverSpec = await resolveServerSpec(f.uri);
-			if (!serverSpec.active || !serverSpec.apiVersion) continue;
-			await makeRESTRequest("GET", 1, "", serverSpec);
-		} catch {
-			// Ignore any failure; the session will be created on demand instead
-		}
-	}
 
 	const workbenchConfig = workspace.getConfiguration("workbench");
 	if (
