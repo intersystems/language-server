@@ -164,67 +164,82 @@ export async function activate(context: ExtensionContext) {
 		});
 	}
 
+	// Resolve the ServerSpec for a document or workspace folder URI, prompting
+	// for a missing password via the Server Manager's authentication provider.
+	async function resolveServerSpec(uriObj: Uri): Promise<ServerSpec> {
+		const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
+		const serverSpec = objectScriptApi.serverForUri(uriObj);
+		if (
+			// Server was resolved
+			serverSpec.host !== "" &&
+			// Connection isn't unauthenticated
+			serverSpec.username != undefined &&
+			serverSpec.username != "" &&
+			serverSpec.username.toLowerCase() != "unknownuser" &&
+			// A password is missing
+			typeof serverSpec.password === "undefined" &&
+			// A supported version of the Server Manager is installed
+			serverManagerExt != undefined &&
+			gt(serverManagerExt.packageJSON.version, "3.0.0")
+		) {
+			// The main extension didn't provide a password, so we must
+			// get it from the server manager's authentication provider.
+			const scopes = [serverSpec.serverName, serverSpec.username];
+			try {
+				const account = serverManagerApi?.getAccount
+					? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec })
+					: undefined;
+				let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
+					silent: true,
+					account,
+				});
+				if (!session) {
+					session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
+						createIfNone: true,
+						account,
+					});
+				}
+				if (session) {
+					serverSpec.username = session.scopes[1];
+					serverSpec.password = session.accessToken;
+				}
+			} catch (error) {
+				// The user did not consent to sharing authentication information
+				if (error instanceof Error) {
+					client.warn(`${serverManager.AUTHENTICATION_PROVIDER}: ${error.message}`);
+				}
+			}
+		}
+		if (
+			typeof serverSpec.username == "string" &&
+			serverSpec.username.toLowerCase() == "unknownuser" &&
+			typeof serverSpec.password == "undefined"
+		) {
+			// UnknownUser without a password means "unauthenticated"
+			serverSpec.username = undefined;
+		}
+		if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
+			wsFolderServerSpecs.set(wsFolderUriString, serverSpec);
+		}
+		return serverSpec;
+	};
+
+	// Ensure that every server has at most one session.
+	for (const f of workspace.workspaceFolders ?? []) {
+		try {
+			const serverSpec = await resolveServerSpec(f.uri);
+			if (serverSpec.active) {
+				await makeRESTRequest("HEAD", 1, "", serverSpec);
+			}
+		} catch {
+			// Ignore any failure; the session will be created on demand instead
+		}
+	}
+
 	const textDecoder = new TextDecoder();
 	context.subscriptions.push(
 		// Register custom request handlers
-		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
-			const uriObj = Uri.parse(uri);
-			const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
-			const serverSpec = objectScriptApi.serverForUri(uriObj);
-			if (
-				// Server was resolved
-				serverSpec.host !== "" &&
-				// Connection isn't unauthenticated
-				serverSpec.username != undefined &&
-				serverSpec.username != "" &&
-				serverSpec.username.toLowerCase() != "unknownuser" &&
-				// A password is missing
-				typeof serverSpec.password === "undefined" &&
-				// A supported version of the Server Manager is installed
-				serverManagerExt != undefined &&
-				gt(serverManagerExt.packageJSON.version, "3.0.0")
-			) {
-				// The main extension didn't provide a password, so we must
-				// get it from the server manager's authentication provider.
-				const scopes = [serverSpec.serverName, serverSpec.username];
-				try {
-					const account = serverManagerApi?.getAccount
-						? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec })
-						: undefined;
-					let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
-						silent: true,
-						account,
-					});
-					if (!session) {
-						session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
-							createIfNone: true,
-							account,
-						});
-					}
-					if (session) {
-						serverSpec.username = session.scopes[1];
-						serverSpec.password = session.accessToken;
-					}
-				} catch (error) {
-					// The user did not consent to sharing authentication information
-					if (error instanceof Error) {
-						client.warn(`${serverManager.AUTHENTICATION_PROVIDER}: ${error.message}`);
-					}
-				}
-			}
-			if (
-				typeof serverSpec.username == "string" &&
-				serverSpec.username.toLowerCase() == "unknownuser" &&
-				typeof serverSpec.password == "undefined"
-			) {
-				// UnknownUser without a password means "unauthenticated"
-				serverSpec.username = undefined;
-			}
-			if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
-				wsFolderServerSpecs.set(wsFolderUriString, serverSpec);
-			}
-			return serverSpec;
-		}),
+		client.onRequest("intersystems/server/resolveFromUri", (uri: string) => resolveServerSpec(Uri.parse(uri))),
 		client.onRequest("intersystems/uri/localToVirtual", (uri: string): string => {
 			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
 			return newuri.toString();
@@ -282,12 +297,12 @@ export async function activate(context: ExtensionContext) {
 								: uri.path.split("/").slice(1).join(".");
 						const docParams =
 							params.server.apiVersion >= 4 &&
-							workspace
-								.getConfiguration(
-									"objectscript",
-									workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
-								)
-								.get<boolean>("multilineMethodArgs")
+								workspace
+									.getConfiguration(
+										"objectscript",
+										workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
+									)
+									.get<boolean>("multilineMethodArgs")
 								? { format: "udl-multiline" }
 								: undefined;
 						const resp = await makeRESTRequest(
@@ -327,7 +342,7 @@ export async function activate(context: ExtensionContext) {
 	);
 
 	// Start the client. This will also launch the server
-	client.start();
+	await client.start();
 
 	const workbenchConfig = workspace.getConfiguration("workbench");
 	if (
