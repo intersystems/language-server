@@ -43,6 +43,7 @@ import {
 	mppContinue,
 } from "../utils/variables";
 import {
+	ClassInfo,
 	getAnalyzedClassMembers,
 	getAnalyzedClasses
 } from '../analyzer';
@@ -878,12 +879,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 	// Provide autocompletion if we can infer from parse result
 	const analysis = await getAnalyzedDocument(params.textDocument.uri);
-	if (analysis !== undefined && !("error" in analysis)) {
+	if (analysis !== undefined && "members" in analysis) {
+		const cls: ClassInfo = analysis;
 		const completeClassResult = await completeClass(
 			doc.getText(Range.create(Position.create(0, 0), params.position)),
 		);
 		let completeMethodResult = undefined;
-		for (const member of analysis.members) {
+		for (const member of cls.members) {
 			if (member.kind.tag === "class-method" || member.kind.tag === "client-method" || member.kind.tag === "method") {
 				const method = member.kind.val;
 				if (isPositionBefore(method.body.start, params.position) && isPositionBefore(params.position, method.body.end)) {

@@ -33,7 +33,7 @@ import systemVariables from "../documentation/systemVariables.json";
 
 // Initialize turndown and tune it for Documatic HTML
 import { default as TurndownService } from "turndown";
-import { ClassInfo } from "../analyzer";
+import { ClassInfo, RoutineInfo } from "../analyzer";
 const turndown = new TurndownService({
 	codeBlockStyle: "fenced",
 	blankReplacement: (content, node: HTMLElement) => (node.nodeName == "SPAN" ? node.outerHTML : ""),
@@ -3122,12 +3122,12 @@ export async function getParsedDocument(uri: string): Promise<compressedline[] |
 	return new Promise(waitForTokens);
 }
 
-export async function getAnalyzedDocument(uri: string): Promise<ClassInfo | { error: Diagnostic[] } | undefined> {
+export async function getAnalyzedDocument(uri: string): Promise<ClassInfo | RoutineInfo | { error: Diagnostic[] } | undefined> {
 	if (!analyzedDocuments.has(uri)) {
 		return undefined;
 	}
 	const start = Date.now();
-	function wait(resolve: (value: ClassInfo | { error: Diagnostic[] }) => void) {
+	function wait(resolve: (value: ClassInfo | RoutineInfo | { error: Diagnostic[] }) => void) {
 		const result = analyzedDocuments.get(uri);
 		if (result != undefined || Date.now() - start >= 5000) {
 			resolve(result);

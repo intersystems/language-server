@@ -89,7 +89,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams): Promise<Do
 		// Try returning w/ analyzedClass
 		{
 			const cls = await getAnalyzedDocument(params.textDocument.uri);
-			if (cls !== undefined && !("error" in cls)) {
+			if (cls !== undefined && ("members" in cls)) {
 				return [{
 					name: cls.name.content,
 					kind: SymbolKind.Class,

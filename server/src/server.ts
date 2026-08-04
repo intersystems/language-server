@@ -46,7 +46,7 @@ import {
 } from "./utils/variables";
 import { parseDocument, getLegend } from "./parse/parse";
 import { isolateEmbeddedLanguage, languageAtPosition } from "./providers/requestForwarding";
-import { analyzeCls, removeCls } from "./analyzer";
+import { analyzeDoc, removeCls } from "./analyzer";
 
 connection.onInitialize((params) => {
 	analyzeWorkspaceFolders(params.workspaceFolders ?? []);
@@ -152,7 +152,7 @@ documents.onDidChangeContent(async (change) => {
 		parseDocument(change.document.languageId, path.slice(path.lastIndexOf(".") + 1).toLowerCase(), fileText)
 			.compressedlinearray,
 	);
-	analyzedDocuments.set(change.document.uri, await analyzeCls(change.document.uri, fileText));
+	analyzedDocuments.set(change.document.uri, await analyzeDoc(change.document.uri, fileText));
 });
 
 connection.onDocumentFormatting(onDocumentFormatting);
@@ -273,7 +273,7 @@ async function analyzeWorkspaceFolders(folders: WorkspaceFolder[]) {
 			const fileURI = URI.file(filePath).toString();
 			const fileString = fs.readFileSync(filePath, "utf-8");
 			analyzedDocuments.set(fileURI, undefined);
-			analyzedDocuments.set(fileURI, await analyzeCls(fileURI, fileString, folder.uri));
+			analyzedDocuments.set(fileURI, await analyzeDoc(fileURI, fileString, folder.uri));
 		}
 	}
 }

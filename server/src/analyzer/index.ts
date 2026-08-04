@@ -200,13 +200,14 @@ export type ParameterInfo = wit.ParameterInfo;
 export type MemberKind = wit.MemberKind;
 export type MemberInfo = wit.MemberInfo;
 export type ClassInfo = wit.ClassInfo;
+export type RoutineInfo = wit.RoutineInfo;
 export type AnalysisErr = wit.AnalysisErr;
 export type NormalArg = wit.NormalArg;
 export type ArgMode = wit.ArgMode;
 
 const wasm = loadAnalyzer();
 
-export type AnalyzeResult = ClassInfo | { error: Diagnostic[] };
+export type AnalyzeResult = ClassInfo | RoutineInfo | { error: Diagnostic[] };
 
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
@@ -279,7 +280,7 @@ function convertDiagnostic(d: wit.Diagnostic): Diagnostic {
 	};
 }
 
-export async function analyzeCls(docURI: string, src: string, folderURI?: string): Promise<AnalyzeResult> {
+export async function analyzeDoc(docURI: string, src: string, folderURI?: string): Promise<AnalyzeResult> {
 	try {
 		const workspace = typeof folderURI === "string" ? await rootURIToAnalyzerWorkspace(folderURI) : await filePathToAnalyzerWorkspace(docURI);
 		if (!workspace) {
@@ -295,7 +296,8 @@ export async function analyzeCls(docURI: string, src: string, folderURI?: string
 				}],
 			};
 		}
-		return await workspace.insertCls(docURI, src);
+		const ext = docURI.slice(docURI.lastIndexOf(".") + 1).toLowerCase();
+		return ext === "cls" ? await workspace.insertCls(docURI, src) : await workspace.insertRtn(docURI, src);
 	} catch (rawError) {
 		const diagnostic = analysisErrToDiagnostic(rawError);
 		if (diagnostic) {
