@@ -1785,14 +1785,15 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run webpack",
-    "webpack": "npm run clean && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
-    "webpack:dev": "npm run clean && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
-    "compile": "tsc -b",
+    "webpack": "npm run clean && npm run compile:common && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
+    "webpack:dev": "npm run clean && npm run compile:common && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
+    "compile": "npm run compile:common && tsc -b",
+    "compile:common": "cd common && npm run compile",
     "watch": "tsc -b -w",
-    "clean": "rimraf client/out && rimraf server/out",
+    "clean": "rimraf client/out && rimraf server/out && rimraf common/out",
     "lint": "eslint && prettier --check .",
     "lint-fix": "prettier --write . && eslint --fix",
-    "postinstall": "cd client && npm install && cd ../server && npm install && cd .."
+    "postinstall": "cd client && npm install && cd ../server && npm install && cd ../common && npm install && cd .."
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

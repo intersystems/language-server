@@ -322,7 +322,7 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 							parsed[i][j].l == ld.cls_langindex &&
 							parsed[i][j].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() ==
-								"extends"
+							"extends"
 						) {
 							seenextends = true;
 						} else {
@@ -1180,7 +1180,7 @@ export async function getClassMemberContext(
 
 		result.context = "instance";
 		switch (
-			doc.getText(Range.create(line, parsed[line][dot - 1].p, line, parsed[line][dot - 1].p + parsed[line][dot - 1].c))
+		doc.getText(Range.create(line, parsed[line][dot - 1].p, line, parsed[line][dot - 1].p + parsed[line][dot - 1].c))
 		) {
 			case "}":
 				result.baseclass = "%Library.DynamicObject";
@@ -1970,7 +1970,7 @@ async function parseSetCommand(
 					(parsed[ln][tkn + 1].s == ld.cos_objdot_attrindex ||
 						(parsed[ln][tkn + 1].s == ld.cos_delim_attrindex &&
 							doc.getText(Range.create(ln, parsed[ln][tkn + 1].p, ln, parsed[ln][tkn + 1].p + parsed[ln][tkn + 1].c)) ==
-								"("))
+							"("))
 				) &&
 				// Variable isn't preceded by the indirection operator
 				!(tkn - 1 >= 0 && parsed[ln][tkn - 1].l == ld.cos_langindex && parsed[ln][tkn - 1].s == ld.cos_indir_attrindex)
@@ -2242,14 +2242,14 @@ async function parseSetCommand(
 			const nextTkn = nextToken(parsed, exprLn, exprTkn);
 			if (parsed[exprLn][exprTkn].s == ld.cos_jsonb_attrindex) {
 				switch (
-					doc.getText(
-						Range.create(
-							exprLn,
-							parsed[exprLn][exprTkn].p,
-							exprLn,
-							parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c,
-						),
-					)
+				doc.getText(
+					Range.create(
+						exprLn,
+						parsed[exprLn][exprTkn].p,
+						exprLn,
+						parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c,
+					),
+				)
 				) {
 					case "{":
 						result = "%Library.DynamicObject";
@@ -2476,16 +2476,16 @@ async function determineUndeclaredLocalVarClass(
 								const querydata =
 									member == "%New"
 										? {
-												// Get the information for both %New and %OnNew
-												query:
-													"SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-												parameters: [argNum, membercontext.baseclass, unquotedname, "%OnNew"],
-											}
+											// Get the information for both %New and %OnNew
+											query:
+												"SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
+											parameters: [argNum, membercontext.baseclass, unquotedname, "%OnNew"],
+										}
 										: {
-												query:
-													"SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-												parameters: [argNum, membercontext.baseclass, unquotedname],
-											};
+											query:
+												"SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
+											parameters: [argNum, membercontext.baseclass, unquotedname],
+										};
 								const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 								if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 									// We got data back
@@ -3190,9 +3190,9 @@ export async function determineVariableClass(
 	const varText = doc.getText(
 		parsed[line][tkn].s == ld.cos_macro_attrindex
 			? // Can't use findFullRange() on a macro token because it will capture
-				// everything, including the trailing dot that triggered the completion.
-				// A macro token should only occur here for completion requests.
-				Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c)
+			// everything, including the trailing dot that triggered the completion.
+			// A macro token should only occur here for completion requests.
+			Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c)
 			: findFullRange(line, parsed, tkn, parsed[line][tkn].p, parsed[line][tkn].p + parsed[line][tkn].c),
 	);
 	if ([ld.cos_param_attrindex, ld.cos_macro_attrindex].includes(parsed[line][tkn].s)) {
