@@ -36,16 +36,14 @@ import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from "./reque
 import type { ServerSpec, ProtocolMethods } from "../../common/out/types";
 import type { Disposable } from "vscode-languageclient";
 
-type TypedLanguageClient = {
+export let client: {
 	onRequest<K extends keyof ProtocolMethods>(
 		method: K,
 		handler: (
 			params: Parameters<ProtocolMethods[K]>[0]
 		) => ReturnType<ProtocolMethods[K]>
 	): Disposable;
-} & Omit<LanguageClient, 'onRequest'>;
-
-export let client: TypedLanguageClient;
+} & Omit<LanguageClient, 'onRequest'>;;
 
 /**
  * Cache for cookies from REST requests to InterSystems servers.
@@ -146,7 +144,7 @@ export async function activate(context: ExtensionContext) {
 		"InterSystems Language Server",
 		serverOptions,
 		clientOptions,
-	) as TypedLanguageClient;
+	);
 
 	// Send custom notifications when the connection or password changes
 	objectScriptApi.onDidChangeConnection()(() => {
