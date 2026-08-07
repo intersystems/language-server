@@ -37,10 +37,10 @@ export interface GetTextParams {
 }
 
 export interface ProtocolMethods {
-	'intersystems/server/resolveFromUri': (_: string) => Promise<ServerSpec>;
-	'intersystems/uri/localToVirtual': (_: string) => string;
-	'intersystems/uri/forDocument': (_: string) => string | null;
-	'intersystems/uri/forTypeHierarchyClasses': (_: string[]) => string[];
-	'intersystems/server/makeRESTRequest': (_: MakeRESTRequestParams) => Promise<MakeRESTRequestResult | undefined>;
-	'intersystems/uri/getText': (_: GetTextParams) => Promise<string[]>;
+	"intersystems/server/resolveFromUri": (_: string) => Promise<ServerSpec>;
+	"intersystems/uri/localToVirtual": (_: string) => string;
+	"intersystems/uri/forDocument": (_: string) => string | null;
+	"intersystems/uri/forTypeHierarchyClasses": (_: string[]) => string[];
+	"intersystems/server/makeRESTRequest": (_: MakeRESTRequestParams) => Promise<MakeRESTRequestResult | undefined>;
+	"intersystems/uri/getText": (_: GetTextParams) => Promise<string[]>;
 }

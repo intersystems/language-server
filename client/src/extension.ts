@@ -151,7 +151,7 @@ export async function activate(context: ExtensionContext) {
 	// Send custom notifications when the connection or password changes
 	objectScriptApi.onDidChangeConnection()(() => {
 		wsFolderServerSpecs.clear();
-		client.sendNotification('intersystems/server/connectionChange');
+		client.sendNotification("intersystems/server/connectionChange");
 	});
 	const serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
 	if (serverManagerExt !== undefined) {
@@ -161,7 +161,7 @@ export async function activate(context: ExtensionContext) {
 			for (const [k, v] of wsFolderServerSpecs.entries()) {
 				if (v.serverName == serverName) wsFolderServerSpecs.delete(k);
 			}
-			client.sendNotification('intersystems/server/passwordChange', serverName);
+			client.sendNotification("intersystems/server/passwordChange", serverName);
 		});
 	}
 
@@ -170,10 +170,10 @@ export async function activate(context: ExtensionContext) {
 	// for a missing password via the Server Manager's authentication provider.
 	async function resolveServerSpec(uri: Uri) {
 		const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
-		const { auth, ...serverForURI }: serverManager.ServerForUri = objectScriptApi.serverForUri(uri);
+		const { auth, ...serverSpec } = objectScriptApi.serverForUri(uri);
 		if (
 			// Server was resolved
-			serverForURI.host !== "" &&
+			serverSpec.host !== "" &&
 			// Connection isn't unauthenticated
 			auth.username != undefined &&
 			auth.username != "" &&
@@ -186,10 +186,10 @@ export async function activate(context: ExtensionContext) {
 		) {
 			// The main extension didn't provide a password, so we must
 			// get it from the server manager's authentication provider.
-			const scopes = [serverForURI.serverName, auth.username];
+			const scopes = [serverSpec.serverName, auth.username];
 			try {
 				const account = serverManagerApi?.getAccount
-					? serverManagerApi.getAccount({ name: serverForURI.serverName, ...serverForURI })
+					? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec })
 					: undefined;
 				let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
 					silent: true,
@@ -222,15 +222,15 @@ export async function activate(context: ExtensionContext) {
 			// UnknownUser without a password means "unauthenticated"
 			auth.clear() as void;
 		}
-		const serverSpec: ServerSpec = {
-			...serverForURI,
+		const server: ServerSpec = {
+			...serverSpec,
 			username: auth.username,
 			credentials: auth.credentials,
 		};
 		if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
-			wsFolderServerSpecs.set(wsFolderUriString, serverSpec);
+			wsFolderServerSpecs.set(wsFolderUriString, server);
 		}
-		return serverSpec;
+		return server;
 	}
 
 	// Ensure that every server has at most one session.
