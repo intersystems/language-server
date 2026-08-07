@@ -109,6 +109,7 @@ turndown.addRule("documaticArgs", {
 		if (node.children.length > 0) {
 			return `\n#### Arguments:\n${content}\n`;
 		}
+		return "";
 	},
 });
 turndown.addRule("documaticArg", {
@@ -118,6 +119,7 @@ turndown.addRule("documaticArg", {
 		if (attrVal !== null) {
 			return `\n- \`${attrVal}\` - ${content}`;
 		}
+		return "";
 	},
 });
 turndown.addRule("documaticReturn", {
