@@ -10,8 +10,9 @@
 		"declarationMap": true,
 		"strict": true,
 		"esModuleInterop": true,
-		"skipLibCheck": true
-	},
+		"skipLibCheck": true,
+ 	   	"strictNullChecks": true,
+ 	},
 	"include": ["src"],
 	"exclude": ["node_modules", "out"]
 }

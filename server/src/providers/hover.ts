@@ -54,7 +54,7 @@ function markupValue(header: string, body?: string): string {
 	return body?.trim().length ? [header, "***", body].join("\n") : header;
 }
 
-export async function onHover(params: TextDocumentPositionParams): Promise<Hover> {
+export async function onHover(params: TextDocumentPositionParams): Promise<Hover | null | undefined> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -171,7 +171,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							macrorange.end.character,
 							params.position.line,
 							parsed[params.position.line][parsed[params.position.line].length - 1].p +
-								parsed[params.position.line][parsed[params.position.line].length - 1].c,
+							parsed[params.position.line][parsed[params.position.line].length - 1].c,
 						),
 					);
 
@@ -472,15 +472,14 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							value: ["$ZUTIL", "$ZU"].includes(sysftext)
 								? markupValue(`[Online documentation](${sysfdoc.link})`)
 								: markupValue(
-										sysfdoc.documentation.join(""),
-										sysfdoc.link
-											? `[Online documentation](${
-													sysfdoc.link[0] == "h"
-														? sysfdoc.link
-														: `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
-												})`
-											: "",
-									),
+									sysfdoc.documentation.join(""),
+									sysfdoc.link
+										? `[Online documentation](${sysfdoc.link[0] == "h"
+											? sysfdoc.link
+											: `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
+										})`
+										: "",
+								),
 						},
 						range: sysfrange,
 					};
@@ -1246,9 +1245,8 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
-							const header = `(**${normalizedcls}**) <u>**${param}**</u>${
-								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
-							}`;
+							const header = `(**${normalizedcls}**) <u>**${param}**</u>${respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
+								}`;
 							return {
 								contents: {
 									kind: MarkupKind.Markdown,

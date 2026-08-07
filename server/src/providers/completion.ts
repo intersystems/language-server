@@ -578,9 +578,8 @@ async function completionFullClassName(
 
 	// Get all classes
 	const querydata = {
-		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
-			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
-		}`,
+		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+			}`,
 		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0],
 	};
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
@@ -590,7 +589,7 @@ async function completionFullClassName(
 			let compItem: CompletionItem;
 			if (imports.length > 0) {
 				// Resolve import
-				let sortText: string;
+				let sortText: string | undefined;
 				for (const imp of imports) {
 					if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
 						displayname = displayname.slice(imp.length + 1);
@@ -638,9 +637,8 @@ async function completionPackage(server: ServerSpec, settings: LanguageServerCon
 
 	// Get all the packages
 	const querydata = {
-		query: `SELECT DISTINCT $PIECE(dcd.Name,'.',1,$LENGTH(dcd.Name,'.')-1) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
-			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
-		}`,
+		query: `SELECT DISTINCT $PIECE(dcd.Name,'.',1,$LENGTH(dcd.Name,'.')-1) AS Package FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+			}`,
 		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0],
 	};
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
@@ -692,7 +690,7 @@ async function globalsOrRoutines(
 	server: ServerSpec,
 	lineText: string,
 	prefix: string = "",
-): Promise<CompletionItem[]> {
+): Promise<CompletionItem[] | null> {
 	// Determine if this is a routine or global, and return null if we're in $BITLOGIC
 	let brk = false,
 		parenLevel = 0,
@@ -756,13 +754,13 @@ async function globalsOrRoutines(
 		server,
 		isRoutine
 			? {
-					query: `SELECT DISTINCT $PIECE(Name,'.',1,$LENGTH(Name,'.')-1) AS Name FROM %Library.RoutineMgr_StudioOpenDialog(?,1,1,1,1,1,0,'NOT (Name %PATTERN ''.E1"."0.1"G"1N1".obj"'' AND $LENGTH(Name,''.'') > 3)')`,
-					parameters: [`${prefix.length ? `${prefix.slice(0, -1)}/` : ""}*.mac,*.int,*.obj`],
-				}
+				query: `SELECT DISTINCT $PIECE(Name,'.',1,$LENGTH(Name,'.')-1) AS Name FROM %Library.RoutineMgr_StudioOpenDialog(?,1,1,1,1,1,0,'NOT (Name %PATTERN ''.E1"."0.1"G"1N1".obj"'' AND $LENGTH(Name,''.'') > 3)')`,
+				parameters: [`${prefix.length ? `${prefix.slice(0, -1)}/` : ""}*.mac,*.int,*.obj`],
+			}
 			: {
-					query: "SELECT Name FROM %SYS.GlobalQuery_NameSpaceList(,?,?,,,1,0)",
-					parameters: [`${prefix}*`, (await showInternalForServer(server)) ? 1 : 0],
-				},
+				query: "SELECT Name FROM %SYS.GlobalQuery_NameSpaceList(,?,?,,,1,0)",
+				parameters: [`${prefix}*`, (await showInternalForServer(server)) ? 1 : 0],
+			},
 	);
 	if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 		return respdata.data.result.content.map((item: { Name: string }) => {
@@ -1120,9 +1118,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Get all appropriate subclasses of %Query
 		const querydata = {
-			query: `SELECT dcd.Name, Deprecated FROM %Dictionary.ClassDefinition_SubclassOf(?) AS sco, %Dictionary.ClassDefinition AS dcd WHERE sco.Name = dcd.Name AND sco.Name NOT %INLIST $LISTFROMSTRING(?)${
-				!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
-			}`,
+			query: `SELECT dcd.Name, Deprecated FROM %Dictionary.ClassDefinition_SubclassOf(?) AS sco, %Dictionary.ClassDefinition AS dcd WHERE sco.Name = dcd.Name AND sco.Name NOT %INLIST $LISTFROMSTRING(?)${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+				}`,
 			parameters: ["%Library.Query", "%Library.ExtentSQLQuery,%Library.RowSQLQuery"],
 		};
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
@@ -1131,7 +1128,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				let displayname: string = clsobj.Name;
 				if (imports.length > 0) {
 					// Resolve import
-					let sortText: string;
+					let sortText: string | undefined;
 					for (const imp of imports) {
 						if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
 							displayname = displayname.slice(imp.length + 1);
@@ -1260,9 +1257,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 			// Get all classes that match the filter
 			const querydata = {
-				query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
-					!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
-				}`,
+				query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+					}`,
 				parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0, `Name %STARTSWITH '${filter}'`],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
@@ -1281,7 +1277,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		} else if (globalOrRoutineMatch && triggerlang == ld.cos_langindex) {
 			// This might be a routine or global
 
-			result = await globalsOrRoutines(
+			result = (await globalsOrRoutines(
 				doc,
 				parsed,
 				params.position.line,
@@ -1290,7 +1286,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				server,
 				prevline.slice(0, -globalOrRoutineMatch[1].length),
 				globalOrRoutineMatch[1],
-			);
+			))!;
 		} else {
 			// This is a class member
 
@@ -1306,11 +1302,10 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 				// Query the server to get the names and descriptions of all parameters
 				const data: QueryData = {
-					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${
-						membercontext.context == "instance"
-							? " AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')"
-							: ""
-					}${internalStr}${deprecatedStr}`,
+					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${membercontext.context == "instance"
+						? " AND (parent->ClassType IS NULL OR parent->ClassType != 'datatype')"
+						: ""
+						}${internalStr}${deprecatedStr}`,
 					parameters: [membercontext.baseclass],
 				};
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
@@ -1620,11 +1615,10 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Query the server to get the names and descriptions of all class-specific parameters
 		const data: QueryData = {
-			query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${
-				isProperty
-					? " OR Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)"
-					: ""
-			}${!(await showInternalForServer(server)) ? " AND Internal = 0" : ""}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
+			query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${isProperty
+				? " OR Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?)"
+				: ""
+				}${!(await showInternalForServer(server)) ? " AND Internal = 0" : ""}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
 			parameters: isProperty ? [normalizedcls, currentClass(doc, parsed)] : [normalizedcls],
 		};
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
@@ -1939,9 +1933,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 					}
 					const querydata = {
-						query: `SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ?${
-							!(await showInternalForServer(server)) ? " AND Internal = 0" : ""
-						}`,
+						query: `SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ?${!(await showInternalForServer(server)) ? " AND Internal = 0" : ""
+							}`,
 						parameters: [thisclass],
 					};
 					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
@@ -2384,9 +2377,8 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		// Query the server to get the names and descriptions of all non-calculated properties
 		const data: QueryData = {
-			query: `SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Calculated = 0${
-				!showInternal ? " AND Internal = 0" : ""
-			}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
+			query: `SELECT Name, Description, Origin, RuntimeType, Deprecated FROM %Dictionary.CompiledProperty WHERE Parent = ? AND Calculated = 0${!showInternal ? " AND Internal = 0" : ""
+				}${!settings.completion.showDeprecated ? " AND Deprecated = 0" : ""}`,
 			parameters: [thisclass],
 		};
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
@@ -2422,7 +2414,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	} else if (prevline.endsWith("^") && triggerlang == ld.cos_langindex) {
 		// This might be a routine or global
 
-		result = await globalsOrRoutines(doc, parsed, params.position.line, thistoken, settings, server, prevline);
+		result = (await globalsOrRoutines(doc, parsed, params.position.line, thistoken, settings, server, prevline))!;
 	}
 	return result;
 }

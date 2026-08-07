@@ -419,7 +419,7 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 	// Loop through the QuickPickItem array and map all origin classes to the members
 	const membersPerOrigin: Map<string, string[]> = new Map();
 	for (const member of params.members) {
-		const origin = member.detail.split(" ")[member.detail.split(" ").length - 1] + ".cls";
+		const origin = member.detail!.split(" ")[member.detail!.split(" ").length - 1] + ".cls";
 		if (membersPerOrigin.has(origin)) {
 			// Add this member to the array of members for this origin class
 			const membersarr = membersPerOrigin.get(origin);
@@ -757,7 +757,7 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 	let foundprocedureblock: boolean = false;
 	let endprocedureblocksearch: boolean = false;
 	let nexttkn: number = 0;
-	let methodprocedureblock: boolean | undefined = undefined;
+	let methodprocedureblock: boolean | undefined;
 	const donorargs: [string, boolean, string][] = []; // List of arguments of the donor method
 	let donorarg: [string, boolean, string] = ["", false, ""]; // Argument properties: Name, ByRef/Output, Type/Parameters)
 	let previoustknln = params.lnmethod;

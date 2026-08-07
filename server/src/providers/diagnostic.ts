@@ -165,7 +165,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							parsed[i][j].l == ld.cls_langindex &&
 							parsed[i][j].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() ==
-								"extends"
+							"extends"
 						) {
 							// The 'Extends' keyword is present
 							hassupers = true;
@@ -278,7 +278,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 	// Don't report diagnostics in a #if 0 block, and
 	// mark all of the code in the block as "unused"
-	let ifZeroStartPos: Position;
+	let ifZeroStartPos: Position | undefined;
 	const ifZeroStart = /^\s*#if\s+(?:0|"0")(?:$|\s)/i;
 	const ifZeroEnd = /^\s*#elseif\s+|(?:#else|#endif)(?:$|\s)/i;
 
@@ -383,7 +383,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					parsed[i][j - 1].l == ld.cls_langindex &&
 					parsed[i][j - 1].s == ld.cls_keyword_attrindex &&
 					doc.getText(Range.create(i, parsed[i][j - 1].p, i, parsed[i][j - 1].p + parsed[i][j - 1].c)).toLowerCase() ===
-						"class"
+					"class"
 				) {
 					// This is the class name in the class definition line
 
@@ -400,7 +400,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						});
 					} else if (isPersistent) {
 						// Check if a SqlTableName is present
-						let sqlTableName: Range,
+						let sqlTableName: Range | undefined,
 							hasSqlTableName = false;
 						for (let k = j + 1; k < parsed[i].length; k++) {
 							if (hasSqlTableName) {
@@ -422,7 +422,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								parsed[i][k].l == ld.cls_langindex &&
 								parsed[i][k].s == ld.cls_keyword_attrindex &&
 								doc.getText(Range.create(i, parsed[i][k].p, i, parsed[i][k].p + parsed[i][k].c)).toLowerCase() ==
-									"sqltablename"
+								"sqltablename"
 							) {
 								hasSqlTableName = true;
 							}
@@ -437,9 +437,9 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									source: "InterSystems Language Server",
 								});
 							}
-						} else if (sqlReservedWords.includes(word.split(".").pop().toUpperCase())) {
+						} else if (sqlReservedWords.includes(word.split(".").pop()!.toUpperCase())) {
 							// The short class name is a reserved word, and it's not corrected by a SqlTableName
-							wordrange.start.character = wordrange.end.character - word.split(".").pop().length;
+							wordrange.start.character = wordrange.end.character - word.split(".").pop()!.length;
 							diagnostics.push({
 								severity: DiagnosticSeverity.Warning,
 								range: wordrange,
@@ -453,7 +453,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					parsed[i][j].l == ld.cls_langindex &&
 					parsed[i][j].s == ld.cls_keyword_attrindex &&
 					doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() ===
-						"parameter" &&
+					"parameter" &&
 					settings.diagnostics.parameters
 				) {
 					// This line is a UDL Parameter definition
@@ -531,11 +531,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							// The type is valid
 
 							// See if this Parameter has a value
-							let valuetkn: number;
+							let valuetkn: number | undefined;
 							const delimtext = doc.getText(Range.create(i, parsed[i][4].p, i, parsed[i][4].p + parsed[i][4].c));
 							if (delimtext === "[") {
 								// Loop through the line to find the closing brace
-								let closingtkn: number;
+								let closingtkn: number | undefined;
 								for (let ptkn = 5; ptkn < parsed[i].length; ptkn++) {
 									if (
 										parsed[i][ptkn].l == ld.cls_langindex &&
@@ -815,8 +815,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							// Add this class to the map
 							addRangeToMapVal(
 								otherNsDocs,
-								`${currentNs}:::${
-									!word.includes(".") && word.startsWith("%") ? `%Library.${word.slice(1)}` : word
+								`${currentNs}:::${!word.includes(".") && word.startsWith("%") ? `%Library.${word.slice(1)}` : word
 								}.cls`,
 								wordrange,
 							);
@@ -1186,7 +1185,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					const propName = quoteUDLIdentifier(doc.getText(propRange), 0);
 
 					// Check if a SqlFieldName is present
-					let sqlFieldName: Range,
+					let sqlFieldName: Range | undefined,
 						hasSqlFieldName = false,
 						inKeywords = false,
 						brk = false;
@@ -1224,7 +1223,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								parsed[ln][k].l == ld.cls_langindex &&
 								parsed[ln][k].s == ld.cls_keyword_attrindex &&
 								doc.getText(Range.create(ln, parsed[ln][k].p, ln, parsed[ln][k].p + parsed[ln][k].c)).toLowerCase() ==
-									"sqlfieldname"
+								"sqlfieldname"
 							) {
 								hasSqlFieldName = true;
 							} else if (

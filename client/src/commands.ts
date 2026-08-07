@@ -22,7 +22,7 @@ import { client } from "./extension";
  */
 export async function overrideClassMembers() {
 	// Get the open document and check that it's an ObjectScript class
-	const openDoc = window.activeTextEditor.document;
+	const openDoc = window.activeTextEditor!.document;
 	if (openDoc.languageId != "objectscript-class") {
 		// Can only override members in a class
 		return;
@@ -48,7 +48,7 @@ export async function overrideClassMembers() {
 	}
 
 	// Check that we can insert new class members at the cursor position
-	const selection = window.activeTextEditor.selection;
+	const selection = window.activeTextEditor!.selection;
 	let cursorvalid = false;
 	let docposvalid = false;
 	if (openDoc.lineAt(selection.active.line).isEmptyOrWhitespace && selection.isEmpty) {
@@ -175,10 +175,10 @@ export async function selectImportPackage(uri: string, classname: string) {
 		selectedPackage = allimportpackages[0];
 	} else {
 		// Ask the user to select an import package
-		selectedPackage = await window.showQuickPick(allimportpackages, {
+		selectedPackage = (await window.showQuickPick(allimportpackages, {
 			title: "Pick the package to import",
 			canPickMany: false,
-		});
+		}))!;
 		if (!selectedPackage) {
 			// No package was selected
 			return;
@@ -206,7 +206,7 @@ export async function extractMethod(
 	newmethodtype: string,
 ) {
 	// Get the list of class member names
-	const symbols = await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
+	const symbols: any[] = await commands.executeCommand("vscode.executeDocumentSymbolProvider", Uri.parse(uri));
 	const clsmembers: string[] = [];
 	for (let clsmember = 0; clsmember < symbols[0].children.length; clsmember++) {
 		clsmembers.push(symbols[0].children[clsmember].name);
@@ -261,20 +261,20 @@ export async function extractMethod(
 	await workspace.applyEdit(await client.protocol2CodeConverter.asWorkspaceEdit(lspWorkspaceEdit));
 
 	// Highlight and scroll to new extracted method
-	const activeEditor = window.activeTextEditor;
+	const activeEditor = window.activeTextEditor!;
 	if (activeEditor.document.uri.toString() === uri) {
 		// Selection of the extracted method
-		const anchor = lspWorkspaceEdit.changes[uri][0].range.start;
+		const anchor = lspWorkspaceEdit.changes![uri][0].range.start;
 		let methodstring: string = "";
-		for (let edit = 0; edit < lspWorkspaceEdit.changes[uri].length - 2; edit++) {
-			methodstring += lspWorkspaceEdit.changes[uri][edit].newText;
+		for (let edit = 0; edit < lspWorkspaceEdit.changes![uri].length - 2; edit++) {
+			methodstring += lspWorkspaceEdit.changes![uri][edit].newText;
 		}
 		const methodsize = methodstring.split("\n").length - 1;
 		const range: Range = new Range(new Position(anchor.line + 1, 0), new Position(anchor.line + methodsize, 1));
 
 		// Selection of the method call
-		const anchor2 = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length - 1].range.start;
-		const linesize = lspWorkspaceEdit.changes[uri][lspWorkspaceEdit.changes[uri].length - 1].newText.length;
+		const anchor2 = lspWorkspaceEdit.changes![uri][lspWorkspaceEdit.changes![uri].length - 1].range.start;
+		const linesize = lspWorkspaceEdit.changes![uri][lspWorkspaceEdit.changes![uri].length - 1].newText.length;
 		const range2: Range = new Range(
 			new Position(anchor2.line + methodsize + 1, anchor2.character),
 			new Position(anchor2.line + methodsize + 1, anchor2.character + linesize + 1),

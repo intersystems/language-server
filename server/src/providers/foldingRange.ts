@@ -736,7 +736,7 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 					parsed[line][tkn + 1].l == ld.html_langindex &&
 					parsed[line][tkn + 1].s == ld.html_tag_attrindex &&
 					doc.getText(Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c)) ===
-						"<" &&
+					"<" &&
 					doc
 						.getText(
 							Range.create(line, parsed[line][tkn + 1].p, line, parsed[line][tkn + 1].p + parsed[line][tkn + 1].c),
@@ -790,7 +790,7 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 						});
 					} else if (inCComment && commentText.slice(-2) == "*/") {
 						// Close the most recent C-style comment range
-						const cCommentRange = openranges.pop();
+						const cCommentRange = openranges.pop()!;
 						cCommentRange.endLine = line - 1;
 						cCommentRange.kind = FoldingRangeKind.Comment;
 						if (cCommentRange.endLine > cCommentRange.startLine) result.push(cCommentRange);

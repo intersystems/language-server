@@ -118,7 +118,7 @@ export async function isolateEmbeddedLanguage(params: IsolateEmbeddedLanguagePar
 
 		// Isolate HTML above this token
 		let ignoreHTML: boolean = false;
-		let firstEmb: "open" | "close" | undefined = undefined;
+		let firstEmb: "open" | "close" | undefined;
 		for (let line = params.position.line; line >= 0; line--) {
 			let starttkn = parsed[line].length - 1;
 			if (line == params.position.line) {
