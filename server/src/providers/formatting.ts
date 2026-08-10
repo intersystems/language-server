@@ -63,7 +63,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 	}
 
 	let classes: StudioOpenDialogFile[] = [];
-	let inheritedpackages: string[] | undefined = undefined;
+	let inheritedpackages: string[] | undefined;
 	if (settings.formatting.expandClassNames) {
 		// Get all classes
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {

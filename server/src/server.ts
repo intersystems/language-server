@@ -168,7 +168,7 @@ connection.onNotification("intersystems/server/passwordChange", (serverName: str
 	for (const uri of invalid) {
 		serverSpecs.delete(uri);
 	}
-	let toRemove: ServerSpec | undefined = undefined;
+	let toRemove: ServerSpec | undefined;
 	for (const server of schemaCaches.keys()) {
 		if (server.serverName == serverName) {
 			toRemove = server;

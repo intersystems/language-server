@@ -34,12 +34,12 @@ let signatureHelpMacroCache: SignatureHelpMacroContext;
 /**
  * Cache of the documentation content sent for the last triggered SignatureHelp.
  */
-let signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefined;
+let signatureHelpDocumentationCache: SignatureHelpDocCache | undefined;
 
 /**
  * The start position of the active SignatureHelp.
  */
-let signatureHelpStartPosition: Position | undefined = undefined;
+let signatureHelpStartPosition: Position | undefined;
 
 /** Placeholder for the Markdown emphasis characters before an argument. */
 const emphasizePrefix: string = "%%%%%";
@@ -198,10 +198,10 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 		triggerlang != ld.cos_langindex ||
 		// Don't compute signature help inside of a string literal
 		(doc.getText(Range.create(Position.create(params.position.line, 0), params.position)).split('"').length - 1) % 2 ==
-			1
+		1
 	) {
 		if (params.context.activeSignatureHelp) {
-			params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
+			params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache!.doc;
 			return params.context.activeSignatureHelp;
 		} else {
 			return null;
@@ -365,16 +365,16 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			const querydata =
 				member == "%New"
 					? {
-							// Get the information for both %New and %OnNew
-							query:
-								"SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-							parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
-						}
+						// Get the information for both %New and %OnNew
+						query:
+							"SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
+						parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
+					}
 					: {
-							query:
-								"SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-							parameters: [membercontext.baseclass, unquotedname],
-						};
+						query:
+							"SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
+						parameters: [membercontext.baseclass, unquotedname],
+					};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
@@ -613,16 +613,16 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				const querydata =
 					member == "%New"
 						? {
-								// Get the information for both %New and %OnNew
-								query:
-									"SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-								parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
-							}
+							// Get the information for both %New and %OnNew
+							query:
+								"SELECT FormalSpec, ReturnType, Description, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
+							parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
+						}
 						: {
-								query:
-									"SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-								parameters: [membercontext.baseclass, unquotedname],
-							};
+							query:
+								"SELECT FormalSpec, ReturnType, Description, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
+							parameters: [membercontext.baseclass, unquotedname],
+						};
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 					// We got data back

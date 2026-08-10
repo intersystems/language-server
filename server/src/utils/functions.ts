@@ -61,7 +61,7 @@ turndown.addRule("pre", {
 				/* empty */
 			}
 		} else {
-			switch (attrVal.split("!").shift().toUpperCase()) {
+			switch (attrVal.split("!").shift()!.toUpperCase()) {
 				case "OBJECTSCRIPT":
 				case "COS":
 				case "INT":
@@ -81,7 +81,7 @@ turndown.addRule("pre", {
 					break;
 				case "JAVASCRIPT":
 				case "JS":
-					lang = attrVal.split("!").pop().toUpperCase() == "JSON" ? "json" : "javascript";
+					lang = attrVal.split("!").pop()!.toUpperCase() == "JSON" ? "json" : "javascript";
 					break;
 				case "CSS":
 					lang = "css";
@@ -109,6 +109,7 @@ turndown.addRule("documaticArgs", {
 		if (node.children.length > 0) {
 			return `\n#### Arguments:\n${content}\n`;
 		}
+		return "";
 	},
 });
 turndown.addRule("documaticArg", {
@@ -118,6 +119,7 @@ turndown.addRule("documaticArg", {
 		if (attrVal !== null) {
 			return `\n- \`${attrVal}\` - ${content}`;
 		}
+		return "";
 	},
 });
 turndown.addRule("documaticReturn", {
@@ -1343,7 +1345,7 @@ export async function findMethodParameterClass(
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext | undefined> {
-	let result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined;
 	for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 		if (parsed[line][tkn].l == ld.cls_langindex && parsed[line][tkn].s == ld.cls_param_attrindex) {
 			// This is a parameter
@@ -1644,7 +1646,7 @@ async function determineParameterClass(
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext | undefined> {
-	let result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined;
 	if (doc.languageId === "objectscript-class") {
 		// Parameters can only have a type if they're in a UDL method
 
@@ -1736,7 +1738,7 @@ async function determineDeclaredLocalVarClass(
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext | undefined> {
-	let result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined;
 
 	if (varText === "%request") {
 		result = {
@@ -1893,11 +1895,11 @@ async function parseSetCommand(
 	let inPostconditional = false;
 	let pcParenCount = 0;
 	let foundVar = false;
-	let operatorTuple: [number, number] | undefined = undefined;
+	let operatorTuple: [number, number] | undefined;
 	let exprLeadingParenCount = 0;
 	let exprParenLevel = 0;
-	let firstExprTuple: [number, number] | undefined = undefined;
-	let lastMemTuple: [number, number] | undefined = undefined;
+	let firstExprTuple: [number, number] | undefined;
+	let lastMemTuple: [number, number] | undefined;
 	for (let ln = line; ln < parsed.length; ln++) {
 		if (!parsed[ln]?.length) continue;
 		for (let tkn = ln == line ? token + 1 : 0; tkn < parsed[ln].length; tkn++) {
@@ -2360,7 +2362,7 @@ async function determineUndeclaredLocalVarClass(
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext | undefined> {
-	let result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined;
 
 	// Scan to the top of the method to find where the variable was Set or passed by reference
 	let firstLabel = true;
@@ -3044,7 +3046,7 @@ export function labelIsProcedureBlock(
 ): [number, number] | undefined {
 	const lastLabelTkn = parsed[line].length > 1 && parsed[line][1].s == ld.cos_label_attrindex ? 1 : 0;
 	let currentLabelIsProcedureBlock: boolean = false;
-	let result: [number, number] | undefined = undefined;
+	let result: [number, number] | undefined;
 
 	if (
 		parsed[line].length > lastLabelTkn + 1 &&
@@ -3360,7 +3362,7 @@ export function urlMapAttribute(
 	parsed: compressedline[],
 	line: number,
 	token: number,
-): "Call" | "Forward" | "" {
+): "Call" | "Forward" | "" | undefined {
 	// Determine if we're in a UrlMap XData block
 	let inUrlMap = false;
 	for (let ln = line; ln >= 0; ln--) {

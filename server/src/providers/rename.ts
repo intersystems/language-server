@@ -63,7 +63,7 @@ export async function onPrepareRename(params: TextDocumentPositionParams) {
 				result = null;
 			} else {
 				// Check if this method is ProcedureBlock
-				let methodprocedureblock: boolean | undefined = undefined;
+				let methodprocedureblock: boolean | undefined;
 				if (
 					parsed[params.position.line][0].l === ld.cls_langindex &&
 					parsed[params.position.line][0].s === ld.cls_keyword_attrindex &&

@@ -35,6 +35,7 @@ import { makeRESTRequest } from "./makeRESTRequest";
 import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from "./requestForwarding";
 import type { ServerSpec, ProtocolMethods } from "../../common/out/types";
 import type { Disposable } from "vscode-languageclient";
+import { Authorization, ResolvedAuthorization } from '@intersystems-community/intersystems-servermanager';
 
 export let client: {
 	onRequest<K extends keyof ProtocolMethods>(
@@ -168,7 +169,8 @@ export async function activate(context: ExtensionContext) {
 	// for a missing password via the Server Manager's authentication provider.
 	async function resolveServerSpec(uri: Uri) {
 		const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
-		const { auth, ...serverSpec } = objectScriptApi.serverForUri(uri);
+		const serverSpec = objectScriptApi.serverForUri(uri)!;
+		const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
 		if (
 			// Server was resolved
 			serverSpec.host !== "" &&
@@ -454,4 +456,60 @@ export async function deactivate(): Promise<void> {
 		);
 	}
 	await Promise.allSettled(promises);
+}
+
+
+// A copy of the BasicAuthorization class from ServerManager
+// We use it to patch older version of getServerSpec.
+export default class BasicAuthorization implements Authorization {
+	#username?: string;
+	#password?: string;
+	constructor(username?: string, password?: string) {
+		this.#username = username;
+		this.#password = password;
+	}
+
+	public get username(): string {
+		return this.#username || "";
+	}
+
+	public get password(): string | undefined {
+		return this.#password;
+	}
+
+	public get accessToken(): string | undefined {
+		return this.#password;
+	}
+
+	public get httpAuthorizationHeader(): string {
+		return `Basic ${Buffer.from(`${this.#username}:${this.#password}`).toString("base64")}`;
+	}
+
+	public resolved(): this is ResolvedAuthorization {
+		return this.username !== "" && this.#password !== undefined;
+	}
+
+	public resolve(param: { accessToken: string; username?: string }): this is ResolvedAuthorization {
+		this.#username = param.username ?? this.#username;
+		this.#password = param.accessToken ?? this.#password;
+		return this.resolved();
+	}
+
+	public clear(): asserts this is Authorization {
+		this.#password = undefined;
+	}
+
+	public get credentials(): { auth: { username: string; password: string }; headers?: Record<string, string> } {
+		return {
+			auth: {
+				username: this.username,
+				password: this.password!,
+			},
+			headers: {},
+		};
+	}
+
+	public clone(): BasicAuthorization {
+		return new BasicAuthorization(this.#username, this.#password);
+	}
 }
