@@ -13,7 +13,7 @@ export interface ServerSpec {
 	username: string;
 	credentials?: {
 		auth?: { username: string; password: string };
-		headers?: Record<string, string>
+		headers?: Record<string, string>;
 	};
 }
 

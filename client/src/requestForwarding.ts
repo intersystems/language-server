@@ -140,7 +140,7 @@ export const requestForwardingMiddleware: Middleware = {
 };
 
 export class ISCEmbeddedContentProvider implements TextDocumentContentProvider {
-	constructor() { }
+	constructor() {}
 
 	provideTextDocumentContent(uri: Uri): ProviderResult<string> {
 		// Get the isclexer language number and position from the URI authority

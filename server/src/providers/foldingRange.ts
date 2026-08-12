@@ -736,7 +736,7 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 					parsed[line][tkn + 1].l == ld.html_langindex &&
 					parsed[line][tkn + 1].s == ld.html_tag_attrindex &&
 					doc.getText(Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c)) ===
-					"<" &&
+						"<" &&
 					doc
 						.getText(
 							Range.create(line, parsed[line][tkn + 1].p, line, parsed[line][tkn + 1].p + parsed[line][tkn + 1].c),

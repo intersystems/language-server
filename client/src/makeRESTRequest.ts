@@ -39,16 +39,14 @@ export async function makeRESTRequest(
 		// The server doesn't support the Atelier API version required to make this request
 		client.warn(
 			"Cannot make required REST request to server " +
-			`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
-			`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`,
+				`${server.serverName !== "" ? `'${server.serverName}'` : `${server.host}:${server.port}${server.pathPrefix}`} ` +
+				`because it does not support the '${path}' endpoint, which requires Atelier API version ${api}.`,
 		);
 		return undefined;
 	}
 	if (!server.credentials) {
 		// A username without a password isn't allowed
-		client.warn(
-			"Cannot make required REST request because the configured server connection is not authorized",
-		);
+		client.warn("Cannot make required REST request because the configured server connection is not authorized");
 		return undefined;
 	}
 
@@ -202,7 +200,8 @@ export async function makeRESTRequest(
 			return respdata;
 		}
 	} catch (error) {
-		const errorString = typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error);
+		const errorString =
+			typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error);
 		client.warn(`Error making REST request ${method} ${path}: ${errorString}`);
 		return undefined;
 	}
