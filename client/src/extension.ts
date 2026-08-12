@@ -35,16 +35,14 @@ import { makeRESTRequest } from "./makeRESTRequest";
 import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from "./requestForwarding";
 import type { ServerSpec, ProtocolMethods } from "../../common/out/types";
 import type { Disposable } from "vscode-languageclient";
-import { Authorization, ResolvedAuthorization } from '@intersystems-community/intersystems-servermanager';
+import { Authorization, ResolvedAuthorization } from "@intersystems-community/intersystems-servermanager";
 
 export let client: {
 	onRequest<K extends keyof ProtocolMethods>(
 		method: K,
-		handler: (
-			params: Parameters<ProtocolMethods[K]>[0]
-		) => ReturnType<ProtocolMethods[K]>
+		handler: (params: Parameters<ProtocolMethods[K]>[0]) => ReturnType<ProtocolMethods[K]>,
 	): Disposable;
-} & Omit<LanguageClient, 'onRequest'>;;
+} & Omit<LanguageClient, "onRequest">;
 
 /**
  * Cache for cookies from REST requests to InterSystems servers.
@@ -164,7 +162,6 @@ export async function activate(context: ExtensionContext) {
 		});
 	}
 
-
 	// Resolve the ServerSpec for a document or workspace folder URI, prompting
 	// for a missing password via the Server Manager's authentication provider.
 	async function resolveServerSpec(uri: Uri) {
@@ -253,7 +250,7 @@ export async function activate(context: ExtensionContext) {
 			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
 			return newuri.toString();
 		}),
-		client.onRequest('intersystems/uri/forDocument', (document) => {
+		client.onRequest("intersystems/uri/forDocument", (document) => {
 			if (lte(objectScriptExt.packageJSON.version, "1.0.10")) {
 				// If the active version of vscode-objectscript doesn't expose
 				// DocumentContentProvider.getUri(), just return the empty string.
@@ -262,7 +259,7 @@ export async function activate(context: ExtensionContext) {
 			const uri: Uri | null = objectScriptApi.getUriForDocument(document);
 			return uri == null ? null : uri.toString();
 		}),
-		client.onRequest('intersystems/uri/forTypeHierarchyClasses', (classes) => {
+		client.onRequest("intersystems/uri/forTypeHierarchyClasses", (classes) => {
 			// vscode-objectscript version 1.0.11+ has been available for long enough that
 			// it's safe to assume that users have upgraded to at least 1.0.11
 			return classes.map((cls: string) => {
@@ -272,22 +269,15 @@ export async function activate(context: ExtensionContext) {
 		}),
 		client.onRequest("intersystems/server/makeRESTRequest", async (args) => {
 			// As of version 2.0.0, REST requests are made on the client side
-			return makeRESTRequest(
-				args.method,
-				args.api,
-				args.path,
-				args.server,
-				args.data,
-				args.checksum,
-				args.params,
-			).then((respdata) => {
-				if (respdata) {
-					// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
-					return { data: respdata.data };
-				}
-			});
-		},
-		),
+			return makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params).then(
+				(respdata) => {
+					if (respdata) {
+						// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
+						return { data: respdata.data };
+					}
+				},
+			);
+		}),
 		client.onRequest(
 			"intersystems/uri/getText",
 			async (params: { uri: string; server: ServerSpec }): Promise<string[]> => {
@@ -302,12 +292,12 @@ export async function activate(context: ExtensionContext) {
 								: uri.path.split("/").slice(1).join(".");
 						const docParams =
 							params.server.apiVersion >= 4 &&
-								workspace
-									.getConfiguration(
-										"objectscript",
-										workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
-									)
-									.get<boolean>("multilineMethodArgs")
+							workspace
+								.getConfiguration(
+									"objectscript",
+									workspace.workspaceFolders?.find((f) => f.name.toLowerCase() == uri.authority.toLowerCase()),
+								)
+								.get<boolean>("multilineMethodArgs")
 								? { format: "udl-multiline" }
 								: undefined;
 						const resp = await makeRESTRequest(
@@ -457,7 +447,6 @@ export async function deactivate(): Promise<void> {
 	}
 	await Promise.allSettled(promises);
 }
-
 
 // A copy of the BasicAuthorization class from ServerManager
 // We use it to patch older version of getServerSpec.

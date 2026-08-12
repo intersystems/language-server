@@ -29,7 +29,7 @@ import * as ld from "../utils/languageDefinitions";
 const definitionTargetRangeMaxLines: number = 10;
 
 /** Return a `LocationLink` for class member `memberName` in class `cls`
- * 
+ *
  * This function queries `server` to find the source code of `cls` and locates
  * the definition of `memberName` within the source code.
  */
@@ -317,7 +317,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 									parsed[macrodefline][parsed[macrodefline].length - 1].p,
 									macrodefline,
 									parsed[macrodefline][parsed[macrodefline].length - 1].p +
-									parsed[macrodefline][parsed[macrodefline].length - 1].c,
+										parsed[macrodefline][parsed[macrodefline].length - 1].c,
 								),
 							),
 						)
@@ -1204,7 +1204,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 							parsed[ln][0].l == ld.cls_langindex &&
 							parsed[ln][0].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c)).toLowerCase() ==
-							"class"
+								"class"
 						) {
 							// This is the class definition line
 							let seenExtends = false,

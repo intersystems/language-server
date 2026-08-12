@@ -117,7 +117,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 						0,
 						lastnonempty,
 						parsed[lastnonempty][parsed[lastnonempty].length - 1].p +
-						parsed[lastnonempty][parsed[lastnonempty].length - 1].c,
+							parsed[lastnonempty][parsed[lastnonempty].length - 1].c,
 					);
 
 					// Determine if this class is Deprecated
@@ -181,7 +181,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 							0,
 							lastNonEmpty,
 							parsed[lastNonEmpty][parsed[lastNonEmpty].length - 1].p +
-							parsed[lastNonEmpty][parsed[lastNonEmpty].length - 1].c,
+								parsed[lastNonEmpty][parsed[lastNonEmpty].length - 1].c,
 						),
 						selectionRange: Range.create(line, parsed[line][1].p, line, parsed[line][1].p + parsed[line][1].c),
 						tags: deprecated ? [SymbolTag.Deprecated] : undefined,
@@ -416,7 +416,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 					parsed[line][tkn + 1].l == ld.html_langindex &&
 					parsed[line][tkn + 1].s == ld.html_tag_attrindex &&
 					doc.getText(Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c)) ===
-					"<" &&
+						"<" &&
 					doc
 						.getText(
 							Range.create(line, parsed[line][tkn + 1].p, line, parsed[line][tkn + 1].p + parsed[line][tkn + 1].c),

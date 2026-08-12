@@ -138,7 +138,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					parsed[params.position.line][i].s == ld.cos_macro_attrindex) ||
 				(parsed[params.position.line][i].l == ld.sql_langindex &&
 					parsed[params.position.line][i].s == ld.sql_iden_attrindex &&
-					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$")
+					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$$")
 			) {
 				// This is a macro
 
@@ -157,7 +157,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					macrotext = macrotext.slice(0, parenIdx);
 					macrorange.end = Position.create(params.position.line, symbolstart + macrotext.length);
 				}
-				if (macrotext.slice(0, 3) == "$$") {
+				if (macrotext.startsWith("$$$")) {
 					macrotext = macrotext.slice(3);
 				}
 
@@ -171,7 +171,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							macrorange.end.character,
 							params.position.line,
 							parsed[params.position.line][parsed[params.position.line].length - 1].p +
-							parsed[params.position.line][parsed[params.position.line].length - 1].c,
+								parsed[params.position.line][parsed[params.position.line].length - 1].c,
 						),
 					);
 
@@ -472,14 +472,15 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							value: ["$ZUTIL", "$ZU"].includes(sysftext)
 								? markupValue(`[Online documentation](${sysfdoc.link})`)
 								: markupValue(
-									sysfdoc.documentation.join(""),
-									sysfdoc.link
-										? `[Online documentation](${sysfdoc.link[0] == "h"
-											? sysfdoc.link
-											: `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
-										})`
-										: "",
-								),
+										sysfdoc.documentation.join(""),
+										sysfdoc.link
+											? `[Online documentation](${
+													sysfdoc.link[0] == "h"
+														? sysfdoc.link
+														: `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
+												})`
+											: "",
+									),
 						},
 						range: sysfrange,
 					};
@@ -1245,8 +1246,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
-							const header = `(**${normalizedcls}**) <u>**${param}**</u>${respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
-								}`;
+							const header = `(**${normalizedcls}**) <u>**${param}**</u>${
+								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
+							}`;
 							return {
 								contents: {
 									kind: MarkupKind.Markdown,
