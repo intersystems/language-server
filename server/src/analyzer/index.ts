@@ -201,7 +201,6 @@ export type MemberKind = wit.MemberKind;
 export type MemberInfo = wit.MemberInfo;
 export type ClassInfo = wit.ClassInfo;
 export type RoutineInfo = wit.RoutineInfo;
-export type AnalysisErr = wit.AnalysisErr;
 export type NormalArg = wit.NormalArg;
 export type ArgMode = wit.ArgMode;
 
@@ -309,16 +308,7 @@ export async function analyzeDoc(docURI: string, src: string, folderURI?: string
 }
 
 function analysisErrToDiagnostic(rawError: unknown): Diagnostic | undefined {
-	const payload = (rawError as { payload?: AnalysisErr })?.payload;
-	if (payload?.tag === "P") {
-		return {
-			message: "Analysis Error: " + payload.val.message,
-			range: payload.val.range,
-			severity: DiagnosticSeverity.Error,
-			source: "InterSystems Language Server - ObjectScript Analyzer",
-		};
-	}
-	return undefined;
+	return (rawError as { payload?: Diagnostic })?.payload;
 }
 
 export async function removeCls(docURI: string): Promise<void> {
