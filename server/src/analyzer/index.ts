@@ -300,6 +300,7 @@ export async function analyzeDoc(docURI: string, src: string, folderURI?: string
 	} catch (rawError) {
 		const diagnostic = analysisErrToDiagnostic(rawError);
 		if (diagnostic) {
+			diagnostic.source = "InterSystems Language Server - ObjectScript Analyzer"
 			return { error: [diagnostic] };
 		}
 		console.log(rawError);
