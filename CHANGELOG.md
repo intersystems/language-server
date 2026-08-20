@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.8.5] - 2026-08-XX
+- PR [#410](https://github.com/intersystems/language-server/pull/410): Fix hover intellisense for macros
+- Fix issue [#411](https://github.com/intersystems/language-server/issues/411): AxiosError 405 on activation
+
 ## [2.8.4] - 2026-08-11
 - Fix issue [#391](https://github.com/intersystems/language-server/issues/391): Parser support for SQL WITH clause
 - Fix issue [#397](https://github.com/intersystems/language-server/issues/397): Enable use of Automatic Symbol References feature in AI chat
