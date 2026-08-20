@@ -164,7 +164,7 @@ export async function activate(context: ExtensionContext) {
 
 	// Resolve the ServerSpec for a document or workspace folder URI, prompting
 	// for a missing password via the Server Manager's authentication provider.
-	async function resolveServerSpec(uri: Uri) {
+	async function resolveServerSpec(uri: Uri): Promise<ServerSpec> {
 		try {
 			const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
 			const serverSpec = objectScriptApi.serverForUri(uri)!;
@@ -242,7 +242,7 @@ export async function activate(context: ExtensionContext) {
 				pathPrefix: "",
 				namespace: "",
 				username: "",
-			} as ServerSpec;
+			};
 		}
 	}
 
