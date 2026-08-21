@@ -164,10 +164,13 @@ export async function activate(context: ExtensionContext) {
 
 	// Resolve the ServerSpec for a document or workspace folder URI, prompting
 	// for a missing password via the Server Manager's authentication provider.
-	async function resolveServerSpec(uri: Uri): Promise<ServerSpec> {
+	async function resolveServerSpec(uri: Uri): Promise<ServerSpec | undefined> {
 		try {
 			const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
-			const serverSpec = objectScriptApi.serverForUri(uri)!;
+			const serverSpec = objectScriptApi.serverForUri(uri);
+			if (serverSpec === undefined) {
+				return
+			}
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
 			if (
 				// Server was resolved
@@ -250,7 +253,7 @@ export async function activate(context: ExtensionContext) {
 	for (const f of workspace.workspaceFolders ?? []) {
 		try {
 			const serverSpec = await resolveServerSpec(f.uri);
-			if (serverSpec.active) {
+			if (serverSpec?.active) {
 				await makeRESTRequest("HEAD", 0, "", serverSpec);
 			}
 		} catch {
