@@ -909,7 +909,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 						// Get the base class that this member is in
 						const membercontext = await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages);
-						if (membercontext && membercontext.baseclass !== "") {
+						if (membercontext.baseclass !== "") {
 							// We could determine the class, so add the member to the correct map
 
 							const memberstr: string = membercontext.baseclass + ":::" + unquotedname;
