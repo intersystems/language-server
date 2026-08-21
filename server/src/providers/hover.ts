@@ -373,7 +373,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					const macroargs = getMacroArgs();
 
 					// If the arguments list is either not needed or complete, get the macro expansion
-					if (macroargs !== "incomplete" && server) {
+					if (server && macroargs !== "incomplete") {
 						// Get the macro expansion from the server
 						const expquerydata = {
 							docname: maccon.docname,
@@ -1027,7 +1027,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				) {
 					// This identifier is a table name
 
-					if (iden.lastIndexOf("_") > iden.lastIndexOf(".") && server) {
+					if (server && iden.lastIndexOf("_") > iden.lastIndexOf(".")) {
 						// This table is projected from a multi-dimensional property
 
 						// Split the identifier into the class and property
