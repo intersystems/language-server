@@ -2,7 +2,6 @@ import { DocumentLink, DocumentLinkParams, Range } from "vscode-languageserver/n
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 import { createDefinitionUri, getParsedDocument, getServerSpec, normalizeClassname } from "../utils/functions";
-import { ServerSpec } from "../utils/types";
 
 export async function onDocumentLinks(params: DocumentLinkParams): Promise<DocumentLink[] | null> {
 	const doc = documents.get(params.textDocument.uri);

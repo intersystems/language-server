@@ -791,9 +791,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		return null;
 	}
 	const server = await getServerSpec(params.textDocument.uri);
-	if (!server) {
-		return null;
-	}
 	const prevline = doc.getText(Range.create(Position.create(params.position.line, 0), params.position));
 	const prevlineLower = prevline.toLowerCase();
 	const classregex =
@@ -850,7 +847,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	const asRegex = /\s+as\s+$/;
 	const parenAndCommaRegex = /[,(]\s*$/;
 
-	if (prevline.endsWith("$$$") && [ld.cos_langindex, ld.sql_langindex].includes(triggerlang)) {
+	if (server && prevline.endsWith("$$$") && [ld.cos_langindex, ld.sql_langindex].includes(triggerlang)) {
 		// This is a macro
 
 		// Get the details of this class and store them in the cache
@@ -1112,6 +1109,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			});
 		}
 	} else if (
+		server &&
 		/\)\s+as\s+$/.test(prevlineLower) &&
 		prevlineLower.startsWith("query") &&
 		triggerlang === ld.cls_langindex
@@ -1180,15 +1178,17 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		classregex.test(prevline)
 	) {
 		// This is a full class name
-
-		result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
+		if (server) {
+			result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
+		}
 	} else if (
-		(prevline.endsWith(".") &&
+		server &&
+		((prevline.endsWith(".") &&
 			prevline.slice(-2, -1) !== "," &&
 			prevline.slice(-2, -1) !== " " &&
 			thistoken !== 0 &&
 			(triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
-		(prevline.endsWith(".#") && triggerlang === ld.cos_langindex)
+			(prevline.endsWith(".#") && triggerlang === ld.cos_langindex))
 	) {
 		let prevtokentype = "";
 		const prevtokenrange = findFullRange(
@@ -1509,17 +1509,19 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	} else if (
-		(parenAndCommaRegex.test(prevline) &&
+		server &&
+		((parenAndCommaRegex.test(prevline) &&
 			triggerlang === ld.cls_langindex &&
 			(prevlineLower.startsWith("include") || prevlineLower.startsWith("includegenerator"))) ||
-		(parsed[params.position.line].length === 2 &&
-			firsttwotokens.toLowerCase() === "#include" &&
-			triggerlang === ld.cos_langindex)
+			(parsed[params.position.line].length === 2 &&
+				firsttwotokens.toLowerCase() === "#include" &&
+				triggerlang === ld.cos_langindex))
 	) {
 		// This is an include file
 
 		result = await completionInclude(server);
 	} else if (
+		server &&
 		parenAndCommaRegex.test(prevline) &&
 		prevlineLower.startsWith("import") &&
 		triggerlang === ld.cls_langindex
@@ -1528,6 +1530,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		result = await completionPackage(server, settings);
 	} else if (
+		server &&
 		triggerlang === ld.cls_langindex &&
 		openParenCount > closeParenCount &&
 		parenAndCommaRegex.test(prevline) &&
@@ -1899,75 +1902,77 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 							data: "keywordvalue",
 						});
 					}
-				} else if (thiskeydoc.constraint === "KW_SYSENUM_CLASS_LIST") {
-					// List of classes
-					result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
-				} else if (thiskeydoc.constraint === "KW_SYSENUM_PACKAGE_LIST") {
-					// List of packages
-					result = await completionPackage(server, settings);
-				} else if (thiskeydoc.constraint === "KW_SYSENUM_INCFILE_LIST") {
-					// List of includes
-					result = await completionInclude(server);
-				} else if (thiskeydoc.constraint === "KW_SYSENUM_METHOD_LIST") {
-					// List of methods
+				} else if (server) {
+					if (thiskeydoc.constraint === "KW_SYSENUM_CLASS_LIST") {
+						// List of classes
+						result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
+					} else if (thiskeydoc.constraint === "KW_SYSENUM_PACKAGE_LIST") {
+						// List of packages
+						result = await completionPackage(server, settings);
+					} else if (thiskeydoc.constraint === "KW_SYSENUM_INCFILE_LIST") {
+						// List of includes
+						result = await completionInclude(server);
+					} else if (thiskeydoc.constraint === "KW_SYSENUM_METHOD_LIST") {
+						// List of methods
 
-					// Find the class name
-					let thisclass = "";
-					for (let i = 0; i < parsed.length; i++) {
-						if (parsed[i].length === 0) {
-							continue;
-						} else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
-							// This line starts with a UDL keyword
-							const keyword = doc.getText(
-								Range.create(Position.create(i, parsed[i][0].p), Position.create(i, parsed[i][0].p + parsed[i][0].c)),
-							);
-							if (keyword.toLowerCase() === "class") {
-								for (let j = 1; j < parsed[i].length; j++) {
-									if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
-										thisclass = thisclass.concat(
-											doc.getText(
-												Range.create(
-													Position.create(i, parsed[i][j].p),
-													Position.create(i, parsed[i][j].p + parsed[i][j].c),
+						// Find the class name
+						let thisclass = "";
+						for (let i = 0; i < parsed.length; i++) {
+							if (parsed[i].length === 0) {
+								continue;
+							} else if (parsed[i][0].l == ld.cls_langindex && parsed[i][0].s == ld.cls_keyword_attrindex) {
+								// This line starts with a UDL keyword
+								const keyword = doc.getText(
+									Range.create(Position.create(i, parsed[i][0].p), Position.create(i, parsed[i][0].p + parsed[i][0].c)),
+								);
+								if (keyword.toLowerCase() === "class") {
+									for (let j = 1; j < parsed[i].length; j++) {
+										if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) {
+											thisclass = thisclass.concat(
+												doc.getText(
+													Range.create(
+														Position.create(i, parsed[i][j].p),
+														Position.create(i, parsed[i][j].p + parsed[i][j].c),
+													),
 												),
-											),
-										);
-									} else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
-										// We hit the 'Extends' keyword
-										break;
+											);
+										} else if (parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_keyword_attrindex) {
+											// We hit the 'Extends' keyword
+											break;
+										}
 									}
+									break;
 								}
-								break;
 							}
 						}
-					}
-					const querydata = {
-						query: `SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ?${
-							!(await showInternalForServer(server)) ? " AND Internal = 0" : ""
-						}`,
-						parameters: [thisclass],
-					};
-					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
-					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
-						// We got data back
+						const querydata = {
+							query: `SELECT Name, Description, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ?${
+								!(await showInternalForServer(server)) ? " AND Internal = 0" : ""
+							}`,
+							parameters: [thisclass],
+						};
+						const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
+						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+							// We got data back
 
-						for (const method of respdata.data.result.content) {
-							const item: CompletionItem = {
-								label: method.Name,
-								kind: CompletionItemKind.Method,
-								data: "member",
-								documentation: {
-									kind: MarkupKind.Markdown,
-									value: documaticHtmlToMarkdown(method.Description),
-								},
-							};
-							if (method.Origin === method.baseclass) {
-								// Members from the base class should appear first
-								item.sortText = sortPrefix + method.Name;
-							} else {
-								item.sortText = item.label;
+							for (const method of respdata.data.result.content) {
+								const item: CompletionItem = {
+									label: method.Name,
+									kind: CompletionItemKind.Method,
+									data: "member",
+									documentation: {
+										kind: MarkupKind.Markdown,
+										value: documaticHtmlToMarkdown(method.Description),
+									},
+								};
+								if (method.Origin === method.baseclass) {
+									// Members from the base class should appear first
+									item.sortText = sortPrefix + method.Name;
+								} else {
+									item.sortText = item.label;
+								}
+								result.push(item);
 							}
-							result.push(item);
 						}
 					}
 				}
@@ -2010,12 +2015,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 			// Only proceed if we can provide suggestions
 			if (
-				(prevline.endsWith(" ") &&
+				server &&
+				((prevline.endsWith(" ") &&
 					prevline.includes("<") &&
 					prevline.charAt(prevline.lastIndexOf("<") + 1) !== "!" &&
 					prevline.split("<").length > prevline.split(">").length) ||
-				prevline.endsWith("<") ||
-				prevline.endsWith('"')
+					prevline.endsWith("<") ||
+					prevline.endsWith('"'))
 			) {
 				// Get the SchemaCache for this server or create one if it doesn't exist
 				let schemaCache = schemaCaches.get(server);
@@ -2374,7 +2380,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				);
 			}
 		}
-	} else if (prevline.endsWith("i%") && triggerlang === ld.cos_langindex) {
+	} else if (server && prevline.endsWith("i%") && triggerlang === ld.cos_langindex) {
 		// This is instance variable syntax
 
 		// Find the name of the current class
@@ -2422,7 +2428,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				result.push(item);
 			}
 		}
-	} else if (prevline.endsWith("^") && triggerlang == ld.cos_langindex) {
+	} else if (server && prevline.endsWith("^") && triggerlang == ld.cos_langindex) {
 		// This might be a routine or global
 
 		result = (await globalsOrRoutines(doc, parsed, params.position.line, thistoken, settings, server, prevline))!;

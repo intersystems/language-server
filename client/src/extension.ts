@@ -169,7 +169,7 @@ export async function activate(context: ExtensionContext) {
 			const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
 			const serverSpec = objectScriptApi.serverForUri(uri);
 			if (serverSpec === undefined) {
-				return
+				return;
 			}
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
 			if (
@@ -234,18 +234,6 @@ export async function activate(context: ExtensionContext) {
 			return server;
 		} catch {
 			// Treat any thrown error as "no server connection"
-			return {
-				serverName: "",
-				active: false,
-				apiVersion: 1,
-				serverVersion: "",
-				scheme: "http",
-				host: "",
-				port: 0,
-				pathPrefix: "",
-				namespace: "",
-				username: "",
-			};
 		}
 	}
 

@@ -22,7 +22,7 @@ import {
 	quoteUDLIdentifier,
 	determineActiveParam,
 } from "../utils/functions";
-import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
+import { SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 

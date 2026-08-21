@@ -15,7 +15,7 @@ import {
 	makeRESTRequest,
 	normalizeClassname,
 } from "../utils/functions";
-import { CommandDoc, StudioOpenDialogFile, ServerSpec } from "../utils/types";
+import { CommandDoc, StudioOpenDialogFile } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 import commands from "../documentation/commands.json";

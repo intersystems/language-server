@@ -11,7 +11,6 @@ import {
 	currentClass,
 	getMemberType,
 } from "../utils/functions";
-import { ServerSpec } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 
