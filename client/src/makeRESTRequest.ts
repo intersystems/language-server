@@ -26,13 +26,8 @@ export async function makeRESTRequest(
 	checksum?: string,
 	params?: AxiosRequestConfig["params"],
 ): Promise<AxiosResponse<any> | undefined> {
-	if (server.host === "") {
-		// No server connection is configured
-		client.warn("Cannot make required REST request because no server connection is configured.");
-		return undefined;
-	}
-	if (!server.active) {
-		// Server connection is inactive
+	if (!server?.host || !server.active) {
+		// No server connection is configured or it's inactive
 		return undefined;
 	}
 	if (api > server.apiVersion) {

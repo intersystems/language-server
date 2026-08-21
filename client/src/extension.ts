@@ -164,81 +164,94 @@ export async function activate(context: ExtensionContext) {
 
 	// Resolve the ServerSpec for a document or workspace folder URI, prompting
 	// for a missing password via the Server Manager's authentication provider.
-	async function resolveServerSpec(uri: Uri): Promise<ServerSpec | undefined> {
-		const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
-		const serverSpec = objectScriptApi.serverForUri(uri);
-		if (serverSpec === undefined) {
-			return undefined;
-		}
-		const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
-		if (
-			// Server was resolved
-			serverSpec.host !== "" &&
-			// Connection isn't unauthenticated
-			auth.username != undefined &&
-			auth.username != "" &&
-			auth.username.toLowerCase() != "unknownuser" &&
-			// A password is missing
-			typeof auth.password === "undefined" &&
-			// A supported version of the Server Manager is installed
-			serverManagerExt != undefined &&
-			gt(serverManagerExt.packageJSON.version, "3.0.0")
-		) {
-			// The main extension didn't provide a password, so we must
-			// get it from the server manager's authentication provider.
-			const scopes = [serverSpec.serverName, auth.username];
-			try {
-				const account = serverManagerApi?.getAccount
-					? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec })
-					: undefined;
-				let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
-					silent: true,
-					account,
-				});
-				if (!session) {
-					session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
-						createIfNone: true,
+	async function resolveServerSpec(uri: Uri): Promise<ServerSpec> {
+		try {
+			const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
+			const serverSpec = objectScriptApi.serverForUri(uri)!;
+			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
+			if (
+				// Server was resolved
+				serverSpec.host !== "" &&
+				// Connection isn't unauthenticated
+				auth.username != undefined &&
+				auth.username != "" &&
+				auth.username.toLowerCase() != "unknownuser" &&
+				// A password is missing
+				typeof auth.password === "undefined" &&
+				// A supported version of the Server Manager is installed
+				serverManagerExt != undefined &&
+				gt(serverManagerExt.packageJSON.version, "3.0.0")
+			) {
+				// The main extension didn't provide a password, so we must
+				// get it from the server manager's authentication provider.
+				const scopes = [serverSpec.serverName, auth.username];
+				try {
+					const account = serverManagerApi?.getAccount
+						? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec })
+						: undefined;
+					let session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
+						silent: true,
 						account,
 					});
-				}
-				if (session) {
-					auth.resolve({
-						username: session.scopes[1],
-						accessToken: session.accessToken,
-					});
-				}
-			} catch (error) {
-				// The user did not consent to sharing authentication information
-				if (error instanceof Error) {
-					client.warn(`${serverManager.AUTHENTICATION_PROVIDER}: ${error.message}`);
+					if (!session) {
+						session = await authentication.getSession(serverManager.AUTHENTICATION_PROVIDER, scopes, {
+							createIfNone: true,
+							account,
+						});
+					}
+					if (session) {
+						auth.resolve({
+							username: session.scopes[1],
+							accessToken: session.accessToken,
+						});
+					}
+				} catch (error) {
+					// The user did not consent to sharing authentication information
+					if (error instanceof Error) {
+						client.warn(`${serverManager.AUTHENTICATION_PROVIDER}: ${error.message}`);
+					}
 				}
 			}
+			if (
+				typeof auth.username == "string" &&
+				auth.username.toLowerCase() == "unknownuser" &&
+				typeof auth.password == "undefined"
+			) {
+				// UnknownUser without a password means "unauthenticated"
+				auth.clear() as void;
+			}
+			const server: ServerSpec = {
+				...serverSpec,
+				username: auth.username,
+				credentials: auth.credentials,
+			};
+			if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
+				wsFolderServerSpecs.set(wsFolderUriString, server);
+			}
+			return server;
+		} catch {
+			// Treat any thrown error as "no server connection"
+			return {
+				serverName: "",
+				active: false,
+				apiVersion: 1,
+				serverVersion: "",
+				scheme: "http",
+				host: "",
+				port: 0,
+				pathPrefix: "",
+				namespace: "",
+				username: "",
+			};
 		}
-		if (
-			typeof auth.username == "string" &&
-			auth.username.toLowerCase() == "unknownuser" &&
-			typeof auth.password == "undefined"
-		) {
-			// UnknownUser without a password means "unauthenticated"
-			auth.clear() as void;
-		}
-		const server: ServerSpec = {
-			...serverSpec,
-			username: auth.username,
-			credentials: auth.credentials,
-		};
-		if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
-			wsFolderServerSpecs.set(wsFolderUriString, server);
-		}
-		return server;
 	}
 
 	// Ensure that every server has at most one session.
 	for (const f of workspace.workspaceFolders ?? []) {
 		try {
 			const serverSpec = await resolveServerSpec(f.uri);
-			if (serverSpec?.active) {
-				await makeRESTRequest("HEAD", 1, "", serverSpec);
+			if (serverSpec.active) {
+				await makeRESTRequest("HEAD", 0, "", serverSpec);
 			}
 		} catch {
 			// Ignore any failure; the session will be created on demand instead
