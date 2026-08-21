@@ -61,7 +61,6 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	if (parsed === undefined) throw new Error("Document not parsed");
 
 	const server = await getServerSpec(doc.uri);
-	if (!server) throw new Error("Could not determine server");
 	const settings = await getLanguageServerSettings(doc.uri);
 	const diagnostics: Diagnostic[] = [];
 
@@ -134,7 +133,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			};
 		}
 
-		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
+		const respdata = server && await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 		if (Array.isArray(respdata?.data?.result?.content)) {
 			files = respdata.data.result.content;
 		}
@@ -195,7 +194,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					"SELECT $LISTTOSTRING(Importall) AS Importall, $FIND(PrimarySuper,'~%Library.Persistent~') AS IsPersistent FROM %Dictionary.CompiledClass WHERE Name = ?",
 				parameters: [clsname],
 			};
-			const pkgrespdata = await makeRESTRequest("POST", 1, "/action/query", server, pkgquerydata);
+			const pkgrespdata = server && await makeRESTRequest("POST", 1, "/action/query", server, pkgquerydata);
 			if (pkgrespdata?.data?.result?.content?.length == 1) {
 				// We got data back
 				inheritedpackages =
@@ -264,7 +263,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	const classes: Map<string, Range[]> = new Map();
 
 	// Keep track of current namespace for class/routine existence checks
-	const baseNs = server.namespace.toUpperCase();
+	const baseNs = (server?.namespace ?? "").toUpperCase();
 	let currentNs = baseNs;
 	let nsNestedBlockLevel = 0;
 	const validNsRegex = /^"[A-Za-z%]?[A-Za-z0-9-_]+"$/;
@@ -762,7 +761,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					if (currentNs == baseNs) {
 						// Normalize the class name if there are imports
 						const possiblecls = { num: 0 };
-						const normalizedname = await normalizeClassname(
+						const normalizedname = (server && await normalizeClassname(
 							doc,
 							parsed,
 							word,
@@ -771,7 +770,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							files,
 							possiblecls,
 							inheritedpackages,
-						);
+						)) || "";
 
 						if (normalizedname === "" && possiblecls.num > 0) {
 							// The class couldn't be resolved with the imports
@@ -908,8 +907,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					}
 
 					// Get the base class that this member is in
-					const membercontext = await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages);
-					if (membercontext.baseclass !== "") {
+					const membercontext = server && await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages);
+					if (membercontext && membercontext.baseclass !== "") {
 						// We could determine the class, so add the member to the correct map
 
 						const memberstr: string = membercontext.baseclass + ":::" + unquotedname;
@@ -1335,7 +1334,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		};
 
 		// Make the request
-		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
+		const respdata = server && await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
 
@@ -1419,7 +1418,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			}
 
 			// Make the request
-			const respdata = await makeRESTRequest("POST", 1, "/action/query", { ...server, namespace }, querydata);
+			const respdata = server && await makeRESTRequest("POST", 1, "/action/query", { ...server, namespace }, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
 
