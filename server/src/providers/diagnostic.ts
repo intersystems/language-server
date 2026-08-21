@@ -60,7 +60,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) throw new Error("Document not parsed");
 
-	const server: ServerSpec = await getServerSpec(doc.uri);
+	const server = await getServerSpec(doc.uri);
+	if (!server) throw new Error("Could not determine server");
 	const settings = await getLanguageServerSettings(doc.uri);
 	const diagnostics: Diagnostic[] = [];
 

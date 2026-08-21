@@ -37,7 +37,7 @@ export interface GetTextParams {
 }
 
 export interface ProtocolMethods {
-	"intersystems/server/resolveFromUri": (_: string) => Promise<ServerSpec>;
+	"intersystems/server/resolveFromUri": (_: string) => Promise<ServerSpec | undefined>;
 	"intersystems/uri/localToVirtual": (_: string) => string;
 	"intersystems/uri/forDocument": (_: string) => string | null;
 	"intersystems/uri/forTypeHierarchyClasses": (_: string[]) => string[];

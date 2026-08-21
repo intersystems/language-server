@@ -1790,7 +1790,7 @@
     "compile": "npm run compile:common && tsc -b",
     "compile:common": "cd common && npm run compile",
     "watch": "tsc -b -w",
-    "clean": "rimraf client/out && rimraf server/out && rimraf common/out",
+    "clean": "rimraf client/out && rimraf server/out && rimraf common/out && rimraf common/tsconfig.tsbuildinfo && rimraf client/tsconfig.tsbuildinfo && rimraf server/tsconfig.tsbuildinfo && rimraf tsconfig.tsbuildinfo",
     "lint": "eslint && prettier --check .",
     "lint-fix": "prettier --write . && eslint --fix",
     "postinstall": "cd client && npm install && cd ../server && npm install && cd ../common && npm install && cd .."

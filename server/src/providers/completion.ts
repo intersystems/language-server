@@ -790,7 +790,10 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	if (params.position.line === parsed.length) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
+	if (!server) {
+		return null;
+	}
 	const prevline = doc.getText(Range.create(Position.create(params.position.line, 0), params.position));
 	const prevlineLower = prevline.toLowerCase();
 	const classregex =
@@ -2430,7 +2433,10 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 export async function onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
 	if (Array.isArray(item.data) && item.data[0] === "class") {
 		// Get the description for this class from the server
-		const server: ServerSpec = await getServerSpec(item.data[2]);
+		const server = await getServerSpec(item.data[2]);
+		if (!server) {
+			return item;
+		}
 		const querydata: QueryData = {
 			query: "SELECT Description FROM %Dictionary.ClassDefinition WHERE Name = ?",
 			parameters: [item.data[1]],
@@ -2445,7 +2451,10 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 		}
 	} else if (Array.isArray(item.data) && item.data[0] === "macro" && !item.documentation) {
 		// Get the macro definition from the server
-		const server: ServerSpec = await getServerSpec(item.data[1]);
+		const server = await getServerSpec(item.data[1]);
+		if (!server) {
+			return item;
+		}
 		const querydata = {
 			docname: macroCompletionCache.docname,
 			macroname: item.label,

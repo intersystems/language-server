@@ -40,7 +40,10 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 		return null;
 	}
 	const settings = await getLanguageServerSettings(uri);
-	const server: ServerSpec = await getServerSpec(doc.uri);
+	const server = await getServerSpec(doc.uri);
+	if (!server) {
+		return null;
+	}
 
 	if (range == undefined) {
 		// If no range was specified, format the whole document

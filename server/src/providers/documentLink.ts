@@ -86,7 +86,10 @@ export async function onDocumentLinkResolve(link: DocumentLink): Promise<Documen
 	if (parsed === undefined) {
 		return link;
 	}
-	const server: ServerSpec = await getServerSpec(link.data.uri);
+	const server = await getServerSpec(link.data.uri);
+	if (!server) {
+		return link;
+	}
 
 	// Normalize the class name if there are imports
 	const normalizedname = await normalizeClassname(doc, parsed, link.data.clsName, server, link.range.start.line);

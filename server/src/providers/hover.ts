@@ -63,7 +63,10 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	if (parsed === undefined) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
+	if (!server) {
+		return null;
+	}
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
 	if (parsed[params.position.line] === undefined) {

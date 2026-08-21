@@ -32,7 +32,10 @@ export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<Typ
 	if (parsed === undefined) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
+	if (! server) {
+		return null;
+	}
 	let cls: string | null = null;
 
 	if (parsed[params.position.line] === undefined) {

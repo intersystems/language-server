@@ -109,7 +109,7 @@ export type KeywordDoc = {
 	constraint?: string | string[];
 };
 
-export type { ServerSpec } from "../../../common/out/types";
+export type { ProtocolMethods, ServerSpec } from "../../../common/out/types";
 
 /**
  * Context of the method/routine that a macro is in, including extra information needed for macro expansion.

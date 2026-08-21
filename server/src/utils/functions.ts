@@ -1234,12 +1234,15 @@ export async function makeRESTRequest(
  *
  * @param uri The TextDocument URI
  */
-export async function getServerSpec(uri: string): Promise<ServerSpec> {
+export async function getServerSpec(uri: string): Promise<ServerSpec | undefined> {
 	const spec = serverSpecs.get(uri);
 	if (spec !== undefined) {
 		return spec;
 	}
-	const newspec: ServerSpec = await connection.sendRequest("intersystems/server/resolveFromUri", uri);
+	const newspec = await connection.sendRequest("intersystems/server/resolveFromUri", uri);
+	if (newspec === undefined) {
+		return
+	}
 	serverSpecs.set(uri, newspec);
 	return newspec;
 }

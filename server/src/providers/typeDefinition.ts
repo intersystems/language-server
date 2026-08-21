@@ -15,7 +15,7 @@ import { ServerSpec } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 
-export async function onTypeDefinition(params: TextDocumentPositionParams) {
+export async function onTypeDefinition(params: TextDocumentPositionParams): Promise<{ targetUri: string; targetRange: Range; originSelectionRange: Range; targetSelectionRange: Range; }[] | null | undefined> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -24,7 +24,10 @@ export async function onTypeDefinition(params: TextDocumentPositionParams) {
 	if (parsed === undefined) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
+	if (!server) {
+		return
+	}
 
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file
