@@ -762,7 +762,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						if (currentNs == baseNs) {
 							// Normalize the class name if there are imports
 							const possiblecls = { num: 0 };
-							const normalizedname = (server && await normalizeClassname(
+							const normalizedname = await normalizeClassname(
 								doc,
 								parsed,
 								word,
@@ -771,7 +771,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								files,
 								possiblecls,
 								inheritedpackages,
-							)) || "";
+							);
 
 							if (normalizedname === "" && possiblecls.num > 0) {
 								// The class couldn't be resolved with the imports
@@ -908,7 +908,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						}
 
 						// Get the base class that this member is in
-						const membercontext = server && await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages);
+						const membercontext = await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages);
 						if (membercontext && membercontext.baseclass !== "") {
 							// We could determine the class, so add the member to the correct map
 
@@ -1335,7 +1335,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			};
 
 			// Make the request
-			const respdata = server && await makeRESTRequest("POST", 1, "/action/query", server, querydata);
+			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
 
@@ -1419,7 +1419,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 				}
 
 				// Make the request
-				const respdata = server && await makeRESTRequest("POST", 1, "/action/query", { ...server, namespace }, querydata);
+				const respdata = await makeRESTRequest("POST", 1, "/action/query", { ...server, namespace }, querydata);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 					// We got data back
 
