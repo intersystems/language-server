@@ -64,9 +64,6 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 		return null;
 	}
 	const server = await getServerSpec(params.textDocument.uri);
-	if (!server) {
-		return null;
-	}
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
 	if (parsed[params.position.line] === undefined) {
@@ -80,6 +77,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			// We found the right symbol in the line
 
 			if (
+				server &&
 				((parsed[params.position.line][i].l == ld.cls_langindex &&
 					parsed[params.position.line][i].s == ld.cls_clsname_attrindex) ||
 					(parsed[params.position.line][i].l == ld.cos_langindex &&
@@ -375,7 +373,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					const macroargs = getMacroArgs();
 
 					// If the arguments list is either not needed or complete, get the macro expansion
-					if (macroargs !== "incomplete") {
+					if (macroargs !== "incomplete" && server) {
 						// Get the macro expansion from the server
 						const expquerydata = {
 							docname: maccon.docname,
@@ -435,7 +433,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						}
 					}
 					// If the argument list is incomplete, get the non-expanded definition
-					else {
+					else if (server) {
 						// Get the macro definition from the server
 						const inputdata = {
 							docname: maccon.docname,
@@ -620,6 +618,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					};
 				}
 			} else if (
+				server &&
 				parsed[params.position.line][i].l == ld.cos_langindex &&
 				(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
@@ -1028,7 +1027,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				) {
 					// This identifier is a table name
 
-					if (iden.lastIndexOf("_") > iden.lastIndexOf(".")) {
+					if (iden.lastIndexOf("_") > iden.lastIndexOf(".") && server) {
 						// This table is projected from a multi-dimensional property
 
 						// Split the identifier into the class and property
@@ -1060,7 +1059,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								};
 							}
 						}
-					} else {
+					} else if (server) {
 						// This table is a class
 
 						// Normalize the class name if there are imports
@@ -1093,7 +1092,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							}
 						}
 					}
-				} else if (keytext === "call" && iden.indexOf("_") !== -1) {
+				} else if (server && keytext === "call" && iden.indexOf("_") !== -1) {
 					// This identifier is a Query or ClassMethod being invoked as a SqlProc
 
 					const clsname = iden.slice(0, iden.lastIndexOf("_")).replace(/_/g, ".");
@@ -1148,7 +1147,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 
 						if (tblname.lastIndexOf("_") > tblname.lastIndexOf(".")) {
 							// This table is projected from a multi-dimensional property, so we can't provide any info
-						} else {
+						} else if (server) {
 							// Normalize the class name if there are imports
 							const normalizedname = await normalizeClassname(
 								doc,
@@ -1235,30 +1234,31 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						range: paramrange,
 					};
 				}
+				if (server) {
+					// Determine the normalized class name
+					const normalizedcls = await normalizeClassname(doc, parsed, clsName, server, params.position.line);
+					if (normalizedcls !== "") {
+						const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
+							query:
+								"SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
+								"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
+							parameters: [param, normalizedcls, currentClass(doc, parsed)],
+						});
+						if (respdata !== undefined) {
+							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+								// We got data back
 
-				// Determine the normalized class name
-				const normalizedcls = await normalizeClassname(doc, parsed, clsName, server, params.position.line);
-				if (normalizedcls !== "") {
-					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
-						query:
-							"SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
-							"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
-						parameters: [param, normalizedcls, currentClass(doc, parsed)],
-					});
-					if (respdata !== undefined) {
-						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
-							// We got data back
-
-							const header = `(**${normalizedcls}**) <u>**${param}**</u>${
-								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
-							}`;
-							return {
-								contents: {
-									kind: MarkupKind.Markdown,
-									value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description)),
-								},
-								range: paramrange,
-							};
+								const header = `(**${normalizedcls}**) <u>**${param}**</u>${
+									respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
+								}`;
+								return {
+									contents: {
+										kind: MarkupKind.Markdown,
+										value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description)),
+									},
+									range: paramrange,
+								};
+							}
 						}
 					}
 				}
@@ -1299,6 +1299,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					}
 				}
 			} else if (
+				server &&
 				parsed[params.position.line][i].l == ld.cos_langindex &&
 				(parsed[params.position.line][i].s == ld.cos_param_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_localdec_attrindex ||
@@ -1338,6 +1339,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					}
 				}
 			} else if (
+				server &&
 				parsed[params.position.line][i].l == ld.xml_langindex &&
 				parsed[params.position.line][i].s == ld.xml_str_attrindex &&
 				doc.languageId == "objectscript-class"
