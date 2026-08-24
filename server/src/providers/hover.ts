@@ -433,7 +433,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						}
 					}
 					// If the argument list is incomplete, get the non-expanded definition
-					else if (server) {
+					else {
 						// Get the macro definition from the server
 						const inputdata = {
 							docname: maccon.docname,
@@ -1146,7 +1146,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 
 						if (tblname.lastIndexOf("_") > tblname.lastIndexOf(".")) {
 							// This table is projected from a multi-dimensional property, so we can't provide any info
-						} else if (server) {
+						} else {
 							// Normalize the class name if there are imports
 							const normalizedname = await normalizeClassname(
 								doc,
@@ -1233,31 +1233,29 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						range: paramrange,
 					};
 				}
-				if (server) {
-					// Determine the normalized class name
-					const normalizedcls = await normalizeClassname(doc, parsed, clsName, server, params.position.line);
-					if (normalizedcls !== "") {
-						const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
-							query:
-								"SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
-								"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
-							parameters: [param, normalizedcls, currentClass(doc, parsed)],
-						});
-						if (respdata !== undefined) {
-							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
-								// We got data back
+				// Determine the normalized class name
+				const normalizedcls = await normalizeClassname(doc, parsed, clsName, server, params.position.line);
+				if (normalizedcls !== "") {
+					const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
+						query:
+							"SELECT Description, Type FROM %Dictionary.CompiledParameter WHERE Name = ? AND (Parent = ? OR " +
+							"Parent %INLIST (SELECT $LISTFROMSTRING(PropertyClass) FROM %Dictionary.CompiledClass WHERE Name = ?))",
+						parameters: [param, normalizedcls, currentClass(doc, parsed)],
+					});
+					if (respdata !== undefined) {
+						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+							// We got data back
 
-								const header = `(**${normalizedcls}**) <u>**${param}**</u>${
-									respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
-								}`;
-								return {
-									contents: {
-										kind: MarkupKind.Markdown,
-										value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description)),
-									},
-									range: paramrange,
-								};
-							}
+							const header = `(**${normalizedcls}**) <u>**${param}**</u>${
+								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
+							}`;
+							return {
+								contents: {
+									kind: MarkupKind.Markdown,
+									value: markupValue(header, documaticHtmlToMarkdown(respdata.data.result.content[0].Description)),
+								},
+								range: paramrange,
+							};
 						}
 					}
 				}

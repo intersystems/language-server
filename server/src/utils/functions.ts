@@ -1035,7 +1035,7 @@ export async function getClassMemberContext(
 					// Get the base class that this member is in
 					const membercontext = await getClassMemberContext(doc, parsed, opentkn - 2, openln, server);
 					if (membercontext.baseclass != "") {
-						const cls = server && await getMemberType(parsed, openln, opentkn - 1, membercontext.baseclass, member, server);
+						const cls = await getMemberType(parsed, openln, opentkn - 1, membercontext.baseclass, member, server);
 						if (cls) {
 							result = {
 								baseclass: cls,
@@ -3255,13 +3255,13 @@ export async function getMemberType(
 	tkn: number,
 	cls: string,
 	member: string,
-	server: ServerSpec,
+	server?: ServerSpec,
 ): Promise<string> {
 	if (
 		// We assume these methods always return an instance of the class
 		(["%New", "%Open", "%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) ||
 		// Config class Open methods function like %Open(Id)
-		(cls.startsWith("Config.") && member == "Open" && server.namespace.toUpperCase() == "%SYS")
+		(cls.startsWith("Config.") && member == "Open" && server?.namespace.toUpperCase() == "%SYS")
 	) {
 		return cls;
 	}
