@@ -917,7 +917,7 @@ export async function getClassMemberContext(
 	parsed: compressedline[],
 	dot: number,
 	line: number,
-	server: ServerSpec,
+	server?: ServerSpec,
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext> {
@@ -1035,7 +1035,7 @@ export async function getClassMemberContext(
 					// Get the base class that this member is in
 					const membercontext = await getClassMemberContext(doc, parsed, opentkn - 2, openln, server);
 					if (membercontext.baseclass != "") {
-						const cls = await getMemberType(parsed, openln, opentkn - 1, membercontext.baseclass, member, server);
+						const cls = server && await getMemberType(parsed, openln, opentkn - 1, membercontext.baseclass, member, server);
 						if (cls) {
 							result = {
 								baseclass: cls,
@@ -1091,7 +1091,7 @@ export async function getClassMemberContext(
 					) == ",")))
 	) {
 		// The token before the dot is a parameter, local variable, public variable or warning variable
-		const varClass = await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages);
+		const varClass = server && await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages);
 		if (varClass) result = { baseclass: varClass, context: "instance" };
 	} else if (
 		dot > 0 &&
@@ -3499,7 +3499,10 @@ export function determineActiveParam(text: string): number {
 const showInternalCache: Map<string, boolean> = new Map();
 
 /** Determine if class members with the `Internal` keyword and system globals should be shown in the completion list */
-export async function showInternalForServer(server: ServerSpec): Promise<boolean> {
+export async function showInternalForServer(server?: ServerSpec): Promise<boolean> {
+	if (! server) {
+		return false;
+	}
 	const key = `${server.host}::${server.port}::${server.pathPrefix}::${server.username}`;
 	let result = showInternalCache.get(key);
 	if (result != undefined) return result;

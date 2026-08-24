@@ -633,7 +633,7 @@ async function completionFullClassName(
  *
  * @param server The server that this document is associated with.
  */
-async function completionPackage(server: ServerSpec, settings: LanguageServerConfiguration): Promise<CompletionItem[]> {
+async function completionPackage(server: ServerSpec | undefined, settings: LanguageServerConfiguration): Promise<CompletionItem[]> {
 	const result: CompletionItem[] = [];
 
 	// Get all the packages
@@ -661,7 +661,7 @@ async function completionPackage(server: ServerSpec, settings: LanguageServerCon
  *
  * @param server The server that this document is associated with.
  */
-async function completionInclude(server: ServerSpec): Promise<CompletionItem[]> {
+async function completionInclude(server?: ServerSpec): Promise<CompletionItem[]> {
 	const result: CompletionItem[] = [];
 
 	// Get all inc files
@@ -689,7 +689,7 @@ async function globalsOrRoutines(
 	line: number,
 	token: number,
 	settings: LanguageServerConfiguration,
-	server: ServerSpec,
+	server: ServerSpec | undefined,
 	lineText: string,
 	prefix: string = "",
 ): Promise<CompletionItem[] | null> {
@@ -847,7 +847,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	const asRegex = /\s+as\s+$/;
 	const parenAndCommaRegex = /[,(]\s*$/;
 
-	if (server && prevline.endsWith("$$$") && [ld.cos_langindex, ld.sql_langindex].includes(triggerlang)) {
+	if (prevline.endsWith("$$$") && [ld.cos_langindex, ld.sql_langindex].includes(triggerlang)) {
 		// This is a macro
 
 		// Get the details of this class and store them in the cache
@@ -1109,7 +1109,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			});
 		}
 	} else if (
-		server &&
 		/\)\s+as\s+$/.test(prevlineLower) &&
 		prevlineLower.startsWith("query") &&
 		triggerlang === ld.cls_langindex
@@ -1182,7 +1181,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
 		}
 	} else if (
-		server &&
 		((prevline.endsWith(".") &&
 			prevline.slice(-2, -1) !== "," &&
 			prevline.slice(-2, -1) !== " " &&
@@ -1509,7 +1507,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			}
 		}
 	} else if (
-		server &&
 		((parenAndCommaRegex.test(prevline) &&
 			triggerlang === ld.cls_langindex &&
 			(prevlineLower.startsWith("include") || prevlineLower.startsWith("includegenerator"))) ||
@@ -1521,7 +1518,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		result = await completionInclude(server);
 	} else if (
-		server &&
 		parenAndCommaRegex.test(prevline) &&
 		prevlineLower.startsWith("import") &&
 		triggerlang === ld.cls_langindex
@@ -1530,7 +1526,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 		result = await completionPackage(server, settings);
 	} else if (
-		server &&
 		triggerlang === ld.cls_langindex &&
 		openParenCount > closeParenCount &&
 		parenAndCommaRegex.test(prevline) &&
@@ -2380,7 +2375,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				);
 			}
 		}
-	} else if (server && prevline.endsWith("i%") && triggerlang === ld.cos_langindex) {
+	} else if (prevline.endsWith("i%") && triggerlang === ld.cos_langindex) {
 		// This is instance variable syntax
 
 		// Find the name of the current class
@@ -2428,7 +2423,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				result.push(item);
 			}
 		}
-	} else if (server && prevline.endsWith("^") && triggerlang == ld.cos_langindex) {
+	} else if (prevline.endsWith("^") && triggerlang == ld.cos_langindex) {
 		// This might be a routine or global
 
 		result = (await globalsOrRoutines(doc, parsed, params.position.line, thistoken, settings, server, prevline))!;

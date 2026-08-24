@@ -618,7 +618,6 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					};
 				}
 			} else if (
-				server &&
 				parsed[params.position.line][i].l == ld.cos_langindex &&
 				(parsed[params.position.line][i].s == ld.cos_prop_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_method_attrindex ||
