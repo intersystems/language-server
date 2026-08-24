@@ -1210,13 +1210,13 @@ export async function makeRESTRequest(
 	method: "GET" | "POST",
 	api: number,
 	path: string,
-	server: ServerSpec,
+	server?: ServerSpec,
 	data?: any,
 	checksum?: string,
 	params?: any,
 ): Promise<any | undefined> {
 	// As of version 2.0.0, REST requests are made on the client side
-	return connection
+	return server && connection
 		.sendRequest("intersystems/server/makeRESTRequest", {
 			method,
 			api,

@@ -133,7 +133,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			};
 		}
 
-		const respdata = server && (await makeRESTRequest("POST", 1, "/action/query", server, querydata));
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 		if (Array.isArray(respdata?.data?.result?.content)) {
 			files = respdata.data.result.content;
 		}
@@ -194,7 +194,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					"SELECT $LISTTOSTRING(Importall) AS Importall, $FIND(PrimarySuper,'~%Library.Persistent~') AS IsPersistent FROM %Dictionary.CompiledClass WHERE Name = ?",
 				parameters: [clsname],
 			};
-			const pkgrespdata = server && (await makeRESTRequest("POST", 1, "/action/query", server, pkgquerydata));
+			const pkgrespdata = await makeRESTRequest("POST", 1, "/action/query", server, pkgquerydata);
 			if (pkgrespdata?.data?.result?.content?.length == 1) {
 				// We got data back
 				inheritedpackages =
@@ -1346,7 +1346,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		};
 
 		// Make the request
-		const respdata = server && (await makeRESTRequest("POST", 1, "/action/query", server, querydata));
+		const respdata = (await makeRESTRequest("POST", 1, "/action/query", server, querydata));
 
 		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
@@ -1431,8 +1431,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			}
 
 			// Make the request
-			const respdata =
-				server && (await makeRESTRequest("POST", 1, "/action/query", { ...server, namespace }, querydata));
+			const respdata = await makeRESTRequest("POST", 1, "/action/query", server && { ...server, namespace }, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
 
