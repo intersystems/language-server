@@ -77,7 +77,6 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			// We found the right symbol in the line
 
 			if (
-				server &&
 				((parsed[params.position.line][i].l == ld.cls_langindex &&
 					parsed[params.position.line][i].s == ld.cls_clsname_attrindex) ||
 					(parsed[params.position.line][i].l == ld.cos_langindex &&
@@ -123,7 +122,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 					// The class was found
-					return {
+					return server && {
 						contents: {
 							kind: MarkupKind.Markdown,
 							value: markupValue(
@@ -1058,7 +1057,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 								};
 							}
 						}
-					} else if (server) {
+					} else {
 						// This table is a class
 
 						// Normalize the class name if there are imports
@@ -1078,7 +1077,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 								// The class was found
-								return {
+								return server && {
 									contents: {
 										kind: MarkupKind.Markdown,
 										value: markupValue(
@@ -1296,7 +1295,6 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					}
 				}
 			} else if (
-				server &&
 				parsed[params.position.line][i].l == ld.cos_langindex &&
 				(parsed[params.position.line][i].s == ld.cos_param_attrindex ||
 					parsed[params.position.line][i].s == ld.cos_localdec_attrindex ||
@@ -1306,7 +1304,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			) {
 				// This is an ObjectScript variable
 
-				const varClass = await determineVariableClass(doc, parsed, params.position.line, i, server);
+				const varClass = server && await determineVariableClass(doc, parsed, params.position.line, i, server);
 				if (varClass) {
 					const varRange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 					const varType =
@@ -1336,7 +1334,6 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					}
 				}
 			} else if (
-				server &&
 				parsed[params.position.line][i].l == ld.xml_langindex &&
 				parsed[params.position.line][i].s == ld.xml_str_attrindex &&
 				doc.languageId == "objectscript-class"
@@ -1360,7 +1357,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					});
 					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 						// The class was found
-						return {
+						return server && {
 							contents: {
 								kind: MarkupKind.Markdown,
 								value: markupValue(
