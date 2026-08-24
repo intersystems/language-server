@@ -615,11 +615,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									}
 									// Check if class exists
 									const filtered = files.filter((file) => file.Name === classname + ".cls");
-									if (filtered.length !== 1 && !classname.startsWith("%SYSTEM.")) {
+									if (nsContext && filtered.length !== 1 && !classname.startsWith("%SYSTEM.")) {
 										diagnostics.push({
 											severity: DiagnosticSeverity.Warning,
 											range: valrange,
-											message: `Class "${classname}" does not exist in namespace "${nsContext?.baseNs ?? ""}"`,
+											message: `Class "${classname}" does not exist in namespace "${nsContext.baseNs}"`,
 											source: "InterSystems Language Server",
 										});
 									}
@@ -698,6 +698,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								inheritedpackages.push(pkg);
 							}
 							if (
+								nsContext &&
 								files.length > 0 &&
 								settings.diagnostics.classes &&
 								lastpkgend != pkgrange.end.character &&
@@ -707,7 +708,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: pkgrange,
-									message: `Package "${pkg}" does not exist in namespace "${nsContext?.baseNs ?? ""}"`,
+									message: `Package "${pkg}" does not exist in namespace "${nsContext.baseNs}"`,
 									source: "InterSystems Language Server",
 								});
 							}
@@ -997,7 +998,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 											if (zutilFunctions.replace[argList] != undefined) {
 												diag.data = argList;
 											}
-											if (argList == "5," && nsContext) {
+											if (nsContext && argList == "5,") {
 												// This is a namespace switch
 												const nsTkn = tkn == parsed[ln].length - 1 ? 0 : tkn + 1;
 												const nsLn = nsTkn == 0 ? ln + 1 : ln;
@@ -1346,7 +1347,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 		};
 
 		// Make the request
-		const respdata = (await makeRESTRequest("POST", 1, "/action/query", server, querydata));
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 
 		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
