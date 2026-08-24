@@ -373,7 +373,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					const macroargs = getMacroArgs();
 
 					// If the arguments list is either not needed or complete, get the macro expansion
-					if (server && macroargs !== "incomplete") {
+					if (macroargs !== "incomplete") {
 						// Get the macro expansion from the server
 						const expquerydata = {
 							docname: maccon.docname,
@@ -1027,7 +1027,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				) {
 					// This identifier is a table name
 
-					if (server && iden.lastIndexOf("_") > iden.lastIndexOf(".")) {
+					if (iden.lastIndexOf("_") > iden.lastIndexOf(".")) {
 						// This table is projected from a multi-dimensional property
 
 						// Split the identifier into the class and property
@@ -1092,7 +1092,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							}
 						}
 					}
-				} else if (server && keytext === "call" && iden.indexOf("_") !== -1) {
+				} else if (keytext === "call" && iden.indexOf("_") !== -1) {
 					// This identifier is a Query or ClassMethod being invoked as a SqlProc
 
 					const clsname = iden.slice(0, iden.lastIndexOf("_")).replace(/_/g, ".");

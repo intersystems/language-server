@@ -612,7 +612,7 @@ export async function getImports(
 	doc: TextDocument,
 	parsed: compressedline[],
 	line: number,
-	server: ServerSpec,
+	server?: ServerSpec,
 	inheritedpackages?: string[],
 ): Promise<string[]> {
 	let result: string[] = [];
@@ -780,7 +780,7 @@ export async function normalizeClassname(
 	doc: TextDocument,
 	parsed: compressedline[],
 	clsname: string,
-	server: ServerSpec,
+	server: ServerSpec | undefined,
 	line: number,
 	allfiles?: StudioOpenDialogFile[],
 	possiblecls?: PossibleClasses,
