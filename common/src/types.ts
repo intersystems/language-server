@@ -9,7 +9,7 @@ export interface ServerSpec {
 	port: number;
 	superserverPort?: number;
 	pathPrefix: string;
-	namespace: string;
+	namespace?: string;
 	username: string;
 	credentials?: {
 		auth?: { username: string; password: string };

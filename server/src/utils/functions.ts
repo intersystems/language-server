@@ -3261,7 +3261,7 @@ export async function getMemberType(
 		// We assume these methods always return an instance of the class
 		(["%New", "%Open", "%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) ||
 		// Config class Open methods function like %Open(Id)
-		(cls.startsWith("Config.") && member == "Open" && server?.namespace.toUpperCase() == "%SYS")
+		(cls.startsWith("Config.") && member == "Open" && server?.namespace?.toUpperCase() == "%SYS")
 	) {
 		return cls;
 	}

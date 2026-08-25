@@ -263,8 +263,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	const classes: Map<string, Range[]> = new Map();
 
 	// Keep track of current namespace for class/routine existence checks.
-	// Only meaningful when we have a server to check against.
-	const nsContext = server && {
+	const nsContext = server?.namespace && {
 		server,
 		baseNs: server.namespace.toUpperCase(),
 		currentNs: server.namespace.toUpperCase(),
