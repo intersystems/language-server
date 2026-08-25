@@ -1240,11 +1240,10 @@ export async function getServerSpec(uri: string): Promise<ServerSpec | undefined
 		return spec;
 	}
 	const newspec = await connection.sendRequest("intersystems/server/resolveFromUri", uri);
-	if (newspec === undefined) {
-		return
+	if (newspec) {
+		serverSpecs.set(uri, newspec);
+		return newspec;
 	}
-	serverSpecs.set(uri, newspec);
-	return newspec;
 }
 
 /**
