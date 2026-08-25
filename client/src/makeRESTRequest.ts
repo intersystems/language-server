@@ -47,7 +47,7 @@ export async function makeRESTRequest(
 
 	// Build the URL
 	const url = encodeURI(
-		`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/${api ? `v${server.apiVersion}/${server.namespace || ""}${path}` : ""}`,
+		`${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/api/atelier/${api ? `v${server.apiVersion}/${server.namespace}${path}` : ""}`,
 	);
 
 	// Create the HTTPS agent
