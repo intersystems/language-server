@@ -46,7 +46,7 @@ import xdataKeywords from "../documentation/keywords/XData.json";
 
 function documaticLink(server: ServerSpec, cls: string): string {
 	return `[${cls}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?LIBRARY=${encodeURIComponent(
-		server.namespace?.toUpperCase() || "",
+		server.namespace.toUpperCase(),
 	)}&CLASSNAME=${encodeURIComponent(cls)})`;
 }
 
