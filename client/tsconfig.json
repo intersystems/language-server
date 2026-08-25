@@ -7,7 +7,13 @@
 		"rootDir": "src",
 		"sourceMap": true,
  	   	"strictNullChecks": true,
+		"skipLibCheck": true,
 	},
+	"references": [
+		{
+			"path": "../common"
+		}
+	],
 	"include": ["src"],
 	"exclude": ["node_modules", ".vscode-test"]
 }

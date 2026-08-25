@@ -63,7 +63,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	if (parsed === undefined) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
 	if (parsed[params.position.line] === undefined) {
@@ -122,7 +122,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 					// The class was found
-					return {
+					return server && {
 						contents: {
 							kind: MarkupKind.Markdown,
 							value: markupValue(
@@ -1077,7 +1077,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 								// The class was found
-								return {
+								return server && {
 									contents: {
 										kind: MarkupKind.Markdown,
 										value: markupValue(
@@ -1232,7 +1232,6 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						range: paramrange,
 					};
 				}
-
 				// Determine the normalized class name
 				const normalizedcls = await normalizeClassname(doc, parsed, clsName, server, params.position.line);
 				if (normalizedcls !== "") {
@@ -1305,7 +1304,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			) {
 				// This is an ObjectScript variable
 
-				const varClass = await determineVariableClass(doc, parsed, params.position.line, i, server);
+				const varClass = server && await determineVariableClass(doc, parsed, params.position.line, i, server);
 				if (varClass) {
 					const varRange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 					const varType =
@@ -1358,7 +1357,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					});
 					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 						// The class was found
-						return {
+						return server && {
 							contents: {
 								kind: MarkupKind.Markdown,
 								value: markupValue(

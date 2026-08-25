@@ -1,6 +1,6 @@
-import { createConnection, SemanticTokensBuilder, TextDocuments } from "vscode-languageserver/node";
+import { Connection, createConnection, SemanticTokensBuilder, TextDocuments } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { compressedline, LanguageServerConfiguration, ServerSpec } from "./types";
+import { compressedline, LanguageServerConfiguration, ProtocolMethods, ServerSpec } from "./types";
 
 /**
  * TextDocument URI's mapped to the tokenized representation of the document.
@@ -10,7 +10,12 @@ export const parsedDocuments: Map<string, compressedline[] | undefined> = new Ma
 /**
  * Node IPC connection between the server and client.
  */
-export const connection = createConnection();
+export const connection: Omit<Connection, "sendRequest"> & {
+	sendRequest<K extends keyof ProtocolMethods>(
+		method: K,
+		params: Parameters<ProtocolMethods[K]>[0],
+	): Promise<Awaited<ReturnType<ProtocolMethods[K]>>>;
+} = createConnection();
 
 /**
  * TextDocument manager.

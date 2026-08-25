@@ -2,7 +2,6 @@ import { DocumentLink, DocumentLinkParams, Range } from "vscode-languageserver/n
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 import { createDefinitionUri, getParsedDocument, getServerSpec, normalizeClassname } from "../utils/functions";
-import { ServerSpec } from "../utils/types";
 
 export async function onDocumentLinks(params: DocumentLinkParams): Promise<DocumentLink[] | null> {
 	const doc = documents.get(params.textDocument.uri);
@@ -86,7 +85,10 @@ export async function onDocumentLinkResolve(link: DocumentLink): Promise<Documen
 	if (parsed === undefined) {
 		return link;
 	}
-	const server: ServerSpec = await getServerSpec(link.data.uri);
+	const server = await getServerSpec(link.data.uri);
+	if (!server) {
+		return link;
+	}
 
 	// Normalize the class name if there are imports
 	const normalizedname = await normalizeClassname(doc, parsed, link.data.clsName, server, link.range.start.line);
