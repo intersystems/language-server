@@ -612,7 +612,7 @@ export async function getImports(
 	doc: TextDocument,
 	parsed: compressedline[],
 	line: number,
-	server: ServerSpec,
+	server?: ServerSpec,
 	inheritedpackages?: string[],
 ): Promise<string[]> {
 	let result: string[] = [];
@@ -780,7 +780,7 @@ export async function normalizeClassname(
 	doc: TextDocument,
 	parsed: compressedline[],
 	clsname: string,
-	server: ServerSpec,
+	server: ServerSpec | undefined,
 	line: number,
 	allfiles?: StudioOpenDialogFile[],
 	possiblecls?: PossibleClasses,
@@ -917,7 +917,7 @@ export async function getClassMemberContext(
 	parsed: compressedline[],
 	dot: number,
 	line: number,
-	server: ServerSpec,
+	server?: ServerSpec,
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext> {
@@ -1091,7 +1091,7 @@ export async function getClassMemberContext(
 					) == ",")))
 	) {
 		// The token before the dot is a parameter, local variable, public variable or warning variable
-		const varClass = await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages);
+		const varClass = server && await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages);
 		if (varClass) result = { baseclass: varClass, context: "instance" };
 	} else if (
 		dot > 0 &&
@@ -1210,13 +1210,13 @@ export async function makeRESTRequest(
 	method: "GET" | "POST",
 	api: number,
 	path: string,
-	server: ServerSpec,
+	server?: ServerSpec,
 	data?: any,
 	checksum?: string,
 	params?: any,
 ): Promise<any | undefined> {
 	// As of version 2.0.0, REST requests are made on the client side
-	return connection
+	return server && connection
 		.sendRequest("intersystems/server/makeRESTRequest", {
 			method,
 			api,
@@ -1234,14 +1234,16 @@ export async function makeRESTRequest(
  *
  * @param uri The TextDocument URI
  */
-export async function getServerSpec(uri: string): Promise<ServerSpec> {
+export async function getServerSpec(uri: string): Promise<ServerSpec | undefined> {
 	const spec = serverSpecs.get(uri);
 	if (spec !== undefined) {
 		return spec;
 	}
-	const newspec: ServerSpec = await connection.sendRequest("intersystems/server/resolveFromUri", uri);
-	serverSpecs.set(uri, newspec);
-	return newspec;
+	const newspec = await connection.sendRequest("intersystems/server/resolveFromUri", uri);
+	if (newspec) {
+		serverSpecs.set(uri, newspec);
+		return newspec;
+	}
 }
 
 /**
@@ -3252,13 +3254,13 @@ export async function getMemberType(
 	tkn: number,
 	cls: string,
 	member: string,
-	server: ServerSpec,
+	server?: ServerSpec,
 ): Promise<string> {
 	if (
 		// We assume these methods always return an instance of the class
 		(["%New", "%Open", "%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) ||
 		// Config class Open methods function like %Open(Id)
-		(cls.startsWith("Config.") && member == "Open" && server.namespace.toUpperCase() == "%SYS")
+		(cls.startsWith("Config.") && member == "Open" && server?.namespace.toUpperCase() == "%SYS")
 	) {
 		return cls;
 	}
@@ -3496,7 +3498,10 @@ export function determineActiveParam(text: string): number {
 const showInternalCache: Map<string, boolean> = new Map();
 
 /** Determine if class members with the `Internal` keyword and system globals should be shown in the completion list */
-export async function showInternalForServer(server: ServerSpec): Promise<boolean> {
+export async function showInternalForServer(server?: ServerSpec): Promise<boolean> {
+	if (! server) {
+		return false;
+	}
 	const key = `${server.host}::${server.port}::${server.pathPrefix}::${server.username}`;
 	let result = showInternalCache.get(key);
 	if (result != undefined) return result;

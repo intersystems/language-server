@@ -223,7 +223,10 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 	if (parsed === undefined) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
+	if (!server) {
+		return null;
+	}
 
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file
