@@ -167,6 +167,10 @@ export async function activate(context: ExtensionContext) {
 	async function resolveServerSpec(uri: Uri): Promise<ServerSpec> {
 		try {
 			const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
+			if (wsFolderUriString && wsFolderServerSpecs.has(wsFolderUriString)) {
+				// Return the cached server spec if we have it
+				return wsFolderServerSpecs.get(wsFolderUriString)!;
+			}
 			const serverSpec = objectScriptApi.serverForUri(uri)!;
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
 			if (
@@ -246,11 +250,12 @@ export async function activate(context: ExtensionContext) {
 		}
 	}
 
-	// Ensure that every server has at most one session.
+	// Ensure that every server has at most one session
 	for (const f of workspace.workspaceFolders ?? []) {
 		try {
 			const serverSpec = await resolveServerSpec(f.uri);
-			if (serverSpec?.active) {
+			if (serverSpec?.active && !getCookies(serverSpec).length) {
+				// Skip inactive servers and those that we already have cookies for
 				await makeRESTRequest("HEAD", 0, "", serverSpec);
 			}
 		} catch {
