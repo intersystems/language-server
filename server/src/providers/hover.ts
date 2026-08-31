@@ -56,9 +56,6 @@ function markupValue(header: string, body?: string): string {
 	return body?.trim().length ? [header, "***", body].join("\n") : header;
 }
 
-// The document types ascot's analyzer covers; hover falls back to REST queries for the rest (e.g. CSP).
-const supportedAscotLanguages = ["objectscript-class", "objectscript-macros", "objectscript", "objectscript-int"];
-
 export async function onHover(params: TextDocumentPositionParams): Promise<Hover | null | undefined> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
@@ -119,14 +116,12 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				// Normalize the class name if there are imports
 				const normalizedname = await normalizeClassname(doc, parsed, word, server, params.position.line);
 
-				if (supportedAscotLanguages.includes(doc.languageId)) {
-					const classHover = await getClassHover(URI.parse(params.textDocument.uri), normalizedname);
-					if (classHover) {
-						return {
-							contents: { kind: MarkupKind.Markdown, value: markupValue(classHover.header, classHover.body) },
-							range: wordrange,
-						};
-					}
+				const classHover = await getClassHover(URI.parse(params.textDocument.uri), normalizedname);
+				if (classHover) {
+					return {
+						contents: { kind: MarkupKind.Markdown, value: markupValue(classHover.header, classHover.body) },
+						range: wordrange,
+					};
 				}
 
 				// Get the description for this class from the server
@@ -675,18 +670,16 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					return null;
 				}
 
-				if (supportedAscotLanguages.includes(doc.languageId)) {
-					const memberHover = await getMemberHover(
-						URI.parse(params.textDocument.uri),
-						membercontext.baseclass,
-						unquotedname,
-					);
-					if (memberHover) {
-						return {
-							contents: { kind: MarkupKind.Markdown, value: markupValue(memberHover.header, memberHover.body) },
-							range: memberrange,
-						};
-					}
+				const memberHover = await getMemberHover(
+					URI.parse(params.textDocument.uri),
+					membercontext.baseclass,
+					unquotedname,
+				);
+				if (memberHover) {
+					return {
+						contents: { kind: MarkupKind.Markdown, value: markupValue(memberHover.header, memberHover.body) },
+						range: memberrange,
+					};
 				}
 
 				// Query the server to get the description of this member using its base class, text and token type
