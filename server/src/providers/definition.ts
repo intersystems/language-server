@@ -21,7 +21,7 @@ import {
 } from "../utils/functions";
 import { ServerSpec, QueryData, compressedline } from "../utils/types";
 import { documents, corePropertyParams, classMemberTypes, mppContinue } from "../utils/variables";
-import { getAnalyzedClass, getAnalyzedClassMember, getDefinition } from "../analyzer";
+import { getAnalyzedClass, getAnalyzedClassMember, getDefinition } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 import { URI } from "vscode-uri";
 

@@ -24,7 +24,7 @@ import {
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { getAnalyzedClass, getAnalyzedClassMember } from "../analyzer";
+import { getAnalyzedClass, getAnalyzedClassMember } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import commands from "../documentation/commands.json";
@@ -46,7 +46,7 @@ import queryKeywords from "../documentation/keywords/Query.json";
 import storageKeywords from "../documentation/keywords/Storage.json";
 import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
-import { MemberInfo, NormalArg } from "../analyzer";
+import { MemberInfo, NormalArg } from "../ascot";
 import { URI } from "vscode-uri";
 
 function documaticLink(server: ServerSpec, cls: string): string {

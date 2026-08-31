@@ -37,7 +37,7 @@ import {
 	LanguageServerConfiguration,
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { getAnalyzedClassMembers, getAnalyzedClasses } from "../analyzer";
+import { getAnalyzedClassMembers, getAnalyzedClasses } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";

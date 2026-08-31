@@ -46,7 +46,7 @@ import {
 } from "./utils/variables";
 import { parseDocument, getLegend } from "./parse/parse";
 import { isolateEmbeddedLanguage, languageAtPosition } from "./providers/requestForwarding";
-import { openDoc, closeDoc } from "./analyzer";
+import { openDoc, closeDoc } from "./ascot";
 
 connection.onInitialize((params) => {
 	analyzeWorkspaceFolders(params.workspaceFolders ?? []);

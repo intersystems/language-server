@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Regenerate src/analyzer/generated/ + lib/analyzer.core*.wasm from the committed
-# lib/analyzer.wasm. Runs from the jco devDependency via the "gen" npm script;
+# Regenerate src/ascot/generated/ + lib/ascot.core*.wasm from the committed
+# lib/ascot.wasm. Runs from the jco devDependency via the "gen" npm script;
 # the generated files are gitignored, so run this after copying in a new wasm.
 # --async-mode jspi is what lets the sync get-mem import suspend on an async host
 # (JS Promise Integration) instead of needing a worker.
@@ -8,11 +8,11 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-CORE="lib/analyzer.wasm"
-COMPONENT="$(mktemp -t analyzer.component.XXXXXX.wasm)"
-GEN="src/analyzer/generated"
+CORE="lib/ascot.wasm"
+COMPONENT="$(mktemp -t ascot.component.XXXXXX.wasm)"
+GEN="src/ascot/generated"
 
-if [ -f "$GEN/analyzer.js" ] && [ ! "$CORE" -nt "$GEN/analyzer.js" ]; then
+if [ -f "$GEN/ascot.js" ] && [ ! "$CORE" -nt "$GEN/ascot.js" ]; then
 	echo "$GEN is up to date with $CORE; skipping. (rm -rf $GEN to force)"
 	exit 0
 fi
@@ -26,7 +26,7 @@ echo "transpiling to $GEN ..."
 rm -rf "$GEN"
 mkdir -p "$GEN"
 npx jco transpile "$COMPONENT" \
-	--name analyzer \
+	--name ascot \
 	--instantiation async \
 	--async-mode jspi \
 	--async-imports \
@@ -46,15 +46,15 @@ npx jco transpile "$COMPONENT" \
 # fallback is dead code. Drop it: its dynamic `new URL(..., import.meta.url)` makes
 # webpack glob the whole generated dir (including .d.ts) into a context module.
 echo "stripping dead fetch fallback ..."
-perl -0pi -e 's{^\s*if \(!getCoreModule\) getCoreModule = .*fetchCompile.*$}{    if (!getCoreModule) throw new Error("getCoreModule is required");}m' "$GEN/analyzer.js"
+perl -0pi -e 's{^\s*if \(!getCoreModule\) getCoreModule = .*fetchCompile.*$}{    if (!getCoreModule) throw new Error("getCoreModule is required");}m' "$GEN/ascot.js"
 
 # The core wasm modules are read via fs at runtime (webpack bundles only JS), so
-# they live in lib/ alongside analyzer.wasm rather than in the bundled dir.
+# they live in lib/ alongside ascot.wasm rather than in the bundled dir.
 echo "moving core wasm to lib/ ..."
 mv "$GEN"/*.core*.wasm lib/
 
 echo "done."
-echo "  glue (bundled):    $GEN/analyzer.js + interfaces/"
-echo "  core wasm (fs):    lib/analyzer.core*.wasm"
+echo "  glue (bundled):    $GEN/ascot.js + interfaces/"
+echo "  core wasm (fs):    lib/ascot.core*.wasm"
 ls -1 "$GEN"
 ls -1 lib/*.core*.wasm

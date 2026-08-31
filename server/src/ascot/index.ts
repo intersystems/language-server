@@ -1,6 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
-import { instantiate, Root } from "./generated/analyzer.js";
+import { instantiate, Root } from "./generated/ascot.js";
 import type * as wit from "./generated/interfaces/iris-ascot-common.js";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
 import { connection } from "../utils/variables";

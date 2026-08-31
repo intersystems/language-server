@@ -1,7 +1,7 @@
 import { WorkspaceSymbolParams, WorkspaceSymbol, SymbolKind, SymbolTag, Range } from "vscode-languageserver";
-import { MemberInfo } from "../analyzer";
+import { MemberInfo } from "../ascot";
 import { connection } from "../utils/variables";
-import { getAnalyzedClasses } from "../analyzer";
+import { getAnalyzedClasses } from "../ascot";
 import { localInfoPrefix } from "./hover";
 import { URI } from "vscode-uri";
 

@@ -3,6 +3,6 @@
 **/out/
 *.vsix
 /server/lib/isclexer.node
-/server/lib/analyzer.core*.wasm
-/server/src/analyzer/generated/
+/server/lib/ascot.core*.wasm
+/server/src/ascot/generated/
 **/tsconfig.tsbuildinfo

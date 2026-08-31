@@ -25,7 +25,7 @@ import { ServerSpec, StudioOpenDialogFile, QueryData } from "../utils/types";
 import * as ld from "../utils/languageDefinitions";
 import parameterTypes from "../documentation/parameterTypes.json";
 import sqlReservedWords from "../documentation/sqlReservedWords.json";
-import * as analyzer from "../analyzer";
+import * as ascot from "../ascot";
 
 /**
  * Helper method  that appends `range` to value of `key` in `map`
@@ -63,7 +63,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 	const server: ServerSpec = await getServerSpec(doc.uri);
 	const settings = await getLanguageServerSettings(doc.uri);
-	const diagnostics: Diagnostic[] = await analyzer.getDiagnostics(doc.uri);
+	const diagnostics: Diagnostic[] = await ascot.getDiagnostics(doc.uri);
 
 	/** Check if syntax errors should be reported for `language`. */
 	const reportSyntaxErrors = (language: number): boolean => {

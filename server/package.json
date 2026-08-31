@@ -7,7 +7,7 @@
     "node": "*"
   },
   "scripts": {
-    "gen": "bash scripts/build-analyzer-component.sh",
+    "gen": "bash scripts/build-ascot-component.sh",
     "prepare": "npm run gen"
   },
   "dependencies": {

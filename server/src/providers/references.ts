@@ -1,6 +1,6 @@
 import { Location, ReferenceParams } from "vscode-languageserver/node";
 import { documents } from "../utils/variables";
-import { getReferences } from "../analyzer";
+import { getReferences } from "../ascot";
 
 /**
  * Handler function for the `textDocument/references` request.
