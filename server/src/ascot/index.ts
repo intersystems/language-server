@@ -11,7 +11,7 @@ import {
 	SymbolTag,
 } from "vscode-languageserver";
 import { connection } from "../utils/variables";
-import { getServerSpec, makeRESTRequest, documaticHtmlToMarkdown } from "../utils/functions";
+import { getServerSpec, makeRESTRequest } from "../utils/functions";
 import { ServerSpec, QueryData } from "../utils/types";
 
 const libDir = path.resolve(__dirname, "../lib");
@@ -301,8 +301,7 @@ async function loadAnalyzer(): Promise<Root> {
 	return instantiate(getCoreModule, imports as never);
 }
 
-export type MemberInfo = wit.MemberInfo;
-export type NormalArg = wit.NormalArg;
+type MemberInfo = wit.MemberInfo;
 
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[🧣] `;
@@ -479,6 +478,16 @@ export async function getReferences(
 	}
 }
 
+export async function getHover(docURI: string, position: wit.Position): Promise<string | undefined> {
+	try {
+		const workspace = await filePathToAnalyzerWorkspace(docURI);
+		return await workspace?.hover(docURI, position);
+	} catch (rawError) {
+		console.log(rawError);
+		return undefined;
+	}
+}
+
 async function filePathToAnalyzerWorkspace(docURI: string): Promise<WorkspaceInstance> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((folder) => docURI.startsWith(folder.uri));
@@ -555,58 +564,6 @@ export function prettifyNormalArg(arg: wit.NormalArg): string {
 		string += ` As ${arg.t}`;
 	}
 	return string;
-}
-
-function hoverHeaderFromMemberInfo(baseclass: string, memberInfo: MemberInfo): string {
-	let content = ascot + `(**${baseclass}**) <u>**${memberInfo.name.content}**</u>`;
-	const { kind } = memberInfo;
-	if (kind.tag === "class-method" || kind.tag === "client-method" || kind.tag === "method") {
-		const { normal, variadic, t } = kind.val;
-		const argList = normal
-			.map(prettifyNormalArg)
-			.concat(variadic ? [prettifyNormalArg(variadic) + "..."] : [])
-			.join(", ");
-		content += `(${argList})`;
-		if (t) {
-			content += ` As ${t}`;
-		}
-	} else if (kind.tag === "property" || kind.tag === "relationship") {
-		if (kind.val) {
-			content += ` As ${kind.val}`;
-		}
-	} else if (kind.tag === "parameter") {
-		const value = kind.val;
-		if (value.t) {
-			content += ` As ${value.t}`;
-		}
-		if (value.v) {
-			content += ` = ${value.v}`;
-		}
-	}
-	return content;
-}
-
-/** Header/body markdown for a class hover, or undefined if `name` isn't analyzed in `docURI`'s workspace. */
-export async function getClassHover(
-	docURI: string,
-	name: string,
-): Promise<{ header: string; body: string } | undefined> {
-	const uri_info = await getAnalyzedClass(docURI, name);
-	if (!uri_info) return undefined;
-	const [uri, info] = uri_info;
-	return { header: `${ascot}[${name}](${uri})`, body: documaticHtmlToMarkdown(info.doc) };
-}
-
-/** Header/body markdown for a class member hover, or undefined if not analyzed in `docURI`'s workspace. */
-export async function getMemberHover(
-	docURI: string,
-	baseclass: string,
-	memberName: string,
-): Promise<{ header: string; body: string } | undefined> {
-	const uri_mem = await getAnalyzedClassMember(docURI, baseclass, memberName);
-	if (!uri_mem) return undefined;
-	const [, memberInfo] = uri_mem;
-	return { header: hoverHeaderFromMemberInfo(baseclass, memberInfo), body: documaticHtmlToMarkdown(memberInfo.doc) };
 }
 
 // The class declared in `docURI`, and its members, as a `textDocument/documentSymbol` outline.

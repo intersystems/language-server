@@ -22,7 +22,7 @@ import {
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { getClassHover, getMemberHover } from "../ascot";
+import { getHover } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import commands from "../documentation/commands.json";
@@ -66,6 +66,13 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	}
 	const server = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
+
+	// The analyzer's own hover text covers cases the REST-based lookups below don't
+	// (and renders richer signature/doc info); prefer it whenever it has an answer.
+	const analyzedHover = await getHover(params.textDocument.uri, params.position);
+	if (analyzedHover) {
+		return { contents: { kind: MarkupKind.Markdown, value: analyzedHover } };
+	}
 
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file
@@ -114,14 +121,6 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 
 				// Normalize the class name if there are imports
 				const normalizedname = await normalizeClassname(doc, parsed, word, server, params.position.line);
-
-				const classHover = await getClassHover(params.textDocument.uri, normalizedname);
-				if (classHover) {
-					return {
-						contents: { kind: MarkupKind.Markdown, value: markupValue(classHover.header, classHover.body) },
-						range: wordrange,
-					};
-				}
 
 				// Get the description for this class from the server
 				const querydata: QueryData = {
@@ -667,14 +666,6 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				if (membercontext.baseclass === "") {
 					// If we couldn't determine the class, don't return anything
 					return null;
-				}
-
-				const memberHover = await getMemberHover(params.textDocument.uri, membercontext.baseclass, unquotedname);
-				if (memberHover) {
-					return {
-						contents: { kind: MarkupKind.Markdown, value: markupValue(memberHover.header, memberHover.body) },
-						range: memberrange,
-					};
 				}
 
 				// Query the server to get the description of this member using its base class, text and token type
