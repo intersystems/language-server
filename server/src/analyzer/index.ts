@@ -1,9 +1,9 @@
 import * as fs from "fs";
 import * as path from "path";
 import { instantiate, Root } from "./generated/analyzer.js";
-import type * as wit from "./generated/interfaces/iris-objectscript-analyzer-common.js";
+import type * as wit from "./generated/interfaces/iris-ascot-common.js";
 import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
-import { connection } from '../utils/variables';
+import { connection } from "../utils/variables";
 import {
 	getServerSpec,
 	makeRESTRequest,
@@ -12,8 +12,8 @@ import {
 	buildClassTypeQuery,
 	resolveStubbedMethod,
 	MemberMetadataRow,
-} from '../utils/functions';
-import { URI } from 'vscode-uri';
+} from "../utils/functions";
+import { URI } from "vscode-uri";
 
 const libDir = path.resolve(__dirname, "../lib");
 
@@ -31,7 +31,7 @@ class IrisConnection {
 		private readonly memCache = new Map<string, [number, MemberInfo]>(),
 		private readonly superCache = new Map<string, [number, string[]]>(),
 		private readonly datatypeCache = new Map<string, [number, boolean | undefined]>(),
-	) { }
+	) {}
 
 	// getMem is declared synchronous in the WIT, but jco's --async-mode jspi wraps
 	// it in WebAssembly.Suspending so this async body can await a REST request and
@@ -67,7 +67,9 @@ class IrisConnection {
 		const rows = respdata?.data?.result?.content;
 		const supers: string[] =
 			Array.isArray(rows) && typeof rows[0]?.Super === "string" && rows[0].Super.length
-				? rows[0].Super.split(",").map((s: string) => s.trim()).filter(Boolean)
+				? rows[0].Super.split(",")
+						.map((s: string) => s.trim())
+						.filter(Boolean)
 				: [];
 		this.superCache.set(cls, [Date.now(), supers]);
 		return supers;
@@ -84,9 +86,7 @@ class IrisConnection {
 		if (server === undefined) return undefined;
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, buildClassTypeQuery(cls));
 		const rows = respdata?.data?.result?.content;
-		const isDatatype = Array.isArray(rows) && rows.length > 0
-			? rows[0]?.ClassType === "datatype"
-			: undefined;
+		const isDatatype = Array.isArray(rows) && rows.length > 0 ? rows[0]?.ClassType === "datatype" : undefined;
 		this.datatypeCache.set(cls, [Date.now(), isDatatype]);
 		return isDatatype;
 	}
@@ -129,12 +129,20 @@ function parseFormalSpec(spec: string): { normal: wit.NormalArg[]; variadic?: wi
 		let s = raw.trim();
 		if (s === "") continue;
 		let mode: wit.ArgMode = "default";
-		if (s.startsWith("*")) { mode = "output"; s = s.slice(1); }
-		else if (s.startsWith("&")) { mode = "by-ref"; s = s.slice(1); }
+		if (s.startsWith("*")) {
+			mode = "output";
+			s = s.slice(1);
+		} else if (s.startsWith("&")) {
+			mode = "by-ref";
+			s = s.slice(1);
+		}
 
-		let name = "", type = "", def = "";
+		let name = "",
+			type = "",
+			def = "";
 		let stage: "name" | "type" | "default" = "name";
-		let depth = 0, inQuote = false;
+		let depth = 0,
+			inQuote = false;
 		for (const c of s) {
 			if (inQuote) {
 				if (c === '"') inQuote = false;
@@ -145,9 +153,11 @@ function parseFormalSpec(spec: string): { normal: wit.NormalArg[]; variadic?: wi
 			} else if (c === ")") {
 				depth--;
 			} else if (depth === 0 && stage === "name" && c === ":") {
-				stage = "type"; continue;
+				stage = "type";
+				continue;
 			} else if (depth === 0 && stage !== "default" && c === "=") {
-				stage = "default"; continue;
+				stage = "default";
+				continue;
 			}
 			if (stage === "name") name += c;
 			else if (stage === "type") type += c;
@@ -166,19 +176,25 @@ function parseFormalSpec(spec: string): { normal: wit.NormalArg[]; variadic?: wi
 
 function splitTopLevel(spec: string): string[] {
 	const out: string[] = [];
-	let cur = "", depth = 0, inQuote = false;
+	let cur = "",
+		depth = 0,
+		inQuote = false;
 	for (const c of spec) {
 		if (inQuote) {
 			cur += c;
 			if (c === '"') inQuote = false;
 		} else if (c === '"') {
-			inQuote = true; cur += c;
+			inQuote = true;
+			cur += c;
 		} else if (c === "(") {
-			depth++; cur += c;
+			depth++;
+			cur += c;
 		} else if (c === ")") {
-			depth--; cur += c;
+			depth--;
+			cur += c;
 		} else if (c === "," && depth === 0) {
-			out.push(cur); cur = "";
+			out.push(cur);
+			cur = "";
 		} else {
 			cur += c;
 		}
@@ -189,8 +205,8 @@ function splitTopLevel(spec: string): string[] {
 
 async function loadAnalyzer(): Promise<Root> {
 	const imports = {
-		"iris:objectscript-analyzer/common": {},
-		"iris:objectscript-analyzer/imported": { IrisConnection },
+		"iris:ascot/common": {},
+		"iris:ascot/imported": { IrisConnection },
 	};
 	return instantiate(getCoreModule, imports as never);
 }
@@ -200,28 +216,25 @@ export type ParameterInfo = wit.ParameterInfo;
 export type MemberKind = wit.MemberKind;
 export type MemberInfo = wit.MemberInfo;
 export type ClassInfo = wit.ClassInfo;
-export type RoutineInfo = wit.RoutineInfo;
 export type NormalArg = wit.NormalArg;
 export type ArgMode = wit.ArgMode;
 
 const wasm = loadAnalyzer();
 
-export type AnalyzeResult = ClassInfo | RoutineInfo | { error: Diagnostic[] };
-
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
-// A read (check/inlayHint/query) can suspend mid-flight while awaiting getMem's
-// REST call, holding a shared RefCell borrow; a write (insertCls/remove) taking
+// A read (diagnostics/inlayHint/definition/...) can suspend mid-flight while awaiting
+// getMem's REST call, holding a shared RefCell borrow; a write (open/close) taking
 // borrow_mut() meanwhile panics with "already borrowed". Guard with a reader/writer
 // gate: reads run concurrently (so their REST latency overlaps), a write waits for
 // in-flight reads to drain, and reads queued behind a write wait for it.
-const WRITES = new Set<PropertyKey>(["insertCls", "insertRtn", "remove"]);
+const WRITES = new Set<PropertyKey>(["open", "close"]);
 
 function serialize(instance: WorkspaceInstance): WorkspaceInstance {
 	let tail: Promise<void> = Promise.resolve();
 	let readers = 0;
 	let drained: Promise<void> = Promise.resolve();
-	let releaseDrained: () => void = () => { };
+	let releaseDrained: () => void = () => {};
 	return new Proxy(instance, {
 		get(target, prop, receiver) {
 			const value = Reflect.get(target, prop, receiver);
@@ -279,73 +292,36 @@ function convertDiagnostic(d: wit.Diagnostic): Diagnostic {
 	};
 }
 
-export async function analyzeDoc(docURI: string, src: string, folderURI?: string): Promise<AnalyzeResult> {
+// Stores the raw source; no parsing happens here (kind is inferred from `docURI`'s
+// extension). Doubles as both open and edit.
+export async function openDoc(docURI: string, src: string, folderURI?: string): Promise<void> {
 	try {
-		const workspace = typeof folderURI === "string" ? await rootURIToAnalyzerWorkspace(folderURI) : await filePathToAnalyzerWorkspace(docURI);
-		if (!workspace) {
-			return {
-				error: [{
-					message: "No workspace found",
-					range: {
-						start: { line: 0, character: 0 },
-						end: { line: 0, character: 0 }
-					},
-					severity: DiagnosticSeverity.Error,
-					source: "InterSystems Language Server - ObjectScript Analyzer",
-				}],
-			};
-		}
-		const ext = docURI.slice(docURI.lastIndexOf(".") + 1).toLowerCase();
-		return ext === "cls" ? await workspace.insertCls(docURI, src) : await workspace.insertRtn(docURI, src);
+		const workspace =
+			typeof folderURI === "string"
+				? await rootURIToAnalyzerWorkspace(folderURI)
+				: await filePathToAnalyzerWorkspace(docURI);
+		workspace?.open(docURI, src);
 	} catch (rawError) {
-		const diagnostic = analysisErrToDiagnostic(rawError);
-		if (diagnostic) {
-			diagnostic.source = "InterSystems Language Server - ObjectScript Analyzer"
-			return { error: [diagnostic] };
-		}
 		console.log(rawError);
-		return { error: [] }
 	}
 }
 
-function analysisErrToDiagnostic(rawError: unknown): Diagnostic | undefined {
-	return (rawError as { payload?: Diagnostic })?.payload;
-}
-
-export async function removeCls(docURI: string): Promise<void> {
+export async function closeDoc(docURI: string): Promise<void> {
 	try {
 		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		workspace?.remove(docURI);
+		workspace?.close(docURI);
 	} catch (rawError) {
 		console.log(rawError);
 	}
 }
 
-export async function completeMethod(src: string) {
-	try {
-		return await (await wasm).exported.completeMethod(src);
-	} catch (rawError) {
-		console.log(rawError);
-		return undefined;
-	}
-}
-
-export async function completeClass(src: string) {
-	try {
-		return await (await wasm).exported.completeClass(src);
-	} catch (rawError) {
-		console.log(rawError);
-		return undefined;
-	}
-}
-
-export async function check(docURI: string): Promise<Diagnostic[]> {
+export async function getDiagnostics(docURI: string): Promise<Diagnostic[]> {
 	try {
 		const workspace = await filePathToAnalyzerWorkspace(docURI);
 		if (!workspace) {
 			return [];
 		}
-		return (await workspace.check(docURI)).map(convertDiagnostic);
+		return (await workspace.diagnostics(docURI)).map(convertDiagnostic);
 	} catch (rawError) {
 		console.log(rawError);
 		return [];
@@ -365,13 +341,39 @@ export async function inlayHint(docURI: string, range: wit.Range): Promise<wit.I
 	}
 }
 
+// Where the reference at `position` is declared, if any.
+export async function getDefinition(docURI: string, position: wit.Position): Promise<wit.Location | undefined> {
+	try {
+		const workspace = await filePathToAnalyzerWorkspace(docURI);
+		return await workspace?.definition(docURI, position);
+	} catch (rawError) {
+		console.log(rawError);
+		return undefined;
+	}
+}
+
+// Every location across the workspace that refers to whatever's at `position`.
+export async function getReferences(
+	docURI: string,
+	position: wit.Position,
+	includeDeclaration: boolean,
+): Promise<wit.Location[]> {
+	try {
+		const workspace = await filePathToAnalyzerWorkspace(docURI);
+		if (!workspace) {
+			return [];
+		}
+		return await workspace.references(docURI, position, includeDeclaration);
+	} catch (rawError) {
+		console.log(rawError);
+		return [];
+	}
+}
+
 export async function filePathToAnalyzerWorkspace(docURI: string): Promise<WorkspaceInstance> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((folder) => docURI.startsWith(folder.uri));
-	return (
-		(folder && rootURIToAnalyzerWorkspace(folder.uri)) ||
-		rootURIToAnalyzerWorkspace(docURI)
-	);
+	return (folder && rootURIToAnalyzerWorkspace(folder.uri)) || rootURIToAnalyzerWorkspace(docURI);
 }
 
 async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<WorkspaceInstance> {
@@ -380,7 +382,7 @@ async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<WorkspaceI
 		analyzedFolder = serialize(new (await wasm).exported.Workspace(new IrisConnection(folderURI)));
 		analyzedFolders.set(folderURI, analyzedFolder);
 	}
-	return analyzedFolder
+	return analyzedFolder;
 }
 
 export async function getAnalyzedClass(context: URI, name: string): Promise<[string, ClassInfo] | null> {
@@ -394,7 +396,7 @@ export async function getAnalyzedClass(context: URI, name: string): Promise<[str
 
 export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, ClassInfo]> {
 	const workspace = await filePathToAnalyzerWorkspace(context.toString());
-	const classes = await workspace.queryCls("");
+	const classes = workspace.queryCls("");
 	for (const x of classes) {
 		yield x;
 	}
@@ -403,7 +405,7 @@ export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string,
 export async function getAnalyzedClassMember(
 	context: URI,
 	clsName: string,
-	memName: string
+	memName: string,
 ): Promise<[string, MemberInfo] | null> {
 	for await (const [uri, mem] of getAnalyzedClassMembers(context, clsName, memName)) {
 		if (mem.name.content === memName) {
@@ -417,10 +419,10 @@ export async function* getAnalyzedClassMembers(
 	context: URI,
 	clsName: string,
 	memQuery: string = "",
-	includeExtends: boolean = true
+	includeExtends: boolean = true,
 ): AsyncGenerator<[string, MemberInfo]> {
 	const workspace = await filePathToAnalyzerWorkspace(context.toString());
-	for (const x of await workspace.queryMem(clsName, memQuery)) {
+	for (const x of workspace.queryMem(clsName, memQuery)) {
 		yield x;
 	}
 	if (includeExtends) {

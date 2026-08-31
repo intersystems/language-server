@@ -3,7 +3,7 @@ import tseslint from "typescript-eslint";
 
 export default tseslint.config(
     {
-        ignores: ["**/vscode.d.ts", "**/vscode.proposed.d.ts", "client/out/**", "server/out/**", "**/*.config.{mjs,js}"],
+        ignores: ["**/vscode.d.ts", "**/vscode.proposed.d.ts", "client/out/**", "server/out/**", "**/*.config.{mjs,js}", "server/src/analyzer/generated/**"],
     },
     eslint.configs.recommended,
     ...tseslint.configs.recommended,

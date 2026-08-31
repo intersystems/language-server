@@ -23,15 +23,8 @@ import {
 	MemberMetadataKind,
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
-import {
-	documents,
-	corePropertyParams,
-	mppContinue,
-} from "../utils/variables";
-import {
-	getAnalyzedClass,
-	getAnalyzedClassMember
-} from '../analyzer';
+import { documents, corePropertyParams, mppContinue } from "../utils/variables";
+import { getAnalyzedClass, getAnalyzedClassMember } from "../analyzer";
 import * as ld from "../utils/languageDefinitions";
 
 import commands from "../documentation/commands.json";
@@ -54,7 +47,7 @@ import storageKeywords from "../documentation/keywords/Storage.json";
 import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
 import { MemberInfo, NormalArg } from "../analyzer";
-import { URI } from 'vscode-uri';
+import { URI } from "vscode-uri";
 
 function documaticLink(server: ServerSpec, cls: string): string {
 	return `[${cls}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?LIBRARY=${encodeURIComponent(
@@ -198,7 +191,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							macrorange.end.character,
 							params.position.line,
 							parsed[params.position.line][parsed[params.position.line].length - 1].p +
-							parsed[params.position.line][parsed[params.position.line].length - 1].c,
+								parsed[params.position.line][parsed[params.position.line].length - 1].c,
 						),
 					);
 
@@ -499,14 +492,15 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							value: ["$ZUTIL", "$ZU"].includes(sysftext)
 								? markupValue(`[Online documentation](${sysfdoc.link})`)
 								: markupValue(
-									sysfdoc.documentation.join(""),
-									sysfdoc.link
-										? `[Online documentation](${sysfdoc.link[0] == "h"
-											? sysfdoc.link
-											: `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
-										})`
-										: "",
-								),
+										sysfdoc.documentation.join(""),
+										sysfdoc.link
+											? `[Online documentation](${
+													sysfdoc.link[0] == "h"
+														? sysfdoc.link
+														: `https://docs.intersystems.com/irislatest/csp/docbook/Doc.View.cls?KEY=RCOS_${sysfdoc.link}`
+												})`
+											: "",
+									),
 						},
 						range: sysfrange,
 					};
@@ -686,7 +680,11 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					return null;
 				}
 
-				const memberInfo = await getAnalyzedClassMember(URI.parse(params.textDocument.uri), membercontext.baseclass, unquotedname);
+				const memberInfo = await getAnalyzedClassMember(
+					URI.parse(params.textDocument.uri),
+					membercontext.baseclass,
+					unquotedname,
+				);
 				if (memberInfo) {
 					return {
 						contents: {
@@ -712,10 +710,13 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				} else {
 					const s = parsed[params.position.line][i].s;
 					const kind: MemberMetadataKind =
-						s == ld.cos_prop_attrindex ? "parameter"
-						: s == ld.cos_method_attrindex ? "method"
-						: s == ld.cos_attr_attrindex || s == ld.cos_instvar_attrindex ? "property"
-						: "auto";
+						s == ld.cos_prop_attrindex
+							? "parameter"
+							: s == ld.cos_method_attrindex
+								? "method"
+								: s == ld.cos_attr_attrindex || s == ld.cos_instvar_attrindex
+									? "property"
+									: "auto";
 					data = buildMemberMetadataQuery(membercontext.baseclass, unquotedname, kind);
 				}
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
@@ -1253,8 +1254,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 						if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 							// We got data back
 
-							const header = `(**${normalizedcls}**) <u>**${param}**</u>${respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
-								}`;
+							const header = `(**${normalizedcls}**) <u>**${param}**</u>${
+								respdata.data.result.content[0].Type != "" ? ` As **${respdata.data.result.content[0].Type}**` : ""
+							}`;
 							return {
 								contents: {
 									kind: MarkupKind.Markdown,
@@ -1413,7 +1415,10 @@ function hoverHeadefFromMemberInfo(baseclass: string, memberInfo: MemberInfo): s
 	const { kind } = memberInfo;
 	if (kind.tag === "class-method" || kind.tag === "client-method" || kind.tag === "method") {
 		const { normal, variadic, t } = kind.val;
-		const argList = normal.map(prettifyNormalArg).concat(variadic ? [] : []).join(", ");
+		const argList = normal
+			.map(prettifyNormalArg)
+			.concat(variadic ? [] : [])
+			.join(", ");
 		content += `(${argList})`;
 		if (t) {
 			content += ` As ${t}`;

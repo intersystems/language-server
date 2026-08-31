@@ -1,7 +1,4 @@
-import {
-	InlayHint,
-	InlayHintParams,
-} from "vscode-languageserver/node";
+import { InlayHint, InlayHintParams } from "vscode-languageserver/node";
 import * as analyzer from "../analyzer";
 
 /**
@@ -10,7 +7,7 @@ import * as analyzer from "../analyzer";
 export async function onInlayHint(params: InlayHintParams): Promise<InlayHint[]> {
 	const hints = await analyzer.inlayHint(params.textDocument.uri, params.range);
 
-	return hints.map(hint => ({
+	return hints.map((hint) => ({
 		position: hint.position,
 		label: hint.label,
 		paddingLeft: hint.paddingLeft,

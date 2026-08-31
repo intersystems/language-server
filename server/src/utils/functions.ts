@@ -1,4 +1,4 @@
-import { Diagnostic, MarkupContent, MarkupKind, Position, Range, uinteger } from "vscode-languageserver";
+import { MarkupContent, MarkupKind, Position, Range, uinteger } from "vscode-languageserver";
 import { TextDocument } from "vscode-languageserver-textdocument";
 import { URI } from "vscode-uri";
 import { parse } from "node-html-parser";
@@ -22,7 +22,6 @@ import {
 	languageServerSettings,
 	documents,
 	classMemberTypes,
-	analyzedDocuments,
 } from "./variables";
 import * as ld from "./languageDefinitions";
 
@@ -33,7 +32,7 @@ import systemVariables from "../documentation/systemVariables.json";
 
 // Initialize turndown and tune it for Documatic HTML
 import { default as TurndownService } from "turndown";
-import { ClassInfo, RoutineInfo } from "../analyzer";
+import { ClassInfo, getAnalyzedClasses } from "../analyzer";
 const turndown = new TurndownService({
 	codeBlockStyle: "fenced",
 	blankReplacement: (content, node: HTMLElement) => (node.nodeName == "SPAN" ? node.outerHTML : ""),
@@ -324,7 +323,7 @@ export function getMacroContext(doc: TextDocument, parsed: compressedline[], lin
 							parsed[i][j].l == ld.cls_langindex &&
 							parsed[i][j].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)).toLowerCase() ==
-							"extends"
+								"extends"
 						) {
 							seenextends = true;
 						} else {
@@ -1182,7 +1181,7 @@ export async function getClassMemberContext(
 
 		result.context = "instance";
 		switch (
-		doc.getText(Range.create(line, parsed[line][dot - 1].p, line, parsed[line][dot - 1].p + parsed[line][dot - 1].c))
+			doc.getText(Range.create(line, parsed[line][dot - 1].p, line, parsed[line][dot - 1].p + parsed[line][dot - 1].c))
 		) {
 			case "}":
 				result.baseclass = "%Library.DynamicObject";
@@ -1972,7 +1971,7 @@ async function parseSetCommand(
 					(parsed[ln][tkn + 1].s == ld.cos_objdot_attrindex ||
 						(parsed[ln][tkn + 1].s == ld.cos_delim_attrindex &&
 							doc.getText(Range.create(ln, parsed[ln][tkn + 1].p, ln, parsed[ln][tkn + 1].p + parsed[ln][tkn + 1].c)) ==
-							"("))
+								"("))
 				) &&
 				// Variable isn't preceded by the indirection operator
 				!(tkn - 1 >= 0 && parsed[ln][tkn - 1].l == ld.cos_langindex && parsed[ln][tkn - 1].s == ld.cos_indir_attrindex)
@@ -2244,14 +2243,14 @@ async function parseSetCommand(
 			const nextTkn = nextToken(parsed, exprLn, exprTkn);
 			if (parsed[exprLn][exprTkn].s == ld.cos_jsonb_attrindex) {
 				switch (
-				doc.getText(
-					Range.create(
-						exprLn,
-						parsed[exprLn][exprTkn].p,
-						exprLn,
-						parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c,
-					),
-				)
+					doc.getText(
+						Range.create(
+							exprLn,
+							parsed[exprLn][exprTkn].p,
+							exprLn,
+							parsed[exprLn][exprTkn].p + parsed[exprLn][exprTkn].c,
+						),
+					)
 				) {
 					case "{":
 						result = "%Library.DynamicObject";
@@ -2478,16 +2477,16 @@ async function determineUndeclaredLocalVarClass(
 								const querydata =
 									member == "%New"
 										? {
-											// Get the information for both %New and %OnNew
-											query:
-												"SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
-											parameters: [argNum, membercontext.baseclass, unquotedname, "%OnNew"],
-										}
+												// Get the information for both %New and %OnNew
+												query:
+													"SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (Name = ? OR Name = ?)",
+												parameters: [argNum, membercontext.baseclass, unquotedname, "%OnNew"],
+											}
 										: {
-											query:
-												"SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
-											parameters: [argNum, membercontext.baseclass, unquotedname],
-										};
+												query:
+													"SELECT FormalSpec, $LISTGET($LISTGET(FormalSpecParsed,?),2) AS Type, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?",
+												parameters: [argNum, membercontext.baseclass, unquotedname],
+											};
 								const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 								if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 									// We got data back
@@ -3122,20 +3121,11 @@ export async function getParsedDocument(uri: string): Promise<compressedline[] |
 	return new Promise(waitForTokens);
 }
 
-export async function getAnalyzedDocument(uri: string): Promise<ClassInfo | RoutineInfo | { error: Diagnostic[] } | undefined> {
-	if (!analyzedDocuments.has(uri)) {
-		return undefined;
+export async function getAnalyzedDocument(uri: string): Promise<ClassInfo | undefined> {
+	for await (const [docUri, cls] of getAnalyzedClasses(URI.parse(uri))) {
+		if (docUri === uri) return cls;
 	}
-	const start = Date.now();
-	function wait(resolve: (value: ClassInfo | RoutineInfo | { error: Diagnostic[] }) => void) {
-		const result = analyzedDocuments.get(uri);
-		if (result != undefined || Date.now() - start >= 5000) {
-			resolve(result);
-		} else {
-			setTimeout(wait, 25, resolve);
-		}
-	}
-	return new Promise(wait);
+	return undefined;
 }
 
 /**
@@ -3299,9 +3289,9 @@ export async function determineVariableClass(
 	const varText = doc.getText(
 		parsed[line][tkn].s == ld.cos_macro_attrindex
 			? // Can't use findFullRange() on a macro token because it will capture
-			// everything, including the trailing dot that triggered the completion.
-			// A macro token should only occur here for completion requests.
-			Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c)
+				// everything, including the trailing dot that triggered the completion.
+				// A macro token should only occur here for completion requests.
+				Range.create(line, parsed[line][tkn].p, line, parsed[line][tkn].p + parsed[line][tkn].c)
 			: findFullRange(line, parsed, tkn, parsed[line][tkn].p, parsed[line][tkn].p + parsed[line][tkn].c),
 	);
 	if ([ld.cos_param_attrindex, ld.cos_macro_attrindex].includes(parsed[line][tkn].s)) {

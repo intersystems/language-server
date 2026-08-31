@@ -30,18 +30,15 @@ npx jco transpile "$COMPONENT" \
 	--instantiation async \
 	--async-mode jspi \
 	--async-imports \
-		"iris:objectscript-analyzer/imported#[method]iris-connection.get-mem" \
-		"iris:objectscript-analyzer/imported#[method]iris-connection.get-supers" \
-		"iris:objectscript-analyzer/imported#[method]iris-connection.is-datatype" \
+		"iris:ascot/imported#[method]iris-connection.get-mem" \
+		"iris:ascot/imported#[method]iris-connection.get-supers" \
+		"iris:ascot/imported#[method]iris-connection.is-datatype" \
 	--async-exports \
-		"iris:objectscript-analyzer/exported#[method]workspace.insert-cls" \
-		"iris:objectscript-analyzer/exported#[method]workspace.insert-rtn" \
-		"iris:objectscript-analyzer/exported#[method]workspace.check" \
-		"iris:objectscript-analyzer/exported#[method]workspace.inlay-hint" \
-		"iris:objectscript-analyzer/exported#[method]workspace.query-cls" \
-		"iris:objectscript-analyzer/exported#[method]workspace.query-mem" \
-		"iris:objectscript-analyzer/exported#complete-class" \
-		"iris:objectscript-analyzer/exported#complete-method" \
+		"iris:ascot/exported#[method]workspace.diagnostics" \
+		"iris:ascot/exported#[method]workspace.inlay-hint" \
+		"iris:ascot/exported#[method]workspace.definition" \
+		"iris:ascot/exported#[method]workspace.references" \
+		"iris:ascot/exported#[method]workspace.hover-type" \
 	--no-nodejs-compat \
 	-o "$GEN"
 

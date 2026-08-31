@@ -21,6 +21,7 @@ import {
 } from "./providers/refactoring";
 import { onDocumentLinkResolve, onDocumentLinks } from "./providers/documentLink";
 import { onDeclaration } from "./providers/declaration";
+import { onReferences } from "./providers/references";
 import { onTypeDefinition } from "./providers/typeDefinition";
 import { onPrepareRename, onRenameRequest } from "./providers/rename";
 import { onFoldingRanges } from "./providers/foldingRange";
@@ -30,13 +31,12 @@ import { onHover } from "./providers/hover";
 import { onCompletion, onCompletionResolve, schemaCaches } from "./providers/completion";
 import { onSignatureHelp } from "./providers/signatureHelp";
 import { onDocumentFormatting, onDocumentRangeFormatting } from "./providers/formatting";
-import { onDiagnostics, onWorkspaceDiagnostics } from "./providers/diagnostic";
+import { onDiagnostics } from "./providers/diagnostic";
 import { onSemanticTokens, onSemanticTokensDelta } from "./providers/semanticTokens";
 import { onWorkspaceSymbol } from "./providers/workspaceSymbol";
 import { onInlayHint } from "./providers/inlayHint";
 import { LanguageServerConfiguration, ServerSpec } from "./utils/types";
 import {
-	analyzedDocuments,
 	connection,
 	documents,
 	languageServerSettings,
@@ -46,7 +46,7 @@ import {
 } from "./utils/variables";
 import { parseDocument, getLegend } from "./parse/parse";
 import { isolateEmbeddedLanguage, languageAtPosition } from "./providers/requestForwarding";
-import { analyzeDoc, removeCls } from "./analyzer";
+import { openDoc, closeDoc } from "./analyzer";
 
 connection.onInitialize((params) => {
 	analyzeWorkspaceFolders(params.workspaceFolders ?? []);
@@ -59,6 +59,7 @@ connection.onInitialize((params) => {
 			},
 			hoverProvider: true,
 			definitionProvider: true,
+			referencesProvider: true,
 			signatureHelpProvider: {
 				triggerCharacters: ["(", ","],
 				retriggerCharacters: [","],
@@ -89,7 +90,7 @@ connection.onInitialize((params) => {
 			typeHierarchyProvider: true,
 			diagnosticProvider: {
 				interFileDependencies: false,
-				workspaceDiagnostics: true,
+				workspaceDiagnostics: false,
 			},
 			inlayHintProvider: true,
 		},
@@ -132,8 +133,7 @@ documents.onDidClose(async (e) => {
 	tokenBuilders.delete(e.document.uri);
 	serverSpecs.delete(e.document.uri);
 	languageServerSettings.delete(e.document.uri);
-	analyzedDocuments.delete(e.document.uri);
-	await removeCls(e.document.uri);
+	await closeDoc(e.document.uri);
 	// Pull-model diagnostics: ask the client to re-pull so the closed
 	// document's diagnostics are recomputed (and dropped from the workspace report).
 	connection.languages.diagnostics.refresh();
@@ -144,7 +144,6 @@ documents.onDidClose(async (e) => {
 documents.onDidChangeContent(async (change) => {
 	// Clear the parsedDocuments value so we know to wait for an update elsewhere
 	parsedDocuments.set(change.document.uri, undefined);
-	analyzedDocuments.set(change.document.uri, undefined);
 	const path = URI.parse(change.document.uri).path;
 	const fileText = change.document.getText();
 	parsedDocuments.set(
@@ -152,7 +151,7 @@ documents.onDidChangeContent(async (change) => {
 		parseDocument(change.document.languageId, path.slice(path.lastIndexOf(".") + 1).toLowerCase(), fileText)
 			.compressedlinearray,
 	);
-	analyzedDocuments.set(change.document.uri, await analyzeDoc(change.document.uri, fileText));
+	await openDoc(change.document.uri, fileText);
 });
 
 connection.onDocumentFormatting(onDocumentFormatting);
@@ -168,6 +167,8 @@ connection.onCompletionResolve(onCompletionResolve);
 connection.onHover(onHover);
 
 connection.onDefinition(onDefinition);
+
+connection.onReferences(onReferences);
 
 connection.languages.semanticTokens.on(onSemanticTokens);
 
@@ -251,8 +252,6 @@ connection.onRequest("intersystems/embedded/isolateEmbeddedLanguage", isolateEmb
 
 connection.languages.diagnostics.on(onDiagnostics);
 
-connection.languages.diagnostics.onWorkspace(onWorkspaceDiagnostics);
-
 connection.languages.inlayHint.on(onInlayHint);
 
 documents.listen(connection);
@@ -272,8 +271,7 @@ async function analyzeWorkspaceFolders(folders: WorkspaceFolder[]) {
 			const filePath = path.join(file.parentPath, file.name);
 			const fileURI = URI.file(filePath).toString();
 			const fileString = fs.readFileSync(filePath, "utf-8");
-			analyzedDocuments.set(fileURI, undefined);
-			analyzedDocuments.set(fileURI, await analyzeDoc(fileURI, fileString, folder.uri));
+			await openDoc(fileURI, fileString, folder.uri);
 		}
 	}
 }

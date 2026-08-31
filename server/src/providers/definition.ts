@@ -20,18 +20,10 @@ import {
 	fullRange,
 } from "../utils/functions";
 import { ServerSpec, QueryData, compressedline } from "../utils/types";
-import {
-	documents,
-	corePropertyParams,
-	classMemberTypes,
-	mppContinue,
-} from "../utils/variables";
-import {
-	getAnalyzedClass,
-	getAnalyzedClassMember
-} from '../analyzer';
+import { documents, corePropertyParams, classMemberTypes, mppContinue } from "../utils/variables";
+import { getAnalyzedClass, getAnalyzedClassMember, getDefinition } from "../analyzer";
 import * as ld from "../utils/languageDefinitions";
-import { URI } from 'vscode-uri';
+import { URI } from "vscode-uri";
 
 /**
  * The maximum number of lines to include in the `targetRange` property
@@ -39,7 +31,12 @@ import { URI } from 'vscode-uri';
  */
 const definitionTargetRangeMaxLines: number = 10;
 
-async function lookupClassMember(context: URI, clsName: string, memName: string, originSelectionRange: Range): Promise<LocationLink[] | null> {
+async function lookupClassMember(
+	context: URI,
+	clsName: string,
+	memName: string,
+	originSelectionRange: Range,
+): Promise<LocationLink[] | null> {
 	const uri_mem = await getAnalyzedClassMember(context, clsName, memName);
 	if (!uri_mem) {
 		return null;
@@ -68,7 +65,7 @@ async function lookupClassMember(context: URI, clsName: string, memName: string,
 }
 
 /** Return a `LocationLink` for class member `memberName` in class `cls`
- * 
+ *
  * This function queries `server` to find the source code of `cls` and locates
  * the definition of `memberName` within the source code.
  */
@@ -288,6 +285,19 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 	}
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 
+	// The analyzer's own reference table covers cases the REST-based lookups below don't
+	// (self-references, same-routine label calls/gotos) — prefer it whenever it has an answer.
+	const analyzedTarget = await getDefinition(params.textDocument.uri, params.position);
+	if (analyzedTarget) {
+		return [
+			{
+				targetUri: analyzedTarget.uri,
+				targetRange: analyzedTarget.range,
+				targetSelectionRange: analyzedTarget.range,
+			},
+		];
+	}
+
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file
 		return null;
@@ -380,7 +390,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 									parsed[macrodefline][parsed[macrodefline].length - 1].p,
 									macrodefline,
 									parsed[macrodefline][parsed[macrodefline].length - 1].p +
-									parsed[macrodefline][parsed[macrodefline].length - 1].c,
+										parsed[macrodefline][parsed[macrodefline].length - 1].c,
 								),
 							),
 						)
@@ -545,7 +555,12 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 					return null;
 				}
 
-				const localResult = await lookupClassMember(URI.parse(params.textDocument.uri), membercontext.baseclass, unquotedname, memberrange);
+				const localResult = await lookupClassMember(
+					URI.parse(params.textDocument.uri),
+					membercontext.baseclass,
+					unquotedname,
+					memberrange,
+				);
 				if (localResult) {
 					return localResult;
 				}
@@ -1272,7 +1287,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 							parsed[ln][0].l == ld.cls_langindex &&
 							parsed[ln][0].s == ld.cls_keyword_attrindex &&
 							doc.getText(Range.create(ln, parsed[ln][0].p, ln, parsed[ln][0].p + parsed[ln][0].c)).toLowerCase() ==
-							"class"
+								"class"
 						) {
 							// This is the class definition line
 							let seenExtends = false,
