@@ -60,7 +60,7 @@ function markupValue(header: string, body?: string): string {
 }
 
 export const localInfoPrefix = `[📁] `;
-export async function onHover(params: TextDocumentPositionParams): Promise<Hover> {
+export async function onHover(params: TextDocumentPositionParams): Promise<Hover | null | undefined> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -156,7 +156,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					parsed[params.position.line][i].s == ld.cos_macro_attrindex) ||
 				(parsed[params.position.line][i].l == ld.sql_langindex &&
 					parsed[params.position.line][i].s == ld.sql_iden_attrindex &&
-					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$")
+					doc.getText(Range.create(params.position.line, symbolstart, params.position.line, symbolstart + 3)) == "$$$")
 			) {
 				// This is a macro
 
@@ -175,7 +175,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					macrotext = macrotext.slice(0, parenIdx);
 					macrorange.end = Position.create(params.position.line, symbolstart + macrotext.length);
 				}
-				if (macrotext.slice(0, 3) == "$$") {
+				if (macrotext.startsWith("$$$")) {
 					macrotext = macrotext.slice(3);
 				}
 
