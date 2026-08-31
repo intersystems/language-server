@@ -366,7 +366,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			}
 
 			// Get the method signature
-			const methodSignatureHelp = await getMethodSignatureHelpLocally(
+			const methodSignatureHelp = await getMethodSignatureHelpFromAscot(
 				params.textDocument.uri,
 				membercontext.baseclass,
 				member,
@@ -626,7 +626,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				}
 
 				// Get the method signature
-				const methodSignatureHelp = await getMethodSignatureHelpLocally(
+				const methodSignatureHelp = await getMethodSignatureHelpFromAscot(
 					params.textDocument.uri,
 					membercontext.baseclass,
 					member,
@@ -770,7 +770,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	return null;
 }
 
-async function getMethodSignatureHelpLocally(
+async function getMethodSignatureHelpFromAscot(
 	docURI: string,
 	clsName: string,
 	memName: string,
