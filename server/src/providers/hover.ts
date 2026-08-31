@@ -23,7 +23,7 @@ import {
 	MemberMetadataKind,
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
-import { documents, corePropertyParams, mppContinue } from "../utils/variables";
+import { documents, corePropertyParams, mppContinue, localInfoPrefix } from "../utils/variables";
 import { getAnalyzedClass, getAnalyzedClassMember } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
@@ -59,7 +59,6 @@ function markupValue(header: string, body?: string): string {
 	return body?.trim().length ? [header, "***", body].join("\n") : header;
 }
 
-export const localInfoPrefix = `[📁] `;
 export async function onHover(params: TextDocumentPositionParams): Promise<Hover | null | undefined> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {

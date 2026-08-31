@@ -1,8 +1,7 @@
 import { WorkspaceSymbolParams, WorkspaceSymbol, SymbolKind, SymbolTag, Range } from "vscode-languageserver";
 import { MemberInfo } from "../ascot";
-import { connection } from "../utils/variables";
+import { connection, localInfoPrefix } from "../utils/variables";
 import { getAnalyzedClasses } from "../ascot";
-import { localInfoPrefix } from "./hover";
 import { URI } from "vscode-uri";
 
 export const onWorkspaceSymbol = async (params: WorkspaceSymbolParams): Promise<WorkspaceSymbol[]> => {

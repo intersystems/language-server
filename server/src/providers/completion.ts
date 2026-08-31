@@ -36,7 +36,7 @@ import {
 	compressedline,
 	LanguageServerConfiguration,
 } from "../utils/types";
-import { documents, corePropertyParams, mppContinue } from "../utils/variables";
+import { documents, corePropertyParams, mppContinue, localInfoPrefix } from "../utils/variables";
 import { getAnalyzedClassMembers, getAnalyzedClasses } from "../ascot";
 import { URI } from "vscode-uri";
 import * as ld from "../utils/languageDefinitions";
@@ -59,7 +59,6 @@ import storageKeywords from "../documentation/keywords/Storage.json";
 import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import { localInfoPrefix } from "./hover";
 
 /**
  * ServerSpec's mapped to the XML assist schema cache for that server.
