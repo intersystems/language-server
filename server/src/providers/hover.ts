@@ -24,7 +24,7 @@ import {
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { ascot, getAnalyzedClass, getAnalyzedClassMember } from "../ascot";
+import { getClassHover, getMemberHover } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import commands from "../documentation/commands.json";
@@ -46,7 +46,6 @@ import queryKeywords from "../documentation/keywords/Query.json";
 import storageKeywords from "../documentation/keywords/Storage.json";
 import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
-import { MemberInfo, NormalArg } from "../ascot";
 import { URI } from "vscode-uri";
 
 function documaticLink(server: ServerSpec, cls: string): string {
@@ -119,14 +118,10 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				// Normalize the class name if there are imports
 				const normalizedname = await normalizeClassname(doc, parsed, word, server, params.position.line);
 
-				const uri_info = await getAnalyzedClass(URI.parse(params.textDocument.uri), normalizedname);
-				if (uri_info) {
-					const [uri, info] = uri_info;
+				const classHover = await getClassHover(URI.parse(params.textDocument.uri), normalizedname);
+				if (classHover) {
 					return {
-						contents: {
-							kind: MarkupKind.Markdown,
-							value: markupValue(`${ascot}[${normalizedname}](${uri})`, documaticHtmlToMarkdown(info.doc)),
-						},
+						contents: { kind: MarkupKind.Markdown, value: markupValue(classHover.header, classHover.body) },
 						range: wordrange,
 					};
 				}
@@ -677,20 +672,14 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					return null;
 				}
 
-				const memberInfo = await getAnalyzedClassMember(
+				const memberHover = await getMemberHover(
 					URI.parse(params.textDocument.uri),
 					membercontext.baseclass,
 					unquotedname,
 				);
-				if (memberInfo) {
+				if (memberHover) {
 					return {
-						contents: {
-							kind: MarkupKind.Markdown,
-							value: markupValue(
-								hoverHeadefFromMemberInfo(membercontext.baseclass, memberInfo[1]),
-								hoverBodyFromMemberInfo(memberInfo[1]),
-							),
-						},
+						contents: { kind: MarkupKind.Markdown, value: markupValue(memberHover.header, memberHover.body) },
 						range: memberrange,
 					};
 				}
@@ -1407,49 +1396,3 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 		}
 	}
 }
-function hoverHeadefFromMemberInfo(baseclass: string, memberInfo: MemberInfo): string {
-	let content = ascot + `(**${baseclass}**) <u>**${memberInfo.name.content}**</u>`;
-	const { kind } = memberInfo;
-	if (kind.tag === "class-method" || kind.tag === "client-method" || kind.tag === "method") {
-		const { normal, variadic, t } = kind.val;
-		const argList = normal
-			.map(prettifyNormalArg)
-			.concat(variadic ? [] : [])
-			.join(", ");
-		content += `(${argList})`;
-		if (t) {
-			content += ` As ${t}`;
-		}
-	} else if (kind.tag === "property" || kind.tag === "relationship") {
-		if (kind.val) {
-			content += ` As ${kind.val}`;
-		}
-	} else if (kind.tag === "parameter") {
-		const value = kind.val;
-		if (value.t) {
-			content += ` As ${value.t}`;
-		}
-		if (value.v) {
-			content += ` = ${value.v}`;
-		}
-	}
-	return content;
-}
-
-function hoverBodyFromMemberInfo(memberInfo: MemberInfo): string {
-	let content = "";
-	content += memberInfo.doc;
-	return documaticHtmlToMarkdown(content);
-}
-
-export const prettifyNormalArg = (arg: NormalArg): string => {
-	let string = "";
-	if (arg.mode != "default") {
-		string += "&";
-	}
-	string += arg.name;
-	if (arg.t) {
-		string += ` As ${arg.t}`;
-	}
-	return string;
-};

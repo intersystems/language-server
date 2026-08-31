@@ -19,6 +19,7 @@ import {
 	buildClassTypeQuery,
 	resolveStubbedMethod,
 	MemberMetadataRow,
+	documaticHtmlToMarkdown,
 } from "../utils/functions";
 import { URI } from "vscode-uri";
 
@@ -460,6 +461,67 @@ export async function* getAnalyzedClassMembers(
 			}
 		}
 	}
+}
+
+export function prettifyNormalArg(arg: wit.NormalArg): string {
+	let string = "";
+	if (arg.mode != "default") {
+		string += "&";
+	}
+	string += arg.name;
+	if (arg.t) {
+		string += ` As ${arg.t}`;
+	}
+	return string;
+}
+
+function hoverHeaderFromMemberInfo(baseclass: string, memberInfo: MemberInfo): string {
+	let content = ascot + `(**${baseclass}**) <u>**${memberInfo.name.content}**</u>`;
+	const { kind } = memberInfo;
+	if (kind.tag === "class-method" || kind.tag === "client-method" || kind.tag === "method") {
+		const { normal, variadic, t } = kind.val;
+		const argList = normal
+			.map(prettifyNormalArg)
+			.concat(variadic ? [] : [])
+			.join(", ");
+		content += `(${argList})`;
+		if (t) {
+			content += ` As ${t}`;
+		}
+	} else if (kind.tag === "property" || kind.tag === "relationship") {
+		if (kind.val) {
+			content += ` As ${kind.val}`;
+		}
+	} else if (kind.tag === "parameter") {
+		const value = kind.val;
+		if (value.t) {
+			content += ` As ${value.t}`;
+		}
+		if (value.v) {
+			content += ` = ${value.v}`;
+		}
+	}
+	return content;
+}
+
+/** Header/body markdown for a class hover, or undefined if `name` isn't analyzed in `context`'s workspace. */
+export async function getClassHover(context: URI, name: string): Promise<{ header: string; body: string } | undefined> {
+	const uri_info = await getAnalyzedClass(context, name);
+	if (!uri_info) return undefined;
+	const [uri, info] = uri_info;
+	return { header: `${ascot}[${name}](${uri})`, body: documaticHtmlToMarkdown(info.doc) };
+}
+
+/** Header/body markdown for a class member hover, or undefined if not analyzed in `context`'s workspace. */
+export async function getMemberHover(
+	context: URI,
+	baseclass: string,
+	memberName: string,
+): Promise<{ header: string; body: string } | undefined> {
+	const uri_mem = await getAnalyzedClassMember(context, baseclass, memberName);
+	if (!uri_mem) return undefined;
+	const [, memberInfo] = uri_mem;
+	return { header: hoverHeaderFromMemberInfo(baseclass, memberInfo), body: documaticHtmlToMarkdown(memberInfo.doc) };
 }
 
 // The class declared in `docURI`, and its members, as a `textDocument/documentSymbol` outline.

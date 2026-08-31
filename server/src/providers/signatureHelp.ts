@@ -24,9 +24,8 @@ import {
 } from "../utils/functions";
 import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
 import { documents } from "../utils/variables";
-import { getAnalyzedClassMember } from "../ascot";
+import { getAnalyzedClassMember, prettifyNormalArg } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
-import { prettifyNormalArg } from "./hover";
 import { URI } from "vscode-uri";
 
 /**

@@ -1,9 +1,6 @@
-import {
-	DidChangeConfigurationNotification,
-	TextDocumentSyncKind,
-	CodeActionKind,
-	WorkspaceFolder,
-} from "vscode-languageserver/node";
+import * as fs from "fs";
+import * as path from "path";
+import { DidChangeConfigurationNotification, TextDocumentSyncKind, CodeActionKind } from "vscode-languageserver/node";
 import { URI } from "vscode-uri";
 
 import { onPrepare, onSubtypes, onSupertypes } from "./providers/typeHierarchy";
@@ -21,7 +18,6 @@ import {
 } from "./providers/refactoring";
 import { onDocumentLinkResolve, onDocumentLinks } from "./providers/documentLink";
 import { onDeclaration } from "./providers/declaration";
-import { onReferences } from "./providers/references";
 import { onTypeDefinition } from "./providers/typeDefinition";
 import { onPrepareRename, onRenameRequest } from "./providers/rename";
 import { onFoldingRanges } from "./providers/foldingRange";
@@ -33,8 +29,10 @@ import { onSignatureHelp } from "./providers/signatureHelp";
 import { onDocumentFormatting, onDocumentRangeFormatting } from "./providers/formatting";
 import { onDiagnostics } from "./providers/diagnostic";
 import { onSemanticTokens, onSemanticTokensDelta } from "./providers/semanticTokens";
+import { onReferences } from "./providers/references";
 import { onWorkspaceSymbol } from "./providers/workspaceSymbol";
 import { onInlayHint } from "./providers/inlayHint";
+import { openDoc, closeDoc } from "./ascot";
 import { LanguageServerConfiguration, ServerSpec } from "./utils/types";
 import {
 	connection,
@@ -46,10 +44,23 @@ import {
 } from "./utils/variables";
 import { parseDocument, getLegend } from "./parse/parse";
 import { isolateEmbeddedLanguage, languageAtPosition } from "./providers/requestForwarding";
-import { openDoc, closeDoc } from "./ascot";
 
 connection.onInitialize((params) => {
-	analyzeWorkspaceFolders(params.workspaceFolders ?? []);
+	(async () => {
+		for (const folder of params.workspaceFolders ?? []) {
+			const folderURI = URI.parse(folder.uri);
+			if (folderURI.scheme !== "file") continue;
+			for (const file of fs.readdirSync(folderURI.fsPath, { recursive: true, withFileTypes: true })) {
+				if (!(file.isFile() && /\.(cls|mac|int|inc)$/i.test(file.name))) {
+					continue;
+				}
+				const filePath = path.join(file.parentPath, file.name);
+				const fileURI = URI.file(filePath).toString();
+				const fileString = fs.readFileSync(filePath, "utf-8");
+				await openDoc(fileURI, fileString, folder.uri);
+			}
+		}
+	})();
 	return {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Full,
@@ -184,7 +195,7 @@ connection.onNotification("intersystems/server/passwordChange", (serverName: str
 	for (const uri of invalid) {
 		serverSpecs.delete(uri);
 	}
-	let toRemove: ServerSpec | undefined = undefined;
+	let toRemove: ServerSpec | undefined;
 	for (const server of schemaCaches.keys()) {
 		if (server.serverName == serverName) {
 			toRemove = server;
@@ -257,21 +268,3 @@ connection.languages.inlayHint.on(onInlayHint);
 documents.listen(connection);
 
 connection.listen();
-
-import * as fs from "fs";
-import * as path from "path";
-async function analyzeWorkspaceFolders(folders: WorkspaceFolder[]) {
-	for (const folder of folders) {
-		const folderURI = URI.parse(folder.uri);
-		if (folderURI.scheme !== "file") continue;
-		for (const file of fs.readdirSync(folderURI.fsPath, { recursive: true, withFileTypes: true })) {
-			if (!(file.isFile() && file.name.endsWith(".cls"))) {
-				continue;
-			}
-			const filePath = path.join(file.parentPath, file.name);
-			const fileURI = URI.file(filePath).toString();
-			const fileString = fs.readFileSync(filePath, "utf-8");
-			await openDoc(fileURI, fileString, folder.uri);
-		}
-	}
-}

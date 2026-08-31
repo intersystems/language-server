@@ -76,12 +76,14 @@ export async function onDocumentSymbol(params: DocumentSymbolParams): Promise<Do
 	}
 	const result: DocumentSymbol[] = [];
 
-	if (doc.languageId === "objectscript-class") {
+	if (["objectscript-class", "objectscript-macros", "objectscript", "objectscript-int"].includes(doc.languageId)) {
 		const symbols = await getDocumentSymbol(params.textDocument.uri);
 		if (symbols.length > 0) {
 			return symbols;
 		}
+	}
 
+	if (doc.languageId === "objectscript-class") {
 		// Loop through the file and look for the class definition and class members
 
 		const cls: DocumentSymbol = {
