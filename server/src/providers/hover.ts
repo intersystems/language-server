@@ -69,7 +69,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 
 	const ascotHover = await getHover(params.textDocument.uri, params.position);
 	if (ascotHover) {
-		return { contents: { kind: MarkupKind.PlainText, value: ascotHover } };
+		return { contents: { kind: MarkupKind.Markdown, value: ascotHover } };
 	}
 
 	if (parsed[params.position.line] === undefined) {
