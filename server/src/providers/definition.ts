@@ -17,52 +17,17 @@ import {
 	isClassMember,
 	memberRegex,
 	urlMapAttribute,
-	fullRange,
 } from "../utils/functions";
 import { ServerSpec, QueryData, compressedline } from "../utils/types";
 import { documents, corePropertyParams, classMemberTypes, mppContinue } from "../utils/variables";
-import { getAnalyzedClass, getAnalyzedClassMember, getDefinition } from "../ascot";
+import { getDefinition } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
-import { URI } from "vscode-uri";
 
 /**
  * The maximum number of lines to include in the `targetRange` property
  * of the `LocationLink` object returned by a definition request.
  */
 const definitionTargetRangeMaxLines: number = 10;
-
-async function lookupClassMember(
-	context: URI,
-	clsName: string,
-	memName: string,
-	originSelectionRange: Range,
-): Promise<LocationLink[] | null> {
-	const uri_mem = await getAnalyzedClassMember(context, clsName, memName);
-	if (!uri_mem) {
-		return null;
-	}
-	const [targetUri, memInfo] = uri_mem;
-	const targetRange = Range.create(
-		Number(memInfo.before.line),
-		Number(memInfo.before.character),
-		Number(memInfo.after.line),
-		Number(memInfo.after.character),
-	);
-	const targetSelectionRange = Range.create(
-		Number(memInfo.name.before.line),
-		Number(memInfo.name.before.character),
-		Number(memInfo.name.after.line),
-		Number(memInfo.name.after.character),
-	);
-	return [
-		{
-			targetUri,
-			targetRange,
-			originSelectionRange,
-			targetSelectionRange,
-		},
-	];
-}
 
 /** Return a `LocationLink` for class member `memberName` in class `cls`
  *
@@ -77,11 +42,6 @@ async function classMemberLocationLink(
 	memberRange: Range,
 	server: ServerSpec,
 ): Promise<LocationLink[] | undefined> {
-	const localResult = await lookupClassMember(URI.parse(uri), cls, memberName, memberRange);
-	if (localResult) {
-		return localResult;
-	}
-
 	const targetrange = Range.create(0, 0, 0, 0);
 	let targetselrange = Range.create(0, 0, 0, 0);
 	const newuri = await createDefinitionUri(uri, cls, ".cls");
@@ -153,25 +113,6 @@ async function classLocationLink(
 	range: Range,
 	server: ServerSpec,
 ): Promise<LocationLink[] | undefined> {
-	const uri_cls = await getAnalyzedClass(URI.parse(uri), cls);
-	if (uri_cls) {
-		const [targetUri, clsInfo] = uri_cls;
-		const targetRange = fullRange;
-		const targetSelectionRange = Range.create(
-			Number(clsInfo.name.before.line),
-			Number(clsInfo.name.before.character),
-			Number(clsInfo.name.after.line),
-			Number(clsInfo.name.after.character),
-		);
-		return [
-			{
-				targetUri,
-				targetRange,
-				originSelectionRange: range,
-				targetSelectionRange,
-			},
-		];
-	}
 	// Get the uri of the target class
 	const newuri = await createDefinitionUri(uri, cls, ".cls");
 	if (newuri != "") {
@@ -274,7 +215,7 @@ function findMemberInCurrentClass(
 	}
 }
 
-export async function onDefinition(params: TextDocumentPositionParams): Promise<LocationLink[] | null | undefined> {
+export async function onDefinition(params: TextDocumentPositionParams): Promise<LocationLink[]> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -553,16 +494,6 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 				if (membercontext.baseclass === "") {
 					// If we couldn't determine the class, don't return anything
 					return null;
-				}
-
-				const localResult = await lookupClassMember(
-					URI.parse(params.textDocument.uri),
-					membercontext.baseclass,
-					unquotedname,
-					memberrange,
-				);
-				if (localResult) {
-					return localResult;
 				}
 
 				let memberKeywords =
