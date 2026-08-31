@@ -301,6 +301,3 @@ export const classMemberTypes: string[] = [
 
 /** Regex for testing if a MPP directive is `##Continue` */
 export const mppContinue: RegExp = /^(?:##)?continue$/i;
-
-/** Prefix marking a hover/completion/symbol result as sourced from local analysis rather than a REST query. */
-export const localInfoPrefix = `[📁] `;

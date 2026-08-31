@@ -23,8 +23,8 @@ import {
 	MemberMetadataKind,
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
-import { documents, corePropertyParams, mppContinue, localInfoPrefix } from "../utils/variables";
-import { getAnalyzedClass, getAnalyzedClassMember } from "../ascot";
+import { documents, corePropertyParams, mppContinue } from "../utils/variables";
+import { ascot, getAnalyzedClass, getAnalyzedClassMember } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import commands from "../documentation/commands.json";
@@ -125,7 +125,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					return {
 						contents: {
 							kind: MarkupKind.Markdown,
-							value: markupValue(`${localInfoPrefix}[${normalizedname}](${uri})`, documaticHtmlToMarkdown(info.doc)),
+							value: markupValue(`${ascot}[${normalizedname}](${uri})`, documaticHtmlToMarkdown(info.doc)),
 						},
 						range: wordrange,
 					};
@@ -1408,7 +1408,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	}
 }
 function hoverHeadefFromMemberInfo(baseclass: string, memberInfo: MemberInfo): string {
-	let content = localInfoPrefix + `(**${baseclass}**) <u>**${memberInfo.name.content}**</u>`;
+	let content = ascot + `(**${baseclass}**) <u>**${memberInfo.name.content}**</u>`;
 	const { kind } = memberInfo;
 	if (kind.tag === "class-method" || kind.tag === "client-method" || kind.tag === "method") {
 		const { normal, variadic, t } = kind.val;

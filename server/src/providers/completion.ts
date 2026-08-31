@@ -36,8 +36,8 @@ import {
 	compressedline,
 	LanguageServerConfiguration,
 } from "../utils/types";
-import { documents, corePropertyParams, mppContinue, localInfoPrefix } from "../utils/variables";
-import { getAnalyzedClassMembers, getAnalyzedClasses } from "../ascot";
+import { documents, corePropertyParams, mppContinue } from "../utils/variables";
+import { ascot, getAnalyzedClassMembers, getAnalyzedClasses } from "../ascot";
 import { URI } from "vscode-uri";
 import * as ld from "../utils/languageDefinitions";
 
@@ -587,7 +587,7 @@ async function* completionFullClassName(
 			value: documaticHtmlToMarkdown(cls.doc),
 		};
 		item.insertText = item.label;
-		item.label = localInfoPrefix + item.label;
+		item.label = ascot + item.label;
 		yield item;
 	}
 

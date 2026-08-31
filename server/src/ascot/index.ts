@@ -219,6 +219,9 @@ export type ClassInfo = wit.ClassInfo;
 export type NormalArg = wit.NormalArg;
 export type ArgMode = wit.ArgMode;
 
+/** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
+export const ascot = `[👔] `;
+
 const wasm = loadAnalyzer();
 
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;

@@ -1,7 +1,7 @@
 import { WorkspaceSymbolParams, WorkspaceSymbol, SymbolKind, SymbolTag, Range } from "vscode-languageserver";
 import { MemberInfo } from "../ascot";
-import { connection, localInfoPrefix } from "../utils/variables";
-import { getAnalyzedClasses } from "../ascot";
+import { connection } from "../utils/variables";
+import { ascot, getAnalyzedClasses } from "../ascot";
 import { URI } from "vscode-uri";
 
 export const onWorkspaceSymbol = async (params: WorkspaceSymbolParams): Promise<WorkspaceSymbol[]> => {
@@ -13,7 +13,7 @@ export const onWorkspaceSymbol = async (params: WorkspaceSymbolParams): Promise<
 			if (clsMatch) {
 				output.push({
 					location: { uri, range: Range.create(cls.name.before, cls.name.after) },
-					name: localInfoPrefix + cls.name.content,
+					name: ascot + cls.name.content,
 					kind: SymbolKind.Class,
 					tags: cls.deprecated ? [SymbolTag.Deprecated] : [],
 				});
@@ -23,7 +23,7 @@ export const onWorkspaceSymbol = async (params: WorkspaceSymbolParams): Promise<
 				if (kind !== null && (clsMatch || mem.name.content.toLowerCase().startsWith(query))) {
 					output.push({
 						location: { uri, range: Range.create(mem.name.before, mem.name.after) },
-						name: localInfoPrefix + mem.name.content,
+						name: ascot + mem.name.content,
 						kind,
 						tags: cls.deprecated || mem.deprecated ? [SymbolTag.Deprecated] : [],
 					});
