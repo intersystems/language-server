@@ -482,7 +482,7 @@ function hoverHeaderFromMemberInfo(baseclass: string, memberInfo: MemberInfo): s
 		const { normal, variadic, t } = kind.val;
 		const argList = normal
 			.map(prettifyNormalArg)
-			.concat(variadic ? [] : [])
+			.concat(variadic ? [prettifyNormalArg(variadic) + "..."] : [])
 			.join(", ");
 		content += `(${argList})`;
 		if (t) {
