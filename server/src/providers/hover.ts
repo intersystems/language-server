@@ -67,11 +67,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	const server = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
-	// The analyzer's own hover text covers cases the REST-based lookups below don't
-	// (and renders richer signature/doc info); prefer it whenever it has an answer.
 	const analyzedHover = await getHover(params.textDocument.uri, params.position);
 	if (analyzedHover) {
-		return { contents: { kind: MarkupKind.Markdown, value: analyzedHover } };
+		return { contents: { kind: MarkupKind.PlainText, value: analyzedHover } };
 	}
 
 	if (parsed[params.position.line] === undefined) {
