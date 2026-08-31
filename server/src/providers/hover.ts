@@ -19,8 +19,6 @@ import {
 	determineVariableClass,
 	macroDefToDoc,
 	urlMapAttribute,
-	buildMemberMetadataQuery,
-	MemberMetadataKind,
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
@@ -57,6 +55,9 @@ function documaticLink(server: ServerSpec, cls: string): string {
 function markupValue(header: string, body?: string): string {
 	return body?.trim().length ? [header, "***", body].join("\n") : header;
 }
+
+// The document types ascot's analyzer covers; hover falls back to REST queries for the rest (e.g. CSP).
+const supportedAscotLanguages = ["objectscript-class", "objectscript-macros", "objectscript", "objectscript-int"];
 
 export async function onHover(params: TextDocumentPositionParams): Promise<Hover | null | undefined> {
 	const doc = documents.get(params.textDocument.uri);
@@ -118,12 +119,14 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				// Normalize the class name if there are imports
 				const normalizedname = await normalizeClassname(doc, parsed, word, server, params.position.line);
 
-				const classHover = await getClassHover(URI.parse(params.textDocument.uri), normalizedname);
-				if (classHover) {
-					return {
-						contents: { kind: MarkupKind.Markdown, value: markupValue(classHover.header, classHover.body) },
-						range: wordrange,
-					};
+				if (supportedAscotLanguages.includes(doc.languageId)) {
+					const classHover = await getClassHover(URI.parse(params.textDocument.uri), normalizedname);
+					if (classHover) {
+						return {
+							contents: { kind: MarkupKind.Markdown, value: markupValue(classHover.header, classHover.body) },
+							range: wordrange,
+						};
+					}
 				}
 
 				// Get the description for this class from the server
@@ -672,38 +675,70 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					return null;
 				}
 
-				const memberHover = await getMemberHover(
-					URI.parse(params.textDocument.uri),
-					membercontext.baseclass,
-					unquotedname,
-				);
-				if (memberHover) {
-					return {
-						contents: { kind: MarkupKind.Markdown, value: markupValue(memberHover.header, memberHover.body) },
-						range: memberrange,
-					};
+				if (supportedAscotLanguages.includes(doc.languageId)) {
+					const memberHover = await getMemberHover(
+						URI.parse(params.textDocument.uri),
+						membercontext.baseclass,
+						unquotedname,
+					);
+					if (memberHover) {
+						return {
+							contents: { kind: MarkupKind.Markdown, value: markupValue(memberHover.header, memberHover.body) },
+							range: memberrange,
+						};
+					}
 				}
 
 				// Query the server to get the description of this member using its base class, text and token type
-				let data: QueryData;
+				const data: QueryData = {
+					query: "",
+					parameters: [],
+				};
 				if (unquotedname == "%New") {
 					// Get the information for both %New and %OnNew
-					data = {
-						query:
-							"SELECT Description, FormalSpec, ReturnType, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (name = ? OR name = ?)",
-						parameters: [membercontext.baseclass, unquotedname, "%OnNew"],
-					};
+					data.query =
+						"SELECT Description, FormalSpec, ReturnType, Stub, Origin FROM %Dictionary.CompiledMethod WHERE Parent = ? AND (name = ? OR name = ?)";
+					data.parameters = [membercontext.baseclass, unquotedname, "%OnNew"];
+				} else if (parsed[params.position.line][i].s == ld.cos_prop_attrindex) {
+					// This is a parameter
+					data.query =
+						"SELECT Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Stub FROM %Dictionary.CompiledParameter WHERE Parent = ? AND name = ?";
+					data.parameters = [membercontext.baseclass, unquotedname];
+				} else if (parsed[params.position.line][i].s == ld.cos_method_attrindex) {
+					// This is a method
+					data.query =
+						"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
+					data.parameters = [membercontext.baseclass, unquotedname];
+				} else if (
+					parsed[params.position.line][i].s == ld.cos_attr_attrindex ||
+					parsed[params.position.line][i].s == ld.cos_instvar_attrindex
+				) {
+					// This is a property
+					data.query =
+						"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
+						"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+					data.parameters = [membercontext.baseclass, unquotedname, unquotedname.replace(/\s+/g, "")];
 				} else {
-					const s = parsed[params.position.line][i].s;
-					const kind: MemberMetadataKind =
-						s == ld.cos_prop_attrindex
-							? "parameter"
-							: s == ld.cos_method_attrindex
-								? "method"
-								: s == ld.cos_attr_attrindex || s == ld.cos_instvar_attrindex
-									? "property"
-									: "auto";
-					data = buildMemberMetadataQuery(membercontext.baseclass, unquotedname, kind);
+					// This is a generic member
+					if (membercontext.baseclass.startsWith("%SYSTEM")) {
+						// This is always a method
+						data.query =
+							"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ?";
+						data.parameters = [membercontext.baseclass, unquotedname];
+					} else {
+						// This can be a method or property
+						data.query =
+							"SELECT Description, FormalSpec, ReturnType, Stub FROM %Dictionary.CompiledMethod WHERE Parent = ? AND name = ? UNION ALL " +
+							"SELECT Description, NULL AS FormalSpec, CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, NULL AS Stub " +
+							"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
+						data.parameters = [
+							membercontext.baseclass,
+							unquotedname,
+							membercontext.baseclass,
+							unquotedname,
+							unquotedname.replace(/\s+/g, ""),
+						];
+					}
 				}
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
