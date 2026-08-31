@@ -20,7 +20,6 @@ import { documents, mppContinue } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 import { compressedline } from "../utils/types";
 import { memberKindToSymbolKind } from "./workspaceSymbol";
-import { localInfoPrefix } from "./hover";
 
 /** Loop through the class from this line until the next class member or the end of the class */
 function processMember(

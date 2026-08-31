@@ -1296,7 +1296,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 
 				const added = new Set<string>();
-				for await (const [_uri, mem] of getAnalyzedClassMembers(
+				for await (const [, mem] of getAnalyzedClassMembers(
 					URI.parse(params.textDocument.uri),
 					membercontext.baseclass,
 				)) {
@@ -1368,7 +1368,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 
 				const added = new Set<string>();
-				for await (const [_uri, mem] of getAnalyzedClassMembers(
+				for await (const [, mem] of getAnalyzedClassMembers(
 					URI.parse(params.textDocument.uri),
 					membercontext.baseclass,
 				)) {
@@ -2492,7 +2492,7 @@ async function* completionPartialClassName(
 ): AsyncGenerator<CompletionItem> {
 	filter += filter.endsWith(".") ? "" : ".";
 	const added = new Set<string>();
-	for await (const [_uri, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
+	for await (const [, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
 		if (!cls.name.content.startsWith(filter)) {
 			continue;
 		}
