@@ -223,43 +223,29 @@ const wasm = loadAnalyzer();
 
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
-// A read (diagnostics/inlayHint/definition/...) can suspend mid-flight while awaiting
-// getMem's REST call, holding a shared RefCell borrow; a write (open/close) taking
-// borrow_mut() meanwhile panics with "already borrowed". Guard with a reader/writer
-// gate: reads run concurrently (so their REST latency overlaps), a write waits for
-// in-flight reads to drain, and reads queued behind a write wait for it.
-const WRITES = new Set<PropertyKey>(["open", "close"]);
+// jco's jspi async-mode glue supports only one in-flight (possibly-suspended) call into
+// a given component instance at a time -- a second call overlapping the first (e.g. a
+// diagnostics() and an inlayHint() both mid-flight, each awaiting their own getMem REST
+// round trip) trips its "component should have been exclusively locked" check. Every
+// `Workspace` (one per folder) is a resource of the same single instantiated `wasm`
+// component, so the queue below is shared module-wide, not per-instance -- otherwise two
+// different folders' workspaces could still overlap and trip the same check.
+let tail: Promise<void> = Promise.resolve();
 
 function serialize(instance: WorkspaceInstance): WorkspaceInstance {
-	let tail: Promise<void> = Promise.resolve();
-	let readers = 0;
-	let drained: Promise<void> = Promise.resolve();
-	let releaseDrained: () => void = () => {};
 	return new Proxy(instance, {
 		get(target, prop, receiver) {
 			const value = Reflect.get(target, prop, receiver);
 			if (typeof value !== "function") return value;
-			if (WRITES.has(prop)) {
-				return async (...args: unknown[]) => {
-					const prev = tail;
-					let release!: () => void;
-					tail = new Promise<void>((r) => (release = r));
-					await prev;
-					await drained;
-					try {
-						return await value.apply(target, args);
-					} finally {
-						release();
-					}
-				};
-			}
 			return async (...args: unknown[]) => {
-				await tail;
-				if (readers++ === 0) drained = new Promise<void>((r) => (releaseDrained = r));
+				const prev = tail;
+				let release!: () => void;
+				tail = new Promise<void>((r) => (release = r));
+				await prev;
 				try {
 					return await value.apply(target, args);
 				} finally {
-					if (--readers === 0) releaseDrained();
+					release();
 				}
 			};
 		},
@@ -300,7 +286,7 @@ export async function openDoc(docURI: string, src: string, folderURI?: string): 
 			typeof folderURI === "string"
 				? await rootURIToAnalyzerWorkspace(folderURI)
 				: await filePathToAnalyzerWorkspace(docURI);
-		workspace?.open(docURI, src);
+		await workspace?.open(docURI, src);
 	} catch (rawError) {
 		console.log(rawError);
 	}
@@ -309,7 +295,7 @@ export async function openDoc(docURI: string, src: string, folderURI?: string): 
 export async function closeDoc(docURI: string): Promise<void> {
 	try {
 		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		workspace?.close(docURI);
+		await workspace?.close(docURI);
 	} catch (rawError) {
 		console.log(rawError);
 	}
@@ -396,7 +382,7 @@ export async function getAnalyzedClass(context: URI, name: string): Promise<[str
 
 export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, ClassInfo]> {
 	const workspace = await filePathToAnalyzerWorkspace(context.toString());
-	const classes = workspace.queryCls("");
+	const classes = await workspace.queryCls("");
 	for (const x of classes) {
 		yield x;
 	}
@@ -422,7 +408,7 @@ export async function* getAnalyzedClassMembers(
 	includeExtends: boolean = true,
 ): AsyncGenerator<[string, MemberInfo]> {
 	const workspace = await filePathToAnalyzerWorkspace(context.toString());
-	for (const x of workspace.queryMem(clsName, memQuery)) {
+	for (const x of await workspace.queryMem(clsName, memQuery)) {
 		yield x;
 	}
 	if (includeExtends) {
