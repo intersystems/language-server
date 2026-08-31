@@ -36,7 +36,7 @@ npx jco transpile "$COMPONENT" \
 		"iris:ascot/exported#[method]workspace.inlay-hint" \
 		"iris:ascot/exported#[method]workspace.definition" \
 		"iris:ascot/exported#[method]workspace.references" \
-		"iris:ascot/exported#[method]workspace.hover-type" \
+		"iris:ascot/exported#[method]workspace.hover" \
 	--no-nodejs-compat \
 	-o "$GEN"
 
