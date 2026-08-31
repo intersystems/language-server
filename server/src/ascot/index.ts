@@ -13,7 +13,6 @@ import {
 import { connection } from "../utils/variables";
 import { getServerSpec, makeRESTRequest, documaticHtmlToMarkdown } from "../utils/functions";
 import { ServerSpec, QueryData } from "../utils/types";
-import { URI } from "vscode-uri";
 
 const libDir = path.resolve(__dirname, "../lib");
 
@@ -495,8 +494,8 @@ async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<WorkspaceI
 	return analyzedFolder;
 }
 
-export async function getAnalyzedClass(context: URI, name: string): Promise<[string, wit.ClassInfo] | null> {
-	for await (const [uri, cls] of getAnalyzedClasses(context)) {
+export async function getAnalyzedClass(contextURI: string, name: string): Promise<[string, wit.ClassInfo] | null> {
+	for await (const [uri, cls] of getAnalyzedClasses(contextURI)) {
 		if (cls.name.content === name) {
 			return [uri, cls];
 		}
@@ -504,8 +503,8 @@ export async function getAnalyzedClass(context: URI, name: string): Promise<[str
 	return null;
 }
 
-export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, wit.ClassInfo]> {
-	const workspace = await filePathToAnalyzerWorkspace(context.toString());
+export async function* getAnalyzedClasses(contextURI: string): AsyncGenerator<[string, wit.ClassInfo]> {
+	const workspace = await filePathToAnalyzerWorkspace(contextURI);
 	const classes = await workspace.queryCls("");
 	for (const x of classes) {
 		yield x;
@@ -513,11 +512,11 @@ export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string,
 }
 
 export async function getAnalyzedClassMember(
-	context: URI,
+	contextURI: string,
 	clsName: string,
 	memName: string,
 ): Promise<[string, MemberInfo] | null> {
-	for await (const [uri, mem] of getAnalyzedClassMembers(context, clsName, memName)) {
+	for await (const [uri, mem] of getAnalyzedClassMembers(contextURI, clsName, memName)) {
 		if (mem.name.content === memName) {
 			return [uri, mem];
 		}
@@ -526,21 +525,21 @@ export async function getAnalyzedClassMember(
 }
 
 export async function* getAnalyzedClassMembers(
-	context: URI,
+	contextURI: string,
 	clsName: string,
 	memQuery: string = "",
 	includeExtends: boolean = true,
 ): AsyncGenerator<[string, MemberInfo]> {
-	const workspace = await filePathToAnalyzerWorkspace(context.toString());
+	const workspace = await filePathToAnalyzerWorkspace(contextURI);
 	for (const x of await workspace.queryMem(clsName, memQuery)) {
 		yield x;
 	}
 	if (includeExtends) {
-		const result = await getAnalyzedClass(context, clsName);
+		const result = await getAnalyzedClass(contextURI, clsName);
 		if (result) {
 			const cls = result[1];
 			for (const sup of cls.extends) {
-				yield* getAnalyzedClassMembers(context, sup, memQuery);
+				yield* getAnalyzedClassMembers(contextURI, sup, memQuery);
 			}
 		}
 	}
@@ -587,21 +586,24 @@ function hoverHeaderFromMemberInfo(baseclass: string, memberInfo: MemberInfo): s
 	return content;
 }
 
-/** Header/body markdown for a class hover, or undefined if `name` isn't analyzed in `context`'s workspace. */
-export async function getClassHover(context: URI, name: string): Promise<{ header: string; body: string } | undefined> {
-	const uri_info = await getAnalyzedClass(context, name);
+/** Header/body markdown for a class hover, or undefined if `name` isn't analyzed in `contextURI`'s workspace. */
+export async function getClassHover(
+	contextURI: string,
+	name: string,
+): Promise<{ header: string; body: string } | undefined> {
+	const uri_info = await getAnalyzedClass(contextURI, name);
 	if (!uri_info) return undefined;
 	const [uri, info] = uri_info;
 	return { header: `${ascot}[${name}](${uri})`, body: documaticHtmlToMarkdown(info.doc) };
 }
 
-/** Header/body markdown for a class member hover, or undefined if not analyzed in `context`'s workspace. */
+/** Header/body markdown for a class member hover, or undefined if not analyzed in `contextURI`'s workspace. */
 export async function getMemberHover(
-	context: URI,
+	contextURI: string,
 	baseclass: string,
 	memberName: string,
 ): Promise<{ header: string; body: string } | undefined> {
-	const uri_mem = await getAnalyzedClassMember(context, baseclass, memberName);
+	const uri_mem = await getAnalyzedClassMember(contextURI, baseclass, memberName);
 	if (!uri_mem) return undefined;
 	const [, memberInfo] = uri_mem;
 	return { header: hoverHeaderFromMemberInfo(baseclass, memberInfo), body: documaticHtmlToMarkdown(memberInfo.doc) };
@@ -627,9 +629,9 @@ export async function getDocumentSymbol(docURI: string): Promise<DocumentSymbol[
 
 // Classes and members in `context`'s workspace folder whose name starts with `query`, as a
 // `workspace/symbol` result.
-export async function getWorkspaceSymbol(context: URI, query: string): Promise<SymbolInformation[]> {
+export async function getWorkspaceSymbol(contextURI: string, query: string): Promise<SymbolInformation[]> {
 	try {
-		const workspace = await filePathToAnalyzerWorkspace(context.toString());
+		const workspace = await filePathToAnalyzerWorkspace(contextURI);
 		const symbols = (await workspace?.workspaceSymbol(query)) ?? [];
 		return symbols.map((symbol) => ({
 			name: ascot + symbol.name,

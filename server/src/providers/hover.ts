@@ -44,7 +44,6 @@ import queryKeywords from "../documentation/keywords/Query.json";
 import storageKeywords from "../documentation/keywords/Storage.json";
 import triggerKeywords from "../documentation/keywords/Trigger.json";
 import xdataKeywords from "../documentation/keywords/XData.json";
-import { URI } from "vscode-uri";
 
 function documaticLink(server: ServerSpec, cls: string): string {
 	return `[${cls}](${server.scheme}://${server.host}:${server.port}${server.pathPrefix}/csp/documatic/%25CSP.Documatic.cls?LIBRARY=${encodeURIComponent(
@@ -116,7 +115,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				// Normalize the class name if there are imports
 				const normalizedname = await normalizeClassname(doc, parsed, word, server, params.position.line);
 
-				const classHover = await getClassHover(URI.parse(params.textDocument.uri), normalizedname);
+				const classHover = await getClassHover(params.textDocument.uri, normalizedname);
 				if (classHover) {
 					return {
 						contents: { kind: MarkupKind.Markdown, value: markupValue(classHover.header, classHover.body) },
@@ -670,11 +669,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					return null;
 				}
 
-				const memberHover = await getMemberHover(
-					URI.parse(params.textDocument.uri),
-					membercontext.baseclass,
-					unquotedname,
-				);
+				const memberHover = await getMemberHover(params.textDocument.uri, membercontext.baseclass, unquotedname);
 				if (memberHover) {
 					return {
 						contents: { kind: MarkupKind.Markdown, value: markupValue(memberHover.header, memberHover.body) },

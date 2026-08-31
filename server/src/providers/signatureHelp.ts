@@ -24,9 +24,8 @@ import {
 } from "../utils/functions";
 import { SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
 import { documents } from "../utils/variables";
-import { getAnalyzedClassMember, prettifyNormalArg } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
-import { URI } from "vscode-uri";
+import { getAnalyzedClassMember, prettifyNormalArg } from "../ascot";
 
 /**
  * Cache of the macro context info required to do a macro expansion when the selected parameter changes.
@@ -368,7 +367,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 
 			// Get the method signature
 			const methodSignatureHelp = await getMethodSignatureHelpLocally(
-				URI.parse(params.textDocument.uri),
+				params.textDocument.uri,
 				membercontext.baseclass,
 				member,
 				settings.signaturehelp.documentation,
@@ -628,7 +627,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 
 				// Get the method signature
 				const methodSignatureHelp = await getMethodSignatureHelpLocally(
-					URI.parse(params.textDocument.uri),
+					params.textDocument.uri,
 					membercontext.baseclass,
 					member,
 					settings.signaturehelp.documentation,
@@ -772,14 +771,14 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 }
 
 async function getMethodSignatureHelpLocally(
-	context: URI,
+	contextURI: string,
 	clsName: string,
 	memName: string,
 	showingDoc: boolean,
 ): Promise<SignatureHelp | null> {
 	const uri_mem =
-		(await getAnalyzedClassMember(context, clsName, memName)) ??
-		(memName != "%New" ? null : await getAnalyzedClassMember(context, clsName, "%OnNew"));
+		(await getAnalyzedClassMember(contextURI, clsName, memName)) ??
+		(memName != "%New" ? null : await getAnalyzedClassMember(contextURI, clsName, "%OnNew"));
 	if (!uri_mem) {
 		return null;
 	}

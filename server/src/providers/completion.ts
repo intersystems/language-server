@@ -38,7 +38,6 @@ import {
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
 import { ascot, getAnalyzedClassMembers, getAnalyzedClasses } from "../ascot";
-import { URI } from "vscode-uri";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -574,7 +573,7 @@ async function* completionFullClassName(
 	settings: LanguageServerConfiguration,
 ): AsyncGenerator<CompletionItem> {
 	const added = new Set<string>();
-	for await (const [uri, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
+	for await (const [uri, cls] of getAnalyzedClasses(doc.uri)) {
 		added.add(cls.name.content);
 		const item = makeClassCompletionItem(
 			[] /* I tried getImports() but it gives false imports */,
@@ -1262,10 +1261,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 
 				const added = new Set<string>();
-				for await (const [, mem] of getAnalyzedClassMembers(
-					URI.parse(params.textDocument.uri),
-					membercontext.baseclass,
-				)) {
+				for await (const [, mem] of getAnalyzedClassMembers(params.textDocument.uri, membercontext.baseclass)) {
 					if (mem.kind.tag === "parameter") {
 						const name = quoteUDLIdentifier(mem.name.content, 1);
 						added.add(name);
@@ -1334,10 +1330,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 
 				const added = new Set<string>();
-				for await (const [, mem] of getAnalyzedClassMembers(
-					URI.parse(params.textDocument.uri),
-					membercontext.baseclass,
-				)) {
+				for await (const [, mem] of getAnalyzedClassMembers(params.textDocument.uri, membercontext.baseclass)) {
 					const name = quoteUDLIdentifier(mem.name.content, 1);
 					added.add(name);
 					const item: CompletionItem = {
@@ -2492,7 +2485,7 @@ async function* completionPartialClassName(
 ): AsyncGenerator<CompletionItem> {
 	filter += filter.endsWith(".") ? "" : ".";
 	const added = new Set<string>();
-	for await (const [, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
+	for await (const [, cls] of getAnalyzedClasses(doc.uri)) {
 		if (!cls.name.content.startsWith(filter)) {
 			continue;
 		}
