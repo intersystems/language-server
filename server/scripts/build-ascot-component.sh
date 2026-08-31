@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
-# Regenerate src/ascot/generated/ + lib/ascot.core*.wasm from the committed
-# lib/ascot.wasm. Runs from the jco devDependency via the "gen" npm script;
-# the generated files are gitignored, so run this after copying in a new wasm.
+# The generated files are gitignored, so run this after copying in a new wasm.
 # --async-mode jspi is what lets the sync get-mem import suspend on an async host
 # (JS Promise Integration) instead of needing a worker.
 set -euo pipefail
