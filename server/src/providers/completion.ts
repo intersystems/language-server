@@ -614,30 +614,30 @@ async function* completionFullClassName(
 }
 
 function makeClassCompletionItem(imports: string[], name: string, uri: TextDocument["uri"], deprecated: boolean) {
-	let displayName: string = name;
-	let sortText: string | null = null;
+	let displayname: string = name;
+	let sortText: string | undefined;
 	if (imports.length > 0) {
 		for (const imp of imports) {
-			if (displayName.indexOf(imp) === 0 && displayName.slice(imp.length + 1).indexOf(".") === -1) {
-				displayName = displayName.slice(imp.length + 1);
-				sortText = "%%%" + displayName;
+			if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
+				displayname = displayname.slice(imp.length + 1);
+				sortText = "%%%" + displayname;
 				break;
 			}
 		}
-		if (displayName.startsWith("%Library.")) {
-			displayName = "%" + displayName.slice(9);
+		if (displayname.startsWith("%Library.")) {
+			displayname = "%" + displayname.slice(9);
 		}
 	} else {
-		if (displayName.startsWith("%Library.")) {
-			displayName = "%" + displayName.slice(9);
+		if (displayname.startsWith("%Library.")) {
+			displayname = "%" + displayname.slice(9);
 		}
 	}
 	const compItem: CompletionItem = {
-		label: displayName,
+		label: displayname,
 		kind: CompletionItemKind.Class,
 		data: ["class", name, uri],
 	};
-	if (sortText !== null) {
+	if (sortText !== undefined) {
 		compItem.sortText = sortText;
 	}
 	if (deprecated) {
