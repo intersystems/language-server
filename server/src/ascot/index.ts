@@ -110,7 +110,7 @@ function rowToMemberInfo(mem: string, row: MemberMetadataRow): MemberInfo {
 	};
 }
 
-function rowToMemberKind(row: MemberMetadataRow): MemberKind {
+function rowToMemberKind(row: MemberMetadataRow): wit.MemberKind {
 	const type = row.ReturnType || undefined;
 	switch (row.MemberType) {
 		case "property":
@@ -218,13 +218,8 @@ async function loadAnalyzer(): Promise<Root> {
 	return instantiate(getCoreModule, imports as never);
 }
 
-export type MethodInfo = wit.MethodInfo;
-export type ParameterInfo = wit.ParameterInfo;
-export type MemberKind = wit.MemberKind;
 export type MemberInfo = wit.MemberInfo;
-export type ClassInfo = wit.ClassInfo;
 export type NormalArg = wit.NormalArg;
-export type ArgMode = wit.ArgMode;
 
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[🧣] `;
@@ -401,7 +396,7 @@ export async function getReferences(
 	}
 }
 
-export async function filePathToAnalyzerWorkspace(docURI: string): Promise<WorkspaceInstance> {
+async function filePathToAnalyzerWorkspace(docURI: string): Promise<WorkspaceInstance> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((folder) => docURI.startsWith(folder.uri));
 	return (folder && rootURIToAnalyzerWorkspace(folder.uri)) || rootURIToAnalyzerWorkspace(docURI);
@@ -416,7 +411,7 @@ async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<WorkspaceI
 	return analyzedFolder;
 }
 
-export async function getAnalyzedClass(context: URI, name: string): Promise<[string, ClassInfo] | null> {
+export async function getAnalyzedClass(context: URI, name: string): Promise<[string, wit.ClassInfo] | null> {
 	for await (const [uri, cls] of getAnalyzedClasses(context)) {
 		if (cls.name.content === name) {
 			return [uri, cls];
@@ -425,7 +420,7 @@ export async function getAnalyzedClass(context: URI, name: string): Promise<[str
 	return null;
 }
 
-export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, ClassInfo]> {
+export async function* getAnalyzedClasses(context: URI): AsyncGenerator<[string, wit.ClassInfo]> {
 	const workspace = await filePathToAnalyzerWorkspace(context.toString());
 	const classes = await workspace.queryCls("");
 	for (const x of classes) {
