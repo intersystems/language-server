@@ -771,14 +771,14 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 }
 
 async function getMethodSignatureHelpLocally(
-	contextURI: string,
+	docURI: string,
 	clsName: string,
 	memName: string,
 	showingDoc: boolean,
 ): Promise<SignatureHelp | null> {
 	const uri_mem =
-		(await getAnalyzedClassMember(contextURI, clsName, memName)) ??
-		(memName != "%New" ? null : await getAnalyzedClassMember(contextURI, clsName, "%OnNew"));
+		(await getAnalyzedClassMember(docURI, clsName, memName)) ??
+		(memName != "%New" ? null : await getAnalyzedClassMember(docURI, clsName, "%OnNew"));
 	if (!uri_mem) {
 		return null;
 	}
