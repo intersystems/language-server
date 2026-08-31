@@ -2,9 +2,6 @@ import { Location, ReferenceParams } from "vscode-languageserver/node";
 import { documents } from "../utils/variables";
 import { getReferences } from "../ascot";
 
-/**
- * Handler function for the `textDocument/references` request.
- */
 export async function onReferences(params: ReferenceParams): Promise<Location[]> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
