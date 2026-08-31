@@ -573,7 +573,6 @@ async function* completionFullClassName(
 	line: number,
 	settings: LanguageServerConfiguration,
 ): AsyncGenerator<CompletionItem> {
-	// Add locally available classes
 	const added = new Set<string>();
 	for await (const [uri, cls] of getAnalyzedClasses(URI.parse(doc.uri))) {
 		added.add(cls.name.content);
@@ -617,7 +616,6 @@ function makeClassCompletionItem(imports: string[], name: string, uri: TextDocum
 	let displayName: string = name;
 	let sortText: string | null = null;
 	if (imports.length > 0) {
-		// Resolve import
 		for (const imp of imports) {
 			if (displayName.indexOf(imp) === 0 && displayName.slice(imp.length + 1).indexOf(".") === -1) {
 				displayName = displayName.slice(imp.length + 1);
@@ -626,12 +624,10 @@ function makeClassCompletionItem(imports: string[], name: string, uri: TextDocum
 			}
 		}
 		if (displayName.startsWith("%Library.")) {
-			// Use short form for %Library classes
 			displayName = "%" + displayName.slice(9);
 		}
 	} else {
 		if (displayName.startsWith("%Library.")) {
-			// Use short form for %Library classes
 			displayName = "%" + displayName.slice(9);
 		}
 	}
@@ -1299,7 +1295,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					return null;
 				}
 
-				// Add locally source information
 				const added = new Set<string>();
 				for await (const [_uri, mem] of getAnalyzedClassMembers(
 					URI.parse(params.textDocument.uri),
@@ -2514,14 +2509,12 @@ async function* completionPartialClassName(
 		};
 	}
 
-	// Get all classes that match the filter
 	const querydata = {
 		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""}`,
 		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0, `Name %STARTSWITH '${filter}'`],
 	};
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
-		// We got data back
 		for (const clsobj of respdata.data.result.content) {
 			if (added.has(clsobj.Name)) continue;
 			yield {

@@ -365,8 +365,6 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			}
 
 			// Get the method signature
-
-			// Get the method signature locally
 			const methodSignatureHelp = await getMethodSignatureHelpLocally(
 				URI.parse(params.textDocument.uri),
 				membercontext.baseclass,
@@ -379,7 +377,6 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				return methodSignatureHelp;
 			}
 
-			// Get the method signature from the server
 			const querydata =
 				member == "%New"
 					? {
@@ -628,8 +625,6 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				}
 
 				// Get the method signature
-
-				// Get the method signature locally
 				const methodSignatureHelp = await getMethodSignatureHelpLocally(
 					URI.parse(params.textDocument.uri),
 					membercontext.baseclass,
@@ -646,7 +641,6 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 					return methodSignatureHelp;
 				}
 
-				// Get the method signature from the server
 				const querydata =
 					member == "%New"
 						? {

@@ -86,7 +86,6 @@ export async function onDocumentSymbol(params: DocumentSymbolParams): Promise<Do
 	const result: DocumentSymbol[] = [];
 
 	if (doc.languageId === "objectscript-class") {
-		// Try returning w/ analyzedClass
 		{
 			const cls = await getAnalyzedDocument(params.textDocument.uri);
 			if (cls !== undefined && "members" in cls) {

@@ -120,11 +120,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				// Normalize the class name if there are imports
 				const normalizedname = await normalizeClassname(doc, parsed, word, server, params.position.line);
 
-				// Try getting the description for this class from local files
 				const uri_info = await getAnalyzedClass(URI.parse(params.textDocument.uri), normalizedname);
 				if (uri_info) {
 					const [uri, info] = uri_info;
-					// The class was found
 					return {
 						contents: {
 							kind: MarkupKind.Markdown,

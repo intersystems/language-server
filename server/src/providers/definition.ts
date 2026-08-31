@@ -47,13 +47,13 @@ async function lookupClassMember(
 		Number(memInfo.before.character),
 		Number(memInfo.after.line),
 		Number(memInfo.after.character),
-	); // the member definition
+	);
 	const targetSelectionRange = Range.create(
 		Number(memInfo.name.before.line),
 		Number(memInfo.name.before.character),
 		Number(memInfo.name.after.line),
 		Number(memInfo.name.after.character),
-	); // the member name
+	);
 	return [
 		{
 			targetUri,
@@ -162,7 +162,7 @@ async function classLocationLink(
 			Number(clsInfo.name.before.character),
 			Number(clsInfo.name.after.line),
 			Number(clsInfo.name.after.character),
-		); // the class name
+		);
 		return [
 			{
 				targetUri,

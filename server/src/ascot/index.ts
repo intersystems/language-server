@@ -327,7 +327,6 @@ export async function inlayHint(docURI: string, range: wit.Range): Promise<wit.I
 	}
 }
 
-// Where the reference at `position` is declared, if any.
 export async function getDefinition(docURI: string, position: wit.Position): Promise<wit.Location | undefined> {
 	try {
 		const workspace = await filePathToAnalyzerWorkspace(docURI);
@@ -338,7 +337,6 @@ export async function getDefinition(docURI: string, position: wit.Position): Pro
 	}
 }
 
-// Every location across the workspace that refers to whatever's at `position`.
 export async function getReferences(
 	docURI: string,
 	position: wit.Position,
