@@ -274,7 +274,7 @@ function findMemberInCurrentClass(
 	}
 }
 
-export async function onDefinition(params: TextDocumentPositionParams): Promise<LocationLink[]> {
+export async function onDefinition(params: TextDocumentPositionParams): Promise<LocationLink[] | null | undefined> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
