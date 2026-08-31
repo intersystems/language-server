@@ -25,7 +25,7 @@ import {
 import { SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
-import { getAnalyzedClassMember, prettifyNormalArg } from "../ascot";
+import { getClassMember, prettifyNormalArg } from "../ascot";
 
 /**
  * Cache of the macro context info required to do a macro expansion when the selected parameter changes.
@@ -777,8 +777,8 @@ async function getMethodSignatureHelpLocally(
 	showingDoc: boolean,
 ): Promise<SignatureHelp | null> {
 	const uri_mem =
-		(await getAnalyzedClassMember(docURI, clsName, memName)) ??
-		(memName != "%New" ? null : await getAnalyzedClassMember(docURI, clsName, "%OnNew"));
+		(await getClassMember(docURI, clsName, memName)) ??
+		(memName != "%New" ? null : await getClassMember(docURI, clsName, "%OnNew"));
 	if (!uri_mem) {
 		return null;
 	}

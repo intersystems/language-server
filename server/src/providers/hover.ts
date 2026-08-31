@@ -67,9 +67,9 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	const server = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
-	const analyzedHover = await getHover(params.textDocument.uri, params.position);
-	if (analyzedHover) {
-		return { contents: { kind: MarkupKind.PlainText, value: analyzedHover } };
+	const ascotHover = await getHover(params.textDocument.uri, params.position);
+	if (ascotHover) {
+		return { contents: { kind: MarkupKind.PlainText, value: ascotHover } };
 	}
 
 	if (parsed[params.position.line] === undefined) {

@@ -36,62 +36,23 @@ interface MemberMetadataRow {
 	Deprecated: "0" | "1" | 0 | 1;
 }
 
-/** Which %Dictionary.Compiled* table(s) to search for a member. "auto" mirrors the
- * hover fallback (a %SYSTEM class is method-only, else method-or-property); "any"
- * also searches parameters, for callers that don't know the kind up front. */
-type MemberMetadataKind = "parameter" | "method" | "property" | "auto" | "any";
-
-/** Build the /action/query request for a class member's metadata. The SELECT column
- * list is identical across kinds so callers can read a uniform MemberMetadataRow. */
-function buildMemberMetadataQuery(baseclass: string, unquotedname: string, kind: MemberMetadataKind): QueryData {
-	const method =
-		"SELECT 'method' AS MemberType, Description, FormalSpec, ReturnType, Stub, ClassMethod, Deprecated " +
-		"FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ?";
-	const property =
-		"SELECT 'property' AS MemberType, Description, NULL AS FormalSpec, " +
-		"CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, " +
-		"NULL AS Stub, 0 AS ClassMethod, Deprecated " +
-		"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' ')))";
-	const parameter =
-		"SELECT 'parameter' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, " +
-		"NULL AS Stub, 0 AS ClassMethod, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ? AND Name = ?";
+/** Build the /action/query request for a class member's metadata, searching all three
+ * member tables since the caller (ascot's own IrisConnection.getMem) doesn't know the
+ * kind up front. The SELECT column list is identical across tables so the caller can
+ * read a uniform MemberMetadataRow regardless of which one matched. */
+function buildMemberMetadataQuery(baseclass: string, unquotedname: string): QueryData {
 	const nospace = unquotedname.replace(/\s+/g, "");
-	switch (kind) {
-		case "method":
-			return { query: method, parameters: [baseclass, unquotedname] };
-		case "parameter":
-			return { query: parameter, parameters: [baseclass, unquotedname] };
-		case "property":
-			return { query: property, parameters: [baseclass, unquotedname, nospace] };
-		case "auto":
-			if (baseclass.startsWith("%SYSTEM")) {
-				return { query: method, parameters: [baseclass, unquotedname] };
-			}
-			return {
-				query: `${method} UNION ALL ${property}`,
-				parameters: [baseclass, unquotedname, baseclass, unquotedname, nospace],
-			};
-		case "any":
-			return {
-				query: `${method} UNION ALL ${property} UNION ALL ${parameter}`,
-				parameters: [baseclass, unquotedname, baseclass, unquotedname, nospace, baseclass, unquotedname],
-			};
-	}
-}
-
-/** Build the /action/query request for a class's direct superclasses. `Super` is a
- * comma-separated list in declaration order (nearest first). */
-function buildSuperclassesQuery(cls: string): QueryData {
 	return {
-		query: "SELECT Super FROM %Dictionary.CompiledClass WHERE Name = ?",
-		parameters: [cls],
-	};
-}
-
-function buildClassTypeQuery(cls: string): QueryData {
-	return {
-		query: "SELECT ClassType FROM %Dictionary.CompiledClass WHERE Name = ?",
-		parameters: [cls],
+		query:
+			"SELECT 'method' AS MemberType, Description, FormalSpec, ReturnType, Stub, ClassMethod, Deprecated " +
+			"FROM %Dictionary.CompiledMethod WHERE Parent = ? AND Name = ? UNION ALL " +
+			"SELECT 'property' AS MemberType, Description, NULL AS FormalSpec, " +
+			"CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, " +
+			"NULL AS Stub, 0 AS ClassMethod, Deprecated " +
+			"FROM %Dictionary.CompiledProperty WHERE Parent = ? AND (Name = ? OR ? %INLIST $LISTFROMSTRING($TRANSLATE(Aliases,' '))) UNION ALL " +
+			"SELECT 'parameter' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, " +
+			"NULL AS Stub, 0 AS ClassMethod, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ? AND Name = ?",
+		parameters: [baseclass, unquotedname, baseclass, unquotedname, nospace, baseclass, unquotedname],
 	};
 }
 
@@ -125,16 +86,16 @@ class IrisConnection {
 
 	// getMem is declared synchronous in the WIT, but jco's --async-mode jspi wraps
 	// it in WebAssembly.Suspending so this async body can await a REST request and
-	// the analyzer still sees a plain synchronous return. It resolves members of
+	// ascot itself still sees a plain synchronous return. It resolves members of
 	// classes outside the workspace (library/system); workspace classes are served
-	// from the analyzer's own memory and never reach here.
+	// from ascot's own memory and never reach here.
 	public async getMem(cls: string, mem: string): Promise<MemberInfo | undefined> {
 		const key = `${cls}||${mem}`;
 		const cached = this.memCache.get(key);
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
 		const server = await getServerSpec(this.folderURI);
 		if (server === undefined) return undefined;
-		const data = buildMemberMetadataQuery(cls, mem, "any");
+		const data = buildMemberMetadataQuery(cls, mem);
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 		const rows: MemberMetadataRow[] | undefined = respdata?.data?.result?.content;
 		if (!Array.isArray(rows) || rows.length === 0) return undefined;
@@ -153,7 +114,10 @@ class IrisConnection {
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
 		const server = await getServerSpec(this.folderURI);
 		if (server === undefined) return [];
-		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, buildSuperclassesQuery(cls));
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
+			query: "SELECT Super FROM %Dictionary.CompiledClass WHERE Name = ?",
+			parameters: [cls],
+		});
 		const rows = respdata?.data?.result?.content;
 		const supers: string[] =
 			Array.isArray(rows) && typeof rows[0]?.Super === "string" && rows[0].Super.length
@@ -174,7 +138,10 @@ class IrisConnection {
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
 		const server = await getServerSpec(this.folderURI);
 		if (server === undefined) return undefined;
-		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, buildClassTypeQuery(cls));
+		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {
+			query: "SELECT ClassType FROM %Dictionary.CompiledClass WHERE Name = ?",
+			parameters: [cls],
+		});
 		const rows = respdata?.data?.result?.content;
 		const isDatatype = Array.isArray(rows) && rows.length > 0 ? rows[0]?.ClassType === "datatype" : undefined;
 		this.datatypeCache.set(cls, [Date.now(), isDatatype]);
@@ -293,7 +260,7 @@ function splitTopLevel(spec: string): string[] {
 	return out;
 }
 
-async function loadAnalyzer(): Promise<Root> {
+async function loadAscot(): Promise<Root> {
 	const imports = {
 		"iris:ascot/common": {},
 		"iris:ascot/imported": { IrisConnection },
@@ -306,7 +273,7 @@ type MemberInfo = wit.MemberInfo;
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[🧣] `;
 
-const wasm = loadAnalyzer();
+const wasm = loadAscot();
 
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
@@ -339,63 +306,42 @@ function serialize(instance: WorkspaceInstance): WorkspaceInstance {
 	});
 }
 
-const analyzedFolders = new Map<string, WorkspaceInstance>();
+const workspaces = new Map<string, WorkspaceInstance>();
 
-function convertDiagnosticSeverity(severity: wit.DiagnosticSeverity): DiagnosticSeverity {
-	switch (severity) {
-		case "error":
-			return DiagnosticSeverity.Error;
-		case "warning":
-			return DiagnosticSeverity.Warning;
-		case "information":
-			return DiagnosticSeverity.Information;
-		case "hint":
-			return DiagnosticSeverity.Hint;
-		default:
-			return DiagnosticSeverity.Error;
-	}
-}
+const severityMap: Record<wit.DiagnosticSeverity, DiagnosticSeverity> = {
+	error: DiagnosticSeverity.Error,
+	warning: DiagnosticSeverity.Warning,
+	information: DiagnosticSeverity.Information,
+	hint: DiagnosticSeverity.Hint,
+};
 
 function convertDiagnostic(d: wit.Diagnostic): Diagnostic {
 	return {
 		message: d.message,
 		range: d.range,
-		severity: convertDiagnosticSeverity(d.severity),
+		severity: severityMap[d.severity],
 		source: "Ascot via InterSystems Language Server",
 	};
 }
 
-function convertSymbolKind(kind: wit.SymbolKind): LspSymbolKind {
-	switch (kind) {
-		case "class":
-			return LspSymbolKind.Class;
-		case "method":
-			return LspSymbolKind.Method;
-		case "property":
-			return LspSymbolKind.Property;
-		case "interface":
-			return LspSymbolKind.Interface;
-		case "function":
-			return LspSymbolKind.Function;
-		case "constant":
-			return LspSymbolKind.Constant;
-		case "array":
-			return LspSymbolKind.Array;
-		case "object":
-			return LspSymbolKind.Object;
-		case "key":
-			return LspSymbolKind.Key;
-		case "struct":
-			return LspSymbolKind.Struct;
-		case "event":
-			return LspSymbolKind.Event;
-	}
-}
+const symbolKindMap: Record<wit.SymbolKind, LspSymbolKind> = {
+	class: LspSymbolKind.Class,
+	method: LspSymbolKind.Method,
+	property: LspSymbolKind.Property,
+	interface: LspSymbolKind.Interface,
+	function: LspSymbolKind.Function,
+	constant: LspSymbolKind.Constant,
+	array: LspSymbolKind.Array,
+	object: LspSymbolKind.Object,
+	key: LspSymbolKind.Key,
+	struct: LspSymbolKind.Struct,
+	event: LspSymbolKind.Event,
+};
 
 function convertSymbolInfo(info: wit.SymbolInfo): DocumentSymbol {
 	return {
 		name: ascot + info.name,
-		kind: convertSymbolKind(info.kind),
+		kind: symbolKindMap[info.kind],
 		tags: info.deprecated ? [SymbolTag.Deprecated] : [],
 		range: info.range,
 		selectionRange: info.selectionRange,
@@ -407,148 +353,102 @@ function convertSymbolInfo(info: wit.SymbolInfo): DocumentSymbol {
 export async function openDoc(docURI: string, src: string, folderURI?: string): Promise<void> {
 	try {
 		const workspace =
-			typeof folderURI === "string"
-				? await rootURIToAnalyzerWorkspace(folderURI)
-				: await filePathToAnalyzerWorkspace(docURI);
+			typeof folderURI === "string" ? await rootURIToWorkspace(folderURI) : await filePathToWorkspace(docURI);
 		await workspace?.open(docURI, src);
 	} catch (rawError) {
 		console.log(rawError);
 	}
 }
 
-export async function closeDoc(docURI: string): Promise<void> {
-	try {
-		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		await workspace?.close(docURI);
-	} catch (rawError) {
-		console.log(rawError);
-	}
-}
-
-export async function getDiagnostics(docURI: string): Promise<Diagnostic[]> {
-	try {
-		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		if (!workspace) {
-			return [];
-		}
-		return (await workspace.diagnostics(docURI)).map(convertDiagnostic);
-	} catch (rawError) {
-		console.log(rawError);
-		return [];
-	}
-}
-
-export async function inlayHint(docURI: string, range: wit.Range): Promise<wit.InlayHint[]> {
-	try {
-		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		if (!workspace) {
-			return [];
-		}
-		return await workspace.inlayHint(docURI, range);
-	} catch (rawError) {
-		console.log(rawError);
-		return [];
-	}
-}
-
-export async function getDefinition(docURI: string, position: wit.Position): Promise<wit.Location | undefined> {
-	try {
-		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		return await workspace?.definition(docURI, position);
-	} catch (rawError) {
-		console.log(rawError);
-		return undefined;
-	}
-}
-
-export async function getReferences(
+/** Run `fn` against `docURI`'s workspace, logging and falling back to `empty` on any error. */
+async function withWorkspace<T>(
 	docURI: string,
-	position: wit.Position,
-	includeDeclaration: boolean,
-): Promise<wit.Location[]> {
+	empty: T,
+	fn: (workspace: WorkspaceInstance) => Promise<T> | T,
+): Promise<T> {
 	try {
-		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		if (!workspace) {
-			return [];
-		}
-		return await workspace.references(docURI, position, includeDeclaration);
+		return await fn(await filePathToWorkspace(docURI));
 	} catch (rawError) {
 		console.log(rawError);
-		return [];
+		return empty;
 	}
 }
 
-export async function getHover(docURI: string, position: wit.Position): Promise<string | undefined> {
-	try {
-		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		return await workspace?.hover(docURI, position);
-	} catch (rawError) {
-		console.log(rawError);
-		return undefined;
-	}
-}
+export const closeDoc = (docURI: string) =>
+	withWorkspace<void>(docURI, undefined, (w) => {
+		w.close(docURI);
+	});
 
-async function filePathToAnalyzerWorkspace(docURI: string): Promise<WorkspaceInstance> {
+export const getDiagnostics = (docURI: string) =>
+	withWorkspace(docURI, [] as Diagnostic[], async (w) => (await w.diagnostics(docURI)).map(convertDiagnostic));
+
+export const inlayHint = (docURI: string, range: wit.Range) =>
+	withWorkspace(docURI, [] as wit.InlayHint[], (w) => w.inlayHint(docURI, range));
+
+export const getDefinition = (docURI: string, position: wit.Position) =>
+	withWorkspace<wit.Location | undefined>(docURI, undefined, (w) => w.definition(docURI, position));
+
+export const getReferences = (docURI: string, position: wit.Position, includeDeclaration: boolean) =>
+	withWorkspace(docURI, [] as wit.Location[], (w) => w.references(docURI, position, includeDeclaration));
+
+export const getHover = (docURI: string, position: wit.Position) =>
+	withWorkspace<string | undefined>(docURI, undefined, (w) => w.hover(docURI, position));
+
+async function filePathToWorkspace(docURI: string): Promise<WorkspaceInstance> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((folder) => docURI.startsWith(folder.uri));
-	return (folder && rootURIToAnalyzerWorkspace(folder.uri)) || rootURIToAnalyzerWorkspace(docURI);
+	return (folder && rootURIToWorkspace(folder.uri)) || rootURIToWorkspace(docURI);
 }
 
-async function rootURIToAnalyzerWorkspace(folderURI: string): Promise<WorkspaceInstance> {
-	let analyzedFolder = analyzedFolders.get(folderURI);
-	if (!analyzedFolder) {
-		analyzedFolder = serialize(new (await wasm).exported.Workspace(new IrisConnection(folderURI)));
-		analyzedFolders.set(folderURI, analyzedFolder);
+async function rootURIToWorkspace(folderURI: string): Promise<WorkspaceInstance> {
+	let workspace = workspaces.get(folderURI);
+	if (!workspace) {
+		workspace = serialize(new (await wasm).exported.Workspace(new IrisConnection(folderURI)));
+		workspaces.set(folderURI, workspace);
 	}
-	return analyzedFolder;
+	return workspace;
 }
 
-export async function getAnalyzedClass(docURI: string, name: string): Promise<[string, wit.ClassInfo] | null> {
-	for await (const [uri, cls] of getAnalyzedClasses(docURI)) {
-		if (cls.name.content === name) {
-			return [uri, cls];
-		}
+/** Find the entry named `name` in an (`uri`, item)-pair generator, e.g. from `getClasses`/`getClassMembers`. */
+async function findByName<T extends { name: { content: string } }>(
+	entries: AsyncGenerator<[string, T]>,
+	name: string,
+): Promise<[string, T] | null> {
+	for await (const [uri, item] of entries) {
+		if (item.name.content === name) return [uri, item];
 	}
 	return null;
 }
 
-export async function* getAnalyzedClasses(docURI: string): AsyncGenerator<[string, wit.ClassInfo]> {
-	const workspace = await filePathToAnalyzerWorkspace(docURI);
+export const getClass = (docURI: string, name: string) => findByName(getClasses(docURI), name);
+
+export async function* getClasses(docURI: string): AsyncGenerator<[string, wit.ClassInfo]> {
+	const workspace = await filePathToWorkspace(docURI);
 	const classes = await workspace.queryCls("");
 	for (const x of classes) {
 		yield x;
 	}
 }
 
-export async function getAnalyzedClassMember(
-	docURI: string,
-	clsName: string,
-	memName: string,
-): Promise<[string, MemberInfo] | null> {
-	for await (const [uri, mem] of getAnalyzedClassMembers(docURI, clsName, memName)) {
-		if (mem.name.content === memName) {
-			return [uri, mem];
-		}
-	}
-	return null;
-}
+export const getClassMember = (docURI: string, clsName: string, memName: string) =>
+	findByName(getClassMembers(docURI, clsName, memName), memName);
 
-export async function* getAnalyzedClassMembers(
+export async function* getClassMembers(
 	docURI: string,
 	clsName: string,
 	memQuery: string = "",
 	includeExtends: boolean = true,
 ): AsyncGenerator<[string, MemberInfo]> {
-	const workspace = await filePathToAnalyzerWorkspace(docURI);
+	const workspace = await filePathToWorkspace(docURI);
 	for (const x of await workspace.queryMem(clsName, memQuery)) {
 		yield x;
 	}
 	if (includeExtends) {
-		const result = await getAnalyzedClass(docURI, clsName);
+		const result = await getClass(docURI, clsName);
 		if (result) {
 			const cls = result[1];
 			for (const sup of cls.extends) {
-				yield* getAnalyzedClassMembers(docURI, sup, memQuery);
+				yield* getClassMembers(docURI, sup, memQuery);
 			}
 		}
 	}
@@ -567,37 +467,22 @@ export function prettifyNormalArg(arg: wit.NormalArg): string {
 }
 
 // The class declared in `docURI`, and its members, as a `textDocument/documentSymbol` outline.
-export async function getDocumentSymbol(docURI: string): Promise<DocumentSymbol[]> {
-	try {
-		const workspace = await filePathToAnalyzerWorkspace(docURI);
-		const classSymbol = await workspace?.documentSymbol(docURI);
-		if (!classSymbol) return [];
-		return [
-			{
-				...convertSymbolInfo(classSymbol.class),
-				children: classSymbol.members.map(convertSymbolInfo),
-			},
-		];
-	} catch (rawError) {
-		console.log(rawError);
-		return [];
-	}
-}
+export const getDocumentSymbol = (docURI: string) =>
+	withWorkspace(docURI, [] as DocumentSymbol[], async (w) => {
+		const classSymbol = await w.documentSymbol(docURI);
+		return classSymbol
+			? [{ ...convertSymbolInfo(classSymbol.class), children: classSymbol.members.map(convertSymbolInfo) }]
+			: [];
+	});
 
 // Classes and members in `folderURI`'s workspace folder whose name starts with `query`, as a
 // `workspace/symbol` result.
-export async function getWorkspaceSymbol(folderURI: string, query: string): Promise<SymbolInformation[]> {
-	try {
-		const workspace = await filePathToAnalyzerWorkspace(folderURI);
-		const symbols = (await workspace?.workspaceSymbol(query)) ?? [];
-		return symbols.map((symbol) => ({
+export const getWorkspaceSymbol = (folderURI: string, query: string) =>
+	withWorkspace(folderURI, [] as SymbolInformation[], async (w) =>
+		(await w.workspaceSymbol(query)).map((symbol) => ({
 			name: ascot + symbol.name,
-			kind: convertSymbolKind(symbol.kind),
+			kind: symbolKindMap[symbol.kind],
 			tags: symbol.deprecated ? [SymbolTag.Deprecated] : [],
 			location: symbol.location,
-		}));
-	} catch (rawError) {
-		console.log(rawError);
-		return [];
-	}
-}
+		})),
+	);

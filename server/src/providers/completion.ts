@@ -37,7 +37,7 @@ import {
 	LanguageServerConfiguration,
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { ascot, getAnalyzedClassMembers, getAnalyzedClasses } from "../ascot";
+import { ascot, getClassMembers, getClasses } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -573,7 +573,7 @@ async function* completionFullClassName(
 	settings: LanguageServerConfiguration,
 ): AsyncGenerator<CompletionItem> {
 	const added = new Set<string>();
-	for await (const [uri, cls] of getAnalyzedClasses(doc.uri)) {
+	for await (const [uri, cls] of getClasses(doc.uri)) {
 		added.add(cls.name.content);
 		const item = makeClassCompletionItem(
 			[] /* I tried getImports() but it gives false imports */,
@@ -607,8 +607,6 @@ async function* completionFullClassName(
 			yield compItem;
 		}
 	}
-
-	return;
 }
 
 /**
@@ -1261,7 +1259,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 
 				const added = new Set<string>();
-				for await (const [, mem] of getAnalyzedClassMembers(params.textDocument.uri, membercontext.baseclass)) {
+				for await (const [, mem] of getClassMembers(params.textDocument.uri, membercontext.baseclass)) {
 					if (mem.kind.tag === "parameter") {
 						const name = quoteUDLIdentifier(mem.name.content, 1);
 						added.add(name);
@@ -1330,7 +1328,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 
 				const added = new Set<string>();
-				for await (const [, mem] of getAnalyzedClassMembers(params.textDocument.uri, membercontext.baseclass)) {
+				for await (const [, mem] of getClassMembers(params.textDocument.uri, membercontext.baseclass)) {
 					const name = quoteUDLIdentifier(mem.name.content, 1);
 					added.add(name);
 					const item: CompletionItem = {
@@ -2447,21 +2445,16 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 function makeClassCompletionItem(imports: string[], name: string, uri: TextDocument["uri"], deprecated: boolean) {
 	let displayname: string = name;
 	let sortText: string | undefined;
-	if (imports.length > 0) {
-		for (const imp of imports) {
-			if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
-				displayname = displayname.slice(imp.length + 1);
-				sortText = "%%%" + displayname;
-				break;
-			}
+	for (const imp of imports) {
+		if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
+			displayname = displayname.slice(imp.length + 1);
+			sortText = "%%%" + displayname;
+			break;
 		}
-		if (displayname.startsWith("%Library.")) {
-			displayname = "%" + displayname.slice(9);
-		}
-	} else {
-		if (displayname.startsWith("%Library.")) {
-			displayname = "%" + displayname.slice(9);
-		}
+	}
+	if (displayname.startsWith("%Library.")) {
+		// Use short form for %Library classes
+		displayname = "%" + displayname.slice(9);
 	}
 	const compItem: CompletionItem = {
 		label: displayname,
@@ -2485,7 +2478,7 @@ async function* completionPartialClassName(
 ): AsyncGenerator<CompletionItem> {
 	filter += filter.endsWith(".") ? "" : ".";
 	const added = new Set<string>();
-	for await (const [, cls] of getAnalyzedClasses(doc.uri)) {
+	for await (const [, cls] of getClasses(doc.uri)) {
 		if (!cls.name.content.startsWith(filter)) {
 			continue;
 		}

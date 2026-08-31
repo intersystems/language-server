@@ -229,15 +229,15 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 		return null;
 	}
 
-	// The analyzer's own reference table covers cases the REST-based lookups below don't
+	// ascot's own reference table covers cases the REST-based lookups below don't
 	// (self-references, same-routine label calls/gotos) — prefer it whenever it has an answer.
-	const analyzedTarget = await getDefinition(params.textDocument.uri, params.position);
-	if (analyzedTarget) {
+	const ascotTarget = await getDefinition(params.textDocument.uri, params.position);
+	if (ascotTarget) {
 		return [
 			{
-				targetUri: analyzedTarget.uri,
-				targetRange: analyzedTarget.range,
-				targetSelectionRange: analyzedTarget.range,
+				targetUri: ascotTarget.uri,
+				targetRange: ascotTarget.range,
+				targetSelectionRange: ascotTarget.range,
 			},
 		];
 	}
