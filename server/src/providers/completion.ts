@@ -38,6 +38,7 @@ import {
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
 import { getAnalyzedClassMembers, getAnalyzedClasses } from "../ascot";
+import { URI } from "vscode-uri";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -709,7 +710,7 @@ async function globalsOrRoutines(
 	server: ServerSpec,
 	lineText: string,
 	prefix: string = "",
-): Promise<CompletionItem[]> {
+): Promise<CompletionItem[] | null> {
 	// Determine if this is a routine or global, and return null if we're in $BITLOGIC
 	let brk = false,
 		parenLevel = 0,
@@ -810,7 +811,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
 	const prevline = doc.getText(Range.create(Position.create(params.position.line, 0), params.position));
 	const prevlineLower = prevline.toLowerCase();
-
 	const classregex =
 		/^class[ ]+%?[\p{L}\d]+(\.{1}[\p{L}\d]+)* +extends[ ]+(\(([%]?[\p{L}\d]+(\.{1}[\p{L}\d]+)*,[ ]*)*)?$/iu;
 	let firsttwotokens = "";
@@ -1149,7 +1149,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				let displayname: string = clsobj.Name;
 				if (imports.length > 0) {
 					// Resolve import
-					let sortText: string;
+					let sortText: string | undefined;
 					for (const imp of imports) {
 						if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
 							displayname = displayname.slice(imp.length + 1);
@@ -1272,7 +1272,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		} else if (globalOrRoutineMatch && triggerlang == ld.cos_langindex) {
 			// This might be a routine or global
 
-			result = await globalsOrRoutines(
+			result = (await globalsOrRoutines(
 				doc,
 				parsed,
 				params.position.line,
@@ -1281,7 +1281,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				server,
 				prevline.slice(0, -globalOrRoutineMatch[1].length),
 				globalOrRoutineMatch[1],
-			);
+			))!;
 		} else {
 			// This is a class member
 
@@ -2479,7 +2479,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	} else if (prevline.endsWith("^") && triggerlang == ld.cos_langindex) {
 		// This might be a routine or global
 
-		result = await globalsOrRoutines(doc, parsed, params.position.line, thistoken, settings, server, prevline);
+		result = (await globalsOrRoutines(doc, parsed, params.position.line, thistoken, settings, server, prevline))!;
 	}
 	return result;
 }
@@ -2564,5 +2564,3 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 	}
 	return item;
 }
-
-import { URI } from "vscode-uri";
