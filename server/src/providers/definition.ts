@@ -215,7 +215,7 @@ function findMemberInCurrentClass(
 	}
 }
 
-export async function onDefinition(params: TextDocumentPositionParams): Promise<LocationLink[]> {
+export async function onDefinition(params: TextDocumentPositionParams): Promise<LocationLink[] | null | undefined> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -224,7 +224,10 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 	if (parsed === undefined) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
+	if (!server) {
+		return null;
+	}
 
 	// The analyzer's own reference table covers cases the REST-based lookups below don't
 	// (self-references, same-routine label calls/gotos) — prefer it whenever it has an answer.

@@ -5,7 +5,7 @@ import { URI } from "vscode-uri";
 
 export const onWorkspaceSymbol = async (params: WorkspaceSymbolParams): Promise<SymbolInformation[]> => {
 	const output: SymbolInformation[] = [];
-	for (const folder of await connection.workspace.getWorkspaceFolders()) {
+	for (const folder of (await connection.workspace.getWorkspaceFolders()) ?? []) {
 		output.push(...(await getWorkspaceSymbol(URI.parse(folder.uri), params.query)));
 	}
 	return output;

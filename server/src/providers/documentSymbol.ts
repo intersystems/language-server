@@ -65,7 +65,7 @@ function processMember(
 	return { deprecated, lastNonEmpty };
 }
 
-export async function onDocumentSymbol(params: DocumentSymbolParams): Promise<DocumentSymbol[]> {
+export async function onDocumentSymbol(params: DocumentSymbolParams) {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -330,7 +330,7 @@ export async function onDocumentSymbol(params: DocumentSymbolParams): Promise<Do
 					labelrange.start.line >= result[result.length - 1].range.start.line &&
 					labelrange.start.line <= result[result.length - 1].range.end.line;
 
-				let firstbrace: [number, number] | undefined = undefined;
+				let firstbrace: [number, number] | undefined;
 				if (!inProcedureBlock) {
 					// Check if this label is a procedure block
 					firstbrace = labelIsProcedureBlock(doc, parsed, line);

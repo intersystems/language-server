@@ -5,14 +5,20 @@
 		"moduleResolution": "node16",
 		"sourceMap": true,
 		"strict": true,
-		"strictNullChecks": false,
+		"strictNullChecks": true,
 		"outDir": "out",
 		"rootDir": "src",
 		"noImplicitAny": false,
 		"resolveJsonModule": true,
 		"esModuleInterop": true,
-		"allowJs": true
+		"allowJs": true,
+		"skipLibCheck": true
 	},
+	"references": [
+		{
+			"path": "../common"
+		}
+	],
 	"include": ["src"],
 	"exclude": ["node_modules", ".vscode-test"]
 }

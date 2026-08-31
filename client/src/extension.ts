@@ -31,10 +31,18 @@ import {
 	selectParameterType,
 	setSelection,
 } from "./commands";
-import { makeRESTRequest, ServerSpec } from "./makeRESTRequest";
+import { makeRESTRequest } from "./makeRESTRequest";
 import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from "./requestForwarding";
+import type { ServerSpec, ProtocolMethods } from "../../common/out/types";
+import type { Disposable } from "vscode-languageclient";
+import { Authorization, ResolvedAuthorization } from "@intersystems-community/intersystems-servermanager";
 
-export let client: LanguageClient;
+export let client: {
+	onRequest<K extends keyof ProtocolMethods>(
+		method: K,
+		handler: (params: Parameters<ProtocolMethods[K]>[0]) => ReturnType<ProtocolMethods[K]>,
+	): Disposable;
+} & Omit<LanguageClient, "onRequest">;
 
 /**
  * Cache for cookies from REST requests to InterSystems servers.
@@ -61,21 +69,11 @@ export function getCookies(server: ServerSpec): string[] {
 	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`) ?? [];
 }
 
-let objectScriptApi: any;
+let objectScriptApi: serverManager.VSCodeObjectScriptAPI;
 let serverManagerApi: serverManager.ServerManagerAPI;
 
 /** Resolved connection information for each workspace folder */
 const wsFolderServerSpecs: Map<string, ServerSpec> = new Map();
-
-type MakeRESTRequestParams = {
-	method: "GET" | "POST";
-	api: number;
-	path: string;
-	server: ServerSpec;
-	data?: any;
-	checksum?: string;
-	params?: any;
-};
 
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
@@ -164,29 +162,32 @@ export async function activate(context: ExtensionContext) {
 		});
 	}
 
-	const textDecoder = new TextDecoder();
-	context.subscriptions.push(
-		// Register custom request handlers
-		client.onRequest("intersystems/server/resolveFromUri", async (uri: string) => {
-			const uriObj = Uri.parse(uri);
-			const wsFolderUriString = workspace.getWorkspaceFolder(uriObj)?.uri.toString();
-			const serverSpec = objectScriptApi.serverForUri(uriObj);
+	// Resolve the ServerSpec for a document or workspace folder URI, prompting
+	// for a missing password via the Server Manager's authentication provider.
+	async function resolveServerSpec(uri: Uri): Promise<ServerSpec | undefined> {
+		try {
+			const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
+			const serverSpec = objectScriptApi.serverForUri(uri);
+			if (serverSpec === undefined) {
+				return;
+			}
+			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
 			if (
 				// Server was resolved
 				serverSpec.host !== "" &&
 				// Connection isn't unauthenticated
-				serverSpec.username != undefined &&
-				serverSpec.username != "" &&
-				serverSpec.username.toLowerCase() != "unknownuser" &&
+				auth.username != undefined &&
+				auth.username != "" &&
+				auth.username.toLowerCase() != "unknownuser" &&
 				// A password is missing
-				typeof serverSpec.password === "undefined" &&
+				typeof auth.password === "undefined" &&
 				// A supported version of the Server Manager is installed
 				serverManagerExt != undefined &&
 				gt(serverManagerExt.packageJSON.version, "3.0.0")
 			) {
 				// The main extension didn't provide a password, so we must
 				// get it from the server manager's authentication provider.
-				const scopes = [serverSpec.serverName, serverSpec.username];
+				const scopes = [serverSpec.serverName, auth.username];
 				try {
 					const account = serverManagerApi?.getAccount
 						? serverManagerApi.getAccount({ name: serverSpec.serverName, ...serverSpec })
@@ -202,8 +203,10 @@ export async function activate(context: ExtensionContext) {
 						});
 					}
 					if (session) {
-						serverSpec.username = session.scopes[1];
-						serverSpec.password = session.accessToken;
+						auth.resolve({
+							username: session.scopes[1],
+							accessToken: session.accessToken,
+						});
 					}
 				} catch (error) {
 					// The user did not consent to sharing authentication information
@@ -213,23 +216,48 @@ export async function activate(context: ExtensionContext) {
 				}
 			}
 			if (
-				typeof serverSpec.username == "string" &&
-				serverSpec.username.toLowerCase() == "unknownuser" &&
-				typeof serverSpec.password == "undefined"
+				typeof auth.username == "string" &&
+				auth.username.toLowerCase() == "unknownuser" &&
+				typeof auth.password == "undefined"
 			) {
 				// UnknownUser without a password means "unauthenticated"
-				serverSpec.username = undefined;
+				auth.clear() as void;
 			}
+			const server: ServerSpec = {
+				...serverSpec,
+				username: auth.username,
+				credentials: auth.credentials,
+			};
 			if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
-				wsFolderServerSpecs.set(wsFolderUriString, serverSpec);
+				wsFolderServerSpecs.set(wsFolderUriString, server);
 			}
-			return serverSpec;
-		}),
-		client.onRequest("intersystems/uri/localToVirtual", (uri: string): string => {
+			return server;
+		} catch {
+			// Treat any thrown error as "no server connection"
+		}
+	}
+
+	// Ensure that every server has at most one session.
+	for (const f of workspace.workspaceFolders ?? []) {
+		try {
+			const serverSpec = await resolveServerSpec(f.uri);
+			if (serverSpec?.active) {
+				await makeRESTRequest("HEAD", 0, "", serverSpec);
+			}
+		} catch {
+			// Ignore any failure; the session will be created on demand instead
+		}
+	}
+
+	const textDecoder = new TextDecoder();
+	context.subscriptions.push(
+		// Register custom request handlers
+		client.onRequest("intersystems/server/resolveFromUri", (uri) => resolveServerSpec(Uri.parse(uri))),
+		client.onRequest("intersystems/uri/localToVirtual", (uri) => {
 			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
 			return newuri.toString();
 		}),
-		client.onRequest("intersystems/uri/forDocument", (document: string): string | null => {
+		client.onRequest("intersystems/uri/forDocument", (document) => {
 			if (lte(objectScriptExt.packageJSON.version, "1.0.10")) {
 				// If the active version of vscode-objectscript doesn't expose
 				// DocumentContentProvider.getUri(), just return the empty string.
@@ -238,7 +266,7 @@ export async function activate(context: ExtensionContext) {
 			const uri: Uri | null = objectScriptApi.getUriForDocument(document);
 			return uri == null ? null : uri.toString();
 		}),
-		client.onRequest("intersystems/uri/forTypeHierarchyClasses", (classes: string[]): string[] => {
+		client.onRequest("intersystems/uri/forTypeHierarchyClasses", (classes) => {
 			// vscode-objectscript version 1.0.11+ has been available for long enough that
 			// it's safe to assume that users have upgraded to at least 1.0.11
 			return classes.map((cls: string) => {
@@ -246,28 +274,17 @@ export async function activate(context: ExtensionContext) {
 				return uri.toString();
 			});
 		}),
-		client.onRequest(
-			"intersystems/server/makeRESTRequest",
-			async (args: MakeRESTRequestParams): Promise<any | undefined> => {
-				// As of version 2.0.0, REST requests are made on the client side
-				return makeRESTRequest(
-					args.method,
-					args.api,
-					args.path,
-					args.server,
-					args.data,
-					args.checksum,
-					args.params,
-				).then((respdata) => {
+		client.onRequest("intersystems/server/makeRESTRequest", async (args) => {
+			// As of version 2.0.0, REST requests are made on the client side
+			return makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params).then(
+				(respdata) => {
 					if (respdata) {
 						// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
 						return { data: respdata.data };
-					} else {
-						return undefined;
 					}
-				});
-			},
-		),
+				},
+			);
+		}),
 		client.onRequest(
 			"intersystems/uri/getText",
 			async (params: { uri: string; server: ServerSpec }): Promise<string[]> => {
@@ -327,7 +344,7 @@ export async function activate(context: ExtensionContext) {
 	);
 
 	// Start the client. This will also launch the server
-	client.start();
+	await client.start();
 
 	const workbenchConfig = workspace.getConfiguration("workbench");
 	if (
@@ -436,4 +453,59 @@ export async function deactivate(): Promise<void> {
 		);
 	}
 	await Promise.allSettled(promises);
+}
+
+// A copy of the BasicAuthorization class from ServerManager
+// We use it to patch older version of getServerSpec.
+export default class BasicAuthorization implements Authorization {
+	#username?: string;
+	#password?: string;
+	constructor(username?: string, password?: string) {
+		this.#username = username;
+		this.#password = password;
+	}
+
+	public get username(): string {
+		return this.#username || "";
+	}
+
+	public get password(): string | undefined {
+		return this.#password;
+	}
+
+	public get accessToken(): string | undefined {
+		return this.#password;
+	}
+
+	public get httpAuthorizationHeader(): string {
+		return `Basic ${Buffer.from(`${this.#username}:${this.#password}`).toString("base64")}`;
+	}
+
+	public resolved(): this is ResolvedAuthorization {
+		return this.username !== "" && this.#password !== undefined;
+	}
+
+	public resolve(param: { accessToken: string; username?: string }): this is ResolvedAuthorization {
+		this.#username = param.username ?? this.#username;
+		this.#password = param.accessToken ?? this.#password;
+		return this.resolved();
+	}
+
+	public clear(): asserts this is Authorization {
+		this.#password = undefined;
+	}
+
+	public get credentials(): { auth: { username: string; password: string }; headers?: Record<string, string> } {
+		return {
+			auth: {
+				username: this.username,
+				password: this.password!,
+			},
+			headers: {},
+		};
+	}
+
+	public clone(): BasicAuthorization {
+		return new BasicAuthorization(this.#username, this.#password);
+	}
 }

@@ -14,7 +14,7 @@ import { TextDocument } from "vscode-languageserver-textdocument";
 import parameterTypes from "../documentation/parameterTypes.json";
 
 import * as ld from "../utils/languageDefinitions";
-import { compressedline, QueryData, ServerSpec } from "../utils/types";
+import { compressedline, QueryData } from "../utils/types";
 import {
 	getServerSpec,
 	findFullRange,
@@ -249,7 +249,10 @@ export async function listOverridableMembers(params: ListOverridableMembersParam
 	if (parsed === undefined) {
 		return [];
 	}
-	const server: ServerSpec = await getServerSpec(params.uri);
+	const server = await getServerSpec(params.uri);
+	if (!server) {
+		return [];
+	}
 	const result: QuickPickItem[] = [];
 
 	// Determine what class this is
@@ -406,7 +409,10 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 	if (parsed === undefined) {
 		return {};
 	}
-	const server: ServerSpec = await getServerSpec(params.uri);
+	const server = await getServerSpec(params.uri);
+	if (!server) {
+		return {};
+	}
 
 	// Insert the new members at the cursor position (offset by one line)
 	const insertpos = params.cursor;
@@ -419,7 +425,7 @@ export async function addOverridableMembers(params: AddOverridableMembersParams)
 	// Loop through the QuickPickItem array and map all origin classes to the members
 	const membersPerOrigin: Map<string, string[]> = new Map();
 	for (const member of params.members) {
-		const origin = member.detail.split(" ")[member.detail.split(" ").length - 1] + ".cls";
+		const origin = member.detail!.split(" ")[member.detail!.split(" ").length - 1] + ".cls";
 		if (membersPerOrigin.has(origin)) {
 			// Add this member to the array of members for this origin class
 			const membersarr = membersPerOrigin.get(origin);
@@ -600,7 +606,10 @@ export function listParameterTypes(): QuickPickItem[] {
  * Handler function for the `intersystems/refactor/listImportPackages` request.
  */
 export async function listImportPackages(params: ListImportPackagesParams): Promise<QuickPickItem[]> {
-	const server: ServerSpec = await getServerSpec(params.uri);
+	const server = await getServerSpec(params.uri);
+	if (!server) {
+		return [];
+	}
 	const result: QuickPickItem[] = [];
 	const classname: string = params.classmame;
 
@@ -730,7 +739,10 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 	if (insertSpaces === true) {
 		tab = " ".repeat(tabSize);
 	}
-	const server: ServerSpec = await getServerSpec(params.uri);
+	const server = await getServerSpec(params.uri);
+	if (!server) {
+		return null;
+	}
 	if (multilinearg === true && server.apiVersion >= 4) {
 		comma = ", \n" + tab;
 	}
@@ -757,7 +769,7 @@ export async function addMethod(params: AddMethodParams): Promise<WorkspaceEdit 
 	let foundprocedureblock: boolean = false;
 	let endprocedureblocksearch: boolean = false;
 	let nexttkn: number = 0;
-	let methodprocedureblock: boolean | undefined = undefined;
+	let methodprocedureblock: boolean | undefined;
 	const donorargs: [string, boolean, string][] = []; // List of arguments of the donor method
 	let donorarg: [string, boolean, string] = ["", false, ""]; // Argument properties: Name, ByRef/Output, Type/Parameters)
 	let previoustknln = params.lnmethod;

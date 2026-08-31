@@ -61,7 +61,7 @@ turndown.addRule("pre", {
 				/* empty */
 			}
 		} else {
-			switch (attrVal.split("!").shift().toUpperCase()) {
+			switch (attrVal.split("!").shift()!.toUpperCase()) {
 				case "OBJECTSCRIPT":
 				case "COS":
 				case "INT":
@@ -81,7 +81,7 @@ turndown.addRule("pre", {
 					break;
 				case "JAVASCRIPT":
 				case "JS":
-					lang = attrVal.split("!").pop().toUpperCase() == "JSON" ? "json" : "javascript";
+					lang = attrVal.split("!").pop()!.toUpperCase() == "JSON" ? "json" : "javascript";
 					break;
 				case "CSS":
 					lang = "css";
@@ -109,6 +109,7 @@ turndown.addRule("documaticArgs", {
 		if (node.children.length > 0) {
 			return `\n#### Arguments:\n${content}\n`;
 		}
+		return "";
 	},
 });
 turndown.addRule("documaticArg", {
@@ -118,6 +119,7 @@ turndown.addRule("documaticArg", {
 		if (attrVal !== null) {
 			return `\n- \`${attrVal}\` - ${content}`;
 		}
+		return "";
 	},
 });
 turndown.addRule("documaticReturn", {
@@ -610,7 +612,7 @@ export async function getImports(
 	doc: TextDocument,
 	parsed: compressedline[],
 	line: number,
-	server: ServerSpec,
+	server?: ServerSpec,
 	inheritedpackages?: string[],
 ): Promise<string[]> {
 	let result: string[] = [];
@@ -778,7 +780,7 @@ export async function normalizeClassname(
 	doc: TextDocument,
 	parsed: compressedline[],
 	clsname: string,
-	server: ServerSpec,
+	server: ServerSpec | undefined,
 	line: number,
 	allfiles?: StudioOpenDialogFile[],
 	possiblecls?: PossibleClasses,
@@ -915,7 +917,7 @@ export async function getClassMemberContext(
 	parsed: compressedline[],
 	dot: number,
 	line: number,
-	server: ServerSpec,
+	server?: ServerSpec,
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext> {
@@ -1089,7 +1091,7 @@ export async function getClassMemberContext(
 					) == ",")))
 	) {
 		// The token before the dot is a parameter, local variable, public variable or warning variable
-		const varClass = await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages);
+		const varClass = server && await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages);
 		if (varClass) result = { baseclass: varClass, context: "instance" };
 	} else if (
 		dot > 0 &&
@@ -1208,13 +1210,13 @@ export async function makeRESTRequest(
 	method: "GET" | "POST",
 	api: number,
 	path: string,
-	server: ServerSpec,
+	server?: ServerSpec,
 	data?: any,
 	checksum?: string,
 	params?: any,
 ): Promise<any | undefined> {
 	// As of version 2.0.0, REST requests are made on the client side
-	return connection
+	return server && connection
 		.sendRequest("intersystems/server/makeRESTRequest", {
 			method,
 			api,
@@ -1232,14 +1234,16 @@ export async function makeRESTRequest(
  *
  * @param uri The TextDocument URI
  */
-export async function getServerSpec(uri: string): Promise<ServerSpec> {
+export async function getServerSpec(uri: string): Promise<ServerSpec | undefined> {
 	const spec = serverSpecs.get(uri);
 	if (spec !== undefined) {
 		return spec;
 	}
-	const newspec: ServerSpec = await connection.sendRequest("intersystems/server/resolveFromUri", uri);
-	serverSpecs.set(uri, newspec);
-	return newspec;
+	const newspec = await connection.sendRequest("intersystems/server/resolveFromUri", uri);
+	if (newspec) {
+		serverSpecs.set(uri, newspec);
+		return newspec;
+	}
 }
 
 /**
@@ -1343,7 +1347,7 @@ export async function findMethodParameterClass(
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext | undefined> {
-	let result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined;
 	for (let tkn = 0; tkn < parsed[line].length; tkn++) {
 		if (parsed[line][tkn].l == ld.cls_langindex && parsed[line][tkn].s == ld.cls_param_attrindex) {
 			// This is a parameter
@@ -1644,7 +1648,7 @@ async function determineParameterClass(
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext | undefined> {
-	let result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined;
 	if (doc.languageId === "objectscript-class") {
 		// Parameters can only have a type if they're in a UDL method
 
@@ -1736,7 +1740,7 @@ async function determineDeclaredLocalVarClass(
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext | undefined> {
-	let result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined;
 
 	if (varText === "%request") {
 		result = {
@@ -1893,11 +1897,11 @@ async function parseSetCommand(
 	let inPostconditional = false;
 	let pcParenCount = 0;
 	let foundVar = false;
-	let operatorTuple: [number, number] | undefined = undefined;
+	let operatorTuple: [number, number] | undefined;
 	let exprLeadingParenCount = 0;
 	let exprParenLevel = 0;
-	let firstExprTuple: [number, number] | undefined = undefined;
-	let lastMemTuple: [number, number] | undefined = undefined;
+	let firstExprTuple: [number, number] | undefined;
+	let lastMemTuple: [number, number] | undefined;
 	for (let ln = line; ln < parsed.length; ln++) {
 		if (!parsed[ln]?.length) continue;
 		for (let tkn = ln == line ? token + 1 : 0; tkn < parsed[ln].length; tkn++) {
@@ -2360,7 +2364,7 @@ async function determineUndeclaredLocalVarClass(
 	allfiles?: StudioOpenDialogFile[],
 	inheritedpackages?: string[],
 ): Promise<ClassMemberContext | undefined> {
-	let result: ClassMemberContext | undefined = undefined;
+	let result: ClassMemberContext | undefined;
 
 	// Scan to the top of the method to find where the variable was Set or passed by reference
 	let firstLabel = true;
@@ -3044,7 +3048,7 @@ export function labelIsProcedureBlock(
 ): [number, number] | undefined {
 	const lastLabelTkn = parsed[line].length > 1 && parsed[line][1].s == ld.cos_label_attrindex ? 1 : 0;
 	let currentLabelIsProcedureBlock: boolean = false;
-	let result: [number, number] | undefined = undefined;
+	let result: [number, number] | undefined;
 
 	if (
 		parsed[line].length > lastLabelTkn + 1 &&
@@ -3250,13 +3254,13 @@ export async function getMemberType(
 	tkn: number,
 	cls: string,
 	member: string,
-	server: ServerSpec,
+	server?: ServerSpec,
 ): Promise<string> {
 	if (
 		// We assume these methods always return an instance of the class
 		(["%New", "%Open", "%OpenId"].includes(member) && parsed[line][tkn].s != ld.cos_attr_attrindex) ||
 		// Config class Open methods function like %Open(Id)
-		(cls.startsWith("Config.") && member == "Open" && server.namespace.toUpperCase() == "%SYS")
+		(cls.startsWith("Config.") && member == "Open" && server?.namespace.toUpperCase() == "%SYS")
 	) {
 		return cls;
 	}
@@ -3360,7 +3364,7 @@ export function urlMapAttribute(
 	parsed: compressedline[],
 	line: number,
 	token: number,
-): "Call" | "Forward" | "" {
+): "Call" | "Forward" | "" | undefined {
 	// Determine if we're in a UrlMap XData block
 	let inUrlMap = false;
 	for (let ln = line; ln >= 0; ln--) {
@@ -3494,7 +3498,10 @@ export function determineActiveParam(text: string): number {
 const showInternalCache: Map<string, boolean> = new Map();
 
 /** Determine if class members with the `Internal` keyword and system globals should be shown in the completion list */
-export async function showInternalForServer(server: ServerSpec): Promise<boolean> {
+export async function showInternalForServer(server?: ServerSpec): Promise<boolean> {
+	if (! server) {
+		return false;
+	}
 	const key = `${server.host}::${server.port}::${server.pathPrefix}::${server.username}`;
 	let result = showInternalCache.get(key);
 	if (result != undefined) return result;

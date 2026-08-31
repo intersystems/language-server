@@ -15,7 +15,7 @@ import {
 	makeRESTRequest,
 	normalizeClassname,
 } from "../utils/functions";
-import { CommandDoc, StudioOpenDialogFile, ServerSpec } from "../utils/types";
+import { CommandDoc, StudioOpenDialogFile } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 import commands from "../documentation/commands.json";
@@ -40,7 +40,10 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 		return null;
 	}
 	const settings = await getLanguageServerSettings(uri);
-	const server: ServerSpec = await getServerSpec(doc.uri);
+	const server = await getServerSpec(doc.uri);
+	if (!server) {
+		return null;
+	}
 
 	if (range == undefined) {
 		// If no range was specified, format the whole document
@@ -63,7 +66,7 @@ async function formatText(uri: DocumentUri, range?: Range): Promise<TextEdit[] |
 	}
 
 	let classes: StudioOpenDialogFile[] = [];
-	let inheritedpackages: string[] | undefined = undefined;
+	let inheritedpackages: string[] | undefined;
 	if (settings.formatting.expandClassNames) {
 		// Get all classes
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, {

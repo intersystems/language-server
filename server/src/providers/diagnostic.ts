@@ -21,7 +21,7 @@ import {
 	isClassMember,
 } from "../utils/functions";
 import { zutilFunctions, lexerLanguages, documents } from "../utils/variables";
-import { ServerSpec, StudioOpenDialogFile, QueryData } from "../utils/types";
+import { StudioOpenDialogFile, QueryData } from "../utils/types";
 import * as ld from "../utils/languageDefinitions";
 import parameterTypes from "../documentation/parameterTypes.json";
 import sqlReservedWords from "../documentation/sqlReservedWords.json";
@@ -61,7 +61,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	const parsed = await getParsedDocument(params.textDocument.uri);
 	if (parsed === undefined) throw new Error("Document not parsed");
 
-	const server: ServerSpec = await getServerSpec(doc.uri);
+	const server = await getServerSpec(doc.uri);
 	const settings = await getLanguageServerSettings(doc.uri);
 	const diagnostics: Diagnostic[] = await ascot.getDiagnostics(doc.uri);
 
@@ -263,10 +263,13 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 	const properties: Map<string, Range[]> = new Map();
 	const classes: Map<string, Range[]> = new Map();
 
-	// Keep track of current namespace for class/routine existence checks
-	const baseNs = server.namespace.toUpperCase();
-	let currentNs = baseNs;
-	let nsNestedBlockLevel = 0;
+	// Keep track of current namespace for class/routine existence checks.
+	const nsContext = server?.namespace && {
+		server,
+		baseNs: server.namespace.toUpperCase(),
+		currentNs: server.namespace.toUpperCase(),
+		nsNestedBlockLevel: 0,
+	};
 	const validNsRegex = /^"[A-Za-z%]?[A-Za-z0-9-_]+"$/;
 
 	// Store the ns, name and ranges of all classes and routines from other namespaces that we see
@@ -279,7 +282,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 	// Don't report diagnostics in a #if 0 block, and
 	// mark all of the code in the block as "unused"
-	let ifZeroStartPos: Position;
+	let ifZeroStartPos: Position | undefined;
 	const ifZeroStart = /^\s*#if\s+(?:0|"0")(?:$|\s)/i;
 	const ifZeroEnd = /^\s*#elseif\s+|(?:#else|#endif)(?:$|\s)/i;
 
@@ -401,7 +404,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						});
 					} else if (isPersistent) {
 						// Check if a SqlTableName is present
-						let sqlTableName: Range,
+						let sqlTableName: Range | undefined,
 							hasSqlTableName = false;
 						for (let k = j + 1; k < parsed[i].length; k++) {
 							if (hasSqlTableName) {
@@ -438,9 +441,9 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									source: "InterSystems Language Server",
 								});
 							}
-						} else if (sqlReservedWords.includes(word.split(".").pop().toUpperCase())) {
+						} else if (sqlReservedWords.includes(word.split(".").pop()!.toUpperCase())) {
 							// The short class name is a reserved word, and it's not corrected by a SqlTableName
-							wordrange.start.character = wordrange.end.character - word.split(".").pop().length;
+							wordrange.start.character = wordrange.end.character - word.split(".").pop()!.length;
 							diagnostics.push({
 								severity: DiagnosticSeverity.Warning,
 								range: wordrange,
@@ -532,11 +535,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							// The type is valid
 
 							// See if this Parameter has a value
-							let valuetkn: number;
+							let valuetkn: number | undefined;
 							const delimtext = doc.getText(Range.create(i, parsed[i][4].p, i, parsed[i][4].p + parsed[i][4].c));
 							if (delimtext === "[") {
 								// Loop through the line to find the closing brace
-								let closingtkn: number;
+								let closingtkn: number | undefined;
 								for (let ptkn = 5; ptkn < parsed[i].length; ptkn++) {
 									if (
 										parsed[i][ptkn].l == ld.cls_langindex &&
@@ -612,11 +615,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									}
 									// Check if class exists
 									const filtered = files.filter((file) => file.Name === classname + ".cls");
-									if (filtered.length !== 1 && !classname.startsWith("%SYSTEM.")) {
+									if (nsContext && filtered.length !== 1 && !classname.startsWith("%SYSTEM.")) {
 										diagnostics.push({
 											severity: DiagnosticSeverity.Warning,
 											range: valrange,
-											message: `Class "${classname}" does not exist in namespace "${baseNs}"`,
+											message: `Class "${classname}" does not exist in namespace "${nsContext.baseNs}"`,
 											source: "InterSystems Language Server",
 										});
 									}
@@ -695,6 +698,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								inheritedpackages.push(pkg);
 							}
 							if (
+								nsContext &&
 								files.length > 0 &&
 								settings.diagnostics.classes &&
 								lastpkgend != pkgrange.end.character &&
@@ -704,7 +708,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: pkgrange,
-									message: `Package "${pkg}" does not exist in namespace "${baseNs}"`,
+									message: `Package "${pkg}" does not exist in namespace "${nsContext.baseNs}"`,
 									source: "InterSystems Language Server",
 								});
 							}
@@ -714,6 +718,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 					break;
 				} else if (
+					nsContext &&
 					files.length > 0 &&
 					((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_clsname_attrindex) ||
 						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_clsname_attrindex)) &&
@@ -759,14 +764,14 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						word = word.slice(1, -1);
 					}
 
-					if (currentNs == baseNs) {
+					if (nsContext.currentNs == nsContext.baseNs) {
 						// Normalize the class name if there are imports
 						const possiblecls = { num: 0 };
 						const normalizedname = await normalizeClassname(
 							doc,
 							parsed,
 							word,
-							server,
+							nsContext.server,
 							i,
 							files,
 							possiblecls,
@@ -793,7 +798,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 									const diagnostic: Diagnostic = {
 										severity: DiagnosticSeverity.Error,
 										range: wordrange,
-										message: `Class "${word}" does not exist in namespace "${baseNs}"`,
+										message: `Class "${word}" does not exist in namespace "${nsContext.baseNs}"`,
 										source: "InterSystems Language Server",
 									};
 									diagnostics.push(diagnostic);
@@ -803,7 +808,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								addRangeToMapVal(classes, normalizedname, wordrange);
 							}
 						}
-					} else if (currentNs != "" && settings.diagnostics.classes && !word.startsWith("%SYSTEM.")) {
+					} else if (nsContext.currentNs != "" && settings.diagnostics.classes && !word.startsWith("%SYSTEM.")) {
 						if (!word.includes(".") && !word.startsWith("%")) {
 							// Using a short class name when you may be in another namespace is bad
 							diagnostics.push({
@@ -816,7 +821,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							// Add this class to the map
 							addRangeToMapVal(
 								otherNsDocs,
-								`${currentNs}:::${
+								`${nsContext.currentNs}:::${
 									!word.includes(".") && word.startsWith("%") ? `%Library.${word.slice(1)}` : word
 								}.cls`,
 								wordrange,
@@ -824,6 +829,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						}
 					}
 				} else if (
+					nsContext &&
 					files.length > 0 &&
 					((parsed[i][j].l == ld.cls_langindex && parsed[i][j].s == ld.cls_rtnname_attrindex) ||
 						(parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_rtnname_attrindex)) &&
@@ -852,14 +858,14 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						}
 					}
 
-					if (currentNs == baseNs) {
+					if (nsContext.currentNs == nsContext.baseNs) {
 						// Check if the routine exists
 						if (isinc) {
 							if (!files.some((file) => file.Name == word + ".inc")) {
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
-									message: `Include file "${word}" does not exist in namespace "${baseNs}"`,
+									message: `Include file "${word}" does not exist in namespace "${nsContext.baseNs}"`,
 									source: "InterSystems Language Server",
 								});
 							}
@@ -870,14 +876,14 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 								diagnostics.push({
 									severity: DiagnosticSeverity.Error,
 									range: wordrange,
-									message: `Routine "${word}" does not exist in namespace "${baseNs}"`,
+									message: `Routine "${word}" does not exist in namespace "${nsContext.baseNs}"`,
 									source: "InterSystems Language Server",
 								});
 							}
 						}
-					} else if (currentNs != "") {
+					} else if (nsContext.currentNs != "") {
 						// Add this document to the map
-						addRangeToMapVal(otherNsDocs, `${currentNs}:::${word}${isinc ? ".inc" : ".mac"}`, wordrange);
+						addRangeToMapVal(otherNsDocs, `${nsContext.currentNs}:::${word}${isinc ? ".inc" : ".mac"}`, wordrange);
 					}
 				} else if (
 					files.length > 0 &&
@@ -908,7 +914,11 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					}
 
 					// Get the base class that this member is in
-					const membercontext = await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages);
+					const membercontext = (
+						await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages)) || {
+						baseclass: "",
+						context: "",
+					};
 					if (membercontext.baseclass !== "") {
 						// We could determine the class, so add the member to the correct map
 
@@ -988,7 +998,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 											if (zutilFunctions.replace[argList] != undefined) {
 												diag.data = argList;
 											}
-											if (argList == "5,") {
+											if (nsContext && argList == "5,") {
 												// This is a namespace switch
 												const nsTkn = tkn == parsed[ln].length - 1 ? 0 : tkn + 1;
 												const nsLn = nsTkn == 0 ? ln + 1 : ln;
@@ -1001,16 +1011,16 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 													),
 												);
 												if (parsed[nsLn][nsTkn].s == ld.cos_str_attrindex && validNsRegex.test(nsText)) {
-													currentNs = nsText.slice(1, -1).toUpperCase();
-													if (currentNs != baseNs) {
-														nsNestedBlockLevel = 1;
+													nsContext.currentNs = nsText.slice(1, -1).toUpperCase();
+													if (nsContext.currentNs != nsContext.baseNs) {
+														nsContext.nsNestedBlockLevel = 1;
 													} else {
-														nsNestedBlockLevel = 0;
+														nsContext.nsNestedBlockLevel = 0;
 													}
 												} else {
 													// We can't determine what namespace we are in
-													currentNs = "";
-													nsNestedBlockLevel = 1;
+													nsContext.currentNs = "";
+													nsContext.nsNestedBlockLevel = 1;
 												}
 											}
 										}
@@ -1040,6 +1050,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						}
 					}
 				} else if (
+					nsContext &&
 					parsed[i][j].l == ld.cos_langindex &&
 					parsed[i][j].s == ld.cos_sysv_attrindex &&
 					["$namespace", "$znspace"].includes(
@@ -1092,8 +1103,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					if (isSet) {
 						if (hasPc) {
 							// We can't determine what namespace we are in
-							currentNs = "";
-							nsNestedBlockLevel = 1;
+							nsContext.currentNs = "";
+							nsContext.nsNestedBlockLevel = 1;
 						} else {
 							// Check what we are being Set to
 							let brk = false;
@@ -1116,16 +1127,16 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 											Range.create(ln, parsed[ln][tkn].p, ln, parsed[ln][tkn].p + parsed[ln][tkn].c),
 										);
 										if (parsed[ln][tkn].s == ld.cos_str_attrindex && validNsRegex.test(nsText)) {
-											currentNs = nsText.slice(1, -1).toUpperCase();
-											if (currentNs != baseNs) {
-												nsNestedBlockLevel = 1;
+											nsContext.currentNs = nsText.slice(1, -1).toUpperCase();
+											if (nsContext.currentNs != nsContext.baseNs) {
+												nsContext.nsNestedBlockLevel = 1;
 											} else {
-												nsNestedBlockLevel = 0;
+												nsContext.nsNestedBlockLevel = 0;
 											}
 										} else {
 											// We can't determine what namespace we are in
-											currentNs = "";
-											nsNestedBlockLevel = 1;
+											nsContext.currentNs = "";
+											nsContext.nsNestedBlockLevel = 1;
 										}
 										brk = true;
 										break;
@@ -1144,6 +1155,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						}
 					}
 				} else if (
+					nsContext &&
 					parsed[i][j].l == ld.cos_langindex &&
 					parsed[i][j].s == ld.cos_command_attrindex &&
 					/^zn(space)?$/i.test(doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c)))
@@ -1159,16 +1171,16 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 							parsed[i][j + 1].s == ld.cos_str_attrindex &&
 							validNsRegex.test(nextTknText)
 						) {
-							currentNs = nextTknText.slice(1, -1).toUpperCase();
-							if (currentNs != baseNs) {
-								nsNestedBlockLevel = 1;
+							nsContext.currentNs = nextTknText.slice(1, -1).toUpperCase();
+							if (nsContext.currentNs != nsContext.baseNs) {
+								nsContext.nsNestedBlockLevel = 1;
 							} else {
-								nsNestedBlockLevel = 0;
+								nsContext.nsNestedBlockLevel = 0;
 							}
 						} else {
 							// We can't determine what namespace we are in
-							currentNs = "";
-							nsNestedBlockLevel = 1;
+							nsContext.currentNs = "";
+							nsContext.nsNestedBlockLevel = 1;
 						}
 					}
 				} else if (
@@ -1187,7 +1199,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					const propName = quoteUDLIdentifier(doc.getText(propRange), 0);
 
 					// Check if a SqlFieldName is present
-					let sqlFieldName: Range,
+					let sqlFieldName: Range | undefined,
 						hasSqlFieldName = false,
 						inKeywords = false,
 						brk = false;
@@ -1258,18 +1270,18 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						});
 					}
 				}
-				if (nsNestedBlockLevel > 0) {
+				if (nsContext && nsContext.nsNestedBlockLevel > 0) {
 					// Determine if we're still in the different namespace
 
 					if (parsed[i][j].l == ld.cos_langindex && parsed[i][j].s == ld.cos_brace_attrindex) {
 						const brace = doc.getText(Range.create(i, parsed[i][j].p, i, parsed[i][j].p + parsed[i][j].c));
 						if (brace == "{") {
-							nsNestedBlockLevel++;
+							nsContext.nsNestedBlockLevel++;
 						} else {
-							nsNestedBlockLevel--;
-							if (nsNestedBlockLevel == 0) {
+							nsContext.nsNestedBlockLevel--;
+							if (nsContext.nsNestedBlockLevel == 0) {
 								// Ran off the end of that stack
-								currentNs = baseNs;
+								nsContext.currentNs = nsContext.baseNs;
 							}
 						}
 					} else if (
@@ -1287,8 +1299,8 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 						// Exited the script
 						(doc.languageId == "objectscript-csp" && parsed[i][j].l == ld.html_langindex)
 					) {
-						currentNs = baseNs;
-						nsNestedBlockLevel = 0;
+						nsContext.currentNs = nsContext.baseNs;
+						nsContext.nsNestedBlockLevel = 0;
 					}
 				}
 			}
@@ -1336,6 +1348,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 
 		// Make the request
 		const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
+
 		if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 			// We got data back
 
@@ -1419,7 +1432,7 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 			}
 
 			// Make the request
-			const respdata = await makeRESTRequest("POST", 1, "/action/query", { ...server, namespace }, querydata);
+			const respdata = await makeRESTRequest("POST", 1, "/action/query", server && { ...server, namespace }, querydata);
 			if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 				// We got data back
 

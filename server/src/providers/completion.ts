@@ -569,7 +569,7 @@ class SchemaCache {
 async function* completionFullClassName(
 	doc: TextDocument,
 	parsed: compressedline[],
-	server: ServerSpec,
+	server: ServerSpec | undefined,
 	line: number,
 	settings: LanguageServerConfiguration,
 ): AsyncGenerator<CompletionItem> {
@@ -612,45 +612,12 @@ async function* completionFullClassName(
 	return;
 }
 
-function makeClassCompletionItem(imports: string[], name: string, uri: TextDocument["uri"], deprecated: boolean) {
-	let displayname: string = name;
-	let sortText: string | undefined;
-	if (imports.length > 0) {
-		for (const imp of imports) {
-			if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
-				displayname = displayname.slice(imp.length + 1);
-				sortText = "%%%" + displayname;
-				break;
-			}
-		}
-		if (displayname.startsWith("%Library.")) {
-			displayname = "%" + displayname.slice(9);
-		}
-	} else {
-		if (displayname.startsWith("%Library.")) {
-			displayname = "%" + displayname.slice(9);
-		}
-	}
-	const compItem: CompletionItem = {
-		label: displayname,
-		kind: CompletionItemKind.Class,
-		data: ["class", name, uri],
-	};
-	if (sortText !== undefined) {
-		compItem.sortText = sortText;
-	}
-	if (deprecated) {
-		compItem.tags = [CompletionItemTag.Deprecated];
-	}
-	return compItem;
-}
-
 /**
  * Build the list of all packages for code completion.
  *
  * @param server The server that this document is associated with.
  */
-async function completionPackage(server: ServerSpec, settings: LanguageServerConfiguration): Promise<CompletionItem[]> {
+async function completionPackage(server: ServerSpec | undefined, settings: LanguageServerConfiguration): Promise<CompletionItem[]> {
 	const result: CompletionItem[] = [];
 
 	// Get all the packages
@@ -678,7 +645,7 @@ async function completionPackage(server: ServerSpec, settings: LanguageServerCon
  *
  * @param server The server that this document is associated with.
  */
-async function completionInclude(server: ServerSpec): Promise<CompletionItem[]> {
+async function completionInclude(server?: ServerSpec): Promise<CompletionItem[]> {
 	const result: CompletionItem[] = [];
 
 	// Get all inc files
@@ -706,7 +673,7 @@ async function globalsOrRoutines(
 	line: number,
 	token: number,
 	settings: LanguageServerConfiguration,
-	server: ServerSpec,
+	server: ServerSpec | undefined,
 	lineText: string,
 	prefix: string = "",
 ): Promise<CompletionItem[] | null> {
@@ -807,7 +774,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	if (params.position.line === parsed.length) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
 	const prevline = doc.getText(Range.create(Position.create(params.position.line, 0), params.position));
 	const prevlineLower = prevline.toLowerCase();
 	const classregex =
@@ -1203,7 +1170,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			prevline.slice(-2, -1) !== " " &&
 			thistoken !== 0 &&
 			(triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
-		(prevline.endsWith(".#") && triggerlang === ld.cos_langindex)
+			(prevline.endsWith(".#") && triggerlang === ld.cos_langindex)
 	) {
 		let prevtokentype = "";
 		const prevtokenrange = findFullRange(
@@ -1563,9 +1530,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		(parenAndCommaRegex.test(prevline) &&
 			triggerlang === ld.cls_langindex &&
 			(prevlineLower.startsWith("include") || prevlineLower.startsWith("includegenerator"))) ||
-		(parsed[params.position.line].length === 2 &&
-			firsttwotokens.toLowerCase() === "#include" &&
-			triggerlang === ld.cos_langindex)
+			(parsed[params.position.line].length === 2 &&
+				firsttwotokens.toLowerCase() === "#include" &&
+				triggerlang === ld.cos_langindex)
 	) {
 		// This is an include file
 
@@ -2063,12 +2030,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 			// Only proceed if we can provide suggestions
 			if (
-				(prevline.endsWith(" ") &&
+				server &&
+				((prevline.endsWith(" ") &&
 					prevline.includes("<") &&
 					prevline.charAt(prevline.lastIndexOf("<") + 1) !== "!" &&
 					prevline.split("<").length > prevline.split(">").length) ||
-				prevline.endsWith("<") ||
-				prevline.endsWith('"')
+					prevline.endsWith("<") ||
+					prevline.endsWith('"'))
 			) {
 				// Get the SchemaCache for this server or create one if it doesn't exist
 				let schemaCache = schemaCaches.get(server);
@@ -2483,10 +2451,43 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	return result;
 }
 
+function makeClassCompletionItem(imports: string[], name: string, uri: TextDocument["uri"], deprecated: boolean) {
+	let displayname: string = name;
+	let sortText: string | undefined;
+	if (imports.length > 0) {
+		for (const imp of imports) {
+			if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
+				displayname = displayname.slice(imp.length + 1);
+				sortText = "%%%" + displayname;
+				break;
+			}
+		}
+		if (displayname.startsWith("%Library.")) {
+			displayname = "%" + displayname.slice(9);
+		}
+	} else {
+		if (displayname.startsWith("%Library.")) {
+			displayname = "%" + displayname.slice(9);
+		}
+	}
+	const compItem: CompletionItem = {
+		label: displayname,
+		kind: CompletionItemKind.Class,
+		data: ["class", name, uri],
+	};
+	if (sortText !== undefined) {
+		compItem.sortText = sortText;
+	}
+	if (deprecated) {
+		compItem.tags = [CompletionItemTag.Deprecated];
+	}
+	return compItem;
+}
+
 async function* completionPartialClassName(
 	filter: string,
 	settings: LanguageServerConfiguration,
-	server: ServerSpec,
+	server: ServerSpec | undefined,
 	doc: TextDocument,
 ): AsyncGenerator<CompletionItem> {
 	filter += filter.endsWith(".") ? "" : ".";
@@ -2530,7 +2531,10 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 	if (item.documentation) return item;
 	if (Array.isArray(item.data) && item.data[0] === "class") {
 		// Get the description for this class from the server
-		const server: ServerSpec = await getServerSpec(item.data[2]);
+		const server = await getServerSpec(item.data[2]);
+		if (!server) {
+			return item;
+		}
 		const querydata: QueryData = {
 			query: "SELECT Description FROM %Dictionary.ClassDefinition WHERE Name = ?",
 			parameters: [item.data[1]],
@@ -2545,7 +2549,10 @@ export async function onCompletionResolve(item: CompletionItem): Promise<Complet
 		}
 	} else if (Array.isArray(item.data) && item.data[0] === "macro" && !item.documentation) {
 		// Get the macro definition from the server
-		const server: ServerSpec = await getServerSpec(item.data[1]);
+		const server = await getServerSpec(item.data[1]);
+		if (!server) {
+			return item;
+		}
 		const querydata = {
 			docname: macroCompletionCache.docname,
 			macroname: item.label,

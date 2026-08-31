@@ -1,0 +1,19 @@
+{
+	"compilerOptions": {
+		"module": "Node16",
+		"moduleResolution": "node16",
+		"target": "es6",
+		"outDir": "out",
+		"rootDir": "src",
+		"sourceMap": true,
+		"declaration": true,
+		"declarationMap": true,
+		"composite": true,
+		"strict": true,
+		"esModuleInterop": true,
+		"skipLibCheck": true,
+ 	   	"strictNullChecks": true,
+ 	},
+	"include": ["src"],
+	"exclude": ["node_modules", "out"]
+}

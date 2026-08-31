@@ -148,7 +148,7 @@ export class ISCEmbeddedContentProvider implements TextDocumentContentProvider {
 		const positionText = uri.authority.split(":")[1];
 		const position = new Position(Number(positionText.split("-")[0]), Number(positionText.split("-")[1]));
 		// Use the language number to isolate the original URI
-		let originalUri: string;
+		let originalUri: string | undefined;
 		if (language == 11) {
 			// Language is JavaScript so the extension is .js
 			originalUri = uri.path.slice(1).slice(0, -3);

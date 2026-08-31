@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.8.5] - 2026-08-XX
+- PR [#410](https://github.com/intersystems/language-server/pull/410): Fix hover intellisense for macros
+- Fix issue [#411](https://github.com/intersystems/language-server/issues/411): AxiosError 405 on activation
+
+## [2.8.4] - 2026-08-11
+- Fix issue [#391](https://github.com/intersystems/language-server/issues/391): Parser support for SQL WITH clause
+- Fix issue [#397](https://github.com/intersystems/language-server/issues/397): Enable use of Automatic Symbol References feature in AI chat
+- Fix issue [#406](https://github.com/intersystems/language-server/issues/406): Establish connection to all servers in workspace on extension activation
+- Support OAuth2 for authorizing with InterSystems servers
+
 ## [2.8.3] - 2026-04-14
 - Fix issue [#395](https://github.com/intersystems/language-server/issues/395): Hover info for method that takes no argument has extraneous * character
 - Fix issue [#396](https://github.com/intersystems/language-server/issues/396): Upgrade dependencies

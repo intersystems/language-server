@@ -75,7 +75,7 @@ jobs:
     if: success() && github.event_name == 'push'
     steps:
       - name: Download metadata
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: meta
           path: .
@@ -85,12 +85,12 @@ jobs:
           set -x
           echo "version=`cat meta.version`" >> $GITHUB_OUTPUT
       - name: Download packages
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
          pattern: '**/*.vsix'
       - name: Create Release
         id: create-release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.set-version.outputs.version }}
           prerelease: ${{ github.event_name != 'release' }}
@@ -107,9 +107,9 @@ jobs:
           node-version: 24
       - run: npm install -g @vscode/vsce
       - name: Download packages
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
       - name: Attach packages to release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: ${{ github.event.release.tag_name }}
           files: '**/*.vsix'
@@ -136,7 +136,7 @@ jobs:
         with:
           ref: master
       - name: Download metadata
-        uses: actions/download-artifact@v6
+        uses: actions/download-artifact@v8
         with:
           name: meta
           path: .

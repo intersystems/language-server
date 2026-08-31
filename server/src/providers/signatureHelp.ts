@@ -22,7 +22,7 @@ import {
 	quoteUDLIdentifier,
 	determineActiveParam,
 } from "../utils/functions";
-import { ServerSpec, SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
+import { SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
 import { documents } from "../utils/variables";
 import { getAnalyzedClassMember, prettifyNormalArg } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
@@ -36,12 +36,12 @@ let signatureHelpMacroCache: SignatureHelpMacroContext;
 /**
  * Cache of the documentation content sent for the last triggered SignatureHelp.
  */
-let signatureHelpDocumentationCache: SignatureHelpDocCache | undefined = undefined;
+let signatureHelpDocumentationCache: SignatureHelpDocCache | undefined;
 
 /**
  * The start position of the active SignatureHelp.
  */
-let signatureHelpStartPosition: Position | undefined = undefined;
+let signatureHelpStartPosition: Position | undefined;
 
 /** Placeholder for the Markdown emphasis characters before an argument. */
 const emphasizePrefix: string = "%%%%%";
@@ -172,7 +172,10 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 	if (parsed === undefined) {
 		return null;
 	}
-	const server: ServerSpec = await getServerSpec(params.textDocument.uri);
+	const server = await getServerSpec(params.textDocument.uri);
+	if (!server) {
+		return null;
+	}
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
 
 	if (params.context.triggerKind == SignatureHelpTriggerKind.Invoked) {
@@ -203,7 +206,7 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			1
 	) {
 		if (params.context.activeSignatureHelp) {
-			params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache.doc;
+			params.context.activeSignatureHelp.signatures[0].documentation = signatureHelpDocumentationCache!.doc;
 			return params.context.activeSignatureHelp;
 		} else {
 			return null;
@@ -807,4 +810,5 @@ async function getMethodSignatureHelpLocally(
 			activeSignature: 0,
 		};
 	}
+	return null;
 }

@@ -1,23 +1,10 @@
 import { workspace } from "vscode";
 
-import axios, { AxiosResponse } from "axios";
+import axios, { AxiosRequestConfig, AxiosResponse } from "axios";
 import * as https from "https";
 
 import { client, getCookies, updateCookies } from "./extension";
-
-export type ServerSpec = {
-	scheme: string;
-	host: string;
-	port: number;
-	pathPrefix: string;
-	apiVersion: number;
-	namespace: string;
-	username: string;
-	serverName: string;
-	password: string;
-	serverVersion: string;
-	active: boolean;
-};
+import { ServerSpec } from "../../common/out/types";
 
 /**
  * Send a REST request to an InterSystems server.
@@ -37,15 +24,10 @@ export async function makeRESTRequest(
 	server: ServerSpec,
 	data?: any,
 	checksum?: string,
-	params?: any,
+	params?: AxiosRequestConfig["params"],
 ): Promise<AxiosResponse<any> | undefined> {
-	if (server.host === "") {
-		// No server connection is configured
-		client.warn("Cannot make required REST request because no server connection is configured.");
-		return undefined;
-	}
-	if (!server.active) {
-		// Server connection is inactive
+	if (!server?.host || !server.active) {
+		// No server connection is configured or it's inactive
 		return undefined;
 	}
 	if (api > server.apiVersion) {
@@ -57,11 +39,9 @@ export async function makeRESTRequest(
 		);
 		return undefined;
 	}
-	if (server.username != undefined && server.username != "" && typeof server.password === "undefined") {
+	if (!server.credentials) {
 		// A username without a password isn't allowed
-		client.warn(
-			"Cannot make required REST request because the configured server connection has a username but no password.",
-		);
+		client.warn("Cannot make required REST request because the configured server connection is not authorized");
 		return undefined;
 	}
 
@@ -115,16 +95,13 @@ export async function makeRESTRequest(
 				return undefined;
 			} else if (respdata.status === 401) {
 				// Either we had no cookies or they expired, so resend the request with basic auth
-
 				respdata = await axios.request({
 					method: "GET",
 					url: url,
+					...server.credentials,
 					headers: {
+						...(server.credentials?.headers || {}),
 						"if-none-match": checksum,
-					},
-					auth: {
-						username: server.username,
-						password: server.password,
 					},
 					withCredentials: true,
 					httpsAgent,
@@ -173,17 +150,14 @@ export async function makeRESTRequest(
 				});
 				if (respdata.status === 401) {
 					// Either we had no cookies or they expired, so resend the request with basic auth
-
 					respdata = await axios.request({
 						method: method,
 						url: url,
 						data: data,
+						...server.credentials,
 						headers: {
+							...(server.credentials?.headers || {}),
 							"Content-Type": "application/json",
-						},
-						auth: {
-							username: server.username,
-							password: server.password,
 						},
 						withCredentials: true,
 						httpsAgent,
@@ -196,7 +170,7 @@ export async function makeRESTRequest(
 					url: url,
 					withCredentials: true,
 					httpsAgent,
-					params: params,
+					params,
 					headers: {
 						Cookie: cookies.join(" "),
 					},
@@ -207,17 +181,13 @@ export async function makeRESTRequest(
 				if (respdata.status === 401 && api) {
 					// api is only 0 when calling HEAD / to log out of the session
 					// Either we had no cookies or they expired, so resend the request with basic auth
-
 					respdata = await axios.request({
 						method: method,
 						url: url,
-						auth: {
-							username: server.username,
-							password: server.password,
-						},
+						...server.credentials,
 						withCredentials: true,
 						httpsAgent,
-						params: params,
+						params,
 					});
 				}
 				updateCookies(respdata.headers["set-cookie"] || [], server);
@@ -225,11 +195,9 @@ export async function makeRESTRequest(
 			return respdata;
 		}
 	} catch (error) {
-		client.warn(
-			`Error making REST request ${method} ${path}: ${
-				typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error)
-			}`,
-		);
+		const errorString =
+			typeof error == "string" ? error : error instanceof Error ? error.toString() : JSON.stringify(error);
+		client.warn(`Error making REST request ${method} ${path}: ${errorString}`);
 		return undefined;
 	}
 }
