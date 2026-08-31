@@ -7,19 +7,11 @@ import {
 	SymbolTag,
 } from "vscode-languageserver/node";
 import { TextDocument } from "vscode-languageserver-textdocument";
-import {
-	findFullRange,
-	fullRange,
-	getAnalyzedDocument,
-	getParsedDocument,
-	isClassMember,
-	labelIsProcedureBlock,
-	prevToken,
-} from "../utils/functions";
+import { findFullRange, getParsedDocument, isClassMember, labelIsProcedureBlock, prevToken } from "../utils/functions";
 import { documents, mppContinue } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 import { compressedline } from "../utils/types";
-import { memberKindToSymbolKind } from "./workspaceSymbol";
+import { getDocumentSymbol } from "../ascot";
 
 /** Loop through the class from this line until the next class member or the end of the class */
 function processMember(
@@ -85,26 +77,9 @@ export async function onDocumentSymbol(params: DocumentSymbolParams): Promise<Do
 	const result: DocumentSymbol[] = [];
 
 	if (doc.languageId === "objectscript-class") {
-		{
-			const cls = await getAnalyzedDocument(params.textDocument.uri);
-			if (cls !== undefined && "members" in cls) {
-				return [
-					{
-						name: cls.name.content,
-						kind: SymbolKind.Class,
-						range: fullRange,
-						selectionRange: Range.create(cls.name.before, cls.name.after),
-						tags: cls.deprecated ? [SymbolTag.Deprecated] : [],
-						children: cls.members.map((mem) => ({
-							name: mem.name.content,
-							kind: memberKindToSymbolKind(mem.kind.tag),
-							range: Range.create(mem.before, mem.after),
-							selectionRange: Range.create(mem.name.before, mem.name.after),
-							tags: cls.deprecated || mem.deprecated ? [SymbolTag.Deprecated] : [],
-						})),
-					},
-				];
-			}
+		const symbols = await getDocumentSymbol(params.textDocument.uri);
+		if (symbols.length > 0) {
+			return symbols;
 		}
 
 		// Loop through the file and look for the class definition and class members

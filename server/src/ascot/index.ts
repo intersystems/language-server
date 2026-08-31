@@ -2,7 +2,14 @@ import * as fs from "fs";
 import * as path from "path";
 import { instantiate, Root } from "./generated/ascot.js";
 import type * as wit from "./generated/interfaces/iris-ascot-common.js";
-import { Diagnostic, DiagnosticSeverity } from "vscode-languageserver";
+import {
+	Diagnostic,
+	DiagnosticSeverity,
+	DocumentSymbol,
+	SymbolInformation,
+	SymbolKind as LspSymbolKind,
+	SymbolTag,
+} from "vscode-languageserver";
 import { connection } from "../utils/variables";
 import {
 	getServerSpec,
@@ -277,7 +284,44 @@ function convertDiagnostic(d: wit.Diagnostic): Diagnostic {
 		message: d.message,
 		range: d.range,
 		severity: convertDiagnosticSeverity(d.severity),
-		source: "InterSystems Language Server - ObjectScript Analyzer",
+		source: "Ascot via InterSystems Language Server",
+	};
+}
+
+function convertSymbolKind(kind: wit.SymbolKind): LspSymbolKind {
+	switch (kind) {
+		case "class":
+			return LspSymbolKind.Class;
+		case "method":
+			return LspSymbolKind.Method;
+		case "property":
+			return LspSymbolKind.Property;
+		case "interface":
+			return LspSymbolKind.Interface;
+		case "function":
+			return LspSymbolKind.Function;
+		case "constant":
+			return LspSymbolKind.Constant;
+		case "array":
+			return LspSymbolKind.Array;
+		case "object":
+			return LspSymbolKind.Object;
+		case "key":
+			return LspSymbolKind.Key;
+		case "struct":
+			return LspSymbolKind.Struct;
+		case "event":
+			return LspSymbolKind.Event;
+	}
+}
+
+function convertSymbolInfo(info: wit.SymbolInfo): DocumentSymbol {
+	return {
+		name: ascot + info.name,
+		kind: convertSymbolKind(info.kind),
+		tags: info.deprecated ? [SymbolTag.Deprecated] : [],
+		range: info.range,
+		selectionRange: info.selectionRange,
 	};
 }
 
@@ -420,5 +464,41 @@ export async function* getAnalyzedClassMembers(
 				yield* getAnalyzedClassMembers(context, sup, memQuery);
 			}
 		}
+	}
+}
+
+// The class declared in `docURI`, and its members, as a `textDocument/documentSymbol` outline.
+export async function getDocumentSymbol(docURI: string): Promise<DocumentSymbol[]> {
+	try {
+		const workspace = await filePathToAnalyzerWorkspace(docURI);
+		const classSymbol = await workspace?.documentSymbol(docURI);
+		if (!classSymbol) return [];
+		return [
+			{
+				...convertSymbolInfo(classSymbol.class),
+				children: classSymbol.members.map(convertSymbolInfo),
+			},
+		];
+	} catch (rawError) {
+		console.log(rawError);
+		return [];
+	}
+}
+
+// Classes and members in `context`'s workspace folder whose name starts with `query`, as a
+// `workspace/symbol` result.
+export async function getWorkspaceSymbol(context: URI, query: string): Promise<SymbolInformation[]> {
+	try {
+		const workspace = await filePathToAnalyzerWorkspace(context.toString());
+		const symbols = (await workspace?.workspaceSymbol(query)) ?? [];
+		return symbols.map((symbol) => ({
+			name: ascot + symbol.name,
+			kind: convertSymbolKind(symbol.kind),
+			tags: symbol.deprecated ? [SymbolTag.Deprecated] : [],
+			location: symbol.location,
+		}));
+	} catch (rawError) {
+		console.log(rawError);
+		return [];
 	}
 }

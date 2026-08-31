@@ -32,7 +32,6 @@ import systemVariables from "../documentation/systemVariables.json";
 
 // Initialize turndown and tune it for Documatic HTML
 import { default as TurndownService } from "turndown";
-import { ClassInfo, getAnalyzedClasses } from "../ascot";
 const turndown = new TurndownService({
 	codeBlockStyle: "fenced",
 	blankReplacement: (content, node: HTMLElement) => (node.nodeName == "SPAN" ? node.outerHTML : ""),
@@ -3119,13 +3118,6 @@ export async function getParsedDocument(uri: string): Promise<compressedline[] |
 		}
 	}
 	return new Promise(waitForTokens);
-}
-
-export async function getAnalyzedDocument(uri: string): Promise<ClassInfo | undefined> {
-	for await (const [docUri, cls] of getAnalyzedClasses(URI.parse(uri))) {
-		if (docUri === uri) return cls;
-	}
-	return undefined;
 }
 
 /**
