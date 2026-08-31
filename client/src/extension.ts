@@ -50,7 +50,7 @@ export let client: {
 const cookiesCache: Map<string, string[]> = new Map();
 
 export function updateCookies(newCookies: string[], server: ServerSpec): string[] {
-	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`;
+	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`.toLowerCase();
 	const cookies = cookiesCache.get(key) ?? [];
 	newCookies.forEach((cookie) => {
 		const [cookieName] = cookie.split("=");
@@ -66,14 +66,14 @@ export function updateCookies(newCookies: string[], server: ServerSpec): string[
 }
 
 export function getCookies(server: ServerSpec): string[] {
-	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`) ?? [];
+	return cookiesCache.get(`${server.username}@${server.host}:${server.port}${server.pathPrefix}`.toLowerCase()) ?? [];
 }
 
 let objectScriptApi: serverManager.VSCodeObjectScriptAPI;
 let serverManagerApi: serverManager.ServerManagerAPI;
 
-/** Resolved connection information for each workspace folder */
-const wsFolderServerSpecs: Map<string, ServerSpec> = new Map();
+/** Resolved connection information */
+const resolvedServerSpecs: Map<string, ServerSpec> = new Map();
 
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
@@ -147,7 +147,7 @@ export async function activate(context: ExtensionContext) {
 
 	// Send custom notifications when the connection or password changes
 	objectScriptApi.onDidChangeConnection()(() => {
-		wsFolderServerSpecs.clear();
+		resolvedServerSpecs.clear();
 		client.sendNotification("intersystems/server/connectionChange");
 	});
 	const serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
@@ -155,8 +155,8 @@ export async function activate(context: ExtensionContext) {
 		// The server manager extension is installed
 		serverManagerApi = serverManagerExt.isActive ? serverManagerExt.exports : await serverManagerExt.activate();
 		serverManagerApi.onDidChangePassword()((serverName: string) => {
-			for (const [k, v] of wsFolderServerSpecs.entries()) {
-				if (v.serverName == serverName) wsFolderServerSpecs.delete(k);
+			for (const [k, v] of resolvedServerSpecs.entries()) {
+				if (v.serverName == serverName) resolvedServerSpecs.delete(k);
 			}
 			client.sendNotification("intersystems/server/passwordChange", serverName);
 		});
@@ -166,14 +166,25 @@ export async function activate(context: ExtensionContext) {
 	// for a missing password via the Server Manager's authentication provider.
 	async function resolveServerSpec(uri: Uri): Promise<ServerSpec | undefined> {
 		try {
-			const wsFolderUriString = workspace.getWorkspaceFolder(uri)?.uri.toString();
-			if (wsFolderUriString && wsFolderServerSpecs.has(wsFolderUriString)) {
-				// Return the cached server spec if we have it
-				return wsFolderServerSpecs.get(wsFolderUriString)!;
-			}
 			const serverSpec = objectScriptApi.serverForUri(uri);
-			if (serverSpec === undefined) return;
+			if (!serverSpec?.active) {
+				// An inactive connection is indistinguishable from no connection at all
+				return;
+			}
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
+			if ([undefined, ""].includes(auth?.username)) {
+				const partialKey = `${serverSpec.host}:${serverSpec.port}${serverSpec.pathPrefix}`.toLowerCase();
+				for (const key of resolvedServerSpecs.keys()) {
+					// The username isn't known yet, so see if we have a connection to this server that is already known
+					if (key.toLowerCase().slice(key.indexOf("@") + 1) == partialKey) {
+						return resolvedServerSpecs.get(key);
+					}
+				}
+			} else {
+				// Return resolved spec if we have one that matches exactly
+				const key = `${auth.username}@${serverSpec.host}:${serverSpec.port}${serverSpec.pathPrefix}`.toLowerCase();
+				if (resolvedServerSpecs.has(key)) return resolvedServerSpecs.get(key);
+			}
 			if (
 				// Server was resolved
 				serverSpec.host !== "" &&
@@ -230,27 +241,28 @@ export async function activate(context: ExtensionContext) {
 				username: auth.username,
 				credentials: auth.credentials,
 			};
-			if (wsFolderUriString && !wsFolderServerSpecs.has(wsFolderUriString)) {
-				wsFolderServerSpecs.set(wsFolderUriString, server);
-			}
+			const serverKey = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`.toLowerCase();
+			if (!resolvedServerSpecs.has(serverKey)) resolvedServerSpecs.set(serverKey, server);
 			return server;
 		} catch {
 			// Treat any thrown error as "no server connection"
 		}
 	}
 
-	// Ensure that every server has at most one session
+	// Resolve the server connection for every workspace folder
 	for (const f of workspace.workspaceFolders ?? []) {
 		try {
-			const serverSpec = await resolveServerSpec(f.uri);
-			if (serverSpec?.active && !getCookies(serverSpec).length) {
-				// Skip inactive servers and those that we already have cookies for
-				await makeRESTRequest("HEAD", 0, "", serverSpec);
-			}
+			await resolveServerSpec(f.uri);
 		} catch {
-			// Ignore any failure; the session will be created on demand instead
+			// Ignore any failure; the server will be resolved on demand instead
 		}
 	}
+
+	// Create a CSP session for all resolved server connections
+	// Ignore any failures; the sessions will be created on demand instead
+	const headPromises: Promise<any>[] = [];
+	resolvedServerSpecs.forEach((server) => headPromises.push(makeRESTRequest("HEAD", 0, "", server)));
+	await Promise.allSettled(headPromises);
 
 	const textDecoder = new TextDecoder();
 	context.subscriptions.push(
@@ -434,27 +446,17 @@ export async function activate(context: ExtensionContext) {
 
 export async function deactivate(): Promise<void> {
 	// Stop the server and log out of all CSP sessions
-	const loggedOut: Set<string> = new Set();
 	const promises: Promise<any>[] = client ? [client.stop()] : [];
-	for (const f of workspace.workspaceFolders ?? []) {
-		const serverSpec = wsFolderServerSpecs.get(f.uri.toString());
-		if (!serverSpec?.active) continue;
-		const sessionCookie = getCookies(serverSpec).find((c) => c.startsWith("CSPSESSIONID-"));
-		if (!sessionCookie || loggedOut.has(sessionCookie)) continue;
-		loggedOut.add(sessionCookie);
-		promises.push(
-			makeRESTRequest(
-				"HEAD",
-				0,
-				"",
-				serverSpec,
-				undefined,
-				undefined,
-				// Prefer IRISLogout for servers that support it
-				lt(serverSpec.serverVersion, "2018.2.0") ? { CacheLogout: "end" } : { IRISLogout: "end" },
-			),
-		);
-	}
+	resolvedServerSpecs.forEach((server) => promises.push(makeRESTRequest(
+		"HEAD",
+		0,
+		"",
+		server,
+		undefined,
+		undefined,
+		// Prefer IRISLogout for servers that support it
+		lt(server.serverVersion, "2018.2.0") ? { CacheLogout: "end" } : { IRISLogout: "end" },
+	)));
 	await Promise.allSettled(promises);
 }
 
