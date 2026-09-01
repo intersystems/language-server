@@ -1224,8 +1224,17 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		const globalOrRoutineMatch = prevline.match(/\^(%?[\d\p{L}.]+)$/u);
 		if (prevtokentype === "class" || prevtokentype === "system") {
 			// This is a partial class name
-			let filter = prevtokentype === "system" ? "%SYSTEM." : prevtokentext;
-			filter += filter.endsWith(".") ? "" : ".";
+
+			let filter: string;
+			if (prevtokentype === "system") {
+				filter = "%SYSTEM.";
+			} else {
+				if (prevtokentext.slice(-1) !== ".") {
+					filter = prevtokentext + ".";
+				} else {
+					filter = prevtokentext;
+				}
+			}
 
 			const added = new Set<string>();
 			for await (const [, cls] of getClasses(doc.uri)) {
