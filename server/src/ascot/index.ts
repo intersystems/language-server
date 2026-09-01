@@ -16,10 +16,6 @@ import { ServerSpec, QueryData } from "../utils/types";
 
 const libDir = path.resolve(__dirname, "../lib");
 
-function getCoreModule(name: string): WebAssembly.Module {
-	return new WebAssembly.Module(fs.readFileSync(path.join(libDir, name)));
-}
-
 const ORIGIN: wit.Position = { line: 0, character: 0 };
 const ZERO_RANGE: wit.Range = { start: ORIGIN, end: ORIGIN };
 const CACHE_TTL_MS = 60 * 60 * 1000;
@@ -103,7 +99,14 @@ class IrisConnection {
 		if (row.MemberType === "method" && row.Stub) {
 			row = (await resolveStubbedMethod(server, cls, row.Stub)) ?? row;
 		}
-		const info = rowToMemberInfo(mem, row);
+		const info: MemberInfo = {
+			doc: row.Description ?? "",
+			before: ORIGIN,
+			name: { before: ORIGIN, content: mem, after: ORIGIN },
+			deprecated: row.Deprecated == "1",
+			kind: rowToMemberKind(row),
+			after: ORIGIN,
+		};
 		this.memCache.set(key, [Date.now(), info]);
 		return info;
 	}
@@ -147,17 +150,6 @@ class IrisConnection {
 		this.datatypeCache.set(cls, [Date.now(), isDatatype]);
 		return isDatatype;
 	}
-}
-
-function rowToMemberInfo(mem: string, row: MemberMetadataRow): MemberInfo {
-	return {
-		doc: row.Description ?? "",
-		before: ORIGIN,
-		name: { before: ORIGIN, content: mem, after: ORIGIN },
-		deprecated: row.Deprecated == "1",
-		kind: rowToMemberKind(row),
-		after: ORIGIN,
-	};
 }
 
 function rowToMemberKind(row: MemberMetadataRow): wit.MemberKind {
@@ -260,20 +252,17 @@ function splitTopLevel(spec: string): string[] {
 	return out;
 }
 
-async function loadAscot(): Promise<Root> {
-	const imports = {
-		"iris:ascot/common": {},
-		"iris:ascot/imported": { IrisConnection },
-	};
-	return instantiate(getCoreModule, imports as never);
-}
-
 type MemberInfo = wit.MemberInfo;
+export type NormalArg = wit.NormalArg;
 
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[🧣] `;
 
-const wasm = loadAscot();
+const wasm = (async (): Promise<Root> =>
+	instantiate((name) => new WebAssembly.Module(fs.readFileSync(path.join(libDir, name))), {
+		"iris:ascot/common": {},
+		"iris:ascot/imported": { IrisConnection },
+	} as never))();
 
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
@@ -315,15 +304,6 @@ const severityMap: Record<wit.DiagnosticSeverity, DiagnosticSeverity> = {
 	hint: DiagnosticSeverity.Hint,
 };
 
-function convertDiagnostic(d: wit.Diagnostic): Diagnostic {
-	return {
-		message: d.message,
-		range: d.range,
-		severity: severityMap[d.severity],
-		source: "Ascot via InterSystems Language Server",
-	};
-}
-
 const symbolKindMap: Record<wit.SymbolKind, LspSymbolKind> = {
 	class: LspSymbolKind.Class,
 	method: LspSymbolKind.Method,
@@ -338,23 +318,13 @@ const symbolKindMap: Record<wit.SymbolKind, LspSymbolKind> = {
 	event: LspSymbolKind.Event,
 };
 
-function convertSymbolInfo(info: wit.SymbolInfo): DocumentSymbol {
-	return {
-		name: ascot + info.name,
-		kind: symbolKindMap[info.kind],
-		tags: info.deprecated ? [SymbolTag.Deprecated] : [],
-		range: info.range,
-		selectionRange: info.selectionRange,
-	};
-}
-
 // Stores the raw source; no parsing happens here (kind is inferred from `docURI`'s
 // extension). Doubles as both open and edit.
 export async function openDoc(docURI: string, src: string, folderURI?: string): Promise<void> {
 	try {
 		const workspace =
 			typeof folderURI === "string" ? await rootURIToWorkspace(folderURI) : await filePathToWorkspace(docURI);
-		await workspace?.open(docURI, src);
+		await workspace.open(docURI, src);
 	} catch (rawError) {
 		console.log(rawError);
 	}
@@ -374,13 +344,17 @@ async function withWorkspace<T>(
 	}
 }
 
-export const closeDoc = (docURI: string) =>
-	withWorkspace<void>(docURI, undefined, (w) => {
-		w.close(docURI);
-	});
+export const closeDoc = (docURI: string) => withWorkspace<void>(docURI, undefined, (w) => void w.close(docURI));
 
 export const getDiagnostics = (docURI: string) =>
-	withWorkspace(docURI, [] as Diagnostic[], async (w) => (await w.diagnostics(docURI)).map(convertDiagnostic));
+	withWorkspace(docURI, [] as Diagnostic[], async (w) =>
+		(await w.diagnostics(docURI)).map((d) => ({
+			message: d.message,
+			range: d.range,
+			severity: severityMap[d.severity],
+			source: "Ascot via InterSystems Language Server",
+		})),
+	);
 
 export const inlayHint = (docURI: string, range: wit.Range) =>
 	withWorkspace(docURI, [] as wit.InlayHint[], (w) => w.inlayHint(docURI, range));
@@ -396,8 +370,8 @@ export const getHover = (docURI: string, position: wit.Position) =>
 
 async function filePathToWorkspace(docURI: string): Promise<WorkspaceInstance> {
 	const folders = await connection.workspace.getWorkspaceFolders();
-	const folder = folders?.find((folder) => docURI.startsWith(folder.uri));
-	return (folder && rootURIToWorkspace(folder.uri)) || rootURIToWorkspace(docURI);
+	const folder = folders?.find((f) => docURI.startsWith(f.uri));
+	return rootURIToWorkspace(folder?.uri ?? docURI);
 }
 
 async function rootURIToWorkspace(folderURI: string): Promise<WorkspaceInstance> {
@@ -420,7 +394,7 @@ async function findByName<T extends { name: { content: string } }>(
 	return null;
 }
 
-export const getClass = (docURI: string, name: string) => findByName(getClasses(docURI), name);
+const getClass = (docURI: string, name: string) => findByName(getClasses(docURI), name);
 
 export async function* getClasses(docURI: string): AsyncGenerator<[string, wit.ClassInfo]> {
 	const workspace = await filePathToWorkspace(docURI);
@@ -437,38 +411,30 @@ export async function* getClassMembers(
 	docURI: string,
 	clsName: string,
 	memQuery: string = "",
-	includeExtends: boolean = true,
 ): AsyncGenerator<[string, MemberInfo]> {
 	const workspace = await filePathToWorkspace(docURI);
 	for (const x of await workspace.queryMem(clsName, memQuery)) {
 		yield x;
 	}
-	if (includeExtends) {
-		const result = await getClass(docURI, clsName);
-		if (result) {
-			const cls = result[1];
-			for (const sup of cls.extends) {
-				yield* getClassMembers(docURI, sup, memQuery);
-			}
+	const result = await getClass(docURI, clsName);
+	if (result) {
+		const cls = result[1];
+		for (const sup of cls.extends) {
+			yield* getClassMembers(docURI, sup, memQuery);
 		}
 	}
-}
-
-export function prettifyNormalArg(arg: wit.NormalArg): string {
-	let string = "";
-	if (arg.mode != "default") {
-		string += "&";
-	}
-	string += arg.name;
-	if (arg.t) {
-		string += ` As ${arg.t}`;
-	}
-	return string;
 }
 
 // The class declared in `docURI`, and its members, as a `textDocument/documentSymbol` outline.
 export const getDocumentSymbol = (docURI: string) =>
 	withWorkspace(docURI, [] as DocumentSymbol[], async (w) => {
+		const convertSymbolInfo = (info: wit.SymbolInfo): DocumentSymbol => ({
+			name: ascot + info.name,
+			kind: symbolKindMap[info.kind],
+			tags: info.deprecated ? [SymbolTag.Deprecated] : [],
+			range: info.range,
+			selectionRange: info.selectionRange,
+		});
 		const classSymbol = await w.documentSymbol(docURI);
 		return classSymbol
 			? [{ ...convertSymbolInfo(classSymbol.class), children: classSymbol.members.map(convertSymbolInfo) }]

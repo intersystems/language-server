@@ -25,7 +25,19 @@ import {
 import { SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
-import { getClassMember, prettifyNormalArg } from "../ascot";
+import { getClassMember, NormalArg } from "../ascot";
+
+function prettifyNormalArg(arg: NormalArg): string {
+	let string = "";
+	if (arg.mode != "default") {
+		string += "&";
+	}
+	string += arg.name;
+	if (arg.t) {
+		string += ` As ${arg.t}`;
+	}
+	return string;
+}
 
 /**
  * Cache of the macro context info required to do a macro expansion when the selected parameter changes.
