@@ -78,33 +78,30 @@ class IrisConnection {
 				if (Array.isArray(stubrows) && stubrows.length > 0) row = stubrows[0];
 			}
 		}
-		function splitTopLevel(spec: string): string[] {
-			const out: string[] = [];
-			let cur = "",
-				depth = 0,
-				inQuote = false;
-			for (const c of spec) {
-				if (inQuote) {
-					cur += c;
-					if (c === '"') inQuote = false;
-				} else if (c === '"') {
-					inQuote = true;
-					cur += c;
-				} else if (c === "(") {
-					depth++;
-					cur += c;
-				} else if (c === ")") {
-					depth--;
-					cur += c;
-				} else if (c === "," && depth === 0) {
-					out.push(cur);
-					cur = "";
-				} else {
-					cur += c;
+		const info: wit.MemberInfo = {
+			doc: row.Description ?? "",
+			before: ORIGIN,
+			name: { before: ORIGIN, content: mem, after: ORIGIN },
+			deprecated: row.Deprecated == "1",
+			kind: rowToMemberKind(row),
+			after: ORIGIN,
+		};
+		this.memCache.set(key, [Date.now(), info]);
+		return info;
+
+		function rowToMemberKind(row: MemberMetadataRow): wit.MemberKind {
+			const type = row.ReturnType || undefined;
+			switch (row.MemberType) {
+				case "property":
+					return { tag: "property", val: type };
+				case "parameter":
+					return { tag: "parameter", val: { t: type } };
+				default: {
+					const { normal, variadic } = parseFormalSpec(row.FormalSpec ?? "");
+					const val: wit.MethodInfo = { normal, variadic, t: type, body: { start: ORIGIN, end: ORIGIN } };
+					return { tag: row.ClassMethod == "1" ? "class-method" : "method", val };
 				}
 			}
-			if (cur.trim() !== "") out.push(cur);
-			return out;
 		}
 
 		// Parse IRIS's minified FormalSpec (e.g. `*out:%String,&ref:%Integer,x...`) into the
@@ -163,31 +160,34 @@ class IrisConnection {
 			return { normal, variadic };
 		}
 
-		function rowToMemberKind(row: MemberMetadataRow): wit.MemberKind {
-			const type = row.ReturnType || undefined;
-			switch (row.MemberType) {
-				case "property":
-					return { tag: "property", val: type };
-				case "parameter":
-					return { tag: "parameter", val: { t: type } };
-				default: {
-					const { normal, variadic } = parseFormalSpec(row.FormalSpec ?? "");
-					const val: wit.MethodInfo = { normal, variadic, t: type, body: { start: ORIGIN, end: ORIGIN } };
-					return { tag: row.ClassMethod == "1" ? "class-method" : "method", val };
+		function splitTopLevel(spec: string): string[] {
+			const out: string[] = [];
+			let cur = "",
+				depth = 0,
+				inQuote = false;
+			for (const c of spec) {
+				if (inQuote) {
+					cur += c;
+					if (c === '"') inQuote = false;
+				} else if (c === '"') {
+					inQuote = true;
+					cur += c;
+				} else if (c === "(") {
+					depth++;
+					cur += c;
+				} else if (c === ")") {
+					depth--;
+					cur += c;
+				} else if (c === "," && depth === 0) {
+					out.push(cur);
+					cur = "";
+				} else {
+					cur += c;
 				}
 			}
+			if (cur.trim() !== "") out.push(cur);
+			return out;
 		}
-
-		const info: wit.MemberInfo = {
-			doc: row.Description ?? "",
-			before: ORIGIN,
-			name: { before: ORIGIN, content: mem, after: ORIGIN },
-			deprecated: row.Deprecated == "1",
-			kind: rowToMemberKind(row),
-			after: ORIGIN,
-		};
-		this.memCache.set(key, [Date.now(), info]);
-		return info;
 	}
 
 	// Direct superclasses, nearest first.
@@ -242,13 +242,10 @@ const wasm = (async (): Promise<Root> =>
 
 type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
 
-// jco's jspi async-mode glue supports only one in-flight (possibly-suspended) call into
-// a given component instance at a time -- a second call overlapping the first (e.g. a
-// diagnostics() and an inlayHint() both mid-flight, each awaiting their own getMem REST
-// round trip) trips its "component should have been exclusively locked" check. Every
-// `Workspace` (one per folder) is a resource of the same single instantiated `wasm`
-// component, so the queue below is shared module-wide, not per-instance -- otherwise two
-// different folders' workspaces could still overlap and trip the same check.
+// jco's jspi glue allows only one in-flight suspended call per component instance --
+// overlapping calls (e.g. diagnostics() and inlayHint() both awaiting a REST round trip)
+// trip its exclusive-lock check. Every `Workspace` shares the same `wasm` instance, so
+// this queue is module-wide, not per-Workspace.
 let tail: Promise<void> = Promise.resolve();
 
 function serialize(instance: WorkspaceInstance): WorkspaceInstance {
@@ -402,17 +399,20 @@ export async function* getClassMembers(
 
 export const getDocumentSymbol = (docURI: string) =>
 	withWorkspace(docURI, [] as DocumentSymbol[], async (w) => {
-		const convertSymbolInfo = (info: wit.SymbolInfo): DocumentSymbol => ({
-			name: ascot + info.name,
-			kind: symbolKindMap[info.kind],
-			tags: info.deprecated ? [SymbolTag.Deprecated] : [],
-			range: info.range,
-			selectionRange: info.selectionRange,
-		});
 		const classSymbol = await w.documentSymbol(docURI);
 		return classSymbol
 			? [{ ...convertSymbolInfo(classSymbol.class), children: classSymbol.members.map(convertSymbolInfo) }]
 			: [];
+
+		function convertSymbolInfo(info: wit.SymbolInfo): DocumentSymbol {
+			return {
+				name: ascot + info.name,
+				kind: symbolKindMap[info.kind],
+				tags: info.deprecated ? [SymbolTag.Deprecated] : [],
+				range: info.range,
+				selectionRange: info.selectionRange,
+			};
+		}
 	});
 
 export const getWorkspaceSymbol = (folderURI: string, query: string) =>

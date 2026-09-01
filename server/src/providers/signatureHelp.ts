@@ -776,18 +776,6 @@ async function getMethodSignatureHelpFromAscot(
 	memName: string,
 	showingDoc: boolean,
 ): Promise<SignatureHelp | null> {
-	function prettifyNormalArg(arg: NormalArg): string {
-		let string = "";
-		if (arg.mode != "default") {
-			string += "&";
-		}
-		string += arg.name;
-		if (arg.t) {
-			string += ` As ${arg.t}`;
-		}
-		return string;
-	}
-
 	const uri_mem =
 		(await getClassMember(docURI, clsName, memName)) ??
 		(memName != "%New" ? null : await getClassMember(docURI, clsName, "%OnNew"));
@@ -822,4 +810,16 @@ async function getMethodSignatureHelpFromAscot(
 		};
 	}
 	return null;
+
+	function prettifyNormalArg(arg: NormalArg): string {
+		let string = "";
+		if (arg.mode != "default") {
+			string += "&";
+		}
+		string += arg.name;
+		if (arg.t) {
+			string += ` As ${arg.t}`;
+		}
+		return string;
+	}
 }

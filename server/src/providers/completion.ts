@@ -575,12 +575,8 @@ async function* completionFullClassName(
 	const added = new Set<string>();
 	for await (const [uri, cls] of getClasses(doc.uri)) {
 		added.add(cls.name.content);
-		const item = makeClassCompletionItem(
-			[] /* I tried getImports() but it gives false imports */,
-			cls.name.content,
-			uri,
-			cls.deprecated,
-		);
+		// No import resolution here: getImports() produces false positives for these.
+		const item = makeClassCompletionItem([], cls.name.content, uri, cls.deprecated);
 		item.documentation = {
 			kind: MarkupKind.Markdown,
 			value: documaticHtmlToMarkdown(cls.doc),
@@ -590,9 +586,7 @@ async function* completionFullClassName(
 		yield item;
 	}
 
-	// Get the list of imports for resolution
 	const imports = await getImports(doc, parsed, line, server);
-	// Get all classes
 	const querydata = {
 		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
 			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
@@ -602,9 +596,8 @@ async function* completionFullClassName(
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (const clsobj of respdata.data.result.content) {
-			const compItem: CompletionItem = makeClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated);
 			if (added.has(clsobj.Name)) continue;
-			yield compItem;
+			yield makeClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated);
 		}
 	}
 }
