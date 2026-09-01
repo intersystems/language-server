@@ -1224,8 +1224,48 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		const globalOrRoutineMatch = prevline.match(/\^(%?[\d\p{L}.]+)$/u);
 		if (prevtokentype === "class" || prevtokentype === "system") {
 			// This is a partial class name
-			const filter = prevtokentype === "system" ? "%SYSTEM." : prevtokentext;
-			result = await completionPartialClassName(filter, settings, server, doc);
+			let filter = prevtokentype === "system" ? "%SYSTEM." : prevtokentext;
+			filter += filter.endsWith(".") ? "" : ".";
+
+			const added = new Set<string>();
+			for await (const [, cls] of getClasses(doc.uri)) {
+				if (!cls.name.content.startsWith(filter)) {
+					continue;
+				}
+				added.add(cls.name.content);
+				result.push({
+					label: cls.name.content.slice(filter.length),
+					kind: CompletionItemKind.Class,
+					data: ["class", cls.name.content.slice(filter.length), doc.uri],
+					tags: cls.deprecated ? [CompletionItemTag.Deprecated] : undefined,
+					documentation: {
+						kind: MarkupKind.Markdown,
+						value: documaticHtmlToMarkdown(cls.doc),
+					},
+				});
+			}
+
+			// Get all classes that match the filter
+			const querydata = {
+				query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
+					!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
+				}`,
+				parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0, `Name %STARTSWITH '${filter}'`],
+			};
+			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
+			if (respdata !== undefined && respdata.data.result.content.length > 0) {
+				// We got data back
+
+				for (const clsobj of respdata.data.result.content) {
+					if (added.has(clsobj.Name)) continue;
+					result.push({
+						label: clsobj.Name.slice(filter.length),
+						kind: CompletionItemKind.Class,
+						data: ["class", clsobj.Name, doc.uri],
+						tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
+					});
+				}
+			}
 		} else if (globalOrRoutineMatch && triggerlang == ld.cos_langindex) {
 			// This might be a routine or global
 
@@ -2465,51 +2505,6 @@ function makeMemberCompletionItem(mem: MemberInfo, name: string, position: Posit
 		item.tags = [CompletionItemTag.Deprecated];
 	}
 	return item;
-}
-
-async function completionPartialClassName(
-	filter: string,
-	settings: LanguageServerConfiguration,
-	server: ServerSpec | undefined,
-	doc: TextDocument,
-): Promise<CompletionItem[]> {
-	filter += filter.endsWith(".") ? "" : ".";
-	const result: CompletionItem[] = [];
-	const added = new Set<string>();
-	for await (const [, cls] of getClasses(doc.uri)) {
-		if (!cls.name.content.startsWith(filter)) {
-			continue;
-		}
-		added.add(cls.name.content);
-		result.push({
-			label: cls.name.content.slice(filter.length),
-			kind: CompletionItemKind.Class,
-			data: ["class", cls.name.content.slice(filter.length), doc.uri],
-			tags: cls.deprecated ? [CompletionItemTag.Deprecated] : undefined,
-			documentation: {
-				kind: MarkupKind.Markdown,
-				value: documaticHtmlToMarkdown(cls.doc),
-			},
-		});
-	}
-
-	const querydata = {
-		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""}`,
-		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0, `Name %STARTSWITH '${filter}'`],
-	};
-	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
-	if (respdata !== undefined && respdata.data.result.content.length > 0) {
-		for (const clsobj of respdata.data.result.content) {
-			if (added.has(clsobj.Name)) continue;
-			result.push({
-				label: clsobj.Name.slice(filter.length),
-				kind: CompletionItemKind.Class,
-				data: ["class", clsobj.Name, doc.uri],
-				tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
-			});
-		}
-	}
-	return result;
 }
 
 export async function onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
