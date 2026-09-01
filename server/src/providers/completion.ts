@@ -573,11 +573,15 @@ async function completionFullClassName(
 	settings: LanguageServerConfiguration,
 ): Promise<CompletionItem[]> {
 	const result: CompletionItem[] = [];
+
+	// Get the list of imports for resolution
+	const imports = await getImports(doc, parsed, line, server);
+
+	// Get all classes
 	const added = new Set<string>();
 	for await (const [uri, cls] of getClasses(doc.uri)) {
 		added.add(cls.name.content);
-		// No import resolution here: getImports() produces false positives for these.
-		const item = makeFullPrettyClassCompletionItem([], cls.name.content, uri, cls.deprecated);
+		const item = makeFullPrettyClassCompletionItem(imports, cls.name.content, uri, cls.deprecated);
 		item.documentation = {
 			kind: MarkupKind.Markdown,
 			value: documaticHtmlToMarkdown(cls.doc),
@@ -586,11 +590,6 @@ async function completionFullClassName(
 		item.label = ascot + item.label;
 		result.push(item);
 	}
-
-	// Get the list of imports for resolution
-	const imports = await getImports(doc, parsed, line, server);
-
-	// Get all classes
 	const querydata = {
 		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
 			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
@@ -1119,7 +1118,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 					}
 					if (displayname.startsWith("%Library.")) {
-						// Use short form for %Library classes
 						displayname = "%" + displayname.slice(9);
 					}
 					result.push({
