@@ -577,7 +577,7 @@ async function completionFullClassName(
 	for await (const [uri, cls] of getClasses(doc.uri)) {
 		added.add(cls.name.content);
 		// No import resolution here: getImports() produces false positives for these.
-		const item = makeClassCompletionItem([], cls.name.content, uri, cls.deprecated);
+		const item = makeFullPrettyClassCompletionItem([], cls.name.content, uri, cls.deprecated);
 		item.documentation = {
 			kind: MarkupKind.Markdown,
 			value: documaticHtmlToMarkdown(cls.doc),
@@ -601,7 +601,7 @@ async function completionFullClassName(
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (const clsobj of respdata.data.result.content) {
 			if (added.has(clsobj.Name)) continue;
-			result.push(makeClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated));
+			result.push(makeFullPrettyClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated));
 		}
 	}
 	return result;
@@ -1306,19 +1306,10 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					if (mem.kind.tag === "parameter") {
 						const name = quoteUDLIdentifier(mem.name.content, 1);
 						added.add(name);
-						result.push({
-							label: "#" + name,
-							kind: CompletionItemKind.Constant,
-							data: "member",
-							documentation: {
-								kind: MarkupKind.Markdown,
-								value: documaticHtmlToMarkdown(mem.doc),
-							},
-							sortText: name,
-							insertText: name,
-							detail: mem.kind.val.t,
-							tags: mem.deprecated ? [CompletionItemTag.Deprecated] : [],
-						});
+						const item = makeMemberCompletionItem(mem, name, params.position);
+						// "#" is already typed, so don't insert it again
+						item.insertText = name;
+						result.push(item);
 					}
 				}
 				// Query the server to get the names and descriptions of all parameters
@@ -2454,7 +2445,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	return result;
 }
 
-function makeClassCompletionItem(imports: string[], name: string, uri: TextDocument["uri"], deprecated: boolean) {
+function makeFullPrettyClassCompletionItem(imports: string[], name: string, uri: TextDocument["uri"], deprecated: boolean) {
 	let displayname: string = name;
 	let sortText: string | undefined;
 	for (const imp of imports) {
@@ -2487,17 +2478,17 @@ function makeMemberCompletionItem(mem: MemberInfo, name: string, position: Posit
 		label: name,
 		kind: CompletionItemKind.Property,
 		data: "member",
+		detail: mem.kind.tag === "property" ? mem.kind.val : undefined,
 		documentation: {
 			kind: MarkupKind.Markdown,
 			value: documaticHtmlToMarkdown(mem.doc),
 		},
-		sortText: name,
-		insertText: name,
 	};
 	if (mem.kind.tag === "class-method" || mem.kind.tag === "method" || mem.kind.tag === "client-method") {
 		item.kind = CompletionItemKind.Method;
+		item.detail = mem.kind.val.t;
 		if (mem.kind.val.normal.length == 0 && !mem.kind.val.variadic) {
-			item.insertText += "()";
+			item.insertText = name + "()";
 		} else {
 			item.textEdit = TextEdit.insert(position, name.replace(/\$/g, "//$") + "($0)");
 			item.insertTextFormat = InsertTextFormat.Snippet;
@@ -2508,7 +2499,9 @@ function makeMemberCompletionItem(mem: MemberInfo, name: string, position: Posit
 		}
 	} else if (mem.kind.tag === "parameter") {
 		item.kind = CompletionItemKind.Constant;
-		item.insertText = "#" + name;
+		item.label = "#" + name;
+		item.sortText = name;
+		item.detail = mem.kind.val.t;
 	}
 	if (mem.deprecated) {
 		item.tags = [CompletionItemTag.Deprecated];
