@@ -37,7 +37,7 @@ import {
 	LanguageServerConfiguration,
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { ascot, getClassMembers, getClasses } from "../ascot";
+import { ascot, getClassMembers, getClasses, MemberInfo } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -565,13 +565,14 @@ class SchemaCache {
  * @param server The server that doc is associated with.
  * @param line The line of doc that we're in.
  */
-async function* completionFullClassName(
+async function completionFullClassName(
 	doc: TextDocument,
 	parsed: compressedline[],
 	server: ServerSpec | undefined,
 	line: number,
 	settings: LanguageServerConfiguration,
-): AsyncGenerator<CompletionItem> {
+): Promise<CompletionItem[]> {
+	const result: CompletionItem[] = [];
 	const added = new Set<string>();
 	for await (const [uri, cls] of getClasses(doc.uri)) {
 		added.add(cls.name.content);
@@ -583,7 +584,7 @@ async function* completionFullClassName(
 		};
 		item.insertText = item.label;
 		item.label = ascot + item.label;
-		yield item;
+		result.push(item);
 	}
 
 	// Get the list of imports for resolution
@@ -600,9 +601,10 @@ async function* completionFullClassName(
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (const clsobj of respdata.data.result.content) {
 			if (added.has(clsobj.Name)) continue;
-			yield makeClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated);
+			result.push(makeClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated));
 		}
 	}
+	return result;
 }
 
 /**
@@ -1154,9 +1156,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		classregex.test(prevline)
 	) {
 		// This is a full class name
-		for await (const item of completionFullClassName(doc, parsed, server, params.position.line, settings)) {
-			result.push(item);
-		}
+		result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
 	} else if (
 		(prevline.endsWith(".") &&
 			prevline.slice(-2, -1) !== "," &&
@@ -1225,9 +1225,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		if (prevtokentype === "class" || prevtokentype === "system") {
 			// This is a partial class name
 			const filter = prevtokentype === "system" ? "%SYSTEM." : prevtokentext;
-			for await (const item of completionPartialClassName(filter, settings, server, doc)) {
-				result.push(item);
-			}
+			result = await completionPartialClassName(filter, settings, server, doc);
 		} else if (globalOrRoutineMatch && triggerlang == ld.cos_langindex) {
 			// This might be a routine or global
 
@@ -1328,37 +1326,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				for await (const [, mem] of getClassMembers(params.textDocument.uri, membercontext.baseclass)) {
 					const name = quoteUDLIdentifier(mem.name.content, 1);
 					added.add(name);
-					const item: CompletionItem = {
-						label: name,
-						kind: CompletionItemKind.Property,
-						data: "member",
-						documentation: {
-							kind: MarkupKind.Markdown,
-							value: documaticHtmlToMarkdown(mem.doc),
-						},
-						sortText: name,
-						insertText: name,
-					};
-					if (mem.kind.tag === "class-method" || mem.kind.tag === "method" || mem.kind.tag === "client-method") {
-						item.kind = CompletionItemKind.Method;
-						if (mem.kind.val.normal.length == 0 && !mem.kind.val.variadic) {
-							item.insertText += "()";
-						} else {
-							item.textEdit = TextEdit.insert(params.position, name.replace(/\$/g, "//$") + "($0)");
-							item.insertTextFormat = InsertTextFormat.Snippet;
-							item.command = {
-								title: "Show SignatureHelp",
-								command: "editor.action.triggerParameterHints",
-							};
-						}
-					} else if (mem.kind.tag === "parameter") {
-						item.kind = CompletionItemKind.Constant;
-						item.insertText = "#" + name;
-					}
-					if (mem.deprecated) {
-						item.tags = [CompletionItemTag.Deprecated];
-					}
-					result.push(item);
+					result.push(makeMemberCompletionItem(mem, name, params.position));
 				}
 
 				// Query the server to get the metadata of all appropriate class members
@@ -1907,9 +1875,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					}
 				} else if (thiskeydoc.constraint === "KW_SYSENUM_CLASS_LIST") {
 					// List of classes
-					for await (const item of completionFullClassName(doc, parsed, server, params.position.line, settings)) {
-						result.push(item);
-					}
+					result = await completionFullClassName(doc, parsed, server, params.position.line, settings);
 				} else if (thiskeydoc.constraint === "KW_SYSENUM_PACKAGE_LIST") {
 					// List of packages
 					result = await completionPackage(server, settings);
@@ -2467,20 +2433,55 @@ function makeClassCompletionItem(imports: string[], name: string, uri: TextDocum
 	return compItem;
 }
 
-async function* completionPartialClassName(
+function makeMemberCompletionItem(mem: MemberInfo, name: string, position: Position): CompletionItem {
+	const item: CompletionItem = {
+		label: name,
+		kind: CompletionItemKind.Property,
+		data: "member",
+		documentation: {
+			kind: MarkupKind.Markdown,
+			value: documaticHtmlToMarkdown(mem.doc),
+		},
+		sortText: name,
+		insertText: name,
+	};
+	if (mem.kind.tag === "class-method" || mem.kind.tag === "method" || mem.kind.tag === "client-method") {
+		item.kind = CompletionItemKind.Method;
+		if (mem.kind.val.normal.length == 0 && !mem.kind.val.variadic) {
+			item.insertText += "()";
+		} else {
+			item.textEdit = TextEdit.insert(position, name.replace(/\$/g, "//$") + "($0)");
+			item.insertTextFormat = InsertTextFormat.Snippet;
+			item.command = {
+				title: "Show SignatureHelp",
+				command: "editor.action.triggerParameterHints",
+			};
+		}
+	} else if (mem.kind.tag === "parameter") {
+		item.kind = CompletionItemKind.Constant;
+		item.insertText = "#" + name;
+	}
+	if (mem.deprecated) {
+		item.tags = [CompletionItemTag.Deprecated];
+	}
+	return item;
+}
+
+async function completionPartialClassName(
 	filter: string,
 	settings: LanguageServerConfiguration,
 	server: ServerSpec | undefined,
 	doc: TextDocument,
-): AsyncGenerator<CompletionItem> {
+): Promise<CompletionItem[]> {
 	filter += filter.endsWith(".") ? "" : ".";
+	const result: CompletionItem[] = [];
 	const added = new Set<string>();
 	for await (const [, cls] of getClasses(doc.uri)) {
 		if (!cls.name.content.startsWith(filter)) {
 			continue;
 		}
 		added.add(cls.name.content);
-		yield {
+		result.push({
 			label: cls.name.content.slice(filter.length),
 			kind: CompletionItemKind.Class,
 			data: ["class", cls.name.content.slice(filter.length), doc.uri],
@@ -2489,7 +2490,7 @@ async function* completionPartialClassName(
 				kind: MarkupKind.Markdown,
 				value: documaticHtmlToMarkdown(cls.doc),
 			},
-		};
+		});
 	}
 
 	const querydata = {
@@ -2500,14 +2501,15 @@ async function* completionPartialClassName(
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (const clsobj of respdata.data.result.content) {
 			if (added.has(clsobj.Name)) continue;
-			yield {
+			result.push({
 				label: clsobj.Name.slice(filter.length),
 				kind: CompletionItemKind.Class,
 				data: ["class", clsobj.Name, doc.uri],
 				tags: clsobj.Deprecated ? [CompletionItemTag.Deprecated] : undefined,
-			};
+			});
 		}
 	}
+	return result;
 }
 
 export async function onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
