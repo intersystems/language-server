@@ -233,7 +233,7 @@ export type NormalArg = wit.NormalArg;
 export type MemberInfo = wit.MemberInfo;
 
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
-export const ascot = `[🧣] `;
+export const ascot = `[👔] `;
 
 const wasm = (async (): Promise<Root> =>
 	instantiate((name) => new WebAssembly.Module(fs.readFileSync(path.resolve(__dirname, "../lib", name))), {
