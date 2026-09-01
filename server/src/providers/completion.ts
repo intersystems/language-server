@@ -586,7 +586,10 @@ async function* completionFullClassName(
 		yield item;
 	}
 
+	// Get the list of imports for resolution
 	const imports = await getImports(doc, parsed, line, server);
+
+	// Get all classes
 	const querydata = {
 		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
 			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
@@ -1283,6 +1286,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
 					// We got data back
+
 					for (const memobj of respdata.data.result.content) {
 						const quotedname = quoteUDLIdentifier(memobj.Name, 1);
 						if (added.has(quotedname)) continue;
