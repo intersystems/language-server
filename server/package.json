@@ -6,9 +6,6 @@
   "engines": {
     "node": "*"
   },
-  "scripts": {
-    "postinstall": "bash scripts/copy-ascot-lib.sh"
-  },
   "dependencies": {
     "@intersystems-community/ascot": "^0.1.0",
     "node-html-parser": "^7.1.0",
