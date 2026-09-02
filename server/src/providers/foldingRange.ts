@@ -149,20 +149,27 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 				isClassMemberOpen(line)
 			) {
 				// This line ends with a UDL open curly
-
+				let isClassOnPrevLine = false;
+				if (parsed[line].length == 1) {
+					for (let l = line - 1; l >= 0; l--) {
+						if (!parsed[l]?.length || !(parsed[l][0].l == ld.cls_langindex && parsed[l][0].s == ld.cls_keyword_attrindex)) {
+							// Loop back up until we hit a line with a class keyword as the first token
+							continue;
+						}
+						if (doc.getText(Range.create(l, parsed[l][0].p, l, parsed[l][0].p + parsed[l][0].c)).toLowerCase() == "class") {
+							isClassOnPrevLine = true;
+						}
+						break;
+					}
+				}
 				if (
-					(parsed[line].length === 1 &&
-						parsed[line - 1][0].l == ld.cls_langindex &&
-						parsed[line - 1][0].s == ld.cls_keyword_attrindex &&
-						doc
-							.getText(
-								Range.create(line - 1, parsed[line - 1][0].p, line - 1, parsed[line - 1][0].p + parsed[line - 1][0].c),
-							)
-							.toLowerCase() === "class") ||
-					(parsed[line].length > 1 &&
+					isClassOnPrevLine ||
+					(
+						parsed[line].length > 1 &&
 						parsed[line][0].l == ld.cls_langindex &&
 						parsed[line][0].s == ld.cls_keyword_attrindex &&
-						firsttokentext.toLowerCase() === "class")
+						firsttokentext.toLowerCase() === "class"
+					)
 				) {
 					// This is the open curly for a class, so don't create a folding range for it
 					continue;
