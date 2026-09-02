@@ -37,6 +37,7 @@ import {
 	LanguageServerConfiguration,
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
+import { ascot, getClassMembers, getClasses, MemberInfo } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -577,6 +578,18 @@ async function completionFullClassName(
 	const imports = await getImports(doc, parsed, line, server);
 
 	// Get all classes
+	const added = new Set<string>();
+	for await (const [uri, cls] of getClasses(doc.uri)) {
+		added.add(cls.name.content);
+		const item = makeFullPrettyClassCompletionItem(imports, cls.name.content, uri, cls.deprecated);
+		item.documentation = {
+			kind: MarkupKind.Markdown,
+			value: documaticHtmlToMarkdown(cls.doc),
+		};
+		item.insertText = item.label;
+		item.label = ascot + item.label;
+		result.push(item);
+	}
 	const querydata = {
 		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
 			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
@@ -586,43 +599,8 @@ async function completionFullClassName(
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 	if (respdata !== undefined && respdata.data.result.content.length > 0) {
 		for (const clsobj of respdata.data.result.content) {
-			let displayname: string = clsobj.Name;
-			let compItem: CompletionItem;
-			if (imports.length > 0) {
-				// Resolve import
-				let sortText: string | undefined;
-				for (const imp of imports) {
-					if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
-						displayname = displayname.slice(imp.length + 1);
-						sortText = "%%%" + displayname;
-						break;
-					}
-				}
-				if (displayname.startsWith("%Library.")) {
-					// Use short form for %Library classes
-					displayname = "%" + displayname.slice(9);
-				}
-				compItem = {
-					label: displayname,
-					kind: CompletionItemKind.Class,
-					data: ["class", clsobj.Name, doc.uri],
-					sortText,
-				};
-			} else {
-				if (displayname.startsWith("%Library.")) {
-					// Use short form for %Library classes
-					displayname = "%" + displayname.slice(9);
-				}
-				compItem = {
-					label: displayname,
-					kind: CompletionItemKind.Class,
-					data: ["class", clsobj.Name, doc.uri],
-				};
-			}
-			if (clsobj.Deprecated) {
-				compItem.tags = [CompletionItemTag.Deprecated];
-			}
-			result.push(compItem);
+			if (added.has(clsobj.Name)) continue;
+			result.push(makeFullPrettyClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated));
 		}
 	}
 	return result;
@@ -1140,7 +1118,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 						}
 					}
 					if (displayname.startsWith("%Library.")) {
-						// Use short form for %Library classes
 						displayname = "%" + displayname.slice(9);
 					}
 					result.push({
@@ -1257,6 +1234,24 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 			}
 
+			const added = new Set<string>();
+			for await (const [, cls] of getClasses(doc.uri)) {
+				if (!cls.name.content.startsWith(filter)) {
+					continue;
+				}
+				added.add(cls.name.content);
+				result.push({
+					label: cls.name.content.slice(filter.length),
+					kind: CompletionItemKind.Class,
+					data: ["class", cls.name.content.slice(filter.length), doc.uri],
+					tags: cls.deprecated ? [CompletionItemTag.Deprecated] : undefined,
+					documentation: {
+						kind: MarkupKind.Markdown,
+						value: documaticHtmlToMarkdown(cls.doc),
+					},
+				});
+			}
+
 			// Get all classes that match the filter
 			const querydata = {
 				query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
@@ -1269,6 +1264,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				// We got data back
 
 				for (const clsobj of respdata.data.result.content) {
+					if (added.has(clsobj.Name)) continue;
 					result.push({
 						label: clsobj.Name.slice(filter.length),
 						kind: CompletionItemKind.Class,
@@ -1303,6 +1299,17 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					return null;
 				}
 
+				const added = new Set<string>();
+				for await (const [, mem] of getClassMembers(params.textDocument.uri, membercontext.baseclass)) {
+					if (mem.kind.tag === "parameter") {
+						const name = quoteUDLIdentifier(mem.name.content, 1);
+						added.add(name);
+						const item = makeMemberCompletionItem(mem, name, params.position);
+						// "#" is already typed, so don't insert it again
+						item.insertText = name;
+						result.push(item);
+					}
+				}
 				// Query the server to get the names and descriptions of all parameters
 				const data: QueryData = {
 					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${
@@ -1318,6 +1325,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 					for (const memobj of respdata.data.result.content) {
 						const quotedname = quoteUDLIdentifier(memobj.Name, 1);
+						if (added.has(quotedname)) continue;
 						const item: CompletionItem = {
 							label: "#" + quotedname,
 							kind: CompletionItemKind.Constant,
@@ -1350,6 +1358,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				if (membercontext.baseclass === "") {
 					// If we couldn't determine the class, don't return anything
 					return null;
+				}
+
+				const added = new Set<string>();
+				for await (const [, mem] of getClassMembers(params.textDocument.uri, membercontext.baseclass)) {
+					const name = quoteUDLIdentifier(mem.name.content, 1);
+					added.add(name);
+					result.push(makeMemberCompletionItem(mem, name, params.position));
 				}
 
 				// Query the server to get the metadata of all appropriate class members
@@ -1420,6 +1435,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 
 					for (const memobj of respdata.data.result.content) {
 						const quotedname = quoteUDLIdentifier(memobj.Name, 1);
+						if (added.has(quotedname)) continue;
 						let item: CompletionItem = {
 							label: "",
 						};
@@ -2427,7 +2443,72 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	return result;
 }
 
+function makeFullPrettyClassCompletionItem(imports: string[], name: string, uri: TextDocument["uri"], deprecated: boolean) {
+	let displayname: string = name;
+	let sortText: string | undefined;
+	for (const imp of imports) {
+		if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
+			displayname = displayname.slice(imp.length + 1);
+			sortText = "%%%" + displayname;
+			break;
+		}
+	}
+	if (displayname.startsWith("%Library.")) {
+		// Use short form for %Library classes
+		displayname = "%" + displayname.slice(9);
+	}
+	const compItem: CompletionItem = {
+		label: displayname,
+		kind: CompletionItemKind.Class,
+		data: ["class", name, uri],
+	};
+	if (sortText !== undefined) {
+		compItem.sortText = sortText;
+	}
+	if (deprecated) {
+		compItem.tags = [CompletionItemTag.Deprecated];
+	}
+	return compItem;
+}
+
+function makeMemberCompletionItem(mem: MemberInfo, name: string, position: Position): CompletionItem {
+	const item: CompletionItem = {
+		label: name,
+		kind: CompletionItemKind.Property,
+		data: "member",
+		detail: mem.kind.tag === "property" ? mem.kind.val : undefined,
+		documentation: {
+			kind: MarkupKind.Markdown,
+			value: documaticHtmlToMarkdown(mem.doc),
+		},
+	};
+	if (mem.kind.tag === "class-method" || mem.kind.tag === "method" || mem.kind.tag === "client-method") {
+		item.kind = CompletionItemKind.Method;
+		item.detail = mem.kind.val.t;
+		if (mem.kind.val.normal.length == 0 && !mem.kind.val.variadic) {
+			item.insertText = name + "()";
+		} else {
+			item.textEdit = TextEdit.insert(position, name.replace(/\$/g, "//$") + "($0)");
+			item.insertTextFormat = InsertTextFormat.Snippet;
+			item.command = {
+				title: "Show SignatureHelp",
+				command: "editor.action.triggerParameterHints",
+			};
+		}
+	} else if (mem.kind.tag === "parameter") {
+		item.kind = CompletionItemKind.Constant;
+		item.label = "#" + name;
+		item.sortText = name;
+		item.detail = mem.kind.val.t;
+	}
+	if (mem.deprecated) {
+		item.tags = [CompletionItemTag.Deprecated];
+	}
+	return item;
+}
+
 export async function onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
+	if (item.documentation) return item;
 	if (Array.isArray(item.data) && item.data[0] === "class") {
 		// Get the description for this class from the server
 		const server = await getServerSpec(item.data[2]);

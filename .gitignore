@@ -3,4 +3,5 @@
 **/out/
 *.vsix
 /server/lib/isclexer.node
+/server/lib/ascot.core*.wasm
 **/tsconfig.tsbuildinfo

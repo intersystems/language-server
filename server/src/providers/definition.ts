@@ -20,6 +20,7 @@ import {
 } from "../utils/functions";
 import { ServerSpec, QueryData, compressedline } from "../utils/types";
 import { documents, corePropertyParams, classMemberTypes, mppContinue } from "../utils/variables";
+import { getDefinition } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 /**
@@ -226,6 +227,19 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 	const server = await getServerSpec(params.textDocument.uri);
 	if (!server) {
 		return null;
+	}
+
+	// ascot's own reference table covers cases the REST-based lookups below don't
+	// (self-references, same-routine label calls/gotos) — prefer it whenever it has an answer.
+	const ascotTarget = await getDefinition(params.textDocument.uri, params.position);
+	if (ascotTarget) {
+		return [
+			{
+				targetUri: ascotTarget.uri,
+				targetRange: ascotTarget.range,
+				targetSelectionRange: ascotTarget.range,
+			},
+		];
 	}
 
 	if (parsed[params.position.line] === undefined) {

@@ -22,6 +22,7 @@ import {
 } from "../utils/functions";
 import { ServerSpec, QueryData, CommandDoc, KeywordDoc } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
+import { getHover } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import commands from "../documentation/commands.json";
@@ -65,6 +66,11 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 	}
 	const server = await getServerSpec(params.textDocument.uri);
 	const settings = await getLanguageServerSettings(params.textDocument.uri);
+
+	const ascotHover = await getHover(params.textDocument.uri, params.position);
+	if (ascotHover) {
+		return { contents: { kind: MarkupKind.Markdown, value: ascotHover } };
+	}
 
 	if (parsed[params.position.line] === undefined) {
 		// This is the blank last line of the file

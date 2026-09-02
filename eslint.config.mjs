@@ -10,6 +10,7 @@ export default tseslint.config(
             "server/out/**",
             "common/out/**",
             "**/*.config.{mjs,js}",
+            "server/src/ascot/generated/**",
         ],
     },
     eslint.configs.recommended,

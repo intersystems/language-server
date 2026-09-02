@@ -1,3 +1,5 @@
+import * as fs from "fs";
+import * as path from "path";
 import { DidChangeConfigurationNotification, TextDocumentSyncKind, CodeActionKind } from "vscode-languageserver/node";
 import { URI } from "vscode-uri";
 
@@ -27,7 +29,10 @@ import { onSignatureHelp } from "./providers/signatureHelp";
 import { onDocumentFormatting, onDocumentRangeFormatting } from "./providers/formatting";
 import { onDiagnostics } from "./providers/diagnostic";
 import { onSemanticTokens, onSemanticTokensDelta } from "./providers/semanticTokens";
-
+import { onReferences } from "./providers/references";
+import { onWorkspaceSymbol } from "./providers/workspaceSymbol";
+import { onInlayHint } from "./providers/inlayHint";
+import { openDoc, closeDoc } from "./ascot";
 import { LanguageServerConfiguration, ServerSpec } from "./utils/types";
 import {
 	connection,
@@ -40,7 +45,22 @@ import {
 import { parseDocument, getLegend } from "./parse/parse";
 import { isolateEmbeddedLanguage, languageAtPosition } from "./providers/requestForwarding";
 
-connection.onInitialize(() => {
+connection.onInitialize((params) => {
+	(async () => {
+		for (const folder of params.workspaceFolders ?? []) {
+			const folderURI = URI.parse(folder.uri);
+			if (folderURI.scheme !== "file") continue;
+			for (const file of fs.readdirSync(folderURI.fsPath, { recursive: true, withFileTypes: true })) {
+				if (!(file.isFile() && /\.(cls|mac|int|inc)$/i.test(file.name))) {
+					continue;
+				}
+				const filePath = path.join(file.parentPath, file.name);
+				const fileURI = URI.file(filePath).toString();
+				const fileString = fs.readFileSync(filePath, "utf-8");
+				await openDoc(fileURI, fileString, folder.uri);
+			}
+		}
+	})();
 	return {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Full,
@@ -50,6 +70,7 @@ connection.onInitialize(() => {
 			},
 			hoverProvider: true,
 			definitionProvider: true,
+			referencesProvider: true,
 			signatureHelpProvider: {
 				triggerCharacters: ["(", ","],
 				retriggerCharacters: [","],
@@ -63,6 +84,7 @@ connection.onInitialize(() => {
 				},
 			},
 			documentSymbolProvider: true,
+			workspaceSymbolProvider: true,
 			foldingRangeProvider: true,
 			renameProvider: {
 				prepareProvider: true,
@@ -81,6 +103,7 @@ connection.onInitialize(() => {
 				interFileDependencies: false,
 				workspaceDiagnostics: false,
 			},
+			inlayHintProvider: true,
 		},
 	};
 });
@@ -116,12 +139,15 @@ connection.onDidChangeConfiguration(async () => {
 	connection.languages.diagnostics.refresh();
 });
 
-documents.onDidClose((e) => {
+documents.onDidClose(async (e) => {
 	parsedDocuments.delete(e.document.uri);
 	tokenBuilders.delete(e.document.uri);
 	serverSpecs.delete(e.document.uri);
 	languageServerSettings.delete(e.document.uri);
-	connection.sendDiagnostics({ uri: e.document.uri, diagnostics: [] });
+	await closeDoc(e.document.uri);
+	// Pull-model diagnostics: ask the client to re-pull so the closed
+	// document's diagnostics are recomputed (and dropped from the workspace report).
+	connection.languages.diagnostics.refresh();
 });
 
 // The content of a text document has changed. This event is emitted
@@ -130,14 +156,13 @@ documents.onDidChangeContent(async (change) => {
 	// Clear the parsedDocuments value so we know to wait for an update elsewhere
 	parsedDocuments.set(change.document.uri, undefined);
 	const path = URI.parse(change.document.uri).path;
+	const fileText = change.document.getText();
 	parsedDocuments.set(
 		change.document.uri,
-		parseDocument(
-			change.document.languageId,
-			path.slice(path.lastIndexOf(".") + 1).toLowerCase(),
-			change.document.getText(),
-		).compressedlinearray,
+		parseDocument(change.document.languageId, path.slice(path.lastIndexOf(".") + 1).toLowerCase(), fileText)
+			.compressedlinearray,
 	);
+	await openDoc(change.document.uri, fileText);
 });
 
 connection.onDocumentFormatting(onDocumentFormatting);
@@ -153,6 +178,8 @@ connection.onCompletionResolve(onCompletionResolve);
 connection.onHover(onHover);
 
 connection.onDefinition(onDefinition);
+
+connection.onReferences(onReferences);
 
 connection.languages.semanticTokens.on(onSemanticTokens);
 
@@ -187,6 +214,8 @@ connection.onNotification("intersystems/server/connectionChange", () => {
 });
 
 connection.onDocumentSymbol(onDocumentSymbol);
+
+connection.onWorkspaceSymbol(onWorkspaceSymbol);
 
 connection.onFoldingRanges(onFoldingRanges);
 
@@ -233,6 +262,8 @@ connection.onRequest("intersystems/embedded/languageAtPosition", languageAtPosit
 connection.onRequest("intersystems/embedded/isolateEmbeddedLanguage", isolateEmbeddedLanguage);
 
 connection.languages.diagnostics.on(onDiagnostics);
+
+connection.languages.inlayHint.on(onInlayHint);
 
 documents.listen(connection);
 
