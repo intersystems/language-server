@@ -31,6 +31,7 @@ npx jco transpile "$COMPONENT" \
 		"iris:ascot/imported#[method]iris-connection.get-mem" \
 		"iris:ascot/imported#[method]iris-connection.get-supers" \
 		"iris:ascot/imported#[method]iris-connection.is-datatype" \
+		"iris:ascot/imported#[method]iris-connection.get-include" \
 	--async-exports \
 		"iris:ascot/exported#[method]workspace.diagnostics" \
 		"iris:ascot/exported#[method]workspace.inlay-hint" \

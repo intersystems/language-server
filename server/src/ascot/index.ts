@@ -34,6 +34,7 @@ class IrisConnection {
 		private readonly memCache = new Map<string, [number, wit.MemberInfo]>(),
 		private readonly superCache = new Map<string, [number, string[]]>(),
 		private readonly datatypeCache = new Map<string, [number, boolean | undefined]>(),
+		private readonly includeCache = new Map<string, [number, string | undefined]>(),
 	) {}
 
 	// WIT declares this sync; jspi's WebAssembly.Suspending lets this async body await
@@ -227,6 +228,20 @@ class IrisConnection {
 		this.datatypeCache.set(cls, [Date.now(), isDatatype]);
 		return isDatatype;
 	}
+
+	// Only for includes outside the workspace (e.g. %occInclude); in-workspace ones are
+	// already open in ascot's own document store.
+	public async getInclude(name: string): Promise<string | undefined> {
+		const cached = this.includeCache.get(name);
+		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
+		const server = await getServerSpec(this.folderURI);
+		if (server === undefined) return undefined;
+		const respdata = await makeRESTRequest("GET", 1, `/doc/${encodeURIComponent(name)}.inc`, server);
+		const lines: string[] | undefined = respdata?.data?.result?.content;
+		const content = Array.isArray(lines) ? lines.join("\n") : undefined;
+		this.includeCache.set(name, [Date.now(), content]);
+		return content;
+	}
 }
 
 export type NormalArg = wit.NormalArg;
@@ -280,6 +295,7 @@ const severityMap: Record<wit.DiagnosticSeverity, DiagnosticSeverity> = {
 
 const symbolKindMap: Record<wit.SymbolKind, SymbolKind> = {
 	class: SymbolKind.Class,
+	module: SymbolKind.Module,
 	method: SymbolKind.Method,
 	property: SymbolKind.Property,
 	interface: SymbolKind.Interface,
@@ -402,12 +418,12 @@ export const getDocumentSymbol = (docURI: string) =>
 	withWorkspace(docURI, [] as DocumentSymbol[], async (w) => {
 		const classSymbol = await w.documentSymbol(docURI);
 		return classSymbol
-			? [{ ...convertSymbolInfo(classSymbol.class), children: classSymbol.members.map(convertSymbolInfo) }]
+			? [{ ...convertSymbolInfo(classSymbol.root), children: classSymbol.members.map(convertSymbolInfo) }]
 			: [];
 
 		function convertSymbolInfo(info: wit.SymbolInfo): DocumentSymbol {
 			return {
-				name: ascot + info.name,
+				name: info.name,
 				kind: symbolKindMap[info.kind],
 				tags: info.deprecated ? [SymbolTag.Deprecated] : [],
 				range: info.range,
@@ -419,7 +435,7 @@ export const getDocumentSymbol = (docURI: string) =>
 export const getWorkspaceSymbol = (folderURI: string, query: string) =>
 	withWorkspace(folderURI, [] as SymbolInformation[], async (w) =>
 		(await w.workspaceSymbol(query)).map((symbol) => ({
-			name: ascot + symbol.name,
+			name: symbol.name,
 			kind: symbolKindMap[symbol.kind],
 			tags: symbol.deprecated ? [SymbolTag.Deprecated] : [],
 			location: symbol.location,
