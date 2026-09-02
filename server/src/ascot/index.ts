@@ -1,7 +1,5 @@
-import * as fs from "fs";
-import * as path from "path";
-import { instantiate, Root } from "./generated/ascot.js";
-import type * as wit from "./generated/interfaces/iris-ascot-common.js";
+import { createWorkspace, type Workspace as AscotWorkspace, type Imported } from "@intersystems-community/ascot";
+import type * as wit from "@intersystems-community/ascot";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
@@ -28,7 +26,7 @@ interface MemberMetadataRow {
 
 // Resolves members/superclasses/datatype-ness for out-of-workspace classes via REST;
 // in-workspace classes are served from ascot's own memory and never reach here.
-class IrisConnection {
+class IrisConnection implements Imported {
 	constructor(
 		private readonly folderURI: string,
 		private readonly memCache = new Map<string, [number, wit.MemberInfo]>(),
@@ -250,41 +248,7 @@ export type MemberInfo = wit.MemberInfo;
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[👔] `;
 
-const wasm = (async (): Promise<Root> =>
-	instantiate((name) => new WebAssembly.Module(fs.readFileSync(path.resolve(__dirname, "../lib", name))), {
-		"iris:ascot/common": {},
-		"iris:ascot/imported": { IrisConnection },
-	} as never))();
-
-type WorkspaceInstance = InstanceType<Root["exported"]["Workspace"]>;
-
-// jco's jspi glue allows only one in-flight suspended call per component instance --
-// overlapping calls (e.g. diagnostics() and inlayHint() both awaiting a REST round trip)
-// trip its exclusive-lock check. Every `Workspace` shares the same `wasm` instance, so
-// this queue is module-wide, not per-Workspace.
-let tail: Promise<void> = Promise.resolve();
-
-function serialize(instance: WorkspaceInstance): WorkspaceInstance {
-	return new Proxy(instance, {
-		get(target, prop, receiver) {
-			const value = Reflect.get(target, prop, receiver);
-			if (typeof value !== "function") return value;
-			return async (...args: unknown[]) => {
-				const prev = tail;
-				let release!: () => void;
-				tail = new Promise<void>((r) => (release = r));
-				await prev;
-				try {
-					return await value.apply(target, args);
-				} finally {
-					release();
-				}
-			};
-		},
-	});
-}
-
-const workspaces = new Map<string, WorkspaceInstance>();
+const workspaces = new Map<string, AscotWorkspace>();
 
 const severityMap: Record<wit.DiagnosticSeverity, DiagnosticSeverity> = {
 	error: DiagnosticSeverity.Error,
@@ -324,7 +288,7 @@ export async function openDoc(docURI: string, src: string, folderURI?: string): 
 async function withWorkspace<T>(
 	docURI: string,
 	empty: T,
-	fn: (workspace: WorkspaceInstance) => Promise<T> | T,
+	fn: (workspace: AscotWorkspace) => Promise<T> | T,
 ): Promise<T> {
 	try {
 		return await fn(await filePathToWorkspace(docURI));
@@ -358,16 +322,16 @@ export const getReferences = (docURI: string, position: wit.Position, includeDec
 export const getHover = (docURI: string, position: wit.Position) =>
 	withWorkspace<string | undefined>(docURI, undefined, (w) => w.hover(docURI, position));
 
-async function filePathToWorkspace(docURI: string): Promise<WorkspaceInstance> {
+async function filePathToWorkspace(docURI: string): Promise<AscotWorkspace> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((f) => docURI.startsWith(f.uri));
 	return rootURIToWorkspace(folder?.uri ?? docURI);
 }
 
-async function rootURIToWorkspace(folderURI: string): Promise<WorkspaceInstance> {
+async function rootURIToWorkspace(folderURI: string): Promise<AscotWorkspace> {
 	let workspace = workspaces.get(folderURI);
 	if (!workspace) {
-		workspace = serialize(new (await wasm).exported.Workspace(new IrisConnection(folderURI)));
+		workspace = await createWorkspace(new IrisConnection(folderURI));
 		workspaces.set(folderURI, workspace);
 	}
 	return workspace;

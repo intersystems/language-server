@@ -1785,10 +1785,9 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run webpack",
-    "gen": "cd server && npm run gen",
-    "webpack": "npm run clean && npm run gen && npm run compile:common && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
-    "webpack:dev": "npm run clean && npm run gen && npm run compile:common && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
-    "compile": "npm run gen && npm run compile:common && tsc -b",
+    "webpack": "npm run clean && npm run compile:common && webpack --mode production --config ./client/webpack.config.js && webpack --mode production --config ./server/webpack.config.js",
+    "webpack:dev": "npm run clean && npm run compile:common && webpack --mode none --config ./client/webpack.config.js && webpack --mode none --config ./server/webpack.config.js",
+    "compile": "npm run compile:common && tsc -b",
     "compile:common": "cd common && npm run compile",
     "watch": "tsc -b -w",
     "clean": "rimraf client/out && rimraf server/out && rimraf common/out && rimraf common/tsconfig.tsbuildinfo && rimraf client/tsconfig.tsbuildinfo && rimraf server/tsconfig.tsbuildinfo && rimraf tsconfig.tsbuildinfo",
