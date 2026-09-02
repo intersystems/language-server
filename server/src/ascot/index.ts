@@ -1,22 +1,4 @@
-import {
-	createWorkspace,
-	type ArgMode,
-	type ClassInfo,
-	type DiagnosticSeverity as AscotDiagnosticSeverity,
-	type Imported,
-	type InlayHint,
-	type Location,
-	type MemberInfo as AscotMemberInfo,
-	type MemberKind,
-	type MethodInfo,
-	type NormalArg as AscotNormalArg,
-	type Position,
-	type Range,
-	type SymbolInfo,
-	type SymbolKind as AscotSymbolKind,
-	type VariadicArg,
-	type Workspace,
-} from "@intersystems-community/ascot";
+import * as Ascot from "@intersystems-community/ascot";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
@@ -28,7 +10,7 @@ import {
 import { connection } from "../utils/variables";
 import { getServerSpec, makeRESTRequest } from "../utils/functions";
 
-const ORIGIN: Position = { line: 0, character: 0 };
+const ORIGIN: Ascot.Position = { line: 0, character: 0 };
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
 interface MemberMetadataRow {
@@ -43,10 +25,10 @@ interface MemberMetadataRow {
 
 // Resolves members/superclasses/datatype-ness for out-of-workspace classes via REST;
 // in-workspace classes are served from ascot's own memory and never reach here.
-class IrisConnection implements Imported {
+class IrisConnection implements Ascot.Imported {
 	constructor(
 		private readonly folderURI: string,
-		private readonly memCache = new Map<string, [number, AscotMemberInfo]>(),
+		private readonly memCache = new Map<string, [number, Ascot.MemberInfo]>(),
 		private readonly superCache = new Map<string, [number, string[]]>(),
 		private readonly datatypeCache = new Map<string, [number, boolean | undefined]>(),
 		private readonly includeCache = new Map<string, [number, string | undefined]>(),
@@ -54,7 +36,7 @@ class IrisConnection implements Imported {
 
 	// ascot declares this sync; jspi's WebAssembly.Suspending lets this async body await
 	// a REST call while ascot itself still sees a plain sync return.
-	public async getMem(cls: string, mem: string): Promise<AscotMemberInfo | undefined> {
+	public async getMem(cls: string, mem: string): Promise<Ascot.MemberInfo | undefined> {
 		const key = `${cls}||${mem}`;
 		const cached = this.memCache.get(key);
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
@@ -94,7 +76,7 @@ class IrisConnection implements Imported {
 				if (Array.isArray(stubrows) && stubrows.length > 0) row = stubrows[0];
 			}
 		}
-		const info: AscotMemberInfo = {
+		const info: Ascot.MemberInfo = {
 			doc: row.Description ?? "",
 			before: ORIGIN,
 			name: { before: ORIGIN, content: mem, after: ORIGIN },
@@ -105,7 +87,7 @@ class IrisConnection implements Imported {
 		this.memCache.set(key, [Date.now(), info]);
 		return info;
 
-		function rowToMemberKind(row: MemberMetadataRow): MemberKind {
+		function rowToMemberKind(row: MemberMetadataRow): Ascot.MemberKind {
 			const type = row.ReturnType || undefined;
 			switch (row.MemberType) {
 				case "property":
@@ -114,7 +96,7 @@ class IrisConnection implements Imported {
 					return { tag: "parameter", val: { t: type } };
 				default: {
 					const { normal, variadic } = parseFormalSpec(row.FormalSpec ?? "");
-					const val: MethodInfo = { normal, variadic, t: type, body: { start: ORIGIN, end: ORIGIN } };
+					const val: Ascot.MethodInfo = { normal, variadic, t: type, body: { start: ORIGIN, end: ORIGIN } };
 					return { tag: row.ClassMethod == "1" ? "class-method" : "method", val };
 				}
 			}
@@ -124,13 +106,13 @@ class IrisConnection implements Imported {
 		// structured args ascot expects. Prefixes: `*` output, `&` by-ref; `:` starts the
 		// type, `=` the default; a trailing `...` marks the variadic arg. Types and defaults
 		// may contain commas/parens/quotes, so split respecting quote and paren nesting.
-		function parseFormalSpec(spec: string): { normal: AscotNormalArg[]; variadic?: VariadicArg } {
-			const normal: AscotNormalArg[] = [];
-			let variadic: VariadicArg | undefined;
+		function parseFormalSpec(spec: string): { normal: Ascot.NormalArg[]; variadic?: Ascot.VariadicArg } {
+			const normal: Ascot.NormalArg[] = [];
+			let variadic: Ascot.VariadicArg | undefined;
 			for (const raw of splitTopLevel(spec)) {
 				let s = raw.trim();
 				if (s === "") continue;
-				let mode: ArgMode = "default";
+				let mode: Ascot.ArgMode = "default";
 				if (s.startsWith("*")) {
 					mode = "output";
 					s = s.slice(1);
@@ -259,22 +241,22 @@ class IrisConnection implements Imported {
 	}
 }
 
-export type NormalArg = AscotNormalArg;
-export type MemberInfo = AscotMemberInfo;
+export type NormalArg = Ascot.NormalArg;
+export type MemberInfo = Ascot.MemberInfo;
 
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[👔] `;
 
-const workspaces = new Map<string, Workspace>();
+const workspaces = new Map<string, Ascot.Workspace>();
 
-const severityMap: Record<AscotDiagnosticSeverity, DiagnosticSeverity> = {
+const severityMap: Record<Ascot.DiagnosticSeverity, DiagnosticSeverity> = {
 	error: DiagnosticSeverity.Error,
 	warning: DiagnosticSeverity.Warning,
 	information: DiagnosticSeverity.Information,
 	hint: DiagnosticSeverity.Hint,
 };
 
-const symbolKindMap: Record<AscotSymbolKind, SymbolKind> = {
+const symbolKindMap: Record<Ascot.SymbolKind, SymbolKind> = {
 	class: SymbolKind.Class,
 	module: SymbolKind.Module,
 	method: SymbolKind.Method,
@@ -302,7 +284,11 @@ export async function openDoc(docURI: string, src: string, folderURI?: string): 
 }
 
 /** Run `fn` against `docURI`'s workspace, logging and falling back to `empty` on any error. */
-async function withWorkspace<T>(docURI: string, empty: T, fn: (workspace: Workspace) => Promise<T> | T): Promise<T> {
+async function withWorkspace<T>(
+	docURI: string,
+	empty: T,
+	fn: (workspace: Ascot.Workspace) => Promise<T> | T,
+): Promise<T> {
 	try {
 		return await fn(await filePathToWorkspace(docURI));
 	} catch (rawError) {
@@ -323,28 +309,28 @@ export const getDiagnostics = (docURI: string) =>
 		})),
 	);
 
-export const inlayHint = (docURI: string, range: Range) =>
-	withWorkspace(docURI, [] as InlayHint[], (w) => w.inlayHint(docURI, range));
+export const inlayHint = (docURI: string, range: Ascot.Range) =>
+	withWorkspace(docURI, [] as Ascot.InlayHint[], (w) => w.inlayHint(docURI, range));
 
-export const getDefinition = (docURI: string, position: Position) =>
-	withWorkspace<Location | undefined>(docURI, undefined, (w) => w.definition(docURI, position));
+export const getDefinition = (docURI: string, position: Ascot.Position) =>
+	withWorkspace<Ascot.Location | undefined>(docURI, undefined, (w) => w.definition(docURI, position));
 
-export const getReferences = (docURI: string, position: Position, includeDeclaration: boolean) =>
-	withWorkspace(docURI, [] as Location[], (w) => w.references(docURI, position, includeDeclaration));
+export const getReferences = (docURI: string, position: Ascot.Position, includeDeclaration: boolean) =>
+	withWorkspace(docURI, [] as Ascot.Location[], (w) => w.references(docURI, position, includeDeclaration));
 
-export const getHover = (docURI: string, position: Position) =>
+export const getHover = (docURI: string, position: Ascot.Position) =>
 	withWorkspace<string | undefined>(docURI, undefined, (w) => w.hover(docURI, position));
 
-async function filePathToWorkspace(docURI: string): Promise<Workspace> {
+async function filePathToWorkspace(docURI: string): Promise<Ascot.Workspace> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((f) => docURI.startsWith(f.uri));
 	return rootURIToWorkspace(folder?.uri ?? docURI);
 }
 
-async function rootURIToWorkspace(folderURI: string): Promise<Workspace> {
+async function rootURIToWorkspace(folderURI: string): Promise<Ascot.Workspace> {
 	let workspace = workspaces.get(folderURI);
 	if (!workspace) {
-		workspace = await createWorkspace(new IrisConnection(folderURI));
+		workspace = await Ascot.createWorkspace(new IrisConnection(folderURI));
 		workspaces.set(folderURI, workspace);
 	}
 	return workspace;
@@ -362,7 +348,7 @@ async function findByName<T extends { name: { content: string } }>(
 
 const getClass = (docURI: string, name: string) => findByName(getClasses(docURI), name);
 
-export async function* getClasses(docURI: string): AsyncGenerator<[string, ClassInfo]> {
+export async function* getClasses(docURI: string): AsyncGenerator<[string, Ascot.ClassInfo]> {
 	const workspace = await filePathToWorkspace(docURI);
 	const classes = await workspace.queryCls("");
 	for (const x of classes) {
@@ -377,7 +363,7 @@ export async function* getClassMembers(
 	docURI: string,
 	clsName: string,
 	memQuery: string = "",
-): AsyncGenerator<[string, AscotMemberInfo]> {
+): AsyncGenerator<[string, Ascot.MemberInfo]> {
 	const workspace = await filePathToWorkspace(docURI);
 	for (const x of await workspace.queryMem(clsName, memQuery)) {
 		yield x;
@@ -398,7 +384,7 @@ export const getDocumentSymbol = (docURI: string) =>
 			? [{ ...convertSymbolInfo(classSymbol.root), children: classSymbol.members.map(convertSymbolInfo) }]
 			: [];
 
-		function convertSymbolInfo(info: SymbolInfo): DocumentSymbol {
+		function convertSymbolInfo(info: Ascot.SymbolInfo): DocumentSymbol {
 			return {
 				name: info.name,
 				kind: symbolKindMap[info.kind],
