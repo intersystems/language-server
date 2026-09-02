@@ -1,5 +1,4 @@
-import { createWorkspace, type Workspace, type Imported } from "@intersystems-community/ascot";
-import type * as Ascot from "@intersystems-community/ascot";
+import * as Ascot from "@intersystems-community/ascot";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
@@ -26,7 +25,7 @@ interface MemberMetadataRow {
 
 // Resolves members/superclasses/datatype-ness for out-of-workspace classes via REST;
 // in-workspace classes are served from ascot's own memory and never reach here.
-class IrisConnection implements Imported {
+class IrisConnection implements Ascot.Imported {
 	constructor(
 		private readonly folderURI: string,
 		private readonly memCache = new Map<string, [number, Ascot.MemberInfo]>(),
@@ -248,7 +247,7 @@ export type MemberInfo = Ascot.MemberInfo;
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[👔] `;
 
-const workspaces = new Map<string, Workspace>();
+const workspaces = new Map<string, Ascot.Workspace>();
 
 const severityMap: Record<Ascot.DiagnosticSeverity, DiagnosticSeverity> = {
 	error: DiagnosticSeverity.Error,
@@ -285,7 +284,11 @@ export async function openDoc(docURI: string, src: string, folderURI?: string): 
 }
 
 /** Run `fn` against `docURI`'s workspace, logging and falling back to `empty` on any error. */
-async function withWorkspace<T>(docURI: string, empty: T, fn: (workspace: Workspace) => Promise<T> | T): Promise<T> {
+async function withWorkspace<T>(
+	docURI: string,
+	empty: T,
+	fn: (workspace: Ascot.Workspace) => Promise<T> | T,
+): Promise<T> {
 	try {
 		return await fn(await filePathToWorkspace(docURI));
 	} catch (rawError) {
@@ -318,16 +321,16 @@ export const getReferences = (docURI: string, position: Ascot.Position, includeD
 export const getHover = (docURI: string, position: Ascot.Position) =>
 	withWorkspace<string | undefined>(docURI, undefined, (w) => w.hover(docURI, position));
 
-async function filePathToWorkspace(docURI: string): Promise<Workspace> {
+async function filePathToWorkspace(docURI: string): Promise<Ascot.Workspace> {
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((f) => docURI.startsWith(f.uri));
 	return rootURIToWorkspace(folder?.uri ?? docURI);
 }
 
-async function rootURIToWorkspace(folderURI: string): Promise<Workspace> {
+async function rootURIToWorkspace(folderURI: string): Promise<Ascot.Workspace> {
 	let workspace = workspaces.get(folderURI);
 	if (!workspace) {
-		workspace = await createWorkspace(new IrisConnection(folderURI));
+		workspace = await Ascot.createWorkspace(new IrisConnection(folderURI));
 		workspaces.set(folderURI, workspace);
 	}
 	return workspace;
