@@ -1,5 +1,5 @@
 import { createWorkspace, type Workspace as AscotWorkspace, type Imported } from "@intersystems-community/ascot";
-import type * as wit from "@intersystems-community/ascot";
+import type * as Ascot from "@intersystems-community/ascot";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
@@ -11,7 +11,7 @@ import {
 import { connection } from "../utils/variables";
 import { getServerSpec, makeRESTRequest } from "../utils/functions";
 
-const ORIGIN: wit.Position = { line: 0, character: 0 };
+const ORIGIN: Ascot.Position = { line: 0, character: 0 };
 const CACHE_TTL_MS = 60 * 60 * 1000;
 
 interface MemberMetadataRow {
@@ -29,15 +29,15 @@ interface MemberMetadataRow {
 class IrisConnection implements Imported {
 	constructor(
 		private readonly folderURI: string,
-		private readonly memCache = new Map<string, [number, wit.MemberInfo]>(),
+		private readonly memCache = new Map<string, [number, Ascot.MemberInfo]>(),
 		private readonly superCache = new Map<string, [number, string[]]>(),
 		private readonly datatypeCache = new Map<string, [number, boolean | undefined]>(),
 		private readonly includeCache = new Map<string, [number, string | undefined]>(),
 	) {}
 
-	// WIT declares this sync; jspi's WebAssembly.Suspending lets this async body await
+	// ascot declares this sync; jspi's WebAssembly.Suspending lets this async body await
 	// a REST call while ascot itself still sees a plain sync return.
-	public async getMem(cls: string, mem: string): Promise<wit.MemberInfo | undefined> {
+	public async getMem(cls: string, mem: string): Promise<Ascot.MemberInfo | undefined> {
 		const key = `${cls}||${mem}`;
 		const cached = this.memCache.get(key);
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
@@ -77,7 +77,7 @@ class IrisConnection implements Imported {
 				if (Array.isArray(stubrows) && stubrows.length > 0) row = stubrows[0];
 			}
 		}
-		const info: wit.MemberInfo = {
+		const info: Ascot.MemberInfo = {
 			doc: row.Description ?? "",
 			before: ORIGIN,
 			name: { before: ORIGIN, content: mem, after: ORIGIN },
@@ -88,7 +88,7 @@ class IrisConnection implements Imported {
 		this.memCache.set(key, [Date.now(), info]);
 		return info;
 
-		function rowToMemberKind(row: MemberMetadataRow): wit.MemberKind {
+		function rowToMemberKind(row: MemberMetadataRow): Ascot.MemberKind {
 			const type = row.ReturnType || undefined;
 			switch (row.MemberType) {
 				case "property":
@@ -97,23 +97,23 @@ class IrisConnection implements Imported {
 					return { tag: "parameter", val: { t: type } };
 				default: {
 					const { normal, variadic } = parseFormalSpec(row.FormalSpec ?? "");
-					const val: wit.MethodInfo = { normal, variadic, t: type, body: { start: ORIGIN, end: ORIGIN } };
+					const val: Ascot.MethodInfo = { normal, variadic, t: type, body: { start: ORIGIN, end: ORIGIN } };
 					return { tag: row.ClassMethod == "1" ? "class-method" : "method", val };
 				}
 			}
 		}
 
 		// Parse IRIS's minified FormalSpec (e.g. `*out:%String,&ref:%Integer,x...`) into the
-		// structured args the WIT expects. Prefixes: `*` output, `&` by-ref; `:` starts the
+		// structured args ascot expects. Prefixes: `*` output, `&` by-ref; `:` starts the
 		// type, `=` the default; a trailing `...` marks the variadic arg. Types and defaults
 		// may contain commas/parens/quotes, so split respecting quote and paren nesting.
-		function parseFormalSpec(spec: string): { normal: wit.NormalArg[]; variadic?: wit.VariadicArg } {
-			const normal: wit.NormalArg[] = [];
-			let variadic: wit.VariadicArg | undefined;
+		function parseFormalSpec(spec: string): { normal: Ascot.NormalArg[]; variadic?: Ascot.VariadicArg } {
+			const normal: Ascot.NormalArg[] = [];
+			let variadic: Ascot.VariadicArg | undefined;
 			for (const raw of splitTopLevel(spec)) {
 				let s = raw.trim();
 				if (s === "") continue;
-				let mode: wit.ArgMode = "default";
+				let mode: Ascot.ArgMode = "default";
 				if (s.startsWith("*")) {
 					mode = "output";
 					s = s.slice(1);
@@ -242,22 +242,22 @@ class IrisConnection implements Imported {
 	}
 }
 
-export type NormalArg = wit.NormalArg;
-export type MemberInfo = wit.MemberInfo;
+export type NormalArg = Ascot.NormalArg;
+export type MemberInfo = Ascot.MemberInfo;
 
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[👔] `;
 
 const workspaces = new Map<string, AscotWorkspace>();
 
-const severityMap: Record<wit.DiagnosticSeverity, DiagnosticSeverity> = {
+const severityMap: Record<Ascot.DiagnosticSeverity, DiagnosticSeverity> = {
 	error: DiagnosticSeverity.Error,
 	warning: DiagnosticSeverity.Warning,
 	information: DiagnosticSeverity.Information,
 	hint: DiagnosticSeverity.Hint,
 };
 
-const symbolKindMap: Record<wit.SymbolKind, SymbolKind> = {
+const symbolKindMap: Record<Ascot.SymbolKind, SymbolKind> = {
 	class: SymbolKind.Class,
 	module: SymbolKind.Module,
 	method: SymbolKind.Method,
@@ -310,16 +310,16 @@ export const getDiagnostics = (docURI: string) =>
 		})),
 	);
 
-export const inlayHint = (docURI: string, range: wit.Range) =>
-	withWorkspace(docURI, [] as wit.InlayHint[], (w) => w.inlayHint(docURI, range));
+export const inlayHint = (docURI: string, range: Ascot.Range) =>
+	withWorkspace(docURI, [] as Ascot.InlayHint[], (w) => w.inlayHint(docURI, range));
 
-export const getDefinition = (docURI: string, position: wit.Position) =>
-	withWorkspace<wit.Location | undefined>(docURI, undefined, (w) => w.definition(docURI, position));
+export const getDefinition = (docURI: string, position: Ascot.Position) =>
+	withWorkspace<Ascot.Location | undefined>(docURI, undefined, (w) => w.definition(docURI, position));
 
-export const getReferences = (docURI: string, position: wit.Position, includeDeclaration: boolean) =>
-	withWorkspace(docURI, [] as wit.Location[], (w) => w.references(docURI, position, includeDeclaration));
+export const getReferences = (docURI: string, position: Ascot.Position, includeDeclaration: boolean) =>
+	withWorkspace(docURI, [] as Ascot.Location[], (w) => w.references(docURI, position, includeDeclaration));
 
-export const getHover = (docURI: string, position: wit.Position) =>
+export const getHover = (docURI: string, position: Ascot.Position) =>
 	withWorkspace<string | undefined>(docURI, undefined, (w) => w.hover(docURI, position));
 
 async function filePathToWorkspace(docURI: string): Promise<AscotWorkspace> {
@@ -349,7 +349,7 @@ async function findByName<T extends { name: { content: string } }>(
 
 const getClass = (docURI: string, name: string) => findByName(getClasses(docURI), name);
 
-export async function* getClasses(docURI: string): AsyncGenerator<[string, wit.ClassInfo]> {
+export async function* getClasses(docURI: string): AsyncGenerator<[string, Ascot.ClassInfo]> {
 	const workspace = await filePathToWorkspace(docURI);
 	const classes = await workspace.queryCls("");
 	for (const x of classes) {
@@ -364,7 +364,7 @@ export async function* getClassMembers(
 	docURI: string,
 	clsName: string,
 	memQuery: string = "",
-): AsyncGenerator<[string, wit.MemberInfo]> {
+): AsyncGenerator<[string, Ascot.MemberInfo]> {
 	const workspace = await filePathToWorkspace(docURI);
 	for (const x of await workspace.queryMem(clsName, memQuery)) {
 		yield x;
@@ -385,7 +385,7 @@ export const getDocumentSymbol = (docURI: string) =>
 			? [{ ...convertSymbolInfo(classSymbol.root), children: classSymbol.members.map(convertSymbolInfo) }]
 			: [];
 
-		function convertSymbolInfo(info: wit.SymbolInfo): DocumentSymbol {
+		function convertSymbolInfo(info: Ascot.SymbolInfo): DocumentSymbol {
 			return {
 				name: info.name,
 				kind: symbolKindMap[info.kind],
