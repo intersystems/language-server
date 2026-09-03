@@ -1,8 +1,11 @@
 # Changelog
 
-## [2.8.5] - 2026-08-XX
+## [2.8.5] - 2026-09-03
 - PR [#410](https://github.com/intersystems/language-server/pull/410): Fix hover intellisense for macros
 - Fix issue [#411](https://github.com/intersystems/language-server/issues/411): AxiosError 405 on activation
+- Fix issue [#413](https://github.com/intersystems/language-server/issues/413): Diagnositics fail when running on a document that has no server connection
+- PR [#416](https://github.com/intersystems/language-server/pull/416): Activate faster when there are many workspace servers
+- PR [#417](https://github.com/intersystems/language-server/pull/417): Fix folding range failure when there's blank lines in between the open curly brace for a method or class and the definition line
 
 ## [2.8.4] - 2026-08-11
 - Fix issue [#391](https://github.com/intersystems/language-server/issues/391): Parser support for SQL WITH clause
