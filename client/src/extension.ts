@@ -173,19 +173,21 @@ export async function activate(context: ExtensionContext) {
 			}
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
 			if ([undefined, ""].includes(auth?.username)) {
-				const partialKey =
-					`${serverSpec.host}:${serverSpec.port}${serverSpec.pathPrefix}/${serverSpec.namespace}`.toLowerCase();
+				const partialKey = `${serverSpec.host}:${serverSpec.port}${serverSpec.pathPrefix}`.toLowerCase();
 				for (const key of resolvedServerSpecs.keys()) {
-					// The username isn't known yet, so see if we have a connection to this server+namespace that is already known
+					// The username isn't known yet, so see if we have a connection to this server that is already known
 					if (key.toLowerCase().slice(key.indexOf("@") + 1) == partialKey) {
-						return resolvedServerSpecs.get(key);
+						const cached = resolvedServerSpecs.get(key);
+						// Auth is namespace-independent, but the caller needs the namespace it actually asked for
+						return cached && { ...cached, namespace: serverSpec.namespace };
 					}
 				}
 			} else {
-				// Return resolved spec if we have one that matches exactly (including namespace)
-				const key =
-					`${auth.username}@${serverSpec.host}:${serverSpec.port}${serverSpec.pathPrefix}/${serverSpec.namespace}`.toLowerCase();
-				if (resolvedServerSpecs.has(key)) return resolvedServerSpecs.get(key);
+				// Return resolved spec if we have one that matches exactly
+				const key = `${auth.username}@${serverSpec.host}:${serverSpec.port}${serverSpec.pathPrefix}`.toLowerCase();
+				const cached = resolvedServerSpecs.get(key);
+				// Auth is namespace-independent, but the caller needs the namespace it actually asked for
+				if (cached) return { ...cached, namespace: serverSpec.namespace };
 			}
 			if (
 				// Server was resolved
@@ -243,8 +245,7 @@ export async function activate(context: ExtensionContext) {
 				username: auth.username,
 				credentials: auth.credentials,
 			};
-			const serverKey =
-				`${server.username}@${server.host}:${server.port}${server.pathPrefix}/${server.namespace}`.toLowerCase();
+			const serverKey = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`.toLowerCase();
 			if (!resolvedServerSpecs.has(serverKey)) resolvedServerSpecs.set(serverKey, server);
 			return server;
 		} catch {
