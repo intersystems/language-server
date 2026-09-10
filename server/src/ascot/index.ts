@@ -20,6 +20,7 @@ interface MemberMetadataRow {
 	Description: string;
 	FormalSpec: string;
 	ReturnType: string;
+	Collection: string | null;
 	Stub: string;
 	ClassMethod: "0" | "1" | 0 | 1;
 	Deprecated: "0" | "1" | 0 | 1;
@@ -31,6 +32,7 @@ interface ClassMetadataRow {
 	Super: string;
 	PropertyClass: string;
 	ClassType: string;
+	IncludeCode: string;
 	Deprecated: "0" | "1" | 0 | 1;
 }
 
@@ -54,7 +56,7 @@ class IrisConnection implements Ascot.Imported {
 
 		const clsdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 			query:
-				"SELECT Description, Super, PropertyClass, ClassType, Deprecated FROM %Dictionary.CompiledClass WHERE Name = ?",
+				"SELECT Description, Super, PropertyClass, ClassType, IncludeCode, Deprecated FROM %Dictionary.CompiledClass WHERE Name = ?",
 			parameters: [cls],
 		});
 		const clsrows: ClassMetadataRow[] | undefined = clsdata?.data?.result?.content;
@@ -66,12 +68,11 @@ class IrisConnection implements Ascot.Imported {
 
 		const memdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 			query:
-				"SELECT Name, NULL AS Aliases, 'method' AS MemberType, Description, FormalSpec, ReturnType, Stub, ClassMethod, Deprecated, Origin " +
+				"SELECT Name, NULL AS Aliases, 'method' AS MemberType, Description, FormalSpec, ReturnType, NULL AS Collection, Stub, ClassMethod, Deprecated, Origin " +
 				"FROM %Dictionary.CompiledMethod WHERE Parent = ? UNION ALL " +
-				"SELECT Name, Aliases, 'property' AS MemberType, Description, NULL AS FormalSpec, " +
-				"CASE WHEN Collection IS NOT NULL THEN Collection||' Of '||Type ELSE Type END AS ReturnType, " +
+				"SELECT Name, Aliases, 'property' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, Collection, " +
 				"NULL AS Stub, 0 AS ClassMethod, Deprecated, Origin FROM %Dictionary.CompiledProperty WHERE Parent = ? UNION ALL " +
-				"SELECT Name, NULL AS Aliases, 'parameter' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, " +
+				"SELECT Name, NULL AS Aliases, 'parameter' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Collection, " +
 				"NULL AS Stub, 0 AS ClassMethod, Deprecated, Origin FROM %Dictionary.CompiledParameter WHERE Parent = ?",
 			parameters: [cls, cls, cls],
 		});
@@ -87,24 +88,38 @@ class IrisConnection implements Ascot.Imported {
 			deprecated: clsrow.Deprecated == "1",
 			members,
 			propertyClassNames: splitClasses(clsrow.PropertyClass),
+			includes: splitClasses(clsrow.IncludeCode),
 			isDatatype: clsrow.ClassType === "datatype",
 		};
 		this.clsCache.set(cls, [Date.now(), info]);
 		return info;
 	}
 
-	// The raw source of an `#include`d name or a cross-routine call target, for one that isn't
-	// already open in the workspace (e.g. %occInclude, or a routine living elsewhere in the
-	// namespace). No uri of our own to offer ascot for these -- they aren't backed by a document
-	// this server's client could navigate to.
-	public async getRoutine(name: string): Promise<Ascot.RoutineSource | undefined> {
-		const cached = this.routineCache.get(name);
+	// The raw source of an `#include`d name that isn't already open in the workspace (e.g.
+	// %occInclude). No uri of our own to offer ascot for these -- they aren't backed by a
+	// document this server's client could navigate to.
+	public getInc(name: string): Promise<Ascot.RoutineSource | undefined> {
+		return this.fetchRoutine(name, ["inc"]);
+	}
+
+	// Likewise for a cross-routine call target; a deployed routine may only have its .int.
+	public getMacOrInt(name: string): Promise<Ascot.RoutineSource | undefined> {
+		return this.fetchRoutine(name, ["mac", "int"]);
+	}
+
+	private async fetchRoutine(name: string, exts: string[]): Promise<Ascot.RoutineSource | undefined> {
+		const key = `${name}.${exts[0]}`;
+		const cached = this.routineCache.get(key);
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
 		const server = await getServerSpec(this.folderURI);
 		if (server === undefined) return undefined;
-		const text = (await fetchDoc(server, `${name}.inc`)) ?? (await fetchDoc(server, `${name}.mac`));
+		let text: string | undefined;
+		for (const ext of exts) {
+			text = await fetchDoc(server, `${name}.${ext}`);
+			if (text !== undefined) break;
+		}
 		const source = text !== undefined ? { text } : undefined;
-		this.routineCache.set(name, [Date.now(), source]);
+		this.routineCache.set(key, [Date.now(), source]);
 		return source;
 	}
 }
@@ -125,6 +140,18 @@ function splitClasses(s: string | undefined): string[] {
 				.map((s) => s.trim())
 				.filter(Boolean)
 		: [];
+}
+
+// A `list Of`/`array Of` property is the collection object, not its element type.
+function collectionType(collection: string | null | undefined): string | undefined {
+	switch (collection?.toLowerCase()) {
+		case "list":
+			return "%Collection.AbstractList";
+		case "array":
+			return "%Collection.AbstractArray";
+		default:
+			return undefined;
+	}
 }
 
 // A property's alias list is a comma-separated %Translate'd string.
@@ -176,7 +203,7 @@ async function memberRowToInfo(
 		const type = row.ReturnType || undefined;
 		switch (row.MemberType) {
 			case "property":
-				return { tag: "property", val: type };
+				return { tag: "property", val: collectionType(row.Collection) ?? type };
 			case "parameter":
 				return { tag: "parameter", val: { t: type } };
 			default: {
