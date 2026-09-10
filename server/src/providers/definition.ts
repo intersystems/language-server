@@ -377,7 +377,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 						mode: maccon.mode,
 					};
 					const respdata = await makeRESTRequest("POST", 2, "/action/getmacrolocation", server, inputdata);
-					if (respdata !== undefined && respdata.data.result.content.document !== "") {
+					if (respdata?.data?.result?.content?.document) {
 						// The macro was found in a document
 						const lastdot = respdata.data.result.content.document.lastIndexOf(".");
 						const filename = respdata.data.result.content.document.substring(0, lastdot);
@@ -654,7 +654,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 					// Check if this routine is a MAC or INT
 					const respdata = await makeRESTRequest("POST", 1, "/action/index", server, [word + ".int"]);
 					if (
-						respdata !== undefined &&
+						Array.isArray(respdata?.data?.result?.content) &&
 						respdata.data.result.content.length > 0 &&
 						respdata.data.result.content[0].status === ""
 					) {
@@ -777,7 +777,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 					// Check if this routine is a MAC or INT
 					const indexrespdata = await makeRESTRequest("POST", 1, "/action/index", server, [routine + ".int"]);
 					if (
-						indexrespdata !== undefined &&
+						Array.isArray(indexrespdata?.data?.result?.content) &&
 						indexrespdata.data.result.content.length > 0 &&
 						indexrespdata.data.result.content[0].status === ""
 					) {
