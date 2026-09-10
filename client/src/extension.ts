@@ -80,25 +80,16 @@ const resolvedServerSpecs = new (class {
 		return `${server.username}@${server.host}:${server.port}${server.pathPrefix}`.toLowerCase();
 	}
 
-	private matches(
-		value: Omit<ServerSpec, "namespace">,
-		query: Partial<Pick<ServerSpec, "host" | "port" | "pathPrefix" | "username" | "serverName">>,
-	): boolean {
+	/** Known connections matching the given connection fields (`serverName` and `namespace` are ignored). */
+	list(query: Partial<Pick<ServerSpec, "host" | "port" | "pathPrefix" | "username">>): Omit<ServerSpec, "namespace">[] {
 		const lower = (s?: string) => s?.toLowerCase();
-		return (
-			(query.host === undefined || lower(value.host) === lower(query.host)) &&
-			(query.port === undefined || value.port === query.port) &&
-			(query.pathPrefix === undefined || lower(value.pathPrefix) === lower(query.pathPrefix)) &&
-			(query.username === undefined || lower(value.username) === lower(query.username)) &&
-			(query.serverName === undefined || value.serverName === query.serverName)
+		return [...this.map.values()].filter(
+			(value) =>
+				(query.host === undefined || lower(value.host) === lower(query.host)) &&
+				(query.port === undefined || value.port === query.port) &&
+				(query.pathPrefix === undefined || lower(value.pathPrefix) === lower(query.pathPrefix)) &&
+				(query.username === undefined || lower(value.username) === lower(query.username)),
 		);
-	}
-
-	/** Known connections matching whichever of these fields are given. */
-	list(
-		query: Partial<Pick<ServerSpec, "host" | "port" | "pathPrefix" | "username" | "serverName">>,
-	): Omit<ServerSpec, "namespace">[] {
-		return [...this.map.values()].filter((value) => this.matches(value, query));
 	}
 
 	add(server: Omit<ServerSpec, "namespace">): void {
@@ -106,10 +97,10 @@ const resolvedServerSpecs = new (class {
 		if (!this.map.has(key)) this.map.set(key, server);
 	}
 
-	/** Deletes every known connection matching whichever of these fields are given. */
-	delete(server: Partial<Pick<ServerSpec, "host" | "port" | "pathPrefix" | "username" | "serverName">>): void {
-		for (const [key, info] of this.map) {
-			if (this.matches(info, server)) this.map.delete(key);
+	/** Forget every connection to the named server, e.g. after its password changes. */
+	deleteByServerName(serverName: string): void {
+		for (const [key, value] of this.map) {
+			if (value.serverName === serverName) this.map.delete(key);
 		}
 	}
 
@@ -202,7 +193,7 @@ export async function activate(context: ExtensionContext) {
 		// The server manager extension is installed
 		serverManagerApi = serverManagerExt.isActive ? serverManagerExt.exports : await serverManagerExt.activate();
 		serverManagerApi.onDidChangePassword()((serverName: string) => {
-			resolvedServerSpecs.delete({ serverName });
+			resolvedServerSpecs.deleteByServerName(serverName);
 			client.sendNotification("intersystems/server/passwordChange", serverName);
 		});
 	}
@@ -217,8 +208,7 @@ export async function activate(context: ExtensionContext) {
 				return;
 			}
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
-			const { host, port, pathPrefix } = serverSpec;
-			for (const cached of resolvedServerSpecs.list({ host, port, pathPrefix, username: auth?.username })) {
+			for (const cached of resolvedServerSpecs.list({ ...serverSpec, username: auth?.username })) {
 				// Auth is namespace-independent, but the caller needs the namespace it actually asked for
 				return { ...cached, namespace: serverSpec.namespace };
 			}
