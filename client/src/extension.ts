@@ -217,7 +217,8 @@ export async function activate(context: ExtensionContext) {
 				return;
 			}
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
-			for (const cached of resolvedServerSpecs.list({ ...serverSpec, username: auth?.username })) {
+			const { host, port, pathPrefix } = serverSpec;
+			for (const cached of resolvedServerSpecs.list({ host, port, pathPrefix, username: auth?.username })) {
 				// Auth is namespace-independent, but the caller needs the namespace it actually asked for
 				return { ...cached, namespace: serverSpec.namespace };
 			}
