@@ -73,7 +73,41 @@ let objectScriptApi: serverManager.VSCodeObjectScriptAPI;
 let serverManagerApi: serverManager.ServerManagerAPI;
 
 /** Resolved connection information */
-const resolvedServerSpecs: Map<string, ServerSpec> = new Map();
+const resolvedServerSpecs = new (class {
+	private readonly map = new Map<string, Omit<ServerSpec, "namespace">>();
+
+	private keyOf(server: Pick<ServerSpec, "host" | "port" | "pathPrefix" | "username">): string {
+		return `${server.username}@${server.host}:${server.port}${server.pathPrefix}`.toLowerCase();
+	}
+
+	/** Known connections matching the given connection fields (`serverName` and `namespace` are ignored; an empty `username` means "not resolved yet" and matches any). */
+	list(query: Partial<Pick<ServerSpec, "host" | "port" | "pathPrefix" | "username">>): Omit<ServerSpec, "namespace">[] {
+		const lower = (s?: string) => s?.toLowerCase();
+		return [...this.map.values()].filter(
+			(value) =>
+				(query.host === undefined || lower(value.host) === lower(query.host)) &&
+				(query.port === undefined || value.port === query.port) &&
+				(query.pathPrefix === undefined || lower(value.pathPrefix) === lower(query.pathPrefix)) &&
+				(!query.username || lower(value.username) === lower(query.username)),
+		);
+	}
+
+	add(server: Omit<ServerSpec, "namespace">): void {
+		const key = this.keyOf(server);
+		if (!this.map.has(key)) this.map.set(key, server);
+	}
+
+	/** Forget every connection to the named server, e.g. after its password changes. */
+	deleteByServerName(serverName: string): void {
+		for (const [key, value] of this.map) {
+			if (value.serverName === serverName) this.map.delete(key);
+		}
+	}
+
+	clear(): void {
+		this.map.clear();
+	}
+})();
 
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
@@ -155,9 +189,7 @@ export async function activate(context: ExtensionContext) {
 		// The server manager extension is installed
 		serverManagerApi = serverManagerExt.isActive ? serverManagerExt.exports : await serverManagerExt.activate();
 		serverManagerApi.onDidChangePassword()((serverName: string) => {
-			for (const [k, v] of resolvedServerSpecs.entries()) {
-				if (v.serverName == serverName) resolvedServerSpecs.delete(k);
-			}
+			resolvedServerSpecs.deleteByServerName(serverName);
 			client.sendNotification("intersystems/server/passwordChange", serverName);
 		});
 	}
@@ -172,18 +204,9 @@ export async function activate(context: ExtensionContext) {
 				return;
 			}
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
-			if ([undefined, ""].includes(auth?.username)) {
-				const partialKey = `${serverSpec.host}:${serverSpec.port}${serverSpec.pathPrefix}`.toLowerCase();
-				for (const key of resolvedServerSpecs.keys()) {
-					// The username isn't known yet, so see if we have a connection to this server that is already known
-					if (key.toLowerCase().slice(key.indexOf("@") + 1) == partialKey) {
-						return resolvedServerSpecs.get(key);
-					}
-				}
-			} else {
-				// Return resolved spec if we have one that matches exactly
-				const key = `${auth.username}@${serverSpec.host}:${serverSpec.port}${serverSpec.pathPrefix}`.toLowerCase();
-				if (resolvedServerSpecs.has(key)) return resolvedServerSpecs.get(key);
+			for (const cached of resolvedServerSpecs.list({ ...serverSpec, username: auth.username })) {
+				// Auth is namespace-independent, but the caller needs the namespace it actually asked for
+				return { ...cached, namespace: serverSpec.namespace };
 			}
 			if (
 				// Server was resolved
@@ -241,8 +264,7 @@ export async function activate(context: ExtensionContext) {
 				username: auth.username,
 				credentials: auth.credentials,
 			};
-			const serverKey = `${server.username}@${server.host}:${server.port}${server.pathPrefix}`.toLowerCase();
-			if (!resolvedServerSpecs.has(serverKey)) resolvedServerSpecs.set(serverKey, server);
+			resolvedServerSpecs.add(server);
 			return server;
 		} catch {
 			// Treat any thrown error as "no server connection"
@@ -261,7 +283,10 @@ export async function activate(context: ExtensionContext) {
 	// Create a CSP session for all resolved server connections
 	// Ignore any failures; the sessions will be created on demand instead
 	const headPromises: Promise<any>[] = [];
-	resolvedServerSpecs.forEach((server) => headPromises.push(makeRESTRequest("HEAD", 0, "", server)));
+	for (const server of resolvedServerSpecs.list({})) {
+		// namespace is irrelevant here because api=0
+		headPromises.push(makeRESTRequest("HEAD", 0, "", { ...server, namespace: "" }));
+	}
 	await Promise.allSettled(headPromises);
 
 	const textDecoder = new TextDecoder();
@@ -447,16 +472,21 @@ export async function activate(context: ExtensionContext) {
 export async function deactivate(): Promise<void> {
 	// Stop the server and log out of all CSP sessions
 	const promises: Promise<any>[] = client ? [client.stop()] : [];
-	resolvedServerSpecs.forEach((server) => promises.push(makeRESTRequest(
-		"HEAD",
-		0,
-		"",
-		server,
-		undefined,
-		undefined,
-		// Prefer IRISLogout for servers that support it
-		lt(server.serverVersion, "2018.2.0") ? { CacheLogout: "end" } : { IRISLogout: "end" },
-	)));
+	for (const server of resolvedServerSpecs.list({})) {
+		promises.push(
+			makeRESTRequest(
+				"HEAD",
+				0,
+				"",
+				// namespace is irrelevant because api=0
+				{ ...server, namespace: "" },
+				undefined,
+				undefined,
+				// Prefer IRISLogout for servers that support it
+				lt(server.serverVersion, "2018.2.0") ? { CacheLogout: "end" } : { IRISLogout: "end" },
+			),
+		);
+	}
 	await Promise.allSettled(promises);
 }
 
