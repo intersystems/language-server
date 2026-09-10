@@ -80,7 +80,7 @@ const resolvedServerSpecs = new (class {
 		return `${server.username}@${server.host}:${server.port}${server.pathPrefix}`.toLowerCase();
 	}
 
-	/** Known connections matching the given connection fields (`serverName` and `namespace` are ignored). */
+	/** Known connections matching the given connection fields (`serverName` and `namespace` are ignored; an empty `username` means "not resolved yet" and matches any). */
 	list(query: Partial<Pick<ServerSpec, "host" | "port" | "pathPrefix" | "username">>): Omit<ServerSpec, "namespace">[] {
 		const lower = (s?: string) => s?.toLowerCase();
 		return [...this.map.values()].filter(
@@ -88,7 +88,7 @@ const resolvedServerSpecs = new (class {
 				(query.host === undefined || lower(value.host) === lower(query.host)) &&
 				(query.port === undefined || value.port === query.port) &&
 				(query.pathPrefix === undefined || lower(value.pathPrefix) === lower(query.pathPrefix)) &&
-				(query.username === undefined || lower(value.username) === lower(query.username)),
+				(!query.username || lower(value.username) === lower(query.username)),
 		);
 	}
 
@@ -106,10 +106,6 @@ const resolvedServerSpecs = new (class {
 
 	clear(): void {
 		this.map.clear();
-	}
-
-	values(): IterableIterator<Omit<ServerSpec, "namespace">> {
-		return this.map.values();
 	}
 })();
 
@@ -208,7 +204,7 @@ export async function activate(context: ExtensionContext) {
 				return;
 			}
 			const auth = serverSpec.auth ?? new BasicAuthorization(serverSpec.username, serverSpec.password);
-			for (const cached of resolvedServerSpecs.list({ ...serverSpec, username: auth?.username })) {
+			for (const cached of resolvedServerSpecs.list({ ...serverSpec, username: auth.username })) {
 				// Auth is namespace-independent, but the caller needs the namespace it actually asked for
 				return { ...cached, namespace: serverSpec.namespace };
 			}
@@ -287,7 +283,7 @@ export async function activate(context: ExtensionContext) {
 	// Create a CSP session for all resolved server connections
 	// Ignore any failures; the sessions will be created on demand instead
 	const headPromises: Promise<any>[] = [];
-	for (const server of resolvedServerSpecs.values()) {
+	for (const server of resolvedServerSpecs.list({})) {
 		// namespace is irrelevant here because api=0
 		headPromises.push(makeRESTRequest("HEAD", 0, "", { ...server, namespace: "" }));
 	}
@@ -476,7 +472,7 @@ export async function activate(context: ExtensionContext) {
 export async function deactivate(): Promise<void> {
 	// Stop the server and log out of all CSP sessions
 	const promises: Promise<any>[] = client ? [client.stop()] : [];
-	for (const server of resolvedServerSpecs.values()) {
+	for (const server of resolvedServerSpecs.list({})) {
 		promises.push(
 			makeRESTRequest(
 				"HEAD",
