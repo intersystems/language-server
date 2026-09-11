@@ -102,9 +102,10 @@ class IrisConnection implements Ascot.Imported {
 		return this.fetchRoutine(name, ["inc"]);
 	}
 
-	// Likewise for a cross-routine call target; a deployed routine may only have its .int.
-	public getMacOrInt(name: string): Promise<Ascot.RoutineSource | undefined> {
-		return this.fetchRoutine(name, ["mac", "int"]);
+	// Likewise for a cross-routine call target. The .int first: it is the instance's own macro
+	// expansion of the .mac, so ascot has nothing to expand (or include) itself.
+	public getIntOrMac(name: string): Promise<Ascot.RoutineSource | undefined> {
+		return this.fetchRoutine(name, ["int", "mac"]);
 	}
 
 	private async fetchRoutine(name: string, exts: string[]): Promise<Ascot.RoutineSource | undefined> {
