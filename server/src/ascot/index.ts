@@ -21,6 +21,7 @@ interface MemberMetadataRow {
 	FormalSpec: string;
 	ReturnType: string;
 	Collection: string | null;
+	MultiDimensional: "0" | "1" | 0 | 1;
 	Stub: string;
 	ClassMethod: "0" | "1" | 0 | 1;
 	Deprecated: "0" | "1" | 0 | 1;
@@ -68,11 +69,11 @@ class IrisConnection implements Ascot.Imported {
 
 		const memdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 			query:
-				"SELECT Name, NULL AS Aliases, 'method' AS MemberType, Description, FormalSpec, ReturnType, NULL AS Collection, Stub, ClassMethod, Deprecated, Origin " +
+				"SELECT Name, NULL AS Aliases, 'method' AS MemberType, Description, FormalSpec, ReturnType, NULL AS Collection, 0 AS MultiDimensional, Stub, ClassMethod, Deprecated, Origin " +
 				"FROM %Dictionary.CompiledMethod WHERE Parent = ? UNION ALL " +
-				"SELECT Name, Aliases, 'property' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, Collection, " +
+				"SELECT Name, Aliases, 'property' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, Collection, MultiDimensional, " +
 				"NULL AS Stub, 0 AS ClassMethod, Deprecated, Origin FROM %Dictionary.CompiledProperty WHERE Parent = ? UNION ALL " +
-				"SELECT Name, NULL AS Aliases, 'parameter' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Collection, " +
+				"SELECT Name, NULL AS Aliases, 'parameter' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Collection, 0 AS MultiDimensional, " +
 				"NULL AS Stub, 0 AS ClassMethod, Deprecated, Origin FROM %Dictionary.CompiledParameter WHERE Parent = ?",
 			parameters: [cls, cls, cls],
 		});
@@ -204,7 +205,10 @@ async function memberRowToInfo(
 		const type = row.ReturnType || undefined;
 		switch (row.MemberType) {
 			case "property":
-				return { tag: "property", val: { t: type, collection: collectionKind(row.Collection) } };
+				return {
+					tag: "property",
+					val: { t: type, collection: collectionKind(row.Collection), multidimensional: row.MultiDimensional == "1" },
+				};
 			case "parameter":
 				return { tag: "parameter", val: { t: type } };
 			default: {
