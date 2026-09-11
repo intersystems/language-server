@@ -37,7 +37,7 @@ import {
 	LanguageServerConfiguration,
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { ascot, getClassMembers, getClasses, MemberInfo } from "../ascot";
+import { ascot, getClassMembers, getClasses, MemberInfo, PropertyInfo } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -2471,12 +2471,17 @@ function makeFullPrettyClassCompletionItem(imports: string[], name: string, uri:
 	return compItem;
 }
 
+function propertyDetail(info: PropertyInfo): string | undefined {
+	const of = info.collection === "list" ? "list Of " : info.collection === "array" ? "array Of " : "";
+	return info.t === undefined ? undefined : of + info.t;
+}
+
 function makeMemberCompletionItem(mem: MemberInfo, name: string, position: Position): CompletionItem {
 	const item: CompletionItem = {
 		label: name,
 		kind: CompletionItemKind.Property,
 		data: "member",
-		detail: mem.kind.tag === "property" ? mem.kind.val : undefined,
+		detail: mem.kind.tag === "property" ? propertyDetail(mem.kind.val) : undefined,
 		documentation: {
 			kind: MarkupKind.Markdown,
 			value: documaticHtmlToMarkdown(mem.doc),

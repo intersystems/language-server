@@ -143,13 +143,13 @@ function splitClasses(s: string | undefined): string[] {
 		: [];
 }
 
-// A `list Of`/`array Of` property is the collection object, not its element type.
-function collectionType(collection: string | null | undefined): string | undefined {
+// `list Of`/`array Of`: the row's type is the element type.
+function collectionKind(collection: string | null | undefined): Ascot.CollectionKind | undefined {
 	switch (collection?.toLowerCase()) {
 		case "list":
-			return "%Collection.AbstractList";
+			return "list";
 		case "array":
-			return "%Collection.AbstractArray";
+			return "array";
 		default:
 			return undefined;
 	}
@@ -204,7 +204,7 @@ async function memberRowToInfo(
 		const type = row.ReturnType || undefined;
 		switch (row.MemberType) {
 			case "property":
-				return { tag: "property", val: collectionType(row.Collection) ?? type };
+				return { tag: "property", val: { t: type, collection: collectionKind(row.Collection) } };
 			case "parameter":
 				return { tag: "parameter", val: { t: type } };
 			default: {
@@ -303,6 +303,7 @@ async function memberRowToInfo(
 
 export type NormalArg = Ascot.NormalArg;
 export type MemberInfo = Ascot.MemberInfo;
+export type PropertyInfo = Ascot.PropertyInfo;
 
 /** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
 export const ascot = `[👔] `;
