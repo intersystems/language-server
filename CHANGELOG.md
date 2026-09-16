@@ -1,5 +1,9 @@
 # Changelog
 
+## [2.8.6] - 2026-09-17
+- Fix issue [#419](https://github.com/intersystems/language-server/issues/419): Language server always using first namespace in workspace for server connection
+- PR [#422](https://github.com/intersystems/language-server/pull/422): Guard REST results against malformed responses
+
 ## [2.8.5] - 2026-09-03
 - PR [#410](https://github.com/intersystems/language-server/pull/410): Fix hover intellisense for macros
 - Fix issue [#411](https://github.com/intersystems/language-server/issues/411): AxiosError 405 on activation
