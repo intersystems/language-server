@@ -2,12 +2,13 @@
 	"compilerOptions": {
 		"module": "Node16",
 		"moduleResolution": "node16",
-		"target": "es6",
+		"target": "es2019",
 		"outDir": "out",
 		"rootDir": "src",
 		"sourceMap": true,
  	   	"strictNullChecks": true,
 		"skipLibCheck": true,
+		"types": ["node"],
 	},
 	"references": [
 		{

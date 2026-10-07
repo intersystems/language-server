@@ -122,16 +122,18 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 					// The class was found
-					return server && {
-						contents: {
-							kind: MarkupKind.Markdown,
-							value: markupValue(
-								documaticLink(server, normalizedname),
-								documaticHtmlToMarkdown(respdata.data.result.content[0].Description),
-							),
-						},
-						range: wordrange,
-					};
+					return (
+						server && {
+							contents: {
+								kind: MarkupKind.Markdown,
+								value: markupValue(
+									documaticLink(server, normalizedname),
+									documaticHtmlToMarkdown(respdata.data.result.content[0].Description),
+								),
+							},
+							range: wordrange,
+						}
+					);
 				}
 			} else if (
 				(parsed[params.position.line][i].l == ld.cos_langindex &&
@@ -1077,16 +1079,18 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 							const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
 							if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 								// The class was found
-								return server && {
-									contents: {
-										kind: MarkupKind.Markdown,
-										value: markupValue(
-											documaticLink(server, normalizedname),
-											documaticHtmlToMarkdown(respdata.data.result.content[0].Description),
-										),
-									},
-									range: idenrange,
-								};
+								return (
+									server && {
+										contents: {
+											kind: MarkupKind.Markdown,
+											value: markupValue(
+												documaticLink(server, normalizedname),
+												documaticHtmlToMarkdown(respdata.data.result.content[0].Description),
+											),
+										},
+										range: idenrange,
+									}
+								);
 							}
 						}
 					}
@@ -1304,7 +1308,7 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 			) {
 				// This is an ObjectScript variable
 
-				const varClass = server && await determineVariableClass(doc, parsed, params.position.line, i, server);
+				const varClass = server && (await determineVariableClass(doc, parsed, params.position.line, i, server));
 				if (varClass) {
 					const varRange = Range.create(params.position.line, symbolstart, params.position.line, symbolend);
 					const varType =
@@ -1357,16 +1361,18 @@ export async function onHover(params: TextDocumentPositionParams): Promise<Hover
 					});
 					if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length == 1) {
 						// The class was found
-						return server && {
-							contents: {
-								kind: MarkupKind.Markdown,
-								value: markupValue(
-									documaticLink(server, strText),
-									documaticHtmlToMarkdown(respdata.data.result.content[0].Description),
-								),
-							},
-							range: strRange,
-						};
+						return (
+							server && {
+								contents: {
+									kind: MarkupKind.Markdown,
+									value: markupValue(
+										documaticLink(server, strText),
+										documaticHtmlToMarkdown(respdata.data.result.content[0].Description),
+									),
+								},
+								range: strRange,
+							}
+						);
 					}
 				} else {
 					// This is a method name with an optional class name prepended

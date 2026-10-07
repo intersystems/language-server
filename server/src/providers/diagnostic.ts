@@ -913,8 +913,15 @@ export async function onDiagnostics(params: DocumentDiagnosticParams): Promise<D
 					}
 
 					// Get the base class that this member is in
-					const membercontext = (
-						await getClassMemberContext(doc, parsed, dottkn, i, server, files, inheritedpackages)) || {
+					const membercontext = (await getClassMemberContext(
+						doc,
+						parsed,
+						dottkn,
+						i,
+						server,
+						files,
+						inheritedpackages,
+					)) || {
 						baseclass: "",
 						context: "",
 					};

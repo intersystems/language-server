@@ -33,7 +33,7 @@ export async function onPrepare(params: TypeHierarchyPrepareParams): Promise<Typ
 		return null;
 	}
 	const server = await getServerSpec(params.textDocument.uri);
-	if (! server) {
+	if (!server) {
 		return null;
 	}
 	let cls: string | null = null;

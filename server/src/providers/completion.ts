@@ -633,7 +633,10 @@ async function completionFullClassName(
  *
  * @param server The server that this document is associated with.
  */
-async function completionPackage(server: ServerSpec | undefined, settings: LanguageServerConfiguration): Promise<CompletionItem[]> {
+async function completionPackage(
+	server: ServerSpec | undefined,
+	settings: LanguageServerConfiguration,
+): Promise<CompletionItem[]> {
 	const result: CompletionItem[] = [];
 
 	// Get all the packages
@@ -1184,7 +1187,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 			prevline.slice(-2, -1) !== " " &&
 			thistoken !== 0 &&
 			(triggerlang === ld.cos_langindex || triggerlang === ld.cls_langindex)) ||
-			(prevline.endsWith(".#") && triggerlang === ld.cos_langindex)
+		(prevline.endsWith(".#") && triggerlang === ld.cos_langindex)
 	) {
 		let prevtokentype = "";
 		const prevtokenrange = findFullRange(
@@ -1508,9 +1511,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		(parenAndCommaRegex.test(prevline) &&
 			triggerlang === ld.cls_langindex &&
 			(prevlineLower.startsWith("include") || prevlineLower.startsWith("includegenerator"))) ||
-			(parsed[params.position.line].length === 2 &&
-				firsttwotokens.toLowerCase() === "#include" &&
-				triggerlang === ld.cos_langindex)
+		(parsed[params.position.line].length === 2 &&
+			firsttwotokens.toLowerCase() === "#include" &&
+			triggerlang === ld.cos_langindex)
 	) {
 		// This is an include file
 
@@ -1766,7 +1769,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					!existingkeywords.includes(keydoc.name.toLowerCase()) &&
 					!(
 						// Only boolean keywords can follow a "Not "
-						(/not\s+$/.test(prevlineLower) && keydoc.type != "KW_TYPE_BOOLEAN")
+						/not\s+$/.test(prevlineLower) && keydoc.type != "KW_TYPE_BOOLEAN"
 					)
 				) {
 					if ("constraint" in keydoc && keydoc.constraint instanceof Array) {

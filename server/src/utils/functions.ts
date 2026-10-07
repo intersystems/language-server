@@ -1091,7 +1091,8 @@ export async function getClassMemberContext(
 					) == ",")))
 	) {
 		// The token before the dot is a parameter, local variable, public variable or warning variable
-		const varClass = server && await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages);
+		const varClass =
+			server && (await determineVariableClass(doc, parsed, line, dot - 1, server, allfiles, inheritedpackages));
 		if (varClass) result = { baseclass: varClass, context: "instance" };
 	} else if (
 		dot > 0 &&
@@ -1216,17 +1217,20 @@ export async function makeRESTRequest(
 	params?: any,
 ): Promise<any | undefined> {
 	// As of version 2.0.0, REST requests are made on the client side
-	return server && connection
-		.sendRequest("intersystems/server/makeRESTRequest", {
-			method,
-			api,
-			path,
-			server,
-			data,
-			checksum,
-			params,
-		})
-		.then((respdata) => respdata ?? undefined);
+	return (
+		server &&
+		connection
+			.sendRequest("intersystems/server/makeRESTRequest", {
+				method,
+				api,
+				path,
+				server,
+				data,
+				checksum,
+				params,
+			})
+			.then((respdata) => respdata ?? undefined)
+	);
 }
 
 /**
@@ -1607,9 +1611,12 @@ export function quoteUDLIdentifier(identifier: string, direction: 0 | 1): string
 					break;
 				}
 			} else {
-				if (
-					!((char >= "A" && char <= "Z") || (char >= "a" && char <= "z") || code > 0x80 || (char >= "0" && char <= "9"))
-				) {
+				if (!(
+					(char >= "A" && char <= "Z") ||
+					(char >= "a" && char <= "z") ||
+					code > 0x80 ||
+					(char >= "0" && char <= "9")
+				)) {
 					needsquoting = true;
 					break;
 				}
@@ -2785,7 +2792,7 @@ export function documaticHtmlToMarkdown(html: string): string {
 		const newElem = parse("<pre></pre>").getElementsByTagName("pre")[0];
 		newElem.setAttribute("language", elem.getAttribute("language") ?? "COS");
 		newElem.textContent = elem.innerHTML.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-		elem.parentNode.exchangeChild(elem, newElem);
+		elem.parentNode?.exchangeChild(elem, newElem);
 	}
 	return turndown.turndown(root.toString().replace(/&/g, "&amp;"));
 }
@@ -3499,7 +3506,7 @@ const showInternalCache: Map<string, boolean> = new Map();
 
 /** Determine if class members with the `Internal` keyword and system globals should be shown in the completion list */
 export async function showInternalForServer(server?: ServerSpec): Promise<boolean> {
-	if (! server) {
+	if (!server) {
 		return false;
 	}
 	const key = `${server.host}::${server.port}::${server.pathPrefix}::${server.username}`;

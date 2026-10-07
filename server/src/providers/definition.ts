@@ -327,22 +327,20 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 					) {
 						// This is a multi-line macro definition so scan down the file to capture the full range of the definition
 						for (let mln = macrodefline + 1; mln < parsed.length; mln++) {
-							if (
-								!(
-									parsed[mln][parsed[mln].length - 1].l == ld.cos_langindex &&
-									parsed[mln][parsed[mln].length - 1].s == ld.cos_ppf_attrindex &&
-									mppContinue.test(
-										doc.getText(
-											Range.create(
-												mln,
-												parsed[mln][parsed[mln].length - 1].p,
-												mln,
-												parsed[mln][parsed[mln].length - 1].p + parsed[mln][parsed[mln].length - 1].c,
-											),
+							if (!(
+								parsed[mln][parsed[mln].length - 1].l == ld.cos_langindex &&
+								parsed[mln][parsed[mln].length - 1].s == ld.cos_ppf_attrindex &&
+								mppContinue.test(
+									doc.getText(
+										Range.create(
+											mln,
+											parsed[mln][parsed[mln].length - 1].p,
+											mln,
+											parsed[mln][parsed[mln].length - 1].p + parsed[mln][parsed[mln].length - 1].c,
 										),
-									)
+									),
 								)
-							) {
+							)) {
 								// This is the last line of the macro definition so update the target range
 								targetrange.end = Position.create(mln + 1, 0);
 								break;
