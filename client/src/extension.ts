@@ -12,7 +12,6 @@ import {
 } from "vscode";
 
 import {
-	DocumentSelector,
 	LanguageClient,
 	LanguageClientOptions,
 	ServerOptions,
@@ -139,25 +138,6 @@ export async function activate(context: ExtensionContext) {
 		"objectscript-csp",
 		"objectscript-macros",
 	];
-
-	// The uri schemes we handle those languages for
-	const targetSchemes = [
-		"isfs",
-		"isfs-readonly",
-		"objectscript",
-		"objectscriptxml",
-		"file",
-		"vscode-remote",
-		"vscode-notebook-cell",
-	];
-
-	// A document selector to target the right {language, scheme} tuples
-	// const documentSelector: DocumentSelector = [];
-	// targetLanguages.forEach((language) => {
-	// 	targetSchemes.forEach((scheme) => {
-	// 		documentSelector.push({ language, scheme });
-	// 	});
-	// });
 	const documentSelector = targetLanguages.map((language) => {return {language};})
 
 	// Options to control the language client
