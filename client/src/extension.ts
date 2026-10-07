@@ -11,12 +11,7 @@ import {
 	authentication,
 } from "vscode";
 
-import {
-	LanguageClient,
-	LanguageClientOptions,
-	ServerOptions,
-	TransportKind,
-} from "vscode-languageclient/node";
+import { LanguageClient, LanguageClientOptions, ServerOptions, TransportKind } from "vscode-languageclient/node";
 
 import { gt, lte, lt } from "semver";
 import * as serverManager from "@intersystems-community/intersystems-servermanager";
@@ -138,7 +133,9 @@ export async function activate(context: ExtensionContext) {
 		"objectscript-csp",
 		"objectscript-macros",
 	];
-	const documentSelector = targetLanguages.map((language) => {return {language};})
+	const documentSelector = targetLanguages.map((language) => {
+		return { language };
+	});
 
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {

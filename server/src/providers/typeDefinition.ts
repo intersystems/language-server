@@ -14,7 +14,13 @@ import {
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 
-export async function onTypeDefinition(params: TextDocumentPositionParams): Promise<{ targetUri: string; targetRange: Range; originSelectionRange: Range; targetSelectionRange: Range; }[] | null | undefined> {
+export async function onTypeDefinition(
+	params: TextDocumentPositionParams,
+): Promise<
+	| { targetUri: string; targetRange: Range; originSelectionRange: Range; targetSelectionRange: Range }[]
+	| null
+	| undefined
+> {
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -25,7 +31,7 @@ export async function onTypeDefinition(params: TextDocumentPositionParams): Prom
 	}
 	const server = await getServerSpec(params.textDocument.uri);
 	if (!server) {
-		return
+		return;
 	}
 
 	if (parsed[params.position.line] === undefined) {

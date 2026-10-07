@@ -1866,7 +1866,10 @@ export async function onCodeAction(params: CodeActionParams): Promise<CodeAction
 					),
 					diagnostics: [diagnostic],
 				});
-			} else if (diagnostic.message === "Class '" + (diagnostic.message as string).split("'")[1] + "' does not exist.") {
+			} else if (
+				diagnostic.message ===
+				"Class '" + (diagnostic.message as string).split("'")[1] + "' does not exist."
+			) {
 				const classname = diagnostic.message.split("'")[1];
 				result.push({
 					title: "Select package to import",

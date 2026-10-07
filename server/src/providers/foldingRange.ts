@@ -103,22 +103,20 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 			}
 			if (inMultiLineMacro) {
 				// Check if the last token is a ##Continue
-				if (
-					!(
-						parsed[line][parsed[line].length - 1].l == ld.cos_langindex &&
-						parsed[line][parsed[line].length - 1].s == ld.cos_ppf_attrindex &&
-						mppContinue.test(
-							doc.getText(
-								Range.create(
-									line,
-									parsed[line][parsed[line].length - 1].p,
-									line,
-									parsed[line][parsed[line].length - 1].p + parsed[line][parsed[line].length - 1].c,
-								),
+				if (!(
+					parsed[line][parsed[line].length - 1].l == ld.cos_langindex &&
+					parsed[line][parsed[line].length - 1].s == ld.cos_ppf_attrindex &&
+					mppContinue.test(
+						doc.getText(
+							Range.create(
+								line,
+								parsed[line][parsed[line].length - 1].p,
+								line,
+								parsed[line][parsed[line].length - 1].p + parsed[line][parsed[line].length - 1].c,
 							),
-						)
+						),
 					)
-				) {
+				)) {
 					// This is the end of a multi-line macro
 					let prevrange = openranges.length - 1;
 					for (let rge = openranges.length - 1; rge >= 0; rge--) {
@@ -152,11 +150,16 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 				let isClassOnPrevLine = false;
 				if (parsed[line].length == 1) {
 					for (let l = line - 1; l >= 0; l--) {
-						if (!parsed[l]?.length || !(parsed[l][0].l == ld.cls_langindex && parsed[l][0].s == ld.cls_keyword_attrindex)) {
+						if (
+							!parsed[l]?.length ||
+							!(parsed[l][0].l == ld.cls_langindex && parsed[l][0].s == ld.cls_keyword_attrindex)
+						) {
 							// Loop back up until we hit a line with a class keyword as the first token
 							continue;
 						}
-						if (doc.getText(Range.create(l, parsed[l][0].p, l, parsed[l][0].p + parsed[l][0].c)).toLowerCase() == "class") {
+						if (
+							doc.getText(Range.create(l, parsed[l][0].p, l, parsed[l][0].p + parsed[l][0].c)).toLowerCase() == "class"
+						) {
 							isClassOnPrevLine = true;
 						}
 						break;
@@ -164,12 +167,10 @@ export async function onFoldingRanges(params: FoldingRangeParams) {
 				}
 				if (
 					isClassOnPrevLine ||
-					(
-						parsed[line].length > 1 &&
+					(parsed[line].length > 1 &&
 						parsed[line][0].l == ld.cls_langindex &&
 						parsed[line][0].s == ld.cls_keyword_attrindex &&
-						firsttokentext.toLowerCase() === "class"
-					)
+						firsttokentext.toLowerCase() === "class")
 				) {
 					// This is the open curly for a class, so don't create a folding range for it
 					continue;
