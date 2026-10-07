@@ -2785,7 +2785,7 @@ export function documaticHtmlToMarkdown(html: string): string {
 		const newElem = parse("<pre></pre>").getElementsByTagName("pre")[0];
 		newElem.setAttribute("language", elem.getAttribute("language") ?? "COS");
 		newElem.textContent = elem.innerHTML.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-		elem.parentNode.exchangeChild(elem, newElem);
+		elem.parentNode?.exchangeChild(elem, newElem);
 	}
 	return turndown.turndown(root.toString().replace(/&/g, "&amp;"));
 }

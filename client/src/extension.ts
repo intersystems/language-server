@@ -152,12 +152,13 @@ export async function activate(context: ExtensionContext) {
 	];
 
 	// A document selector to target the right {language, scheme} tuples
-	const documentSelector: DocumentSelector = [];
-	targetLanguages.forEach((language) => {
-		targetSchemes.forEach((scheme) => {
-			documentSelector.push({ language, scheme });
-		});
-	});
+	// const documentSelector: DocumentSelector = [];
+	// targetLanguages.forEach((language) => {
+	// 	targetSchemes.forEach((scheme) => {
+	// 		documentSelector.push({ language, scheme });
+	// 	});
+	// });
+	const documentSelector = targetLanguages.map((language) => {return {language};})
 
 	// Options to control the language client
 	const clientOptions: LanguageClientOptions = {
