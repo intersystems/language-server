@@ -224,13 +224,9 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 	if (parsed === undefined) {
 		return null;
 	}
-	const server = await getServerSpec(params.textDocument.uri);
-	if (!server) {
-		return null;
-	}
-
 	// ascot's own reference table covers cases the REST-based lookups below don't
-	// (self-references, same-routine label calls/gotos) — prefer it whenever it has an answer.
+	// (self-references, same-routine label calls/gotos, workspace includes) — prefer it whenever
+	// it has an answer, and it needs no server.
 	const ascotTarget = await getDefinition(params.textDocument.uri, params.position);
 	if (ascotTarget) {
 		return [
@@ -240,6 +236,10 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 				targetSelectionRange: ascotTarget.range,
 			},
 		];
+	}
+	const server = await getServerSpec(params.textDocument.uri);
+	if (!server) {
+		return null;
 	}
 
 	if (parsed[params.position.line] === undefined) {

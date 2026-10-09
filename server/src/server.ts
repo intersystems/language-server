@@ -32,7 +32,7 @@ import { onSemanticTokens, onSemanticTokensDelta } from "./providers/semanticTok
 import { onReferences } from "./providers/references";
 import { onWorkspaceSymbol } from "./providers/workspaceSymbol";
 import { onInlayHint } from "./providers/inlayHint";
-import { openDoc, closeDoc } from "./ascot";
+import { openDoc, closeDoc, onConfigurationChanged, refreshTrace, setStartupScan } from "./ascot";
 import { LanguageServerConfiguration, ServerSpec } from "./utils/types";
 import {
 	connection,
@@ -46,21 +46,30 @@ import { parseDocument, getLegend } from "./parse/parse";
 import { isolateEmbeddedLanguage, languageAtPosition } from "./providers/requestForwarding";
 
 connection.onInitialize((params) => {
-	(async () => {
-		for (const folder of params.workspaceFolders ?? []) {
-			const folderURI = URI.parse(folder.uri);
-			if (folderURI.scheme !== "file") continue;
-			for (const file of fs.readdirSync(folderURI.fsPath, { recursive: true, withFileTypes: true })) {
-				if (!(file.isFile() && /\.(cls|mac|int|inc)$/i.test(file.name))) {
-					continue;
+	// Not awaited: the server is usable at once, and only ascot-backed requests wait for the
+	// scan (see `filePathToWorkspace`).
+	setStartupScan(
+		(async () => {
+			try {
+				for (const folder of params.workspaceFolders ?? []) {
+					const folderURI = URI.parse(folder.uri);
+					if (folderURI.scheme !== "file") continue;
+					for (const file of fs.readdirSync(folderURI.fsPath, { recursive: true, withFileTypes: true })) {
+						if (!(file.isFile() && /\.(cls|mac|int|inc)$/i.test(file.name))) {
+							continue;
+						}
+						const filePath = path.join(file.parentPath, file.name);
+						const fileURI = URI.file(filePath).toString();
+						const fileString = fs.readFileSync(filePath, "utf-8");
+						await openDoc(fileURI, fileString, folder.uri);
+					}
 				}
-				const filePath = path.join(file.parentPath, file.name);
-				const fileURI = URI.file(filePath).toString();
-				const fileString = fs.readFileSync(filePath, "utf-8");
-				await openDoc(fileURI, fileString, folder.uri);
+			} catch (rawError) {
+				// A failed scan must not reject the promise every request waits on.
+				console.log(rawError);
 			}
-		}
-	})();
+		})(),
+	);
 	return {
 		capabilities: {
 			textDocumentSync: TextDocumentSyncKind.Full,
@@ -113,6 +122,7 @@ connection.onInitialized(() => {
 	connection.client.register(DidChangeConfigurationNotification.type, {
 		section: ["intersystems.language-server", "intersystems.servers", "objectscript.conn"],
 	});
+	refreshTrace();
 });
 
 connection.onExit(() => {
@@ -124,6 +134,7 @@ connection.onDidChangeConfiguration(async () => {
 	languageServerSettings.clear();
 	serverSpecs.clear();
 	schemaCaches.clear();
+	onConfigurationChanged();
 
 	// Refresh the cached configuration settings for all open documents
 	// This is done here because it's more efficient to pack everything into one request to the client
@@ -144,11 +155,29 @@ documents.onDidClose(async (e) => {
 	tokenBuilders.delete(e.document.uri);
 	serverSpecs.delete(e.document.uri);
 	languageServerSettings.delete(e.document.uri);
-	await closeDoc(e.document.uri);
+	// A close isn't a delete: other files still include or reference this one, so it stays in
+	// the ascot workspace at its on-disk content. Only a document with no file behind it goes.
+	const diskText = readWorkspaceFile(e.document.uri);
+	if (diskText !== undefined) {
+		await openDoc(e.document.uri, diskText);
+	} else {
+		await closeDoc(e.document.uri);
+	}
 	// Pull-model diagnostics: ask the client to re-pull so the closed
 	// document's diagnostics are recomputed (and dropped from the workspace report).
 	connection.languages.diagnostics.refresh();
 });
+
+/** The on-disk text of a `file:` document, or `undefined` if there is no such file. */
+function readWorkspaceFile(docURI: string): string | undefined {
+	const uri = URI.parse(docURI);
+	if (uri.scheme !== "file") return undefined;
+	try {
+		return fs.readFileSync(uri.fsPath, "utf-8");
+	} catch {
+		return undefined;
+	}
+}
 
 // The content of a text document has changed. This event is emitted
 // when the text document first opened or when its content has changed.
@@ -162,7 +191,12 @@ documents.onDidChangeContent(async (change) => {
 		parseDocument(change.document.languageId, path.slice(path.lastIndexOf(".") + 1).toLowerCase(), fileText)
 			.compressedlinearray,
 	);
-	await openDoc(change.document.uri, fileText);
+	const affected = await openDoc(change.document.uri, fileText);
+	// Pull-model diagnostics without inter-file dependencies: other documents this edit
+	// invalidated (its includers, callers) are only re-pulled if we ask.
+	if (affected.some((uri) => uri !== change.document.uri)) {
+		connection.languages.diagnostics.refresh();
+	}
 });
 
 connection.onDocumentFormatting(onDocumentFormatting);

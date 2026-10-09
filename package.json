@@ -89,6 +89,12 @@
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
         },
+        "intersystems.language-server.ascot.trace": {
+          "scope": "window",
+          "type": "boolean",
+          "default": false,
+          "description": "Logs every call between the language server and the ascot analysis engine (both directions, with timings) to the 'InterSystems Language Server' output channel."
+        },
         "intersystems.language-server.formatting.commands.case": {
           "scope": "resource",
           "type": "string",

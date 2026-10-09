@@ -12,6 +12,11 @@ import { getServerSpec, makeRESTRequest } from "../utils/functions";
 
 const ORIGIN: Ascot.Position = { line: 0, character: 0 };
 const CACHE_TTL_MS = 60 * 60 * 1000;
+// How long "this folder has no server" is believed before asking the client again. Every
+// out-of-workspace class ascot meets is a lookup here; without this, each one was a client
+// round trip that resolved to nothing.
+const NO_SERVER_TTL_MS = 30 * 1000;
+const SERVER_LOOKUP_TIMEOUT_MS = 5 * 1000;
 
 interface MemberMetadataRow {
 	Name: string;
@@ -40,19 +45,51 @@ interface ClassMetadataRow {
 // Resolves members/superclasses/datatype-ness for out-of-workspace classes via REST;
 // in-workspace classes are served from ascot's own memory and never reach here.
 class IrisConnection implements Ascot.Imported {
+	private noServerUntil = 0;
+
 	constructor(
 		private readonly folderURI: string,
 		private readonly clsCache = new Map<string, [number, Ascot.ClassInfo | undefined]>(),
 		private readonly routineCache = new Map<string, [number, Ascot.RoutineSource | undefined]>(),
 	) {}
 
+	/** The configuration may have changed: ask the client again on the next lookup. */
+	public forgetNoServer(): void {
+		this.noServerUntil = 0;
+	}
+
+	private async server(): Promise<Awaited<ReturnType<typeof getServerSpec>>> {
+		if (Date.now() < this.noServerUntil) return undefined;
+		// Every ascot call is queued behind the previous one, so a client that never answers
+		// the server lookup would freeze all of them; give up on it after a while.
+		const server = await Promise.race([
+			getServerSpec(this.folderURI),
+			new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), SERVER_LOOKUP_TIMEOUT_MS)),
+		]);
+		if (server === undefined) {
+			this.noServerUntil = Date.now() + NO_SERVER_TTL_MS;
+			trace(`no server for ${this.folderURI}; not asking again for ${NO_SERVER_TTL_MS / 1000}s`);
+		}
+		return server;
+	}
+
 	// ascot declares this sync; jspi's WebAssembly.Suspending lets this async body await
 	// a REST call while ascot itself still sees a plain sync return. `cls`'s own (not
 	// inherited) members, superclasses, and other class-level metadata, in one round trip.
-	public async getCls(cls: string): Promise<Ascot.ClassInfo | undefined> {
+	public getCls(cls: string): Promise<Ascot.ClassInfo | undefined> {
+		return traceCall(
+			"← getCls",
+			cls,
+			() => this.fetchCls(cls),
+			(info) =>
+				info ? `${info.members.length} members, extends ${info.extends.join(", ") || "nothing"}` : "not found",
+		);
+	}
+
+	private async fetchCls(cls: string): Promise<Ascot.ClassInfo | undefined> {
 		const cached = this.clsCache.get(cls);
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
-		const server = await getServerSpec(this.folderURI);
+		const server = await this.server();
 		if (server === undefined) return undefined;
 
 		const clsdata = await makeRESTRequest("POST", 1, "/action/query", server, {
@@ -100,20 +137,20 @@ class IrisConnection implements Ascot.Imported {
 	// %occInclude). No uri of our own to offer ascot for these -- they aren't backed by a
 	// document this server's client could navigate to.
 	public getInc(name: string): Promise<Ascot.RoutineSource | undefined> {
-		return this.fetchRoutine(name, ["inc"]);
+		return traceCall("← getInc", name, () => this.fetchRoutine(name, ["inc"]), summarizeRoutine);
 	}
 
 	// Likewise for a cross-routine call target. The .int first: it is the instance's own macro
 	// expansion of the .mac, so ascot has nothing to expand (or include) itself.
 	public getIntOrMac(name: string): Promise<Ascot.RoutineSource | undefined> {
-		return this.fetchRoutine(name, ["int", "mac"]);
+		return traceCall("← getIntOrMac", name, () => this.fetchRoutine(name, ["int", "mac"]), summarizeRoutine);
 	}
 
 	private async fetchRoutine(name: string, exts: string[]): Promise<Ascot.RoutineSource | undefined> {
 		const key = `${name}.${exts[0]}`;
 		const cached = this.routineCache.get(key);
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
-		const server = await getServerSpec(this.folderURI);
+		const server = await this.server();
 		if (server === undefined) return undefined;
 		let text: string | undefined;
 		for (const ext of exts) {
@@ -130,7 +167,7 @@ async function fetchDoc(
 	server: Awaited<ReturnType<typeof getServerSpec>>,
 	docName: string,
 ): Promise<string | undefined> {
-	const respdata = await makeRESTRequest("GET", 1, `/doc/${encodeURIComponent(docName)}`, server);
+	const respdata = await makeRESTRequest("GET", 1, `/doc/${docName}`, server);
 	const lines: string[] | undefined = respdata?.data?.result?.content;
 	return Array.isArray(lines) ? lines.join("\n") : undefined;
 }
@@ -313,6 +350,136 @@ export type PropertyInfo = Ascot.PropertyInfo;
 export const ascot = `[👔] `;
 
 const workspaces = new Map<string, Ascot.Workspace>();
+const connections = new Map<string, IrisConnection>();
+
+// Tracing of every call across the server/ascot boundary -- the server's calls into the wasm
+// `Workspace` (→) and the wasm's calls back into `IrisConnection` (←) -- to the client's
+// "InterSystems Language Server" output channel. ascot runs → calls strictly one at a time
+// (see the package's `serialize`), so a call that logs a start but never a finish is the one
+// everything behind it is stuck on; `ahead` says how many that is.
+//
+// The setting can't be read until the client says `initialized`, which is after the startup
+// scan; lines from before then are buffered and flushed (or dropped) once it's known.
+let traceEnabled: boolean | undefined;
+let traceBuffer: string[] = [];
+const TRACE_BUFFER_MAX = 20_000;
+let traceSeq = 0;
+let callsInFlight = 0;
+
+/** Re-read `intersystems.language-server.ascot.trace`; call once initialized and on every change. */
+export async function refreshTrace(): Promise<void> {
+	traceEnabled = (await connection.workspace.getConfiguration("intersystems.language-server.ascot.trace")) === true;
+	if (traceEnabled) for (const line of traceBuffer) connection.console.log(line);
+	traceBuffer = [];
+}
+
+function emit(line: string): void {
+	if (traceEnabled === undefined) {
+		if (traceBuffer.length < TRACE_BUFFER_MAX) traceBuffer.push(line);
+	} else if (traceEnabled) {
+		connection.console.log(line);
+	}
+}
+
+function trace(message: string): void {
+	emit(`[ascot] ${message}`);
+}
+
+function traceCall<T>(
+	tag: string,
+	detail: string,
+	run: () => Promise<T>,
+	summarize: (result: T) => string,
+): Promise<T> {
+	if (traceEnabled === false) return run();
+	const id = ++traceSeq;
+	const start = Date.now();
+	const outbound = tag.startsWith("→");
+	const ahead = outbound && callsInFlight ? ` (${callsInFlight} ahead)` : "";
+	emit(`[ascot] #${id} ${tag} ${detail}${ahead}`);
+	if (outbound) callsInFlight++;
+	return run().then(
+		(result) => {
+			if (outbound) callsInFlight--;
+			emit(`[ascot] #${id} ${tag} ${Date.now() - start}ms: ${summarize(result)}`);
+			return result;
+		},
+		(error) => {
+			if (outbound) callsInFlight--;
+			emit(`[ascot] #${id} ${tag} ${Date.now() - start}ms: threw ${error}`);
+			throw error;
+		},
+	);
+}
+
+function shortUri(uri: string): string {
+	return decodeURIComponent(uri.slice(uri.lastIndexOf("/") + 1));
+}
+
+function describeArgs(method: string, args: unknown[]): string {
+	if (method === "open") return `${shortUri(args[0] as string)} <${(args[1] as string).length} chars>`;
+	return args
+		.map((arg) => {
+			if (typeof arg === "string") return shortUri(arg);
+			if (typeof arg !== "object" || arg === null) return String(arg);
+			if ("line" in arg) return `${(arg as Ascot.Position).line}:${(arg as Ascot.Position).character}`;
+			if ("start" in arg) {
+				const { start, end } = arg as Ascot.Range;
+				return `${start.line}:${start.character}-${end.line}:${end.character}`;
+			}
+			return JSON.stringify(arg);
+		})
+		.join(" ");
+}
+
+function summarize(result: unknown): string {
+	if (result === undefined || result === null) return "nothing";
+	if (Array.isArray(result)) return `${result.length} item(s)`;
+	if (typeof result === "string") return `${result.length} chars`;
+	if (typeof result === "object" && "uri" in result && "range" in result) {
+		const { uri, range } = result as Ascot.Location;
+		return `${shortUri(uri)} ${range.start.line}:${range.start.character}`;
+	}
+	return typeof result;
+}
+
+function summarizeRoutine(source: Ascot.RoutineSource | undefined): string {
+	return source ? `${source.text.length} chars` : "not found";
+}
+
+/** `workspace` with every method call logged through `traceCall`. */
+function traced(workspace: Ascot.Workspace): Ascot.Workspace {
+	return new Proxy(workspace, {
+		get(target, prop, receiver) {
+			const value = Reflect.get(target, prop, receiver);
+			if (typeof value !== "function" || typeof prop !== "string") return value;
+			return (...args: unknown[]) =>
+				traceCall(`→ ${prop}`, describeArgs(prop, args), () => value.apply(target, args), summarize);
+		},
+	});
+}
+
+// The startup scan of the workspace folders. Requests for a document wait for it: a check run
+// against a half-loaded workspace reports its includes and referenced classes as missing, and
+// since ascot records no dependency on a name it couldn't find, opening them later wouldn't
+// invalidate that result.
+let startupScan: Promise<void> = Promise.resolve();
+let startupScanDone = true;
+
+export function setStartupScan(scan: Promise<void>): void {
+	startupScanDone = false;
+	const start = Date.now();
+	startupScan = scan.finally(() => {
+		startupScanDone = true;
+		trace(`startup scan finished after ${Date.now() - start}ms`);
+	});
+}
+
+/** Configuration changed: every folder's connection may now resolve to a server. */
+export function onConfigurationChanged(): void {
+	for (const connection of connections.values()) connection.forgetNoServer();
+	refreshTrace();
+}
 
 const severityMap: Record<Ascot.DiagnosticSeverity, DiagnosticSeverity> = {
 	error: DiagnosticSeverity.Error,
@@ -337,14 +504,16 @@ const symbolKindMap: Record<Ascot.SymbolKind, SymbolKind> = {
 };
 
 // Stores the raw source; no parsing happens here (kind is inferred from `docURI`'s
-// extension). Doubles as both open and edit.
-export async function openDoc(docURI: string, src: string, folderURI?: string): Promise<void> {
+// extension). Doubles as both open and edit. Returns the uris (this one included) whose
+// cached analysis is now stale -- a document this one is included by or referenced from.
+export async function openDoc(docURI: string, src: string, folderURI?: string): Promise<string[]> {
 	try {
 		const workspace =
 			typeof folderURI === "string" ? await rootURIToWorkspace(folderURI) : await filePathToWorkspace(docURI);
-		await workspace.open(docURI, src);
+		return await workspace.open(docURI, src);
 	} catch (rawError) {
 		console.log(rawError);
+		return [];
 	}
 }
 
@@ -387,6 +556,8 @@ export const getHover = (docURI: string, position: Ascot.Position) =>
 	withWorkspace<string | undefined>(docURI, undefined, (w) => w.hover(docURI, position));
 
 async function filePathToWorkspace(docURI: string): Promise<Ascot.Workspace> {
+	if (!startupScanDone) trace(`${shortUri(docURI)}: waiting for the startup scan`);
+	await startupScan;
 	const folders = await connection.workspace.getWorkspaceFolders();
 	const folder = folders?.find((f) => docURI.startsWith(f.uri));
 	return rootURIToWorkspace(folder?.uri ?? docURI);
@@ -395,8 +566,10 @@ async function filePathToWorkspace(docURI: string): Promise<Ascot.Workspace> {
 async function rootURIToWorkspace(folderURI: string): Promise<Ascot.Workspace> {
 	let workspace = workspaces.get(folderURI);
 	if (!workspace) {
-		workspace = await Ascot.createWorkspace(new IrisConnection(folderURI));
+		const connection = new IrisConnection(folderURI);
+		workspace = traced(await Ascot.createWorkspace(connection));
 		workspaces.set(folderURI, workspace);
+		connections.set(folderURI, connection);
 	}
 	return workspace;
 }
