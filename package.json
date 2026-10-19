@@ -27,7 +27,7 @@
     "multi-root ready"
   ],
   "engines": {
-    "vscode": "^1.93.0"
+    "vscode": "^1.103.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.cls",
@@ -88,6 +88,12 @@
           ],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
+        },
+        "intersystems.language-server.ascot.trace": {
+          "scope": "window",
+          "type": "boolean",
+          "default": false,
+          "description": "Logs every call between the language server and the ascot analysis engine (both directions, with timings) to the 'InterSystems Language Server' output channel."
         },
         "intersystems.language-server.formatting.commands.case": {
           "scope": "resource",
@@ -1797,9 +1803,11 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
+    "@types/eslint": "^9.6.1",
     "@types/node": "^22.15.33",
     "@types/turndown": "^5.0.6",
     "@vscode/vsce": "^4.0.0",
+    "copy-webpack-plugin": "^14.0.0",
     "eslint": "^10.12.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
