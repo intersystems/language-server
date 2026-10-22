@@ -31,6 +31,8 @@ interface MemberMetadataRow {
 	ClassMethod: "0" | "1" | 0 | 1;
 	Deprecated: "0" | "1" | 0 | 1;
 	Origin: string;
+	Relationship: "0" | "1" | 0 | 1 | null;
+	Cardinality: Ascot.Cardinality | "" | null;
 }
 
 interface ClassMetadataRow {
@@ -44,14 +46,16 @@ interface ClassMetadataRow {
 
 // Resolves members/superclasses/datatype-ness for out-of-workspace classes via REST;
 // in-workspace classes are served from ascot's own memory and never reach here.
-class IrisConnection implements Ascot.Imported {
+class RestIrisConnection extends Ascot.IrisConnection {
 	private noServerUntil = 0;
 
 	constructor(
 		private readonly folderURI: string,
 		private readonly clsCache = new Map<string, [number, Ascot.ClassInfo | undefined]>(),
-		private readonly routineCache = new Map<string, [number, Ascot.RoutineSource | undefined]>(),
-	) {}
+		private readonly routineCache = new Map<string, [number, Ascot.RoutineSource | undefined | null]>(),
+	) {
+		super();
+	}
 
 	/** The configuration may have changed: ask the client again on the next lookup. */
 	public forgetNoServer(): void {
@@ -106,12 +110,12 @@ class IrisConnection implements Ascot.Imported {
 
 		const memdata = await makeRESTRequest("POST", 1, "/action/query", server, {
 			query:
-				"SELECT Name, NULL AS Aliases, 'method' AS MemberType, Description, FormalSpec, ReturnType, NULL AS Collection, 0 AS MultiDimensional, Stub, ClassMethod, Deprecated, Origin " +
+				"SELECT Name, NULL AS Aliases, 'method' AS MemberType, Description, FormalSpec, ReturnType, NULL AS Collection, 0 AS MultiDimensional, Stub, ClassMethod, Deprecated, Origin, 0 AS Relationship, NULL AS Cardinality " +
 				"FROM %Dictionary.CompiledMethod WHERE Parent = ? UNION ALL " +
 				"SELECT Name, Aliases, 'property' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, Collection, MultiDimensional, " +
-				"NULL AS Stub, 0 AS ClassMethod, Deprecated, Origin FROM %Dictionary.CompiledProperty WHERE Parent = ? UNION ALL " +
+				"NULL AS Stub, 0 AS ClassMethod, Deprecated, Origin, Relationship, Cardinality FROM %Dictionary.CompiledProperty WHERE Parent = ? UNION ALL " +
 				"SELECT Name, NULL AS Aliases, 'parameter' AS MemberType, Description, NULL AS FormalSpec, Type AS ReturnType, NULL AS Collection, 0 AS MultiDimensional, " +
-				"NULL AS Stub, 0 AS ClassMethod, Deprecated, Origin FROM %Dictionary.CompiledParameter WHERE Parent = ?",
+				"NULL AS Stub, 0 AS ClassMethod, Deprecated, Origin, 0 AS Relationship, NULL AS Cardinality FROM %Dictionary.CompiledParameter WHERE Parent = ?",
 			parameters: [cls, cls, cls],
 		});
 		const memrows: MemberMetadataRow[] = memdata?.data?.result?.content ?? [];
@@ -137,27 +141,53 @@ class IrisConnection implements Ascot.Imported {
 	// %occInclude). No uri of our own to offer ascot for these -- they aren't backed by a
 	// document this server's client could navigate to.
 	public getInc(name: string): Promise<Ascot.RoutineSource | undefined> {
-		return traceCall("← getInc", name, () => this.fetchRoutine(name, ["inc"]), summarizeRoutine);
+		return traceCall(
+			"← getInc",
+			name,
+			async () => (await this.fetchRoutine(name, ["inc"])) ?? undefined,
+			summarizeRoutine,
+		);
 	}
 
 	// Likewise for a cross-routine call target. The .int first: it is the instance's own macro
-	// expansion of the .mac, so ascot has nothing to expand (or include) itself.
-	public getIntOrMac(name: string): Promise<Ascot.RoutineSource | undefined> {
-		return traceCall("← getIntOrMac", name, () => this.fetchRoutine(name, ["int", "mac"]), summarizeRoutine);
+	// expansion of the .mac, so ascot has nothing to expand (or include) itself. A routine
+	// deployed as .obj only, or one we have no server to ask about, may well exist, so report
+	// its source as unavailable rather than the routine as missing.
+	public getIntOrMac(name: string): ReturnType<Ascot.IrisConnection["getIntOrMac"]> {
+		return traceCall(
+			"← getIntOrMac",
+			name,
+			async () => {
+				const source = await this.fetchRoutine(name, ["int", "mac", "obj"]);
+				return source === undefined ? { tag: "none" } : { tag: "some", val: source ?? undefined };
+			},
+			(result) => (result.tag === "none" ? "not found" : result.val ? summarizeRoutine(result.val) : "no source"),
+		);
 	}
 
-	private async fetchRoutine(name: string, exts: string[]): Promise<Ascot.RoutineSource | undefined> {
+	/** `null` if the source isn't available: no server to ask, or (`obj` in `exts`) object code only. */
+	private async fetchRoutine(name: string, exts: string[]): Promise<Ascot.RoutineSource | undefined | null> {
 		const key = `${name}.${exts[0]}`;
 		const cached = this.routineCache.get(key);
 		if (cached && Date.now() - cached[0] < CACHE_TTL_MS) return cached[1];
 		const server = await this.server();
-		if (server === undefined) return undefined;
-		let text: string | undefined;
+		if (server === undefined) return null;
+		let source: Ascot.RoutineSource | undefined | null;
 		for (const ext of exts) {
-			text = await fetchDoc(server, `${name}.${ext}`);
-			if (text !== undefined) break;
+			if (ext === "obj") {
+				const objdata = await makeRESTRequest("POST", 1, "/action/query", server, {
+					query: "SELECT Name FROM %Library.RoutineMgr_StudioOpenDialog(?,1,1,1,1,1,0)",
+					parameters: [`${name}.obj`],
+				});
+				if (objdata?.data?.result?.content?.length) source = null;
+				break;
+			}
+			const text = await fetchDoc(server, `${name}.${ext}`);
+			if (text !== undefined) {
+				source = { text };
+				break;
+			}
 		}
-		const source = text !== undefined ? { text } : undefined;
 		this.routineCache.set(key, [Date.now(), source]);
 		return source;
 	}
@@ -242,6 +272,8 @@ async function memberRowToInfo(
 		const type = row.ReturnType || undefined;
 		switch (row.MemberType) {
 			case "property":
+				if (row.Relationship == "1")
+					return { tag: "relationship", val: { t: type, cardinality: row.Cardinality || undefined } };
 				return {
 					tag: "property",
 					val: { t: type, collection: collectionKind(row.Collection), multidimensional: row.MultiDimensional == "1" },
@@ -350,7 +382,7 @@ export type PropertyInfo = Ascot.PropertyInfo;
 export const ascot = `[👔] `;
 
 const workspaces = new Map<string, Ascot.Workspace>();
-const connections = new Map<string, IrisConnection>();
+const connections = new Map<string, RestIrisConnection>();
 
 // Tracing of every call across the server/ascot boundary -- the server's calls into the wasm
 // `Workspace` (→) and the wasm's calls back into `IrisConnection` (←) -- to the client's
@@ -539,6 +571,8 @@ export const getDiagnostics = (docURI: string) =>
 			message: d.message,
 			range: d.range,
 			severity: severityMap[d.severity],
+			code: d.code || undefined,
+			codeDescription: d.codeDescription ? { href: d.codeDescription } : undefined,
 			source: "Ascot via InterSystems Language Server",
 		})),
 	);
@@ -566,7 +600,7 @@ async function filePathToWorkspace(docURI: string): Promise<Ascot.Workspace> {
 async function rootURIToWorkspace(folderURI: string): Promise<Ascot.Workspace> {
 	let workspace = workspaces.get(folderURI);
 	if (!workspace) {
-		const connection = new IrisConnection(folderURI);
+		const connection = new RestIrisConnection(folderURI);
 		workspace = traced(await Ascot.createWorkspace(connection));
 		workspaces.set(folderURI, workspace);
 		connections.set(folderURI, connection);
