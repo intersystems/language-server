@@ -29,7 +29,7 @@ import { makeRESTRequest } from "./makeRESTRequest";
 import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from "./requestForwarding";
 import type { ServerSpec, ProtocolMethods } from "../../common/out/types";
 import type { Disposable } from "vscode-languageclient";
-import { Authorization, ResolvedAuthorization } from "@intersystems-community/intersystems-servermanager";
+import { BasicAuthorization } from "@intersystems-community/intersystems-servermanager";
 
 export let client: {
 	onRequest<K extends keyof ProtocolMethods>(
@@ -190,11 +190,8 @@ export async function activate(context: ExtensionContext) {
 				// Server was resolved
 				serverSpec.host !== "" &&
 				// Connection isn't unauthenticated
-				auth.username != undefined &&
-				auth.username != "" &&
-				auth.username.toLowerCase() != "unknownuser" &&
-				// A password is missing
-				typeof auth.password === "undefined" &&
+				auth.username &&
+				!auth.resolved() &&
 				// A supported version of the Server Manager is installed
 				serverManagerExt != undefined &&
 				gt(serverManagerExt.packageJSON.version, "3.0.0")
@@ -228,14 +225,6 @@ export async function activate(context: ExtensionContext) {
 						client.warn(`${serverManager.AUTHENTICATION_PROVIDER}: ${error.message}`);
 					}
 				}
-			}
-			if (
-				typeof auth.username == "string" &&
-				auth.username.toLowerCase() == "unknownuser" &&
-				typeof auth.password == "undefined"
-			) {
-				// UnknownUser without a password means "unauthenticated"
-				auth.clear() as void;
 			}
 			const server: ServerSpec = {
 				...serverSpec,
@@ -466,59 +455,4 @@ export async function deactivate(): Promise<void> {
 		);
 	}
 	await Promise.allSettled(promises);
-}
-
-// A copy of the BasicAuthorization class from ServerManager
-// We use it to patch older version of getServerSpec.
-export default class BasicAuthorization implements Authorization {
-	#username?: string;
-	#password?: string;
-	constructor(username?: string, password?: string) {
-		this.#username = username;
-		this.#password = password;
-	}
-
-	public get username(): string {
-		return this.#username || "";
-	}
-
-	public get password(): string | undefined {
-		return this.#password;
-	}
-
-	public get accessToken(): string | undefined {
-		return this.#password;
-	}
-
-	public get httpAuthorizationHeader(): string {
-		return `Basic ${Buffer.from(`${this.#username}:${this.#password}`).toString("base64")}`;
-	}
-
-	public resolved(): this is ResolvedAuthorization {
-		return this.username !== "" && this.#password !== undefined;
-	}
-
-	public resolve(param: { accessToken: string; username?: string }): this is ResolvedAuthorization {
-		this.#username = param.username ?? this.#username;
-		this.#password = param.accessToken ?? this.#password;
-		return this.resolved();
-	}
-
-	public clear(): asserts this is Authorization {
-		this.#password = undefined;
-	}
-
-	public get credentials(): { auth: { username: string; password: string }; headers?: Record<string, string> } {
-		return {
-			auth: {
-				username: this.username,
-				password: this.password!,
-			},
-			headers: {},
-		};
-	}
-
-	public clone(): BasicAuthorization {
-		return new BasicAuthorization(this.#username, this.#password);
-	}
 }
