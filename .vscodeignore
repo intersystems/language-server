@@ -12,7 +12,7 @@ client/webpack.config.js
 server/node_modules/**
 server/src/**
 server/webpack.config.js
-server/lib/**
+server/lib/*-isclexer.node
 node_modules/**
 images/*.gif
 **/*.vsix
