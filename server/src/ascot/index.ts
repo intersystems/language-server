@@ -1,4 +1,16 @@
-import * as Ascot from "@intersystems-community/ascot";
+import {
+	Atelier,
+	createWorkspace,
+	type ClassInfo,
+	type InlayHint,
+	type Location,
+	type MemberInfo,
+	type Position,
+	type Range,
+	type SymbolInfo,
+	type Workspace,
+	type WorkspaceSymbol,
+} from "@intersystems-community/ascot";
 import {
 	Diagnostic,
 	DiagnosticSeverity,
@@ -17,7 +29,7 @@ const NO_SERVER_MS = 30 * 1000;
 const LOOKUP_TIMEOUT_MS = 5 * 1000;
 
 // A request that throws leaves what ascot looked up taken on trust, with the message as the reason.
-class RestAtelier extends Ascot.Atelier {
+class RestAtelier extends Atelier {
 	noServerUntil = 0;
 
 	constructor(private readonly folder: string) {
@@ -125,21 +137,21 @@ export function onConfigurationChanged(): void {
 	refreshTrace();
 }
 
-const workspaces = new Map<string, Promise<Ascot.Workspace>>();
+const workspaces = new Map<string, Promise<Workspace>>();
 const ateliers = new Map<string, RestAtelier>();
 
-function workspaceOfFolder(folder: string): Promise<Ascot.Workspace> {
+function workspaceOfFolder(folder: string): Promise<Workspace> {
 	let workspace = workspaces.get(folder);
 	if (!workspace) {
 		const atelier = new RestAtelier(folder);
 		ateliers.set(folder, atelier);
-		workspace = Ascot.createWorkspace(traced(atelier, "←")).then((w) => traced(w, "→"));
+		workspace = createWorkspace(traced(atelier, "←")).then((w) => traced(w, "→"));
 		workspaces.set(folder, workspace);
 	}
 	return workspace;
 }
 
-async function workspaceOfDoc(uri: string): Promise<Ascot.Workspace> {
+async function workspaceOfDoc(uri: string): Promise<Workspace> {
 	await scanned;
 	const folders = await connection.workspace.getWorkspaceFolders();
 	return workspaceOfFolder(folders?.find((f) => uri.startsWith(f.uri))?.uri ?? uri);
@@ -156,7 +168,7 @@ export async function openDoc(uri: string, text: string, folder?: string): Promi
 	}
 }
 
-async function withWorkspace<T>(uri: string, empty: T, fn: (workspace: Ascot.Workspace) => Promise<T>): Promise<T> {
+async function withWorkspace<T>(uri: string, empty: T, fn: (workspace: Workspace) => Promise<T>): Promise<T> {
 	try {
 		return await fn(await workspaceOfDoc(uri));
 	} catch (error) {
@@ -167,20 +179,20 @@ async function withWorkspace<T>(uri: string, empty: T, fn: (workspace: Ascot.Wor
 
 export const closeDoc = (uri: string) => withWorkspace(uri, [] as string[], (w) => w.close(uri));
 
-export const inlayHint = (uri: string, range: Ascot.Range) =>
-	withWorkspace(uri, [] as Ascot.InlayHint[], (w) => w.inlayHint(uri, range));
+export const inlayHint = (uri: string, range: Range) =>
+	withWorkspace(uri, [] as InlayHint[], (w) => w.inlayHint(uri, range));
 
-export const getDefinition = (uri: string, position: Ascot.Position) =>
-	withWorkspace<Ascot.Location | undefined>(uri, undefined, (w) => w.definition(uri, position));
+export const getDefinition = (uri: string, position: Position) =>
+	withWorkspace<Location | undefined>(uri, undefined, (w) => w.definition(uri, position));
 
-export const getReferences = (uri: string, position: Ascot.Position, includeDeclaration: boolean) =>
-	withWorkspace(uri, [] as Ascot.Location[], (w) => w.references(uri, position, includeDeclaration));
+export const getReferences = (uri: string, position: Position, includeDeclaration: boolean) =>
+	withWorkspace(uri, [] as Location[], (w) => w.references(uri, position, includeDeclaration));
 
-export const getHover = (uri: string, position: Ascot.Position) =>
+export const getHover = (uri: string, position: Position) =>
 	withWorkspace<string | undefined>(uri, undefined, (w) => w.hover(uri, position));
 
 // LSP's severities 1-4, in order.
-const SEVERITIES: Ascot.DiagnosticSeverity[] = ["error", "warning", "information", "hint"];
+const SEVERITIES = ["error", "warning", "information", "hint"];
 
 export const getDiagnostics = (uri: string) =>
 	withWorkspace(uri, [] as Diagnostic[], async (w) =>
@@ -195,7 +207,7 @@ export const getDiagnostics = (uri: string) =>
 	);
 
 // ascot's symbol kinds are LSP's, lowercased.
-function toSymbol({ name, kind, deprecated }: Ascot.SymbolInfo | Ascot.WorkspaceSymbol) {
+function toSymbol({ name, kind, deprecated }: SymbolInfo | WorkspaceSymbol) {
 	return {
 		name,
 		kind: SymbolKind[(kind[0].toUpperCase() + kind.slice(1)) as keyof typeof SymbolKind],
@@ -205,7 +217,7 @@ function toSymbol({ name, kind, deprecated }: Ascot.SymbolInfo | Ascot.Workspace
 
 export const getDocumentSymbol = (uri: string) =>
 	withWorkspace(uri, [] as DocumentSymbol[], async (w) => {
-		const toDocSymbol = (s: Ascot.SymbolInfo): DocumentSymbol => ({
+		const toDocSymbol = (s: SymbolInfo): DocumentSymbol => ({
 			...toSymbol(s),
 			range: s.range,
 			selectionRange: s.selectionRange,
@@ -219,26 +231,18 @@ export const getWorkspaceSymbol = (folder: string, query: string) =>
 		(await w.workspaceSymbol(query)).map((s) => ({ ...toSymbol(s), location: s.location })),
 	);
 
-export async function* getClasses(uri: string): AsyncGenerator<[string, Ascot.ClassInfo]> {
+export async function* getClasses(uri: string): AsyncGenerator<[string, ClassInfo]> {
 	yield* await (await workspaceOfDoc(uri)).queryCls("");
 }
 
-export async function* getClassMembers(
-	uri: string,
-	cls: string,
-	query = "",
-): AsyncGenerator<[string, Ascot.MemberInfo]> {
+export async function* getClassMembers(uri: string, cls: string, query = ""): AsyncGenerator<[string, MemberInfo]> {
 	const workspace = await workspaceOfDoc(uri);
 	yield* await workspace.queryMem(cls, query);
 	const info = (await workspace.queryCls(cls)).find(([, c]) => c.name.content === cls)?.[1];
 	for (const sup of info?.extends ?? []) yield* getClassMembers(uri, sup, query);
 }
 
-export async function getClassMember(
-	uri: string,
-	cls: string,
-	name: string,
-): Promise<[string, Ascot.MemberInfo] | null> {
+export async function getClassMember(uri: string, cls: string, name: string): Promise<[string, MemberInfo] | null> {
 	for await (const entry of getClassMembers(uri, cls, name)) {
 		if (entry[1].name.content === name) return entry;
 	}
