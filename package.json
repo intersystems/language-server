@@ -1803,7 +1803,6 @@
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@types/eslint": "^9.6.1",
     "@types/node": "^22.15.33",
     "@types/turndown": "^5.0.6",
     "@vscode/vsce": "^4.0.0",
