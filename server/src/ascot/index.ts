@@ -22,7 +22,7 @@ import {
 import { connection } from "../utils/variables";
 import { getServerSpec, makeRESTRequest } from "../utils/functions";
 
-export type { NormalArg, MemberInfo, PropertyInfo } from "@intersystems-community/ascot";
+export type { MemberInfo } from "@intersystems-community/ascot";
 
 // Every out-of-workspace class ascot meets is a lookup; don't ask the client about a missing server each time.
 const NO_SERVER_MS = 30 * 1000;
@@ -231,15 +231,20 @@ export const getWorkspaceSymbol = (folder: string, query: string) =>
 		(await w.workspaceSymbol(query)).map((s) => ({ ...toSymbol(s), location: s.location })),
 	);
 
-export async function* getClasses(uri: string): AsyncGenerator<[string, ClassInfo]> {
-	yield* await (await workspaceOfDoc(uri)).queryCls("");
+export async function* getClasses(uri: string, prefix = ""): AsyncGenerator<[string, ClassInfo]> {
+	yield* await (await workspaceOfDoc(uri)).queryCls(prefix);
 }
 
+export const getClass = (uri: string, name: string) =>
+	withWorkspace<ClassInfo | undefined>(
+		uri,
+		undefined,
+		async (w) => (await w.queryCls(name)).find(([, c]) => c.name.content === name)?.[1],
+	);
+
 export async function* getClassMembers(uri: string, cls: string, query = ""): AsyncGenerator<[string, MemberInfo]> {
-	const workspace = await workspaceOfDoc(uri);
-	yield* await workspace.queryMem(cls, query);
-	const info = (await workspace.queryCls(cls)).find(([, c]) => c.name.content === cls)?.[1];
-	for (const sup of info?.extends ?? []) yield* getClassMembers(uri, sup, query);
+	yield* await (await workspaceOfDoc(uri)).queryMem(cls, query);
+	for (const sup of (await getClass(uri, cls))?.extends ?? []) yield* getClassMembers(uri, sup, query);
 }
 
 export async function getClassMember(uri: string, cls: string, name: string): Promise<[string, MemberInfo] | null> {

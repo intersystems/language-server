@@ -224,9 +224,7 @@ export async function onDefinition(params: TextDocumentPositionParams): Promise<
 	if (parsed === undefined) {
 		return null;
 	}
-	// ascot's own reference table covers cases the REST-based lookups below don't
-	// (self-references, same-routine label calls/gotos, workspace includes) — prefer it whenever
-	// it has an answer, and it needs no server.
+	// ascot resolves what the REST lookups below can't (self-references, same-routine labels, workspace includes)
 	const ascotTarget = await getDefinition(params.textDocument.uri, params.position);
 	if (ascotTarget) {
 		return [

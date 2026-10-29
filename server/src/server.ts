@@ -186,13 +186,15 @@ documents.onDidChangeContent(async (change) => {
 	// Clear the parsedDocuments value so we know to wait for an update elsewhere
 	parsedDocuments.set(change.document.uri, undefined);
 	const path = URI.parse(change.document.uri).path;
-	const fileText = change.document.getText();
 	parsedDocuments.set(
 		change.document.uri,
-		parseDocument(change.document.languageId, path.slice(path.lastIndexOf(".") + 1).toLowerCase(), fileText)
-			.compressedlinearray,
+		parseDocument(
+			change.document.languageId,
+			path.slice(path.lastIndexOf(".") + 1).toLowerCase(),
+			change.document.getText(),
+		).compressedlinearray,
 	);
-	const affected = await openDoc(change.document.uri, fileText);
+	const affected = await openDoc(change.document.uri, change.document.getText());
 	// Pull-model diagnostics without inter-file dependencies: other documents this edit
 	// invalidated (its includers, callers) are only re-pulled if we ask.
 	if (affected.some((uri) => uri !== change.document.uri)) {

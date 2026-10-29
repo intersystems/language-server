@@ -25,7 +25,7 @@ import {
 import { SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
-import { getClassMember, NormalArg } from "../ascot";
+import { getClassMember } from "../ascot";
 
 /**
  * Cache of the macro context info required to do a macro expansion when the selected parameter changes.
@@ -771,53 +771,31 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 }
 
 async function getMethodSignatureHelpFromAscot(
-	docURI: string,
-	clsName: string,
-	memName: string,
+	uri: string,
+	cls: string,
+	method: string,
 	showingDoc: boolean,
 ): Promise<SignatureHelp | null> {
-	const uri_mem =
-		(await getClassMember(docURI, clsName, memName)) ??
-		(memName != "%New" ? null : await getClassMember(docURI, clsName, "%OnNew"));
-	if (!uri_mem) {
+	const [, mem] =
+		(await getClassMember(uri, cls, method)) ??
+		(method == "%New" ? await getClassMember(uri, cls, "%OnNew") : null) ??
+		[];
+	if (mem?.kind.tag !== "method" && mem?.kind.tag !== "class-method" && mem?.kind.tag !== "client-method") {
 		return null;
 	}
-	const [, mem] = uri_mem;
-	if (mem.kind.tag === "method" || mem.kind.tag === "class-method" || mem.kind.tag === "client-method") {
-		const method = mem.kind.val;
-		const out = ["%Open", "%OpenId"].includes(memName) ? clsName : method.t;
-		const sig: SignatureInformation = {
-			label: "(" + method.normal.map(prettifyNormalArg).join(", ") + ")" + (out ? " As " + out : ""),
-			parameters: method.normal.map((arg): ParameterInformation => ({
-				label: arg.name,
-			})),
+	const { normal, t } = mem.kind.val;
+	const out = ["%Open", "%OpenId"].includes(method) ? cls : t;
+	const args = normal.map((arg) => `${arg.mode == "default" ? "" : "&"}${arg.name}${arg.t ? ` As ${arg.t}` : ""}`);
+	const sig: SignatureInformation = {
+		label: `(${args.join(", ")})${out ? ` As ${out}` : ""}`,
+		parameters: normal.map((arg) => ({ label: arg.name })),
+	};
+	if (showingDoc) {
+		signatureHelpDocumentationCache = {
+			type: "method",
+			doc: { kind: MarkupKind.Markdown, value: documaticHtmlToMarkdown(mem.doc) },
 		};
-		if (showingDoc) {
-			signatureHelpDocumentationCache = {
-				type: "method",
-				doc: {
-					kind: MarkupKind.Markdown,
-					value: documaticHtmlToMarkdown(mem.doc),
-				},
-			};
-			sig.documentation = signatureHelpDocumentationCache.doc;
-		}
-		return {
-			signatures: [sig],
-			activeSignature: 0,
-		};
+		sig.documentation = signatureHelpDocumentationCache.doc;
 	}
-	return null;
-
-	function prettifyNormalArg(arg: NormalArg): string {
-		let string = "";
-		if (arg.mode != "default") {
-			string += "&";
-		}
-		string += arg.name;
-		if (arg.t) {
-			string += ` As ${arg.t}`;
-		}
-		return string;
-	}
+	return { signatures: [sig], activeSignature: 0 };
 }

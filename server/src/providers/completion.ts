@@ -38,7 +38,7 @@ import {
 	LanguageServerConfiguration,
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { getClassMembers, getClasses, MemberInfo, PropertyInfo } from "../ascot";
+import { getClass, getClassMembers, getClasses, MemberInfo } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -579,16 +579,6 @@ async function completionFullClassName(
 	const imports = await getImports(doc, parsed, line, server);
 
 	// Get all classes
-	const added = new Set<string>();
-	for await (const [uri, cls] of getClasses(doc.uri)) {
-		added.add(cls.name.content);
-		const item = makeFullPrettyClassCompletionItem(imports, cls.name.content, uri, cls.deprecated);
-		item.documentation = {
-			kind: MarkupKind.Markdown,
-			value: documaticHtmlToMarkdown(cls.doc),
-		};
-		result.push(item);
-	}
 	const querydata = {
 		query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
 			!settings.completion.showDeprecated ? " AND dcd.Deprecated = 0" : ""
@@ -596,10 +586,46 @@ async function completionFullClassName(
 		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0],
 	};
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
-	if (respdata !== undefined && respdata.data.result.content.length > 0) {
-		for (const clsobj of respdata.data.result.content) {
-			if (added.has(clsobj.Name)) continue;
-			result.push(makeFullPrettyClassCompletionItem(imports, clsobj.Name, doc.uri, clsobj.Deprecated));
+	const classes = mergeRows(await classRows(doc.uri, "", settings), respdata?.data.result.content);
+	if (classes.length > 0) {
+		for (const clsobj of classes) {
+			let displayname: string = clsobj.Name;
+			let compItem: CompletionItem;
+			if (imports.length > 0) {
+				// Resolve import
+				let sortText: string | undefined;
+				for (const imp of imports) {
+					if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
+						displayname = displayname.slice(imp.length + 1);
+						sortText = "%%%" + displayname;
+						break;
+					}
+				}
+				if (displayname.startsWith("%Library.")) {
+					// Use short form for %Library classes
+					displayname = "%" + displayname.slice(9);
+				}
+				compItem = {
+					label: displayname,
+					kind: CompletionItemKind.Class,
+					data: ["class", clsobj.Name, doc.uri],
+					sortText,
+				};
+			} else {
+				if (displayname.startsWith("%Library.")) {
+					// Use short form for %Library classes
+					displayname = "%" + displayname.slice(9);
+				}
+				compItem = {
+					label: displayname,
+					kind: CompletionItemKind.Class,
+					data: ["class", clsobj.Name, doc.uri],
+				};
+			}
+			if (clsobj.Deprecated) {
+				compItem.tags = [CompletionItemTag.Deprecated];
+			}
+			result.push(compItem);
 		}
 	}
 	return result;
@@ -1237,24 +1263,6 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				}
 			}
 
-			const added = new Set<string>();
-			for await (const [, cls] of getClasses(doc.uri)) {
-				if (!cls.name.content.startsWith(filter)) {
-					continue;
-				}
-				added.add(cls.name.content);
-				result.push({
-					label: cls.name.content.slice(filter.length),
-					kind: CompletionItemKind.Class,
-					data: ["class", cls.name.content.slice(filter.length), doc.uri],
-					tags: cls.deprecated ? [CompletionItemTag.Deprecated] : undefined,
-					documentation: {
-						kind: MarkupKind.Markdown,
-						value: documaticHtmlToMarkdown(cls.doc),
-					},
-				});
-			}
-
 			// Get all classes that match the filter
 			const querydata = {
 				query: `SELECT dcd.Name, dcd.Deprecated FROM %Library.RoutineMgr_StudioOpenDialog(?,?,?,?,?,?,?,?) AS sod, %Dictionary.ClassDefinition AS dcd WHERE sod.Name = dcd.Name||'.cls'${
@@ -1263,11 +1271,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0, `Name %STARTSWITH '${filter}'`],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
-			if (respdata !== undefined && respdata.data.result.content.length > 0) {
+			const classes = mergeRows(await classRows(doc.uri, filter, settings), respdata?.data.result.content);
+			if (classes.length > 0) {
 				// We got data back
 
-				for (const clsobj of respdata.data.result.content) {
-					if (added.has(clsobj.Name)) continue;
+				for (const clsobj of classes) {
 					result.push({
 						label: clsobj.Name.slice(filter.length),
 						kind: CompletionItemKind.Class,
@@ -1302,17 +1310,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					return null;
 				}
 
-				const added = new Set<string>();
-				for await (const [, mem] of getClassMembers(params.textDocument.uri, membercontext.baseclass)) {
-					if (mem.kind.tag === "parameter") {
-						const name = quoteUDLIdentifier(mem.name.content, 1);
-						added.add(name);
-						const item = makeMemberCompletionItem(mem, name, params.position);
-						// "#" is already typed, so don't insert it again
-						item.insertText = name;
-						result.push(item);
-					}
-				}
+				const local = (await memberRows(doc.uri, membercontext.baseclass)).filter(
+					(row) => row.MemberType == "parameter",
+				);
 				// Query the server to get the names and descriptions of all parameters
 				const data: QueryData = {
 					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${
@@ -1323,12 +1323,12 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					parameters: [membercontext.baseclass],
 				};
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
-				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+				const members = mergeRows(local, respdata?.data?.result?.content);
+				if (members.length > 0) {
 					// We got data back
 
-					for (const memobj of respdata.data.result.content) {
+					for (const memobj of members) {
 						const quotedname = quoteUDLIdentifier(memobj.Name, 1);
-						if (added.has(quotedname)) continue;
 						const item: CompletionItem = {
 							label: "#" + quotedname,
 							kind: CompletionItemKind.Constant,
@@ -1363,13 +1363,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					return null;
 				}
 
-				const added = new Set<string>();
-				for await (const [, mem] of getClassMembers(params.textDocument.uri, membercontext.baseclass)) {
-					const name = quoteUDLIdentifier(mem.name.content, 1);
-					added.add(name);
-					result.push(makeMemberCompletionItem(mem, name, params.position));
-				}
-
+				// As the queries below: everything on an instance, class methods (and parameters) on a class
+				const local = (await memberRows(doc.uri, membercontext.baseclass)).filter(
+					(row) =>
+						membercontext.context == "instance" ||
+						row.ClassMethod ||
+						(row.MemberType == "parameter" && membercontext.context == "class"),
+				);
 				// Query the server to get the metadata of all appropriate class members
 				const data: QueryData = {
 					query: "",
@@ -1433,12 +1433,12 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					}
 				}
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
-				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+				const members = mergeRows(local, respdata?.data?.result?.content);
+				if (members.length > 0) {
 					// We got data back
 
-					for (const memobj of respdata.data.result.content) {
+					for (const memobj of members) {
 						const quotedname = quoteUDLIdentifier(memobj.Name, 1);
-						if (added.has(quotedname)) continue;
 						let item: CompletionItem = {
 							label: "",
 						};
@@ -2535,83 +2535,63 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	return result;
 }
 
-function makeFullPrettyClassCompletionItem(
-	imports: string[],
-	name: string,
-	uri: TextDocument["uri"],
-	deprecated: boolean,
-) {
-	let displayname: string = name;
-	let sortText: string | undefined;
-	for (const imp of imports) {
-		if (displayname.indexOf(imp) === 0 && displayname.slice(imp.length + 1).indexOf(".") === -1) {
-			displayname = displayname.slice(imp.length + 1);
-			sortText = "%%%" + displayname;
-			break;
+/** The workspace's classes starting with `prefix`, as rows of the class queries above. */
+async function classRows(uri: string, prefix: string, settings: LanguageServerConfiguration) {
+	const rows: { Name: string; Deprecated: boolean }[] = [];
+	for await (const [, cls] of getClasses(uri, prefix)) {
+		if (settings.completion.showDeprecated || !cls.deprecated) {
+			rows.push({ Name: cls.name.content, Deprecated: cls.deprecated });
 		}
 	}
-	if (displayname.startsWith("%Library.")) {
-		// Use short form for %Library classes
-		displayname = "%" + displayname.slice(9);
-	}
-	const compItem: CompletionItem = {
-		label: displayname,
-		kind: CompletionItemKind.Class,
-		data: ["class", name, uri],
-	};
-	if (sortText !== undefined) {
-		compItem.sortText = sortText;
-	}
-	if (deprecated) {
-		compItem.tags = [CompletionItemTag.Deprecated];
-	}
-	return compItem;
+	return rows;
 }
 
-function propertyDetail(info: PropertyInfo): string | undefined {
-	const of = info.collection === "list" ? "list Of " : info.collection === "array" ? "array Of " : "";
-	return info.t === undefined ? undefined : of + info.t;
+// The `MemberType` the member queries above give each kind of ascot member; kinds they don't list are left out
+const MEMBER_TYPES: Partial<Record<MemberInfo["kind"]["tag"], string>> = {
+	method: "method",
+	"class-method": "method",
+	"client-method": "method",
+	property: "property",
+	relationship: "property",
+	parameter: "parameter",
+};
+
+/** The workspace's members of `cls`, inherited ones included, as rows of the member queries above. */
+async function memberRows(uri: string, cls: string) {
+	const members: MemberInfo[] = [];
+	for await (const [, mem] of getClassMembers(uri, cls)) members.push(mem);
+	return members.flatMap((mem) => {
+		const MemberType = MEMBER_TYPES[mem.kind.tag];
+		if (!MemberType) return [];
+		const val: { t?: string; collection?: string; normal?: { name: string }[]; variadic?: { name: string } } =
+			"val" in mem.kind && mem.kind.tag != "index" ? mem.kind.val : {};
+		return {
+			Name: mem.name.content,
+			Description: mem.doc,
+			Origin: mem.origin,
+			FormalSpec: [...(val.normal ?? []), val.variadic].flatMap((arg) => arg?.name ?? []).join(","),
+			Type: `${val.collection ? `${val.collection} Of ` : ""}${val.t ?? ""}`,
+			MemberType,
+			ClassMethod: mem.kind.tag == "class-method",
+			Deprecated: mem.deprecated,
+			Aliases: mem.aliases.join(","),
+		};
+	});
 }
 
-function makeMemberCompletionItem(mem: MemberInfo, name: string, position: Position): CompletionItem {
-	const item: CompletionItem = {
-		label: name,
-		kind: CompletionItemKind.Property,
-		data: "member",
-		detail: mem.kind.tag === "property" ? propertyDetail(mem.kind.val) : undefined,
-		documentation: {
-			kind: MarkupKind.Markdown,
-			value: documaticHtmlToMarkdown(mem.doc),
-		},
-	};
-	if (mem.kind.tag === "class-method" || mem.kind.tag === "method" || mem.kind.tag === "client-method") {
-		item.kind = CompletionItemKind.Method;
-		item.detail = mem.kind.val.t;
-		if (mem.kind.val.normal.length == 0 && !mem.kind.val.variadic) {
-			item.insertText = name + "()";
-		} else {
-			item.textEdit = TextEdit.insert(position, name.replace(/\$/g, "//$") + "($0)");
-			item.insertTextFormat = InsertTextFormat.Snippet;
-			item.command = {
-				title: "Show SignatureHelp",
-				command: "editor.action.triggerParameterHints",
-			};
-		}
-	} else if (mem.kind.tag === "parameter") {
-		item.kind = CompletionItemKind.Constant;
-		item.label = "#" + name;
-		item.sortText = name;
-		item.detail = mem.kind.val.t;
-	}
-	if (mem.deprecated) {
-		item.tags = [CompletionItemTag.Deprecated];
-	}
-	return item;
+/** `local` rows first, then the server's `rows` for the names `local` doesn't have. */
+function mergeRows<T extends { Name: string }>(local: T[], rows: unknown): T[] {
+	const names = new Set(local.map((row) => row.Name));
+	return local.concat(Array.isArray(rows) ? rows.filter((row) => !names.has(row.Name)) : []);
 }
 
 export async function onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
-	if (item.documentation) return item;
 	if (Array.isArray(item.data) && item.data[0] === "class") {
+		const cls = await getClass(item.data[2], item.data[1]);
+		if (cls) {
+			item.documentation = { kind: MarkupKind.Markdown, value: documaticHtmlToMarkdown(cls.doc) };
+			return item;
+		}
 		// Get the description for this class from the server
 		const server = await getServerSpec(item.data[2]);
 		if (!server) {
