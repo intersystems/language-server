@@ -83,9 +83,6 @@ export type NormalArg = Ascot.NormalArg;
 export type MemberInfo = Ascot.MemberInfo;
 export type PropertyInfo = Ascot.PropertyInfo;
 
-/** Prefix marking a hover/completion/symbol result as sourced from ascot rather than a REST query. */
-export const ascot = `[👔] `;
-
 const workspaces = new Map<string, Ascot.Workspace>();
 const connections = new Map<string, RestAtelier>();
 

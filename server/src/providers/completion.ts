@@ -38,7 +38,7 @@ import {
 	LanguageServerConfiguration,
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
-import { ascot, getClassMembers, getClasses, MemberInfo, PropertyInfo } from "../ascot";
+import { getClassMembers, getClasses, MemberInfo, PropertyInfo } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -587,8 +587,6 @@ async function completionFullClassName(
 			kind: MarkupKind.Markdown,
 			value: documaticHtmlToMarkdown(cls.doc),
 		};
-		item.insertText = item.label;
-		item.label = ascot + item.label;
 		result.push(item);
 	}
 	const querydata = {
