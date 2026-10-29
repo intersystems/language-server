@@ -7,7 +7,7 @@
     "node": ">=16"
   },
   "dependencies": {
-    "@intersystems-community/ascot": "^0.4.2",
+    "@intersystems-community/ascot": "^0.4.3",
     "node-html-parser": "^9.0.4",
     "turndown": "^7.2.4",
     "vscode-languageserver": "^10.1.2",

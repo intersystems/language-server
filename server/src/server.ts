@@ -135,7 +135,7 @@ connection.onDidChangeConfiguration(async () => {
 	languageServerSettings.clear();
 	serverSpecs.clear();
 	schemaCaches.clear();
-	onConfigurationChanged();
+	await onConfigurationChanged();
 
 	// Refresh the cached configuration settings for all open documents
 	// This is done here because it's more efficient to pack everything into one request to the client
@@ -244,10 +244,12 @@ connection.onNotification("intersystems/server/passwordChange", (serverName: str
 	}
 });
 
-connection.onNotification("intersystems/server/connectionChange", () => {
+connection.onNotification("intersystems/server/connectionChange", async () => {
 	// Clear all cached server connection info
 	serverSpecs.clear();
 	schemaCaches.clear();
+	await onConfigurationChanged();
+	connection.languages.diagnostics.refresh();
 });
 
 connection.onDocumentSymbol(onDocumentSymbol);

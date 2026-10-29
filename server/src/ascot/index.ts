@@ -132,9 +132,13 @@ export function setStartupScan(scan: Promise<void>): void {
 	scanned = scan.then(() => trace(`startup scan finished after ${Date.now() - start}ms`));
 }
 
-export function onConfigurationChanged(): void {
-	for (const atelier of ateliers.values()) atelier.noServerUntil = 0;
+// The server may have changed: a new env stales every analysis, so ascot asks it again.
+export async function onConfigurationChanged(): Promise<void> {
 	refreshTrace();
+	for (const [folder, atelier] of ateliers) {
+		atelier.noServerUntil = 0;
+		await (await workspaces.get(folder)!).setEnv(atelier);
+	}
 }
 
 const workspaces = new Map<string, Promise<Workspace>>();
@@ -143,9 +147,9 @@ const ateliers = new Map<string, RestAtelier>();
 function workspaceOfFolder(folder: string): Promise<Workspace> {
 	let workspace = workspaces.get(folder);
 	if (!workspace) {
-		const atelier = new RestAtelier(folder);
+		const atelier = traced(new RestAtelier(folder), "←");
 		ateliers.set(folder, atelier);
-		workspace = createWorkspace(traced(atelier, "←")).then((w) => traced(w, "→"));
+		workspace = createWorkspace(atelier).then((w) => traced(w, "→"));
 		workspaces.set(folder, workspace);
 	}
 	return workspace;
