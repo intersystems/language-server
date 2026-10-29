@@ -27,6 +27,7 @@ import {
 	normalizeClassname,
 	macroDefToDoc,
 	showInternalForServer,
+	isClassMember,
 } from "../utils/functions";
 import {
 	ServerSpec,
@@ -759,7 +760,7 @@ async function globalsOrRoutines(
 }
 
 export async function onCompletion(params: CompletionParams): Promise<CompletionItem[] | null> {
-	let result: CompletionItem[] = [];
+	let result: CompletionItem[] | null = [];
 	const doc = documents.get(params.textDocument.uri);
 	if (doc === undefined) {
 		return null;
@@ -1280,7 +1281,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 		} else if (globalOrRoutineMatch && triggerlang == ld.cos_langindex) {
 			// This might be a routine or global
 
-			result = (await globalsOrRoutines(
+			result = await globalsOrRoutines(
 				doc,
 				parsed,
 				params.position.line,
@@ -1289,7 +1290,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				server,
 				prevline.slice(0, -globalOrRoutineMatch[1].length),
 				globalOrRoutineMatch[1],
-			))!;
+			);
 		} else {
 			// This is a class member
 
@@ -1501,7 +1502,7 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 									.split(/\s*,\s*/)
 									.forEach((alias: string) => {
 										const quoted = quoteUDLIdentifier(alias, 1);
-										result.push({
+										result!.push({
 											...item,
 											label: quoted,
 											sortText: memobj.Origin == membercontext.baseclass ? sortPrefix + quoted : quoted,
@@ -2442,7 +2443,96 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	} else if (prevline.endsWith("^") && triggerlang == ld.cos_langindex) {
 		// This might be a routine or global
 
-		result = (await globalsOrRoutines(doc, parsed, params.position.line, thistoken, settings, server, prevline))!;
+		result = await globalsOrRoutines(doc, parsed, params.position.line, thistoken, settings, server, prevline);
+	} else if (
+		triggerlang == ld.cos_langindex &&
+		doc.languageId == "objectscript-class" &&
+		[
+			ld.cos_param_attrindex,
+			ld.cos_localdec_attrindex,
+			ld.cos_localvar_attrindex,
+			ld.cos_otw_attrindex,
+			ld.cos_localundec_attrindex,
+		].includes(parsed[params.position.line][thistoken].s) &&
+		parsed[params.position.line][thistoken].c == 1
+	) {
+		// The cursor is after the first character of a variable name
+
+		// Find all variables used in this method that start with the same character that the cursor follows
+		const startChar = doc.getText(
+			Range.create(Position.create(params.position.line, params.position.character - 1), params.position),
+		);
+		const vars: Set<string> = new Set();
+		// Scan up looking for the start of this member
+		let inPublicList = false;
+		for (let l = params.position.line; l >= 0; l--) {
+			if (!parsed[l]?.length) continue;
+			for (let t = 0; t < parsed[l].length; t++) {
+				if (parsed[l][t].l == ld.cls_langindex && parsed[l][t].s == ld.cls_keyword_attrindex) {
+					inPublicList =
+						doc.getText(Range.create(l, parsed[l][t].p, l, parsed[l][t].p + parsed[l][t].c)).toLowerCase() ==
+						"publiclist";
+				}
+				if (
+					(parsed[l][t].l == ld.cos_langindex &&
+						[
+							ld.cos_param_attrindex,
+							ld.cos_localdec_attrindex,
+							ld.cos_localvar_attrindex,
+							ld.cos_otw_attrindex,
+							ld.cos_localundec_attrindex,
+						].includes(parsed[l][t].s)) ||
+					(parsed[l][t].l == ld.cls_langindex &&
+						(parsed[l][t].s == ld.cls_param_attrindex || (parsed[l][t].s == ld.cls_iden_attrindex && inPublicList)))
+				) {
+					const varText = doc.getText(Range.create(l, parsed[l][t].p, l, parsed[l][t].p + parsed[l][t].c));
+					if (varText.startsWith(startChar)) vars.add(varText);
+				}
+			}
+			if (
+				parsed[l][0].l == ld.cls_langindex &&
+				parsed[l][0].s == ld.cls_keyword_attrindex &&
+				parsed[l].length > 1 &&
+				isClassMember(doc.getText(Range.create(l, parsed[l][0].p, l, parsed[l][0].p + parsed[l][0].c)))
+			) {
+				break;
+			}
+		}
+		// Scan down looking for the start of the next member
+		for (let l = params.position.line + 1; l < parsed.length; l++) {
+			if (!parsed[l]?.length) continue;
+			if (
+				parsed[l][0].l == ld.cls_langindex &&
+				parsed[l][0].s == ld.cls_keyword_attrindex &&
+				parsed[l].length > 1 &&
+				isClassMember(doc.getText(Range.create(l, parsed[l][0].p, l, parsed[l][0].p + parsed[l][0].c)))
+			) {
+				break;
+			}
+			for (let t = 0; t < parsed[l].length; t++) {
+				if (
+					parsed[l][t].l == ld.cos_langindex &&
+					[
+						ld.cos_param_attrindex,
+						ld.cos_localdec_attrindex,
+						ld.cos_localvar_attrindex,
+						ld.cos_otw_attrindex,
+						ld.cos_localundec_attrindex,
+					].includes(parsed[l][t].s)
+				) {
+					const varText = doc.getText(Range.create(l, parsed[l][t].p, l, parsed[l][t].p + parsed[l][t].c));
+					if (varText.startsWith(startChar)) vars.add(varText);
+				}
+			}
+		}
+		vars.delete(startChar);
+		vars.forEach((label) =>
+			result!.push({
+				label,
+				kind: CompletionItemKind.Variable,
+				data: "variable",
+			}),
+		);
 	}
 	return result;
 }
