@@ -12,15 +12,11 @@ import { getServerSpec, makeRESTRequest } from "../utils/functions";
 
 export type { NormalArg, MemberInfo, PropertyInfo } from "@intersystems-community/ascot";
 
-// How long "this folder has no server" is believed before asking the client again. Every
-// out-of-workspace class ascot meets is a lookup here; without this, each one was a client
-// round trip that resolved to nothing.
+// Every out-of-workspace class ascot meets is a lookup; don't ask the client about a missing server each time.
 const NO_SERVER_TTL_MS = 30 * 1000;
 const SERVER_LOOKUP_TIMEOUT_MS = 5 * 1000;
 
-// The two Atelier REST requests ascot resolves out-of-workspace classes and routines with;
-// in-workspace ones are served from ascot's own memory and never reach here. ascot caches what
-// it finds; a request that throws leaves what it was for taken on trust, saying why.
+// A request that throws leaves what ascot looked up taken on trust, with the message as the reason.
 class RestAtelier extends Ascot.Atelier {
 	noServerUntil = 0;
 
@@ -30,8 +26,7 @@ class RestAtelier extends Ascot.Atelier {
 
 	private async server() {
 		if (Date.now() >= this.noServerUntil) {
-			// Every ascot call is queued behind the previous one, so a client that never answers
-			// the server lookup would freeze all of them; give up on it after a while.
+			// ascot calls run one at a time, so a client that never answers would freeze them all.
 			const server = await Promise.race([
 				getServerSpec(this.folderURI),
 				new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), SERVER_LOOKUP_TIMEOUT_MS)),
@@ -60,18 +55,11 @@ class RestAtelier extends Ascot.Atelier {
 	}
 }
 
-// Tracing of every call across the server/ascot boundary -- the server's calls into the wasm
-// `Workspace` (→) and the wasm's calls back into the `Atelier` (←) -- to the client's
-// "InterSystems Language Server" output channel. ascot runs → calls strictly one at a time, so a
-// call that logs a start but never a finish is the one everything behind it is stuck on.
-//
-// The setting can't be read until the client says `initialized`, which is after the startup
-// scan; lines from before then are buffered until it's known.
+// The trace setting can't be read until `initialized`, after the startup scan; buffer until then.
 let traceEnabled: boolean | undefined;
 let traceBuffer: string[] | undefined = [];
 let traceSeq = 0;
 
-/** Re-read `intersystems.language-server.ascot.trace`; call once initialized and on every change. */
 export async function refreshTrace(): Promise<void> {
 	traceEnabled = (await connection.workspace.getConfiguration("intersystems.language-server.ascot.trace")) === true;
 	if (traceEnabled) traceBuffer?.forEach((line) => connection.console.log(line));
@@ -84,7 +72,6 @@ function trace(line: string): void {
 	else if (traceBuffer && traceBuffer.length < 20_000) traceBuffer.push(line);
 }
 
-/** `target` with every method call logged through `trace`: `arrow method args`, then its duration and result. */
 function traced<T extends object>(target: T, arrow: string): T {
 	return new Proxy(target, {
 		get(target, prop, receiver) {
@@ -124,10 +111,8 @@ function describe(values: unknown[]): string {
 		.join(" ");
 }
 
-// The startup scan of the workspace folders. Requests for a document wait for it: a check run
-// against a half-loaded workspace reports its includes and referenced classes as missing, and
-// since ascot records no dependency on a name it couldn't find, opening them later wouldn't
-// invalidate that result.
+// Requests wait for the startup scan: ascot records no dependency on a name it couldn't find, so a
+// check against a half-loaded workspace would never be invalidated by the rest of it loading.
 let startupScan = Promise.resolve();
 
 export function setStartupScan(scan: Promise<void>): void {
@@ -135,7 +120,6 @@ export function setStartupScan(scan: Promise<void>): void {
 	startupScan = scan.then(() => trace(`startup scan finished after ${Date.now() - start}ms`));
 }
 
-/** Configuration changed: every folder's connection may now resolve to a server. */
 export function onConfigurationChanged(): void {
 	for (const atelier of ateliers.values()) atelier.noServerUntil = 0;
 	refreshTrace();
@@ -161,9 +145,7 @@ async function filePathToWorkspace(docURI: string): Promise<Ascot.Workspace> {
 	return rootURIToWorkspace(folders?.find((f) => docURI.startsWith(f.uri))?.uri ?? docURI);
 }
 
-// Stores the raw source; no parsing happens here (kind is inferred from `docURI`'s
-// extension). Doubles as both open and edit. Returns the uris (this one included) whose
-// cached analysis is now stale -- a document this one is included by or referenced from.
+// Open and edit alike; returns the uris whose analysis this made stale, this one included.
 export async function openDoc(docURI: string, src: string, folderURI?: string): Promise<string[]> {
 	try {
 		const workspace = await (folderURI ? rootURIToWorkspace(folderURI) : filePathToWorkspace(docURI));
@@ -174,7 +156,6 @@ export async function openDoc(docURI: string, src: string, folderURI?: string): 
 	}
 }
 
-/** Run `fn` against `docURI`'s workspace, logging and falling back to `empty` on any error. */
 async function withWorkspace<T>(docURI: string, empty: T, fn: (workspace: Ascot.Workspace) => Promise<T>): Promise<T> {
 	try {
 		return await fn(await filePathToWorkspace(docURI));
@@ -242,7 +223,6 @@ export async function* getClasses(docURI: string): AsyncGenerator<[string, Ascot
 	yield* await (await filePathToWorkspace(docURI)).queryCls("");
 }
 
-/** `clsName`'s members matching `memQuery`, its superclasses' included. */
 export async function* getClassMembers(
 	docURI: string,
 	clsName: string,
