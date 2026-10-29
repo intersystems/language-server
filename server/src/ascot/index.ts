@@ -13,14 +13,14 @@ import { getServerSpec, makeRESTRequest } from "../utils/functions";
 export type { NormalArg, MemberInfo, PropertyInfo } from "@intersystems-community/ascot";
 
 // Every out-of-workspace class ascot meets is a lookup; don't ask the client about a missing server each time.
-const NO_SERVER_TTL_MS = 30 * 1000;
-const SERVER_LOOKUP_TIMEOUT_MS = 5 * 1000;
+const NO_SERVER_MS = 30 * 1000;
+const LOOKUP_TIMEOUT_MS = 5 * 1000;
 
 // A request that throws leaves what ascot looked up taken on trust, with the message as the reason.
 class RestAtelier extends Ascot.Atelier {
 	noServerUntil = 0;
 
-	constructor(private readonly folderURI: string) {
+	constructor(private readonly folder: string) {
 		super();
 	}
 
@@ -28,57 +28,57 @@ class RestAtelier extends Ascot.Atelier {
 		if (Date.now() >= this.noServerUntil) {
 			// ascot calls run one at a time, so a client that never answers would freeze them all.
 			const server = await Promise.race([
-				getServerSpec(this.folderURI),
-				new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), SERVER_LOOKUP_TIMEOUT_MS)),
+				getServerSpec(this.folder),
+				new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), LOOKUP_TIMEOUT_MS)),
 			]);
 			if (server) return server;
-			this.noServerUntil = Date.now() + NO_SERVER_TTL_MS;
+			this.noServerUntil = Date.now() + NO_SERVER_MS;
 		}
-		throw new Error(`no server connection for ${this.folderURI}`);
+		throw new Error(`no server connection for ${this.folder}`);
 	}
 
 	async query(sql: string, params: string[]): Promise<string> {
-		const respdata = await makeRESTRequest("POST", 1, "/action/query", await this.server(), {
+		const resp = await makeRESTRequest("POST", 1, "/action/query", await this.server(), {
 			query: sql,
 			parameters: params,
 		});
-		const rows = respdata?.data?.result?.content;
-		if (!Array.isArray(rows)) throw new Error(respdata?.data?.status?.summary || "the REST request failed");
+		const rows = resp?.data?.result?.content;
+		if (!Array.isArray(rows)) throw new Error(resp?.data?.status?.summary || "the REST request failed");
 		return JSON.stringify(rows);
 	}
 
 	async getDoc(name: string): Promise<string | undefined> {
-		const respdata = await makeRESTRequest("GET", 1, `/doc/${name}`, await this.server());
-		if (!respdata) throw new Error("the REST request failed");
-		const lines = respdata.data?.result?.content;
+		const resp = await makeRESTRequest("GET", 1, `/doc/${name}`, await this.server());
+		if (!resp) throw new Error("the REST request failed");
+		const lines = resp.data?.result?.content;
 		return Array.isArray(lines) ? lines.join("\n") : undefined;
 	}
 }
 
 // The trace setting can't be read until `initialized`, after the startup scan; buffer until then.
-let traceEnabled: boolean | undefined;
-let traceBuffer: string[] | undefined = [];
-let traceSeq = 0;
+let tracing: boolean | undefined;
+let pending: string[] | undefined = [];
+let seq = 0;
 
 export async function refreshTrace(): Promise<void> {
-	traceEnabled = (await connection.workspace.getConfiguration("intersystems.language-server.ascot.trace")) === true;
-	if (traceEnabled) traceBuffer?.forEach((line) => connection.console.log(line));
-	traceBuffer = undefined;
+	tracing = (await connection.workspace.getConfiguration("intersystems.language-server.ascot.trace")) === true;
+	if (tracing) pending?.forEach((line) => connection.console.log(line));
+	pending = undefined;
 }
 
 function trace(line: string): void {
 	line = `[ascot] ${line}`;
-	if (traceEnabled) connection.console.log(line);
-	else if (traceBuffer && traceBuffer.length < 20_000) traceBuffer.push(line);
+	if (tracing) connection.console.log(line);
+	else if (pending && pending.length < 20_000) pending.push(line);
 }
 
 function traced<T extends object>(target: T, arrow: string): T {
 	return new Proxy(target, {
 		get(target, prop, receiver) {
 			const value = Reflect.get(target, prop, receiver);
-			if (typeof value !== "function" || traceEnabled === false) return value;
+			if (typeof value !== "function" || tracing === false) return value;
 			return async (...args: unknown[]) => {
-				const id = ++traceSeq;
+				const id = ++seq;
 				const start = Date.now();
 				const call = `#${id} ${arrow} ${String(prop)}`;
 				trace(`${call} ${describe(args)}`);
@@ -97,27 +97,27 @@ function traced<T extends object>(target: T, arrow: string): T {
 
 function describe(values: unknown[]): string {
 	return values
-		.map((value) => {
-			if (typeof value === "string") {
-				return value.length > 80 ? `<${value.length} chars>` : value.slice(value.lastIndexOf("/") + 1);
+		.map((v) => {
+			if (typeof v === "string") {
+				return v.length > 80 ? `<${v.length} chars>` : v.slice(v.lastIndexOf("/") + 1);
 			}
-			const json = JSON.stringify(value, (_, x) =>
+			const json = JSON.stringify(v, (_, x) =>
 				x && typeof x === "object" && "line" in x ? `${x.line}:${x.character}` : x,
 			);
 			if (json === undefined) return "nothing";
 			if (json.length <= 80) return json;
-			return Array.isArray(value) ? `${value.length} item(s)` : `${json.slice(0, 80)}…`;
+			return Array.isArray(v) ? `${v.length} item(s)` : `${json.slice(0, 80)}…`;
 		})
 		.join(" ");
 }
 
 // Requests wait for the startup scan: ascot records no dependency on a name it couldn't find, so a
 // check against a half-loaded workspace would never be invalidated by the rest of it loading.
-let startupScan = Promise.resolve();
+let scanned = Promise.resolve();
 
 export function setStartupScan(scan: Promise<void>): void {
 	const start = Date.now();
-	startupScan = scan.then(() => trace(`startup scan finished after ${Date.now() - start}ms`));
+	scanned = scan.then(() => trace(`startup scan finished after ${Date.now() - start}ms`));
 }
 
 export function onConfigurationChanged(): void {
@@ -128,63 +128,63 @@ export function onConfigurationChanged(): void {
 const workspaces = new Map<string, Promise<Ascot.Workspace>>();
 const ateliers = new Map<string, RestAtelier>();
 
-function rootURIToWorkspace(folderURI: string): Promise<Ascot.Workspace> {
-	let workspace = workspaces.get(folderURI);
+function workspaceOfFolder(folder: string): Promise<Ascot.Workspace> {
+	let workspace = workspaces.get(folder);
 	if (!workspace) {
-		const atelier = new RestAtelier(folderURI);
-		ateliers.set(folderURI, atelier);
+		const atelier = new RestAtelier(folder);
+		ateliers.set(folder, atelier);
 		workspace = Ascot.createWorkspace(traced(atelier, "←")).then((w) => traced(w, "→"));
-		workspaces.set(folderURI, workspace);
+		workspaces.set(folder, workspace);
 	}
 	return workspace;
 }
 
-async function filePathToWorkspace(docURI: string): Promise<Ascot.Workspace> {
-	await startupScan;
+async function workspaceOfDoc(uri: string): Promise<Ascot.Workspace> {
+	await scanned;
 	const folders = await connection.workspace.getWorkspaceFolders();
-	return rootURIToWorkspace(folders?.find((f) => docURI.startsWith(f.uri))?.uri ?? docURI);
+	return workspaceOfFolder(folders?.find((f) => uri.startsWith(f.uri))?.uri ?? uri);
 }
 
 // Open and edit alike; returns the uris whose analysis this made stale, this one included.
-export async function openDoc(docURI: string, src: string, folderURI?: string): Promise<string[]> {
+export async function openDoc(uri: string, text: string, folder?: string): Promise<string[]> {
 	try {
-		const workspace = await (folderURI ? rootURIToWorkspace(folderURI) : filePathToWorkspace(docURI));
-		return await workspace.open(docURI, src);
+		const workspace = await (folder ? workspaceOfFolder(folder) : workspaceOfDoc(uri));
+		return await workspace.open(uri, text);
 	} catch (error) {
 		console.log(error);
 		return [];
 	}
 }
 
-async function withWorkspace<T>(docURI: string, empty: T, fn: (workspace: Ascot.Workspace) => Promise<T>): Promise<T> {
+async function withWorkspace<T>(uri: string, empty: T, fn: (workspace: Ascot.Workspace) => Promise<T>): Promise<T> {
 	try {
-		return await fn(await filePathToWorkspace(docURI));
+		return await fn(await workspaceOfDoc(uri));
 	} catch (error) {
 		console.log(error);
 		return empty;
 	}
 }
 
-export const closeDoc = (docURI: string) => withWorkspace(docURI, [] as string[], (w) => w.close(docURI));
+export const closeDoc = (uri: string) => withWorkspace(uri, [] as string[], (w) => w.close(uri));
 
-export const inlayHint = (docURI: string, range: Ascot.Range) =>
-	withWorkspace(docURI, [] as Ascot.InlayHint[], (w) => w.inlayHint(docURI, range));
+export const inlayHint = (uri: string, range: Ascot.Range) =>
+	withWorkspace(uri, [] as Ascot.InlayHint[], (w) => w.inlayHint(uri, range));
 
-export const getDefinition = (docURI: string, position: Ascot.Position) =>
-	withWorkspace<Ascot.Location | undefined>(docURI, undefined, (w) => w.definition(docURI, position));
+export const getDefinition = (uri: string, position: Ascot.Position) =>
+	withWorkspace<Ascot.Location | undefined>(uri, undefined, (w) => w.definition(uri, position));
 
-export const getReferences = (docURI: string, position: Ascot.Position, includeDeclaration: boolean) =>
-	withWorkspace(docURI, [] as Ascot.Location[], (w) => w.references(docURI, position, includeDeclaration));
+export const getReferences = (uri: string, position: Ascot.Position, includeDeclaration: boolean) =>
+	withWorkspace(uri, [] as Ascot.Location[], (w) => w.references(uri, position, includeDeclaration));
 
-export const getHover = (docURI: string, position: Ascot.Position) =>
-	withWorkspace<string | undefined>(docURI, undefined, (w) => w.hover(docURI, position));
+export const getHover = (uri: string, position: Ascot.Position) =>
+	withWorkspace<string | undefined>(uri, undefined, (w) => w.hover(uri, position));
 
 // LSP's severities 1-4, in order.
 const SEVERITIES: Ascot.DiagnosticSeverity[] = ["error", "warning", "information", "hint"];
 
-export const getDiagnostics = (docURI: string) =>
-	withWorkspace(docURI, [] as Diagnostic[], async (w) =>
-		(await w.diagnostics(docURI)).map((d) => ({
+export const getDiagnostics = (uri: string) =>
+	withWorkspace(uri, [] as Diagnostic[], async (w) =>
+		(await w.diagnostics(uri)).map((d) => ({
 			message: d.message,
 			range: d.range,
 			severity: (SEVERITIES.indexOf(d.severity) + 1) as DiagnosticSeverity,
@@ -203,44 +203,44 @@ function toSymbol({ name, kind, deprecated }: Ascot.SymbolInfo | Ascot.Workspace
 	};
 }
 
-export const getDocumentSymbol = (docURI: string) =>
-	withWorkspace(docURI, [] as DocumentSymbol[], async (w) => {
-		const toDocumentSymbol = (s: Ascot.SymbolInfo): DocumentSymbol => ({
+export const getDocumentSymbol = (uri: string) =>
+	withWorkspace(uri, [] as DocumentSymbol[], async (w) => {
+		const toDocSymbol = (s: Ascot.SymbolInfo): DocumentSymbol => ({
 			...toSymbol(s),
 			range: s.range,
 			selectionRange: s.selectionRange,
 		});
-		const symbol = await w.documentSymbol(docURI);
-		return symbol ? [{ ...toDocumentSymbol(symbol.root), children: symbol.members.map(toDocumentSymbol) }] : [];
+		const symbol = await w.documentSymbol(uri);
+		return symbol ? [{ ...toDocSymbol(symbol.root), children: symbol.members.map(toDocSymbol) }] : [];
 	});
 
-export const getWorkspaceSymbol = (folderURI: string, query: string) =>
-	withWorkspace(folderURI, [] as SymbolInformation[], async (w) =>
+export const getWorkspaceSymbol = (folder: string, query: string) =>
+	withWorkspace(folder, [] as SymbolInformation[], async (w) =>
 		(await w.workspaceSymbol(query)).map((s) => ({ ...toSymbol(s), location: s.location })),
 	);
 
-export async function* getClasses(docURI: string): AsyncGenerator<[string, Ascot.ClassInfo]> {
-	yield* await (await filePathToWorkspace(docURI)).queryCls("");
+export async function* getClasses(uri: string): AsyncGenerator<[string, Ascot.ClassInfo]> {
+	yield* await (await workspaceOfDoc(uri)).queryCls("");
 }
 
 export async function* getClassMembers(
-	docURI: string,
-	clsName: string,
-	memQuery = "",
+	uri: string,
+	cls: string,
+	query = "",
 ): AsyncGenerator<[string, Ascot.MemberInfo]> {
-	const workspace = await filePathToWorkspace(docURI);
-	yield* await workspace.queryMem(clsName, memQuery);
-	const cls = (await workspace.queryCls(clsName)).find(([, c]) => c.name.content === clsName)?.[1];
-	for (const sup of cls?.extends ?? []) yield* getClassMembers(docURI, sup, memQuery);
+	const workspace = await workspaceOfDoc(uri);
+	yield* await workspace.queryMem(cls, query);
+	const info = (await workspace.queryCls(cls)).find(([, c]) => c.name.content === cls)?.[1];
+	for (const sup of info?.extends ?? []) yield* getClassMembers(uri, sup, query);
 }
 
 export async function getClassMember(
-	docURI: string,
-	clsName: string,
-	memName: string,
+	uri: string,
+	cls: string,
+	name: string,
 ): Promise<[string, Ascot.MemberInfo] | null> {
-	for await (const entry of getClassMembers(docURI, clsName, memName)) {
-		if (entry[1].name.content === memName) return entry;
+	for await (const entry of getClassMembers(uri, cls, name)) {
+		if (entry[1].name.content === name) return entry;
 	}
 	return null;
 }
