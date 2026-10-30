@@ -25,6 +25,7 @@ import {
 import { SignatureHelpDocCache, SignatureHelpMacroContext } from "../utils/types";
 import { documents } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
+import { getClassMember } from "../ascot";
 
 /**
  * Cache of the macro context info required to do a macro expansion when the selected parameter changes.
@@ -365,6 +366,18 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 			}
 
 			// Get the method signature
+			const methodSignatureHelp = await getMethodSignatureHelpFromAscot(
+				params.textDocument.uri,
+				membercontext.baseclass,
+				member,
+				settings.signaturehelp.documentation,
+			);
+			if (methodSignatureHelp) {
+				signatureHelpStartPosition = params.position;
+				methodSignatureHelp.activeParameter = 0;
+				return methodSignatureHelp;
+			}
+
 			const querydata =
 				member == "%New"
 					? {
@@ -613,6 +626,22 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 				}
 
 				// Get the method signature
+				const methodSignatureHelp = await getMethodSignatureHelpFromAscot(
+					params.textDocument.uri,
+					membercontext.baseclass,
+					member,
+					settings.signaturehelp.documentation,
+				);
+				if (methodSignatureHelp) {
+					signatureHelpStartPosition = Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1);
+					methodSignatureHelp.activeParameter = determineActiveParam(
+						doc.getText(
+							Range.create(Position.create(sigstartln, parsed[sigstartln][sigstarttkn].p + 1), params.position),
+						),
+					);
+					return methodSignatureHelp;
+				}
+
 				const querydata =
 					member == "%New"
 						? {
@@ -739,4 +768,34 @@ export async function onSignatureHelp(params: SignatureHelpParams): Promise<Sign
 		}
 	}
 	return null;
+}
+
+async function getMethodSignatureHelpFromAscot(
+	uri: string,
+	cls: string,
+	method: string,
+	showingDoc: boolean,
+): Promise<SignatureHelp | null> {
+	const [, mem] =
+		(await getClassMember(uri, cls, method)) ??
+		(method == "%New" ? await getClassMember(uri, cls, "%OnNew") : null) ??
+		[];
+	if (mem?.kind.tag !== "method" && mem?.kind.tag !== "class-method" && mem?.kind.tag !== "client-method") {
+		return null;
+	}
+	const { normal, t } = mem.kind.val;
+	const out = ["%Open", "%OpenId"].includes(method) ? cls : t;
+	const args = normal.map((arg) => `${arg.mode == "default" ? "" : "&"}${arg.name}${arg.t ? ` As ${arg.t}` : ""}`);
+	const sig: SignatureInformation = {
+		label: `(${args.join(", ")})${out ? ` As ${out}` : ""}`,
+		parameters: normal.map((arg) => ({ label: arg.name })),
+	};
+	if (showingDoc) {
+		signatureHelpDocumentationCache = {
+			type: "method",
+			doc: { kind: MarkupKind.Markdown, value: documaticHtmlToMarkdown(mem.doc) },
+		};
+		sig.documentation = signatureHelpDocumentationCache.doc;
+	}
+	return { signatures: [sig], activeSignature: 0 };
 }

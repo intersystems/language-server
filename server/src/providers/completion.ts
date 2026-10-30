@@ -38,6 +38,7 @@ import {
 	LanguageServerConfiguration,
 } from "../utils/types";
 import { documents, corePropertyParams, mppContinue } from "../utils/variables";
+import { getClass, getClassMembers, getClasses, MemberInfo } from "../ascot";
 import * as ld from "../utils/languageDefinitions";
 
 import structuredSystemVariables from "../documentation/structuredSystemVariables.json";
@@ -585,8 +586,9 @@ async function completionFullClassName(
 		parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0],
 	};
 	const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
-	if (respdata !== undefined && respdata.data.result.content.length > 0) {
-		for (const clsobj of respdata.data.result.content) {
+	const classes = mergeRows(await classRows(doc.uri, "", settings), respdata?.data.result.content);
+	if (classes.length > 0) {
+		for (const clsobj of classes) {
 			let displayname: string = clsobj.Name;
 			let compItem: CompletionItem;
 			if (imports.length > 0) {
@@ -1269,10 +1271,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 				parameters: ["*.cls", 1, 1, 1, 1, 0, settings.completion.showGenerated ? 1 : 0, `Name %STARTSWITH '${filter}'`],
 			};
 			const respdata = await makeRESTRequest("POST", 1, "/action/query", server, querydata);
-			if (respdata !== undefined && respdata.data.result.content.length > 0) {
+			const classes = mergeRows(await classRows(doc.uri, filter, settings), respdata?.data.result.content);
+			if (classes.length > 0) {
 				// We got data back
 
-				for (const clsobj of respdata.data.result.content) {
+				for (const clsobj of classes) {
 					result.push({
 						label: clsobj.Name.slice(filter.length),
 						kind: CompletionItemKind.Class,
@@ -1307,6 +1310,9 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					return null;
 				}
 
+				const local = (await memberRows(doc.uri, membercontext.baseclass)).filter(
+					(row) => row.MemberType == "parameter",
+				);
 				// Query the server to get the names and descriptions of all parameters
 				const data: QueryData = {
 					query: `SELECT Name, Description, Origin, Type, Deprecated FROM %Dictionary.CompiledParameter WHERE Parent = ?${
@@ -1317,10 +1323,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					parameters: [membercontext.baseclass],
 				};
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
-				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+				const members = mergeRows(local, respdata?.data?.result?.content);
+				if (members.length > 0) {
 					// We got data back
 
-					for (const memobj of respdata.data.result.content) {
+					for (const memobj of members) {
 						const quotedname = quoteUDLIdentifier(memobj.Name, 1);
 						const item: CompletionItem = {
 							label: "#" + quotedname,
@@ -1356,6 +1363,13 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					return null;
 				}
 
+				// As the queries below: everything on an instance, class methods (and parameters) on a class
+				const local = (await memberRows(doc.uri, membercontext.baseclass)).filter(
+					(row) =>
+						membercontext.context == "instance" ||
+						row.ClassMethod ||
+						(row.MemberType == "parameter" && membercontext.context == "class"),
+				);
 				// Query the server to get the metadata of all appropriate class members
 				const data: QueryData = {
 					query: "",
@@ -1419,10 +1433,11 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 					}
 				}
 				const respdata = await makeRESTRequest("POST", 1, "/action/query", server, data);
-				if (Array.isArray(respdata?.data?.result?.content) && respdata.data.result.content.length > 0) {
+				const members = mergeRows(local, respdata?.data?.result?.content);
+				if (members.length > 0) {
 					// We got data back
 
-					for (const memobj of respdata.data.result.content) {
+					for (const memobj of members) {
 						const quotedname = quoteUDLIdentifier(memobj.Name, 1);
 						let item: CompletionItem = {
 							label: "",
@@ -2520,8 +2535,63 @@ export async function onCompletion(params: CompletionParams): Promise<Completion
 	return result;
 }
 
+/** The workspace's classes starting with `prefix`, as rows of the class queries above. */
+async function classRows(uri: string, prefix: string, settings: LanguageServerConfiguration) {
+	const rows: { Name: string; Deprecated: boolean }[] = [];
+	for await (const [, cls] of getClasses(uri, prefix)) {
+		if (settings.completion.showDeprecated || !cls.deprecated) {
+			rows.push({ Name: cls.name.content, Deprecated: cls.deprecated });
+		}
+	}
+	return rows;
+}
+
+// The `MemberType` the member queries above give each kind of ascot member; kinds they don't list are left out
+const MEMBER_TYPES: Partial<Record<MemberInfo["kind"]["tag"], string>> = {
+	method: "method",
+	"class-method": "method",
+	"client-method": "method",
+	property: "property",
+	relationship: "property",
+	parameter: "parameter",
+};
+
+/** The workspace's members of `cls`, inherited ones included, as rows of the member queries above. */
+async function memberRows(uri: string, cls: string) {
+	const members: MemberInfo[] = [];
+	for await (const [, mem] of getClassMembers(uri, cls)) members.push(mem);
+	return members.flatMap((mem) => {
+		const MemberType = MEMBER_TYPES[mem.kind.tag];
+		if (!MemberType) return [];
+		const val: { t?: string; collection?: string; normal?: { name: string }[]; variadic?: { name: string } } =
+			"val" in mem.kind && mem.kind.tag != "index" ? mem.kind.val : {};
+		return {
+			Name: mem.name.content,
+			Description: mem.doc,
+			Origin: mem.origin,
+			FormalSpec: [...(val.normal ?? []), val.variadic].flatMap((arg) => arg?.name ?? []).join(","),
+			Type: `${val.collection ? `${val.collection} Of ` : ""}${val.t ?? ""}`,
+			MemberType,
+			ClassMethod: mem.kind.tag == "class-method",
+			Deprecated: mem.deprecated,
+			Aliases: mem.aliases.join(","),
+		};
+	});
+}
+
+/** `local` rows first, then the server's `rows` for the names `local` doesn't have. */
+function mergeRows<T extends { Name: string }>(local: T[], rows: unknown): T[] {
+	const names = new Set(local.map((row) => row.Name));
+	return local.concat(Array.isArray(rows) ? rows.filter((row) => !names.has(row.Name)) : []);
+}
+
 export async function onCompletionResolve(item: CompletionItem): Promise<CompletionItem> {
 	if (Array.isArray(item.data) && item.data[0] === "class") {
+		const cls = await getClass(item.data[2], item.data[1]);
+		if (cls) {
+			item.documentation = { kind: MarkupKind.Markdown, value: documaticHtmlToMarkdown(cls.doc) };
+			return item;
+		}
 		// Get the description for this class from the server
 		const server = await getServerSpec(item.data[2]);
 		if (!server) {
