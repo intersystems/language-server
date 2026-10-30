@@ -21,6 +21,7 @@ import {
 } from "vscode-languageserver";
 import { connection } from "../utils/variables";
 import { getServerSpec, makeRESTRequest } from "../utils/functions";
+import { ServerSpec } from "../utils/types";
 
 export type { MemberInfo } from "@intersystems-community/ascot";
 
@@ -31,22 +32,29 @@ const LOOKUP_TIMEOUT_MS = 5 * 1000;
 // A request that throws leaves what ascot looked up taken on trust, with the message as the reason.
 class RestAtelier extends Atelier {
 	noServerUntil = 0;
+	/** The server the lookups were answered by, `null` for none; `undefined` before any lookup. */
+	lastServer?: string | null;
 
 	constructor(private readonly folder: string) {
 		super();
 	}
 
-	private async server() {
-		if (Date.now() >= this.noServerUntil) {
-			// ascot calls run one at a time, so a client that never answers would freeze them all.
-			const server = await Promise.race([
-				getServerSpec(this.folder),
-				new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), LOOKUP_TIMEOUT_MS)),
-			]);
-			if (server) return server;
-			this.noServerUntil = Date.now() + NO_SERVER_MS;
-		}
-		throw new Error(`no server connection for ${this.folder}`);
+	async resolve(): Promise<ServerSpec | undefined> {
+		if (Date.now() < this.noServerUntil) return;
+		// ascot calls run one at a time, so a client that never answers would freeze them all.
+		const server = await Promise.race([
+			getServerSpec(this.folder),
+			new Promise<undefined>((resolve) => setTimeout(() => resolve(undefined), LOOKUP_TIMEOUT_MS)),
+		]);
+		if (!server) this.noServerUntil = Date.now() + NO_SERVER_MS;
+		return server;
+	}
+
+	private async server(): Promise<ServerSpec> {
+		const server = await this.resolve();
+		this.lastServer = serverKey(server);
+		if (!server) throw new Error(`no server connection for ${this.folder}`);
+		return server;
 	}
 
 	async query(sql: string, params: string[]): Promise<string> {
@@ -132,11 +140,19 @@ export function setStartupScan(scan: Promise<void>): void {
 	scanned = scan.then(() => trace(`startup scan finished after ${Date.now() - start}ms`));
 }
 
-// The server may have changed: a new env stales every analysis, so ascot asks it again.
+function serverKey(server: ServerSpec | undefined): string | null {
+	return server ? `${server.username}@${server.host}:${server.port}${server.pathPrefix}/${server.namespace}` : null;
+}
+
+// A folder whose server changed gets a new env, which stales every analysis so ascot asks it again.
 export async function onConfigurationChanged(): Promise<void> {
 	refreshTrace();
 	for (const [folder, atelier] of ateliers) {
 		atelier.noServerUntil = 0;
+		if (atelier.lastServer === undefined) continue;
+		const key = serverKey(await atelier.resolve());
+		if (key === atelier.lastServer) continue;
+		atelier.lastServer = key;
 		await (await workspaces.get(folder)!).setEnv(atelier);
 	}
 }
