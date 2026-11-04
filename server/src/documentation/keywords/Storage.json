@@ -277,6 +277,10 @@
       "type": "KW_TYPE_STRING"
     },
     {
+      "name": "NullSelectivity",
+      "type": "KW_TYPE_STRING"
+    },
+    {
       "name": "OutlierSelectivity",
       "type": "KW_TYPE_STRING"
     },

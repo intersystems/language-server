@@ -1,5 +1,15 @@
 # Changelog
 
+## [2.8.7] - 2026-11-04
+- Fix issue [#404](https://github.com/intersystems/language-server/issues/404): No error for syntactically wrong subroutine
+- Fix issue [#424](https://github.com/intersystems/language-server/issues/424): Variadic parameter syntax (...) not accepted when XECUTEing an expression that takes parameters
+- PR [#426](https://github.com/intersystems/language-server/pull/426): Support explicit `UnknownUser` unauthenticated access
+- PR [#427](https://github.com/intersystems/language-server/pull/427): Add completion for variables in method bodies
+- Parser changes:
+  - DP-456416: `set $bit(var)` syntax could warn that "var" may be undefined
+  - DP-456726: Fix colorizer errors for embedded SQL with TUNE TABLE
+  - DP-457499: Add colorizer support for %NOJOURN
+
 ## [2.8.6] - 2026-09-17
 - Fix issue [#419](https://github.com/intersystems/language-server/issues/419): Language server always using first namespace in workspace for server connection
 - PR [#422](https://github.com/intersystems/language-server/pull/422): Guard REST results against malformed responses
