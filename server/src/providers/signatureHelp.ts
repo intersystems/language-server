@@ -785,7 +785,7 @@ async function getMethodSignatureHelpFromAscot(
 	}
 	const { normal, t } = mem.kind.val;
 	const out = ["%Open", "%OpenId"].includes(method) ? cls : t;
-	const args = normal.map((arg) => `${arg.mode == "default" ? "" : "&"}${arg.name}${arg.t ? ` As ${arg.t}` : ""}`);
+	const args = normal.map((arg) => `${arg.mode ? "&" : ""}${arg.name}${arg.t ? ` As ${arg.t}` : ""}`);
 	const sig: SignatureInformation = {
 		label: `(${args.join(", ")})${out ? ` As ${out}` : ""}`,
 		parameters: normal.map((arg) => ({ label: arg.name })),

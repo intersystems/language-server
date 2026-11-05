@@ -22,6 +22,7 @@ import {
 import { connection } from "../utils/variables";
 import { getServerSpec, makeRESTRequest } from "../utils/functions";
 import { ServerSpec } from "../utils/types";
+import { styleOf } from "./style";
 
 export type { MemberInfo } from "@intersystems-community/ascot";
 
@@ -34,6 +35,8 @@ class RestAtelier extends Atelier {
 	noServerUntil = 0;
 	/** The server the lookups were answered by, `null` for none; `undefined` before any lookup. */
 	lastServer?: string | null;
+	/** Whether the folder checks against the declarations bundled with ascot, for want of a server. */
+	bundled = false;
 
 	constructor(private readonly folder: string) {
 		super();
@@ -53,7 +56,10 @@ class RestAtelier extends Atelier {
 	private async server(): Promise<ServerSpec> {
 		const server = await this.resolve();
 		this.lastServer = serverKey(server);
-		if (!server) throw new Error(`no server connection for ${this.folder}`);
+		if (!server) {
+			void useBundled(this.folder, this);
+			throw new Error(`no server connection for ${this.folder}`);
+		}
 		return server;
 	}
 
@@ -145,20 +151,48 @@ function serverKey(server: ServerSpec | undefined): string | null {
 }
 
 // A folder whose server changed gets a new env, which stales every analysis so ascot asks it again.
+// Without a server, the env is the declarations of the newest IRIS release bundled with ascot.
 export async function onConfigurationChanged(): Promise<void> {
 	refreshTrace();
+	await refreshStyles();
 	for (const [folder, atelier] of ateliers) {
 		atelier.noServerUntil = 0;
 		if (atelier.lastServer === undefined) continue;
 		const key = serverKey(await atelier.resolve());
 		if (key === atelier.lastServer) continue;
 		atelier.lastServer = key;
-		await (await workspaces.get(folder)!).setEnv(atelier);
+		atelier.bundled = key === null;
+		await (await workspaces.get(folder)!).setEnv(key === null ? "latest" : atelier);
 	}
+}
+
+// The first lookup that finds no server switches the folder to the bundled declarations, rather
+// than taking every system class on trust; the switch stales every analysis, hence the refresh.
+async function useBundled(folder: string, atelier: RestAtelier): Promise<void> {
+	if (atelier.bundled) return;
+	atelier.bundled = true;
+	await (await workspaces.get(folder)!).setEnv("latest");
+	connection.languages.diagnostics.refresh();
 }
 
 const workspaces = new Map<string, Promise<Workspace>>();
 const ateliers = new Map<string, RestAtelier>();
+// Each folder's style as last applied, as JSON, so an unchanged one doesn't stale every analysis.
+const styles = new Map<string, string>();
+
+// The style rules of every folder, from its settings; configuration can only be read once the
+// client is initialized, so the startup scan runs without and `onInitialized` applies them.
+export async function refreshStyles(): Promise<void> {
+	for (const folder of workspaces.keys()) await applyStyle(folder);
+}
+
+async function applyStyle(folder: string): Promise<void> {
+	const style = await styleOf(folder);
+	const json = JSON.stringify(style ?? null);
+	if (styles.get(folder) === json) return;
+	styles.set(folder, json);
+	await (await workspaces.get(folder)!).setStyle(style);
+}
 
 function workspaceOfFolder(folder: string): Promise<Workspace> {
 	let workspace = workspaces.get(folder);
@@ -167,6 +201,8 @@ function workspaceOfFolder(folder: string): Promise<Workspace> {
 		ateliers.set(folder, atelier);
 		workspace = createWorkspace(atelier).then((w) => traced(w, "→"));
 		workspaces.set(folder, workspace);
+		// A folder first met after initialization gets its style now; earlier ones, at `onInitialized`.
+		if (tracing !== undefined) workspace.then(() => applyStyle(folder)).catch(() => {});
 	}
 	return workspace;
 }
@@ -259,7 +295,7 @@ export const getClass = (uri: string, name: string) =>
 	withWorkspace<ClassInfo | undefined>(
 		uri,
 		undefined,
-		async (w) => (await w.queryCls(name)).find(([, c]) => c.name.content === name)?.[1],
+		async (w) => (await w.queryCls(name)).find(([, c]) => c.name === name)?.[1],
 	);
 
 export async function* getClassMembers(uri: string, cls: string, query = ""): AsyncGenerator<[string, MemberInfo]> {
@@ -269,7 +305,7 @@ export async function* getClassMembers(uri: string, cls: string, query = ""): As
 
 export async function getClassMember(uri: string, cls: string, name: string): Promise<[string, MemberInfo] | null> {
 	for await (const entry of getClassMembers(uri, cls, name)) {
-		if (entry[1].name.content === name) return entry;
+		if (entry[1].name === name) return entry;
 	}
 	return null;
 }

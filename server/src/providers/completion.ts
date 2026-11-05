@@ -2540,7 +2540,7 @@ async function classRows(uri: string, prefix: string, settings: LanguageServerCo
 	const rows: { Name: string; Deprecated: boolean }[] = [];
 	for await (const [, cls] of getClasses(uri, prefix)) {
 		if (settings.completion.showDeprecated || !cls.deprecated) {
-			rows.push({ Name: cls.name.content, Deprecated: cls.deprecated });
+			rows.push({ Name: cls.name, Deprecated: cls.deprecated });
 		}
 	}
 	return rows;
@@ -2566,7 +2566,7 @@ async function memberRows(uri: string, cls: string) {
 		const val: { t?: string; collection?: string; normal?: { name: string }[]; variadic?: { name: string } } =
 			"val" in mem.kind && mem.kind.tag != "index" ? mem.kind.val : {};
 		return {
-			Name: mem.name.content,
+			Name: mem.name,
 			Description: mem.doc,
 			Origin: mem.origin,
 			FormalSpec: [...(val.normal ?? []), val.variadic].flatMap((arg) => arg?.name ?? []).join(","),

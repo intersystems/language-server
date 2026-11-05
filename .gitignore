@@ -5,3 +5,5 @@
 /server/lib/isclexer.node
 /server/lib/ascot.core*.wasm
 **/tsconfig.tsbuildinfo
+server/lib/*.d.json.gz
+server/lib/declarations.json

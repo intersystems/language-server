@@ -32,7 +32,7 @@ import { onSemanticTokens, onSemanticTokensDelta } from "./providers/semanticTok
 import { onReferences } from "./providers/references";
 import { onWorkspaceSymbol } from "./providers/workspaceSymbol";
 import { onInlayHint } from "./providers/inlayHint";
-import { openDoc, closeDoc, onConfigurationChanged, refreshTrace, setStartupScan } from "./ascot";
+import { openDoc, closeDoc, onConfigurationChanged, refreshStyles, refreshTrace, setStartupScan } from "./ascot";
 
 import { LanguageServerConfiguration, ServerSpec } from "./utils/types";
 import {
@@ -124,6 +124,7 @@ connection.onInitialized(() => {
 		section: ["intersystems.language-server", "intersystems.servers", "objectscript.conn"],
 	});
 	refreshTrace();
+	refreshStyles();
 });
 
 connection.onExit(() => {

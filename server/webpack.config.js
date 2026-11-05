@@ -25,6 +25,12 @@ module.exports = withDefaults({
 					from: '*.core*.wasm',
 					to: path.join(__dirname, 'lib'),
 				},
+				// Likewise the pre-built IRIS declarations ascot checks against when a folder has no server.
+				{
+					context: path.join(__dirname, 'node_modules/@intersystems-community/ascot/lib'),
+					from: '{*.d.json.gz,declarations.json}',
+					to: path.join(__dirname, 'lib'),
+				},
 			],
 		}),
 	],
