@@ -4,7 +4,7 @@
   "description": "A language server for InterSystems ObjectScript.",
   "author": "InterSystems Corporation",
   "license": "SEE LICENSE IN LICENSE.txt",
-  "version": "2.8.7-SNAPSHOT",
+  "version": "2.8.7-beta.3",
   "publisher": "intersystems",
   "repository": {
     "type": "github",
@@ -27,7 +27,7 @@
     "multi-root ready"
   ],
   "engines": {
-    "vscode": "^1.93.0"
+    "vscode": "^1.103.0"
   },
   "activationEvents": [
     "workspaceContains:**/*.cls",
@@ -88,6 +88,5372 @@
           ],
           "default": "off",
           "description": "Traces the communication between VS Code and the language server."
+        },
+        "intersystems.language-server.ascot.trace": {
+          "scope": "window",
+          "type": "boolean",
+          "default": false,
+          "description": "Logs every call between the language server and the ascot analysis engine (both directions, with timings) to the 'InterSystems Language Server' output channel."
+        },
+        "intersystems.language-server.ascot.style.command.form": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "long",
+            "short"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "Written in full: `Set`, `$Piece`.",
+            "Abbreviated: `S`, `$P`."
+          ],
+          "default": "either",
+          "markdownDescription": "How every command keyword is written."
+        },
+        "intersystems.language-server.ascot.style.command.case": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "lower",
+            "upper",
+            "pascal"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "`set`, `$piece`.",
+            "`SET`, `$PIECE`.",
+            "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+          ],
+          "default": "either",
+          "markdownDescription": "How every command keyword is cased."
+        },
+        "intersystems.language-server.ascot.style.command.postcondition": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "allowed",
+            "keyword-only"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+            "On the keyword only (`Do:x ^R`)."
+          ],
+          "default": "either",
+          "markdownDescription": "Where a command's postconditional may sit."
+        },
+        "intersystems.language-server.ascot.style.function.form": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "long",
+            "short"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "Written in full: `Set`, `$Piece`.",
+            "Abbreviated: `S`, `$P`."
+          ],
+          "default": "either",
+          "markdownDescription": "How every intrinsic function's name is written."
+        },
+        "intersystems.language-server.ascot.style.function.case": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "lower",
+            "upper",
+            "pascal"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "`set`, `$piece`.",
+            "`SET`, `$PIECE`.",
+            "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+          ],
+          "default": "either",
+          "markdownDescription": "How every intrinsic function's name is cased."
+        },
+        "intersystems.language-server.ascot.style.conditionAnd": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "comma",
+            "double-ampersand"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "`If a,b`.",
+            "`If a && b`."
+          ],
+          "default": "either",
+          "markdownDescription": "How the conditions of `If`, `ElseIf` and `While` are joined."
+        },
+        "intersystems.language-server.ascot.style.quitForReturn": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "allowed",
+            "return-only"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "`Quit` may leave a method or procedure.",
+            "`Return` leaves a method or procedure; `Quit` is for loops and `Try` blocks."
+          ],
+          "default": "either",
+          "markdownDescription": "Whether `Quit` may leave a method or procedure."
+        },
+        "intersystems.language-server.ascot.style.spaceAfterComma": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "after",
+            "none"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "One space after a comma and none before: `a, b`.",
+            "None on either side: `a,b`."
+          ],
+          "default": "either",
+          "markdownDescription": "Spacing around a comma."
+        },
+        "intersystems.language-server.ascot.style.maxCommandsPerLine": {
+          "scope": "resource",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "markdownDescription": "How many commands a line may hold. `0` puts no limit."
+        },
+        "intersystems.language-server.ascot.style.maxNewPerBlock": {
+          "scope": "resource",
+          "type": "integer",
+          "minimum": 0,
+          "default": 0,
+          "markdownDescription": "How many `New` commands a block may hold. `0` puts no limit."
+        },
+        "intersystems.language-server.ascot.style.openBrace.newlineBefore": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "required",
+            "forbidden"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "A line break is required there.",
+            "No line break there."
+          ],
+          "default": "either",
+          "markdownDescription": "A line break between a command and its block's `{`."
+        },
+        "intersystems.language-server.ascot.style.openBrace.newlineAfter": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "required",
+            "forbidden"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "A line break is required there.",
+            "No line break there."
+          ],
+          "default": "either",
+          "markdownDescription": "A line break between a block's `{` and its first command."
+        },
+        "intersystems.language-server.ascot.style.closeBrace.newlineBefore": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "required",
+            "forbidden"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "A line break is required there.",
+            "No line break there."
+          ],
+          "default": "either",
+          "markdownDescription": "A line break between a block's last command and its `}`."
+        },
+        "intersystems.language-server.ascot.style.closeBrace.newlineAfter": {
+          "scope": "resource",
+          "type": "string",
+          "enum": [
+            "either",
+            "required",
+            "forbidden"
+          ],
+          "enumDescriptions": [
+            "Either is allowed; not checked.",
+            "A line break is required there.",
+            "No line break there."
+          ],
+          "default": "either",
+          "markdownDescription": "A line break between a block's `}` and an `Else`, `ElseIf` or `Catch` that follows."
+        },
+        "intersystems.language-server.ascot.style.command.formForEachCommand": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "properties": {
+            "do": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "if": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "elseif": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "else": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "while": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "for": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "goto": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "break": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "quit": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zquit": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "return": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "continue": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "set": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "kill": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "new": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "merge": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "try": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "catch": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "throw": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "ztrap": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zzdump": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "write": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "read": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "open": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "close": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "use": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "lock": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "halt": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "hang": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "job": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "tstart": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "tcommit": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "trollback": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zwrite": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zkill": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "znspace": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "xecute": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zprint": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "print": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbreak": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "mvprint": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "mvcrt": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "For each command, how its keyword is written, overriding `#intersystems.language-server.ascot.style.command.form#`."
+        },
+        "intersystems.language-server.ascot.style.command.caseForEachCommand": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "properties": {
+            "do": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "if": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "elseif": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "else": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "while": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "for": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "goto": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "break": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "quit": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zquit": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "return": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "continue": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "set": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "kill": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "new": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "merge": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "try": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "catch": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "throw": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "ztrap": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zzdump": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "write": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "read": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "open": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "close": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "use": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "lock": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "halt": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "hang": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "job": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "tstart": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "tcommit": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "trollback": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zwrite": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zkill": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "znspace": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "xecute": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zprint": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "print": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbreak": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "mvprint": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "mvcrt": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "For each command, how its keyword is cased, overriding `#intersystems.language-server.ascot.style.command.case#`."
+        },
+        "intersystems.language-server.ascot.style.command.postconditionForEachCommand": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "properties": {
+            "do": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "if": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "elseif": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "else": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "while": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "for": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "goto": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "break": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "quit": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "zquit": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "return": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "continue": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "set": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "kill": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "new": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "merge": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "try": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "catch": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "throw": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "ztrap": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "zzdump": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "write": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "read": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "open": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "close": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "use": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "lock": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "halt": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "hang": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "job": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "tstart": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "tcommit": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "trollback": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "zwrite": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "zkill": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "znspace": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "xecute": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "zprint": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "print": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "zbreak": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "mvprint": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            },
+            "mvcrt": {
+              "type": "string",
+              "enum": [
+                "allowed",
+                "keyword-only"
+              ],
+              "enumDescriptions": [
+                "On the argument (`Do ^R:x`) as well as on the keyword (`Do:x ^R`).",
+                "On the keyword only (`Do:x ^R`)."
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "For each command, where its postconditional may sit, overriding `#intersystems.language-server.ascot.style.command.postcondition#`."
+        },
+        "intersystems.language-server.ascot.style.function.formForEachFunction": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "properties": {
+            "ascii": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "bit": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "bitcount": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "bitfind": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "bitlogic": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "case": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "change": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "char": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "classmethod": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "classname": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "compile": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "data": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "decimal": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "double": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "extract": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "factor": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "find": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "fnumber": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "get": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "increment": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "inumber": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "isobject": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "isvaliddouble": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "isvalidnum": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "isvector": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "justify": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "length": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "list": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listbuild": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listdata": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listfind": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listfromstring": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listget": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listlength": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listnext": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listsame": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listtostring": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listupdate": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "listvalid": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "locate": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "lock": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "match": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "method": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "mv": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "mvv": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "name": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "nconvert": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "next": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "normalize": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "now": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "number": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "order": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "parameter": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "piece": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "prefetchoff": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "prefetchon": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "property": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "qlength": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "qsubscript": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "query": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "random": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "replace": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "reverse": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "sconvert": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "select": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "sequence": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "sortbegin": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "sortend": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "stack": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "text": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "translate": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "vector": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "vectordefined": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "vectorop": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "wascii": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "wchar": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "wextract": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "wfind": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "wiswide": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "wlength": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "wreverse": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "xecute": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zabs": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zarccos": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zarcsin": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zarctan": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitand": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitcount": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitfind": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitget": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitlen": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitnot": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitor": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitset": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitstr": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zbitxor": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zboolean": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zconvert": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zcos": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zcot": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zcrc": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zcsc": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zcyc": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zdascii": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zdate": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zdateh": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zdatetime": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zdatetimeh": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zdchar": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zexp": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zf": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zhex": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zincrement": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "ziswide": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zlascii": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zlchar": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zln": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zlog": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zname": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zobjclass": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zobjclassmethod": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zobjmethod": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zobjproperty": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zobjref": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zorder": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zposition": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zpower": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zprevious": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zqascii": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zqchar": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zsearch": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zsec": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zseek": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zsin": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zsqr": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zstrip": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "ztan": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "ztime": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "ztimeh": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zutil": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zversion": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zwascii": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zwbpack": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zwbunpack": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zwchar": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zwidth": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zwpack": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zwunpack": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            },
+            "zzenkaku": {
+              "type": "string",
+              "enum": [
+                "long",
+                "short"
+              ],
+              "enumDescriptions": [
+                "Written in full: `Set`, `$Piece`.",
+                "Abbreviated: `S`, `$P`."
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "For each intrinsic function, how its name is written, overriding `#intersystems.language-server.ascot.style.function.form#`."
+        },
+        "intersystems.language-server.ascot.style.function.caseForEachFunction": {
+          "scope": "resource",
+          "type": "object",
+          "default": {},
+          "properties": {
+            "ascii": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "bit": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "bitcount": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "bitfind": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "bitlogic": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "case": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "change": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "char": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "classmethod": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "classname": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "compile": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "data": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "decimal": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "double": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "extract": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "factor": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "find": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "fnumber": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "get": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "increment": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "inumber": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "isobject": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "isvaliddouble": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "isvalidnum": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "isvector": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "justify": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "length": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "list": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listbuild": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listdata": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listfind": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listfromstring": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listget": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listlength": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listnext": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listsame": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listtostring": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listupdate": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "listvalid": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "locate": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "lock": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "match": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "method": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "mv": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "mvv": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "name": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "nconvert": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "next": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "normalize": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "now": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "number": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "order": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "parameter": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "piece": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "prefetchoff": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "prefetchon": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "property": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "qlength": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "qsubscript": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "query": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "random": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "replace": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "reverse": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "sconvert": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "select": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "sequence": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "sortbegin": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "sortend": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "stack": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "text": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "translate": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "vector": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "vectordefined": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "vectorop": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "view": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "wascii": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "wchar": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "wextract": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "wfind": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "wiswide": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "wlength": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "wreverse": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "xecute": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zabs": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zarccos": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zarcsin": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zarctan": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitand": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitcount": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitfind": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitget": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitlen": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitnot": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitor": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitset": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitstr": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zbitxor": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zboolean": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zconvert": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zcos": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zcot": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zcrc": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zcsc": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zcyc": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zdascii": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zdate": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zdateh": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zdatetime": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zdatetimeh": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zdchar": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zexp": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zf": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zhex": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zincrement": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "ziswide": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zlascii": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zlchar": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zln": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zlog": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zname": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zobjclass": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zobjclassmethod": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zobjmethod": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zobjproperty": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zobjref": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zorder": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zposition": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zpower": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zprevious": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zqascii": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zqchar": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zsearch": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zsec": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zseek": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zsin": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zsqr": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zstrip": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "ztan": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "ztime": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "ztimeh": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zutil": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zversion": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zwascii": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zwbpack": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zwbunpack": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zwchar": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zwidth": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zwpack": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zwunpack": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            },
+            "zzenkaku": {
+              "type": "string",
+              "enum": [
+                "lower",
+                "upper",
+                "pascal"
+              ],
+              "enumDescriptions": [
+                "`set`, `$piece`.",
+                "`SET`, `$PIECE`.",
+                "As the documentation spells them: `Set`, `TStart`, `ZWrite`, `$Piece`."
+              ]
+            }
+          },
+          "additionalProperties": false,
+          "markdownDescription": "For each intrinsic function, how its name is cased, overriding `#intersystems.language-server.ascot.style.function.case#`."
         },
         "intersystems.language-server.formatting.commands.case": {
           "scope": "resource",
@@ -1800,6 +7166,7 @@
     "@types/node": "^22.15.33",
     "@types/turndown": "^5.0.6",
     "@vscode/vsce": "^4.0.0",
+    "copy-webpack-plugin": "^14.0.0",
     "eslint": "^10.12.0",
     "merge-options": "^3.0.4",
     "node-loader": "^2.1.0",
