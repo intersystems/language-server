@@ -284,7 +284,7 @@ export const getDocumentSymbol = (uri: string) =>
 
 export const getWorkspaceSymbol = (folder: string, query: string) =>
 	withWorkspace(folder, [] as SymbolInformation[], async (w) =>
-		(await w.workspaceSymbol(query)).map((s) => ({ ...toSymbol(s), location: s.location, containerName: s.container })),
+		(await w.workspaceSymbol(query)).map((s) => ({ ...toSymbol(s), location: s.location, containerName: s.containerName })),
 	);
 
 export async function* getClasses(uri: string, prefix = ""): AsyncGenerator<[string, ClassInfo]> {
