@@ -88,6 +88,11 @@
     "description": "Specifies that this index should be reported, via SQL, as being the Primary Key for this class. "
   },
   {
+    "name": "Prune",
+    "type": "KW_TYPE_TEXT",
+    "description": "Information about which columns are prunable at each partition level: <partitionKeyColumName>(<pruningClassName>,<columnName1>[,...<columnNameN>]),[additional levels of parition key]. The wildcard \"*\" can be used in place of columnName, to indicate that all columns are prunable."
+  },
+  {
     "name": "ShardKey",
     "type": "KW_TYPE_BOOLEAN",
     "description": "If true then this index defines the components of the shard key."
