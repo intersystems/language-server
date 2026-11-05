@@ -1,6 +1,6 @@
 # Changelog
 
-## [2.8.7] - 2026-11-04
+## [2.8.7] - 2026-11-06
 - Fix issue [#404](https://github.com/intersystems/language-server/issues/404): No error for syntactically wrong subroutine
 - Fix issue [#424](https://github.com/intersystems/language-server/issues/424): Variadic parameter syntax (...) not accepted when XECUTEing an expression that takes parameters
 - PR [#426](https://github.com/intersystems/language-server/pull/426): Support explicit `UnknownUser` unauthenticated access
