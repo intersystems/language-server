@@ -13,6 +13,12 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
 - Code completion for XML Element names, Attribute names and Attribute values within XData blocks that have the XMLNamespace keyword set to a URL that corresponds to a Studio Assist Schema (SASchema).
 - Signature help for ObjectScript methods and macros that accept arguments.
 - Document symbols for ObjectScript classes, routines and include files.
+- Local analysis of ObjectScript classes, routines and include files by [ascot](https://github.com/intersystems-community/ascot), with or without a server connection:
+  - Type-aware diagnostics beyond syntax: undefined variables, members a class doesn't have, argument counts and types, unreachable code, mistakes IRIS only reports at run time.
+  - [Find all references](https://code.visualstudio.com/docs/editor/editingevolved#_peek) to classes, members, variables and labels.
+  - [Workspace symbols](https://code.visualstudio.com/docs/editor/editingevolved#_open-symbol-by-name) for the classes, members, routines and labels of the open folders.
+  - [Inlay hints](https://code.visualstudio.com/docs/editor/editingevolved#_inlay-hints) for the types of variables and call results.
+  - Style rules for commands, functions, braces and spacing, each a setting under `intersystems.language-server.ascot.style`.
 - Full document and range-based code formatting for the following:
   - Normalize the case of ObjectScript commands, system functions and system variables.
   - Normalize the usage of short or long versions of ObjectScript commands, system functions and system variables.

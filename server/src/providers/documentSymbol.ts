@@ -11,6 +11,7 @@ import { findFullRange, getParsedDocument, isClassMember, labelIsProcedureBlock,
 import { documents, mppContinue } from "../utils/variables";
 import * as ld from "../utils/languageDefinitions";
 import { compressedline } from "../utils/types";
+import { getDocumentSymbol } from "../ascot";
 
 /** Loop through the class from this line until the next class member or the end of the class */
 function processMember(
@@ -74,6 +75,13 @@ export async function onDocumentSymbol(params: DocumentSymbolParams) {
 		return null;
 	}
 	const result: DocumentSymbol[] = [];
+
+	if (["objectscript-class", "objectscript-macros", "objectscript", "objectscript-int"].includes(doc.languageId)) {
+		const symbols = await getDocumentSymbol(params.textDocument.uri);
+		if (symbols.length > 0) {
+			return symbols;
+		}
+	}
 
 	if (doc.languageId === "objectscript-class") {
 		// Loop through the file and look for the class definition and class members
