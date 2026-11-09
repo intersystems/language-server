@@ -103,6 +103,19 @@ const resolvedServerSpecs = new (class {
 	}
 })();
 
+/** `server` as the language server gets it: credentials stay in `resolvedServerSpecs`, off the LSP channel and its trace. */
+function withoutCredentials(server: ServerSpec): ServerSpec {
+	const copy: ServerSpec & { password?: string } = { ...server };
+	delete copy.credentials;
+	delete copy.password;
+	return copy;
+}
+
+/** `server` with the credentials `resolvedServerSpecs` holds for it, for making a request on the language server's behalf. */
+function withCredentials(server: ServerSpec): ServerSpec {
+	return { ...server, credentials: resolvedServerSpecs.list(server)[0]?.credentials };
+}
+
 export async function activate(context: ExtensionContext) {
 	// Get the main extension exported API
 	const objectScriptExt = extensions.getExtension("intersystems-community.vscode-objectscript")!;
@@ -259,7 +272,10 @@ export async function activate(context: ExtensionContext) {
 	const textDecoder = new TextDecoder();
 	context.subscriptions.push(
 		// Register custom request handlers
-		client.onRequest("intersystems/server/resolveFromUri", (uri) => resolveServerSpec(Uri.parse(uri))),
+		client.onRequest("intersystems/server/resolveFromUri", async (uri) => {
+			const server = await resolveServerSpec(Uri.parse(uri));
+			return server && withoutCredentials(server);
+		}),
 		client.onRequest("intersystems/uri/localToVirtual", (uri) => {
 			const newuri: Uri = objectScriptApi.serverDocumentUriForUri(Uri.parse(uri));
 			return newuri.toString();
@@ -283,14 +299,20 @@ export async function activate(context: ExtensionContext) {
 		}),
 		client.onRequest("intersystems/server/makeRESTRequest", async (args) => {
 			// As of version 2.0.0, REST requests are made on the client side
-			return makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params).then(
-				(respdata) => {
-					if (respdata) {
-						// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
-						return { data: respdata.data };
-					}
-				},
-			);
+			return makeRESTRequest(
+				args.method,
+				args.api,
+				args.path,
+				withCredentials(args.server),
+				args.data,
+				args.checksum,
+				args.params,
+			).then((respdata) => {
+				if (respdata) {
+					// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
+					return { data: respdata.data };
+				}
+			});
 		}),
 		client.onRequest(
 			"intersystems/uri/getText",
@@ -318,7 +340,7 @@ export async function activate(context: ExtensionContext) {
 							"GET",
 							1,
 							`/doc/${fileName}`,
-							params.server,
+							withCredentials(params.server),
 							undefined,
 							undefined,
 							docParams,
