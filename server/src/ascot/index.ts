@@ -11,14 +11,7 @@ import {
 	type Workspace,
 	type WorkspaceSymbol,
 } from "@intersystems-community/ascot";
-import {
-	Diagnostic,
-	DiagnosticSeverity,
-	DocumentSymbol,
-	SymbolInformation,
-	SymbolKind,
-	SymbolTag,
-} from "vscode-languageserver";
+import { Diagnostic, DiagnosticSeverity, SymbolInformation, SymbolKind, SymbolTag } from "vscode-languageserver";
 import { connection } from "../utils/variables";
 import { getServerSpec, makeRESTRequest } from "../utils/functions";
 import { ServerSpec } from "../utils/types";
@@ -286,17 +279,6 @@ function toSymbol({ name, kind, deprecated }: SymbolInfo | WorkspaceSymbol) {
 		tags: deprecated ? [SymbolTag.Deprecated] : [],
 	};
 }
-
-export const getDocumentSymbol = (uri: string) =>
-	withWorkspace(uri, [] as DocumentSymbol[], async (w) => {
-		const toDocSymbol = (s: SymbolInfo): DocumentSymbol => ({
-			...toSymbol(s),
-			range: s.range,
-			selectionRange: s.selectionRange,
-		});
-		const symbol = await w.documentSymbol(uri);
-		return symbol ? [{ ...toDocSymbol(symbol.root), children: symbol.members.map(toDocSymbol) }] : [];
-	});
 
 export const getWorkspaceSymbol = (folder: string, query: string) =>
 	withWorkspace(folder, [] as SymbolInformation[], async (w) =>
