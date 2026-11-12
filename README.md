@@ -18,7 +18,7 @@ This is a [LSP](https://microsoft.github.io/language-server-protocol/) compliant
   - [Find all references](https://code.visualstudio.com/docs/editor/editingevolved#_peek) to classes, members, variables and labels.
   - [Workspace symbols](https://code.visualstudio.com/docs/editor/editingevolved#_open-symbol-by-name) for the classes, members, routines and labels of the open folders.
   - [Inlay hints](https://code.visualstudio.com/docs/editor/editingevolved#_inlay-hints) for the types of variables and call results.
-  - Style rules for commands, functions, braces and spacing, each a setting under `intersystems.language-server.ascot.style`.
+  - Style rules for commands, functions, braces and spacing, from the folder's ascot style file: `.ascot/style.json` by default (`intersystems.language-server.ascot.style`), in the format of ascot's [STYLE.md](https://github.com/intersystems-community/ascot/blob/main/STYLE.md).
 - Full document and range-based code formatting for the following:
   - Normalize the case of ObjectScript commands, system functions and system variables.
   - Normalize the usage of short or long versions of ObjectScript commands, system functions and system variables.

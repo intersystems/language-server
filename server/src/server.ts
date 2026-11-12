@@ -1,6 +1,11 @@
 import * as fs from "fs";
 import * as path from "path";
-import { DidChangeConfigurationNotification, TextDocumentSyncKind, CodeActionKind } from "vscode-languageserver/node";
+import {
+	DidChangeConfigurationNotification,
+	DidChangeWatchedFilesNotification,
+	TextDocumentSyncKind,
+	CodeActionKind,
+} from "vscode-languageserver/node";
 import { URI } from "vscode-uri";
 
 import { onPrepare, onSubtypes, onSupertypes } from "./providers/typeHierarchy";
@@ -123,8 +128,17 @@ connection.onInitialized(() => {
 	connection.client.register(DidChangeConfigurationNotification.type, {
 		section: ["intersystems.language-server", "intersystems.servers", "objectscript.conn"],
 	});
+	// An edit of a folder's ascot style file (at its default path) applies at once.
+	connection.client.register(DidChangeWatchedFilesNotification.type, {
+		watchers: [{ globPattern: "**/.ascot/style.json" }],
+	});
 	refreshTrace();
 	refreshStyles();
+});
+
+connection.onDidChangeWatchedFiles(async () => {
+	await refreshStyles();
+	connection.languages.diagnostics.refresh();
 });
 
 connection.onExit(() => {

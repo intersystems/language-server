@@ -184,7 +184,12 @@ async function applyStyle(folder: string): Promise<void> {
 	const json = JSON.stringify(style ?? null);
 	if (styles.get(folder) === json) return;
 	styles.set(folder, json);
-	await (await workspaces.get(folder)!).setStyle(style);
+	try {
+		await (await workspaces.get(folder)!).setStyle(style);
+	} catch (error) {
+		// A value the record doesn't have, say `"form": "Longish"`: reported, and the old style stays.
+		connection.console.error(`[ascot] the style file of ${folder}: ${error}`);
+	}
 }
 
 // ascot could not start for a folder: reported once, then every request on it falls back to the
