@@ -25,7 +25,7 @@ import {
 	selectParameterType,
 	setSelection,
 } from "./commands";
-import { makeRESTRequest } from "./makeRESTRequest";
+import { forgetDocs, getDoc, makeRESTRequest } from "./makeRESTRequest";
 import { ISCEmbeddedContentProvider, requestForwardingMiddleware } from "./requestForwarding";
 import type { ServerSpec, ProtocolMethods } from "../../common/out/types";
 import type { Disposable } from "vscode-languageclient";
@@ -160,6 +160,7 @@ export async function activate(context: ExtensionContext) {
 	// Send custom notifications when the connection or password changes
 	objectScriptApi.onDidChangeConnection()(() => {
 		resolvedServerSpecs.clear();
+		forgetDocs();
 		client.sendNotification("intersystems/server/connectionChange");
 	});
 	const serverManagerExt = extensions.getExtension("intersystems-community.servermanager");
@@ -168,9 +169,14 @@ export async function activate(context: ExtensionContext) {
 		serverManagerApi = serverManagerExt.isActive ? serverManagerExt.exports : await serverManagerExt.activate();
 		serverManagerApi.onDidChangePassword()((serverName: string) => {
 			resolvedServerSpecs.deleteByServerName(serverName);
+			forgetDocs();
 			client.sendNotification("intersystems/server/passwordChange", serverName);
 		});
 	}
+	// A save may change the server's copy of the document, or import a local file over it.
+	context.subscriptions.push(
+		workspace.onDidSaveTextDocument((d) => d.languageId.startsWith("objectscript") && forgetDocs()),
+	);
 
 	// Resolve the ServerSpec for a document or workspace folder URI, prompting
 	// for a missing password via the Server Manager's authentication provider.
@@ -283,14 +289,17 @@ export async function activate(context: ExtensionContext) {
 		}),
 		client.onRequest("intersystems/server/makeRESTRequest", async (args) => {
 			// As of version 2.0.0, REST requests are made on the client side
-			return makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params).then(
-				(respdata) => {
-					if (respdata) {
-						// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
-						return { data: respdata.data };
-					}
-				},
-			);
+			const doc = args.method == "GET" && args.path.startsWith("/doc/");
+			return (
+				doc
+					? getDoc(args.path.slice("/doc/".length), args.server, args.params)
+					: makeRESTRequest(args.method, args.api, args.path, args.server, args.data, args.checksum, args.params)
+			).then((respdata) => {
+				if (respdata) {
+					// Can't return the entire AxiosResponse object because it's not JSON.stringify-able due to circularity
+					return { data: respdata.data };
+				}
+			});
 		}),
 		client.onRequest(
 			"intersystems/uri/getText",
@@ -314,15 +323,7 @@ export async function activate(context: ExtensionContext) {
 								.get<boolean>("multilineMethodArgs")
 								? { format: "udl-multiline" }
 								: undefined;
-						const resp = await makeRESTRequest(
-							"GET",
-							1,
-							`/doc/${fileName}`,
-							params.server,
-							undefined,
-							undefined,
-							docParams,
-						);
+						const resp = await getDoc(fileName, params.server, docParams);
 						return resp?.data?.result?.content || [];
 					} else {
 						// Read the contents of the file at uri
