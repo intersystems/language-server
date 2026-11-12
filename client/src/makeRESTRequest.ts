@@ -6,6 +6,20 @@ import * as https from "https";
 import { client, getCookies, updateCookies } from "./extension";
 import { ServerSpec } from "../../common/out/types";
 
+// A document's text, fetched once for every reader until the connection or a password changes or an ObjectScript document is saved.
+const docs = new Map<string, Promise<AxiosResponse<any> | undefined>>();
+export const forgetDocs = (): void => docs.clear();
+export function getDoc(name: string, server: ServerSpec, params?: AxiosRequestConfig["params"]) {
+	const key = `${server.username}@${server.host}:${server.port}${server.pathPrefix}/${server.namespace}/${name}?${JSON.stringify(params ?? null)}`;
+	let doc = docs.get(key);
+	if (!doc) {
+		doc = makeRESTRequest("GET", 1, `/doc/${name}`, server, undefined, undefined, params);
+		doc.then((resp) => resp || docs.delete(key)); // a failed request isn't kept
+		docs.set(key, doc);
+	}
+	return doc;
+}
+
 /**
  * Send a REST request to an InterSystems server.
  *
